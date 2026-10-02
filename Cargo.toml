@@ -1,0 +1,5 @@
+# Maintainer-only tooling. Plugin authors never need Rust: the generated Dart
+# bindings and the prebuilt runtime helper are checked in.
+[workspace]
+members = ["native/runtime_helpers", "native/wit_bindgen_dart"]
+resolver = "3"

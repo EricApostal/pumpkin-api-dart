@@ -1,0 +1,19 @@
+[package]
+name = "wit_bindgen_dart"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "witgen_cli"
+path = "src/bin/witgen_cli.rs"
+
+[dependencies]
+anyhow = "1.0.102"
+heck = "0.5.0"
+serde = { version = "1", features = ["derive", "std", "rc"] }
+serde_json = "1"
+wit-bindgen-core = "0.58.0"
+wit-component = "0.251.0"

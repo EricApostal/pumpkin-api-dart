@@ -1,0 +1,6 @@
+.dart_tool/
+/target/
+build/
+.DS_Store
+.vscode/
+**/bin/*.wasm

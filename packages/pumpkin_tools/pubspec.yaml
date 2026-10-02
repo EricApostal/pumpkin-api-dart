@@ -1,0 +1,18 @@
+name: pumpkin_tools
+description: Command line tools to create, build and package Pumpkin plugins written in Dart.
+version: 0.1.0-preview.0
+resolution: workspace
+repository: https://github.com/EricApostal/pumpkin-api-dart
+
+environment:
+  sdk: ^3.13.0-0
+
+executables:
+  pumpkin: pumpkin_tools
+
+dependencies:
+  args: ^2.7.0
+  logging: ^1.3.0
+  path: ^1.9.0
+  wasm_tools:
+  yaml: ^3.1.3

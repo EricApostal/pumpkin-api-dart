@@ -1,0 +1,18 @@
+name: _pumpkin_api_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.13.0-0
+
+workspace:
+  - packages/pumpkin_api
+  - packages/pumpkin_tools
+  - packages/wasm_components
+  - packages/wasm_tools
+  - example/hello_plugin
+
+dev_dependencies:
+  lints: ^6.1.0
+
+dependency_overrides:
+  package_config: ^3.0.0

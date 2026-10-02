@@ -1,0 +1,13 @@
+name: pumpkin_api
+description: Dart API for writing Pumpkin Minecraft server plugins.
+version: 0.1.0-preview.0
+resolution: workspace
+repository: https://github.com/EricApostal/pumpkin-api-dart
+
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  hooks: ^2.0.2
+  wasm_components:
+  wasm_tools:

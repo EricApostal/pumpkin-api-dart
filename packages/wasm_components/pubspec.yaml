@@ -1,0 +1,16 @@
+name: wasm_components
+description: Runtime definitions to help run Dart apps as WebAssembly components.
+resolution: workspace
+version: 0.1.0-preview.0
+repository: https://github.com/EricApostal/pumpkin-api-dart
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  collection: ^1.19.1
+  meta: ^1.18.3
+
+dev_dependencies:
+  path: ^1.9.1
+  test: ^1.31.1
+  test_descriptor: ^2.0.2

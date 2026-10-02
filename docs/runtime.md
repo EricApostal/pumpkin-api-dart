@@ -16,7 +16,8 @@ embedder is `packages/wasm_components` (`lib/src/embedder`). This is what works.
 | `async`/`await`, `Future.delayed`, `Timer`, `Timer.periodic` | works on the server's tick loop, see [async.md](async.md) |
 | `print` | goes to the server log at info level |
 | `Expando`, `WeakReference`, `Finalizer` | work, but there is no garbage collector hook in a component, so weak references never clear, expandos never drop entries and finalizers never run |
-| `dart:io`, `dart:isolate`, `dart:ffi` | not available. Use the host API (and WASI, with the plugin permissions) instead |
+| files | `DataFolder` (`context.files`), see [files.md](files.md) |
+| `dart:io`, `dart:isolate`, `dart:ffi` | not available. Use `DataFolder` and the host API instead |
 
 The regexp and number algorithms are covered by differential tests against the
 Dart VM (`dart test packages/wasm_components`), thousands of random inputs

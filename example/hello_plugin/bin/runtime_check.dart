@@ -15,7 +15,37 @@ class Thing {
   String toString() => 'Thing($v)';
 }
 
+late DataFolder _data;
+
 final Map<String, Object? Function()> tests = {
+  'fs_text': () {
+    _data.writeAsString('check.txt', 'héllo');
+    _data.writeAsString('check.txt', ' wörld', append: true);
+    return _data.readAsString('check.txt');
+  },
+  'fs_json': () {
+    _data.writeJson('check.json', {'a': 1, 'b': [true, 'x']});
+    return _data.readJson('check.json');
+  },
+  'fs_dirs': () {
+    _data.createDirectory('check_dir/inner');
+    _data.writeAsString('check_dir/inner/f.txt', 'x');
+    final listed = _data.list('check_dir/inner').map((e) => e.name).toList();
+    _data.delete('check_dir', recursive: true);
+    return '$listed ${_data.exists('check_dir')}';
+  },
+  'fs_large': () {
+    _data.writeAsBytes('check.bin', List.filled(200000, 7));
+    return _data.readAsBytes('check.bin').length;
+  },
+  'fs_missing': () {
+    try {
+      _data.readAsString('does_not_exist');
+      return 'no error';
+    } on FileException catch (e) {
+      return e.isNotFound;
+    }
+  },
   'print': () {
     print('printed from dart: ${1.5 + 1}');
     return 1;
@@ -72,10 +102,15 @@ void main() => runPlugin(Probe());
 
 final class Probe extends Plugin {
   @override
-  PluginInfo get info => const PluginInfo(name: 'runtime_check', version: '0.0.1');
+  PluginInfo get info => const PluginInfo(
+    name: 'runtime_check',
+    version: '0.0.1',
+    permissions: [Permissions.fsWriteData],
+  );
 
   @override
   void onLoad(Context context) {
+    _data = context.files;
     final command = Command.create(names: ['t'], description: 'p');
     final name = CommandNode.argument(name: 'name', type: ArgumentTypes.word)
       ..execute((sender, server, args) {

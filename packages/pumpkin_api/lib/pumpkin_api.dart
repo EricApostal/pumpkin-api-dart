@@ -15,7 +15,9 @@ export 'package:wasm_components/wasm_components.dart'
     show Option, Result, OkResult, ErrorResult;
 
 export 'src/bindings.g.dart'
-    hide definePlugin, PluginExports, Metadata, PluginMetadata;
+    hide definePlugin, PluginExports, Metadata, PluginMetadata,
+        // The raw WASI filesystem types, used through `DataFolder`.
+        Advice, Datetime, Descriptor, DescriptorFlagsFlag, DescriptorStat, DescriptorType, DirectoryEntry, DirectoryEntryStream, Error, ErrorCode, ErrorInterface, InputStream, MetadataHashValue, NewTimestamp, NewTimestampNoChange, NewTimestampNow, NewTimestampTimestamp, OpenFlagsFlag, OutputStream, PathFlagsFlag, Poll, Pollable, Preopens, StreamError, StreamErrorClosed, StreamErrorLastOperationFailed, Streams, Types, WallClock, error, poll, preopens, streams, types, wallClock;
 export 'src/ai.dart' hide aiGoals;
 export 'src/blocks.dart';
 export 'src/items.dart';
@@ -35,6 +37,7 @@ export 'src/server_list_ping.dart';
 export 'src/uuid_ext.dart';
 export 'src/commands.dart' hide commandErrorFor, commandHandlers, suggestionHandlers;
 export 'src/events.dart' hide eventHandlers;
+export 'src/files.dart';
 export 'src/events.g.dart';
 export 'src/logger.dart';
 export 'src/permissions.dart';

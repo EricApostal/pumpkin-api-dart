@@ -32369,6 +32369,2283 @@ Server get server => getServer();
 /// Returns verified marketplace metadata if this plugin binary is signed, or none if unsigned.
 MarketplaceMetadata? get marketplaceMetadata => getMarketplaceMetadata();
 }
+@pragma("wasm:import", r"component._import928")
+external i0.WasmVoid _import928(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._drop88")
+external i0.WasmVoid _drop88(i0.WasmI32 handle);
+/// A resource which represents some error information.
+/// 
+/// The only method provided by this resource is `to-debug-string`,
+/// which provides some human-readable information about the error.
+/// 
+/// In the `wasi:io` package, this resource is returned through the
+/// `wasi:io/streams.stream-error` type.
+/// 
+/// To provide more specific error information, other interfaces may
+/// offer functions to "downcast" this error into more specific types. For example,
+/// errors returned from streams derived from filesystem types can be described using
+/// the filesystem's own error-code type. This is done using the function
+/// `wasi:filesystem/types.filesystem-error-code`, which takes a `borrow<error>`
+/// parameter and returns an `option<wasi:filesystem/types.error-code>`.
+/// 
+/// The set of functions which can "downcast" an `error` into a more
+/// concrete type is open.
+final class Error extends i1.Resource {
+  Error._own(int handle) : super.owned(handle, _dropError);
+  Error._borrowed(int handle) : super.borrowed(handle);
+  static void _dropError(int handle) { _drop88(i0.WasmI32.fromInt(handle)); }
+/// Returns a string that is suitable to assist humans in debugging
+/// this error.
+/// 
+/// WARNING: The returned string should not be consumed mechanically!
+/// It may change across platforms, hosts, or other implementation
+/// details. Parsing this string is a major platform-compatibility
+/// hazard.
+String toDebugString() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import928(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+i1.dartFree(tmp0, const i0.WasmI32(8), const i0.WasmI32(4));
+return i1.AllocatedString.read(tmp1, tmp2);
+
+}
+}
+@pragma("wasm:import", r"component._import929")
+external i0.WasmI32 _import929(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import930")
+external i0.WasmVoid _import930(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._drop89")
+external i0.WasmVoid _drop89(i0.WasmI32 handle);
+/// `pollable` represents a single I/O event which may be ready, or not.
+final class Pollable extends i1.Resource {
+  Pollable._own(int handle) : super.owned(handle, _dropPollable);
+  Pollable._borrowed(int handle) : super.borrowed(handle);
+  static void _dropPollable(int handle) { _drop89(i0.WasmI32.fromInt(handle)); }
+/// Return the readiness of a pollable. This function never blocks.
+/// 
+/// Returns `true` when the pollable is ready, and `false` otherwise.
+bool ready() {
+final self = this;
+final tmp0 = _import929(i0.WasmI32.fromInt(self.resourceHandle));
+return tmp0.toBool();
+
+}
+/// `block` returns immediately if the pollable is ready, and otherwise
+/// blocks until ready.
+/// 
+/// This function is equivalent to calling `poll.poll` on a list
+/// containing only this pollable.
+void block() {
+final self = this;
+_import930(i0.WasmI32.fromInt(self.resourceHandle));
+
+}
+}
+/// An error for input-stream and output-stream operations.
+sealed class StreamError {
+  const StreamError();
+}
+/// The last operation (a write or flush) failed before completion.
+/// 
+/// More information is available in the `error` payload.
+/// 
+/// After this, the stream will be closed. All future operations return
+/// `stream-error::closed`.
+final class StreamErrorLastOperationFailed extends StreamError {
+  final Error value;
+  const StreamErrorLastOperationFailed(this.value);
+}
+/// The stream is closed: no more input will be accepted by the
+/// stream. A closed output-stream will return this error on all
+/// future operations.
+final class StreamErrorClosed extends StreamError {
+  const StreamErrorClosed();
+}
+@pragma("wasm:import", r"component._import931")
+external i0.WasmVoid _import931(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import932")
+external i0.WasmVoid _import932(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import933")
+external i0.WasmVoid _import933(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import934")
+external i0.WasmVoid _import934(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import935")
+external i0.WasmI32 _import935(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._drop90")
+external i0.WasmVoid _drop90(i0.WasmI32 handle);
+/// An input bytestream.
+/// 
+/// `input-stream`s are *non-blocking* to the extent practical on underlying
+/// platforms. I/O operations always return promptly; if fewer bytes are
+/// promptly available than requested, they return the number of bytes promptly
+/// available, which could even be zero. To wait for data to be available,
+/// use the `subscribe` function to obtain a `pollable` which can be polled
+/// for using `wasi:io/poll`.
+final class InputStream extends i1.Resource {
+  InputStream._own(int handle) : super.owned(handle, _dropInputStream);
+  InputStream._borrowed(int handle) : super.borrowed(handle);
+  static void _dropInputStream(int handle) { _drop90(i0.WasmI32.fromInt(handle)); }
+/// Perform a non-blocking read from the stream.
+/// 
+/// When the source of a `read` is binary data, the bytes from the source
+/// are returned verbatim. When the source of a `read` is known to the
+/// implementation to be text, bytes containing the UTF-8 encoding of the
+/// text are returned.
+/// 
+/// This function returns a list of bytes containing the read data,
+/// when successful. The returned list will contain up to `len` bytes;
+/// it may return fewer than requested, but not more. The list is
+/// empty when no bytes are available for reading at this time. The
+/// pollable given by `subscribe` will be ready when more bytes are
+/// available.
+/// 
+/// This function fails with a `stream-error` when the operation
+/// encounters an error, giving `last-operation-failed`, or when the
+/// stream is closed, giving `closed`.
+/// 
+/// When the caller gives a `len` of 0, it represents a request to
+/// read 0 bytes. If the stream is still open, this call should
+/// succeed and return an empty list, or otherwise fail with `closed`.
+/// 
+/// The `len` parameter is a `u64`, which could represent a list of u8 which
+/// is not possible to allocate in wasm32, or not desirable to allocate as
+/// as a return value by the callee. The callee may return a list of bytes
+/// less than `len` in size while more bytes are available for reading.
+i1.Result<List<int>, StreamError> read({required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import931(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<List<int>, StreamError> tmp9;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+final tmp5 = <int>[];
+for (var i = 0; i < tmp3.toIntUnsigned(); i++) {
+final elementPtr = i0.WasmI32.fromInt(tmp2.toIntUnsigned() + i * 1);
+final tmp4 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 0);
+
+tmp5.add(tmp4.toIntUnsigned());
+}
+
+tmp9 = i1.Result.ok(tmp5);
+} else {
+final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+late final StreamError tmp8;
+switch (tmp6.toIntUnsigned()) {
+case 0: {
+final tmp7 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp8 = StreamErrorLastOperationFailed(Error._own(tmp7.toIntUnsigned()));
+}
+case 1: {
+
+tmp8 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp9 = i1.Result.error(tmp8);
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp9;
+
+}
+/// Read bytes from a stream, after blocking until at least one byte can
+/// be read. Except for blocking, behavior is identical to `read`.
+i1.Result<List<int>, StreamError> blockingRead({required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import932(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<List<int>, StreamError> tmp9;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+final tmp5 = <int>[];
+for (var i = 0; i < tmp3.toIntUnsigned(); i++) {
+final elementPtr = i0.WasmI32.fromInt(tmp2.toIntUnsigned() + i * 1);
+final tmp4 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 0);
+
+tmp5.add(tmp4.toIntUnsigned());
+}
+
+tmp9 = i1.Result.ok(tmp5);
+} else {
+final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+late final StreamError tmp8;
+switch (tmp6.toIntUnsigned()) {
+case 0: {
+final tmp7 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp8 = StreamErrorLastOperationFailed(Error._own(tmp7.toIntUnsigned()));
+}
+case 1: {
+
+tmp8 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp9 = i1.Result.error(tmp8);
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp9;
+
+}
+/// Skip bytes from a stream. Returns number of bytes skipped.
+/// 
+/// Behaves identical to `read`, except instead of returning a list
+/// of bytes, returns the number of bytes consumed from the stream.
+i1.Result<int, StreamError> skip({required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import933(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<int, StreamError> tmp6;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.ok(tmp2.toInt());
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+late final StreamError tmp5;
+switch (tmp3.toIntUnsigned()) {
+case 0: {
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+
+tmp5 = StreamErrorLastOperationFailed(Error._own(tmp4.toIntUnsigned()));
+}
+case 1: {
+
+tmp5 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp6 = i1.Result.error(tmp5);
+}
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp6;
+
+}
+/// Skip bytes from a stream, after blocking until at least one byte
+/// can be skipped. Except for blocking behavior, identical to `skip`.
+i1.Result<int, StreamError> blockingSkip({required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import934(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<int, StreamError> tmp6;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.ok(tmp2.toInt());
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+late final StreamError tmp5;
+switch (tmp3.toIntUnsigned()) {
+case 0: {
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+
+tmp5 = StreamErrorLastOperationFailed(Error._own(tmp4.toIntUnsigned()));
+}
+case 1: {
+
+tmp5 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp6 = i1.Result.error(tmp5);
+}
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp6;
+
+}
+/// Create a `pollable` which will resolve once either the specified stream
+/// has bytes available to read or the other end of the stream has been
+/// closed.
+/// The created `pollable` is a child resource of the `input-stream`.
+/// Implementations may trap if the `input-stream` is dropped before
+/// all derived `pollable`s created with this function are dropped.
+Pollable subscribe() {
+final self = this;
+final tmp0 = _import935(i0.WasmI32.fromInt(self.resourceHandle));
+return Pollable._own(tmp0.toIntUnsigned());
+
+}
+}
+@pragma("wasm:import", r"component._import936")
+external i0.WasmVoid _import936(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import937")
+external i0.WasmVoid _import937(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import938")
+external i0.WasmVoid _import938(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import939")
+external i0.WasmVoid _import939(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import940")
+external i0.WasmVoid _import940(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import941")
+external i0.WasmI32 _import941(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import942")
+external i0.WasmVoid _import942(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import943")
+external i0.WasmVoid _import943(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import944")
+external i0.WasmVoid _import944(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI64 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import945")
+external i0.WasmVoid _import945(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI64 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._drop91")
+external i0.WasmVoid _drop91(i0.WasmI32 handle);
+/// An output bytestream.
+/// 
+/// `output-stream`s are *non-blocking* to the extent practical on
+/// underlying platforms. Except where specified otherwise, I/O operations also
+/// always return promptly, after the number of bytes that can be written
+/// promptly, which could even be zero. To wait for the stream to be ready to
+/// accept data, the `subscribe` function to obtain a `pollable` which can be
+/// polled for using `wasi:io/poll`.
+/// 
+/// Dropping an `output-stream` while there's still an active write in
+/// progress may result in the data being lost. Before dropping the stream,
+/// be sure to fully flush your writes.
+final class OutputStream extends i1.Resource {
+  OutputStream._own(int handle) : super.owned(handle, _dropOutputStream);
+  OutputStream._borrowed(int handle) : super.borrowed(handle);
+  static void _dropOutputStream(int handle) { _drop91(i0.WasmI32.fromInt(handle)); }
+/// Check readiness for writing. This function never blocks.
+/// 
+/// Returns the number of bytes permitted for the next call to `write`,
+/// or an error. Calling `write` with more bytes than this function has
+/// permitted will trap.
+/// 
+/// When this function returns 0 bytes, the `subscribe` pollable will
+/// become ready when this function will report at least 1 byte, or an
+/// error.
+i1.Result<int, StreamError> checkWrite() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import936(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<int, StreamError> tmp6;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.ok(tmp2.toInt());
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+late final StreamError tmp5;
+switch (tmp3.toIntUnsigned()) {
+case 0: {
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+
+tmp5 = StreamErrorLastOperationFailed(Error._own(tmp4.toIntUnsigned()));
+}
+case 1: {
+
+tmp5 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp6 = i1.Result.error(tmp5);
+}
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp6;
+
+}
+/// Perform a write. This function never blocks.
+/// 
+/// When the destination of a `write` is binary data, the bytes from
+/// `contents` are written verbatim. When the destination of a `write` is
+/// known to the implementation to be text, the bytes of `contents` are
+/// transcoded from UTF-8 into the encoding of the destination and then
+/// written.
+/// 
+/// Precondition: check-write gave permit of Ok(n) and contents has a
+/// length of less than or equal to n. Otherwise, this function will trap.
+/// 
+/// returns Err(closed) without writing if the stream has closed since
+/// the last call to check-write provided a permit.
+i1.Result<void, StreamError> write({required List<int> contents, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = contents.length;
+final tmp1 = i1.mallocAligned(i0.WasmI32.fromInt(1), i0.WasmI32.fromInt(1 * tmp0));
+for (var i = 0; i < tmp0; i++) {
+final tmp2 = contents[i];
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 1);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp2), offset: 0);
+
+}
+final tmp3 = i0.WasmI32.fromInt(tmp0);
+_cleanups.add(() { i1.dartFree(tmp1, i0.WasmI32.fromInt(1 * tmp0), const i0.WasmI32(1)); });
+var tmp4 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import937(i0.WasmI32.fromInt(self.resourceHandle), tmp1, tmp3, tmp4);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp5 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 0);
+late final i1.Result<void, StreamError> tmp9;
+if (tmp5.toIntUnsigned() == 0) {
+
+tmp9 = i1.Result.ok(null);
+} else {
+final tmp6 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 4);
+late final StreamError tmp8;
+switch (tmp6.toIntUnsigned()) {
+case 0: {
+final tmp7 = i1.memory.loadInt32(tmp4.toIntUnsigned(), offset: 8);
+
+tmp8 = StreamErrorLastOperationFailed(Error._own(tmp7.toIntUnsigned()));
+}
+case 1: {
+
+tmp8 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp9 = i1.Result.error(tmp8);
+}
+i1.dartFree(tmp4, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp9;
+
+}
+/// Perform a write of up to 4096 bytes, and then flush the stream. Block
+/// until all of these operations are complete, or an error occurs.
+/// 
+/// Returns success when all of the contents written are successfully
+/// flushed to output. If an error occurs at any point before all
+/// contents are successfully flushed, that error is returned as soon as
+/// possible. If writing and flushing the complete contents causes the
+/// stream to become closed, this call should return success, and
+/// subsequent calls to check-write or other interfaces should return
+/// stream-error::closed.
+i1.Result<void, StreamError> blockingWriteAndFlush({required List<int> contents, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = contents.length;
+final tmp1 = i1.mallocAligned(i0.WasmI32.fromInt(1), i0.WasmI32.fromInt(1 * tmp0));
+for (var i = 0; i < tmp0; i++) {
+final tmp2 = contents[i];
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 1);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp2), offset: 0);
+
+}
+final tmp3 = i0.WasmI32.fromInt(tmp0);
+_cleanups.add(() { i1.dartFree(tmp1, i0.WasmI32.fromInt(1 * tmp0), const i0.WasmI32(1)); });
+var tmp4 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import938(i0.WasmI32.fromInt(self.resourceHandle), tmp1, tmp3, tmp4);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp5 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 0);
+late final i1.Result<void, StreamError> tmp9;
+if (tmp5.toIntUnsigned() == 0) {
+
+tmp9 = i1.Result.ok(null);
+} else {
+final tmp6 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 4);
+late final StreamError tmp8;
+switch (tmp6.toIntUnsigned()) {
+case 0: {
+final tmp7 = i1.memory.loadInt32(tmp4.toIntUnsigned(), offset: 8);
+
+tmp8 = StreamErrorLastOperationFailed(Error._own(tmp7.toIntUnsigned()));
+}
+case 1: {
+
+tmp8 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp9 = i1.Result.error(tmp8);
+}
+i1.dartFree(tmp4, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp9;
+
+}
+/// Request to flush buffered output. This function never blocks.
+/// 
+/// This tells the output-stream that the caller intends any buffered
+/// output to be flushed. the output which is expected to be flushed
+/// is all that has been passed to `write` prior to this call.
+/// 
+/// Upon calling this function, the `output-stream` will not accept any
+/// writes (`check-write` will return `ok(0)`) until the flush has
+/// completed. The `subscribe` pollable will become ready when the
+/// flush has completed and the stream can accept more writes.
+i1.Result<void, StreamError> flush() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import939(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, StreamError> tmp5;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp5 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+late final StreamError tmp4;
+switch (tmp2.toIntUnsigned()) {
+case 0: {
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp4 = StreamErrorLastOperationFailed(Error._own(tmp3.toIntUnsigned()));
+}
+case 1: {
+
+tmp4 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp5 = i1.Result.error(tmp4);
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp5;
+
+}
+/// Request to flush buffered output, and block until flush completes
+/// and stream is ready for writing again.
+i1.Result<void, StreamError> blockingFlush() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import940(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, StreamError> tmp5;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp5 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+late final StreamError tmp4;
+switch (tmp2.toIntUnsigned()) {
+case 0: {
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp4 = StreamErrorLastOperationFailed(Error._own(tmp3.toIntUnsigned()));
+}
+case 1: {
+
+tmp4 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp5 = i1.Result.error(tmp4);
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp5;
+
+}
+/// Create a `pollable` which will resolve once the output-stream
+/// is ready for more writing, or an error has occurred. When this
+/// pollable is ready, `check-write` will return `ok(n)` with n>0, or an
+/// error.
+/// 
+/// If the stream is closed, this pollable is always ready immediately.
+/// 
+/// The created `pollable` is a child resource of the `output-stream`.
+/// Implementations may trap if the `output-stream` is dropped before
+/// all derived `pollable`s created with this function are dropped.
+Pollable subscribe() {
+final self = this;
+final tmp0 = _import941(i0.WasmI32.fromInt(self.resourceHandle));
+return Pollable._own(tmp0.toIntUnsigned());
+
+}
+/// Write zeroes to a stream.
+/// 
+/// This should be used precisely like `write` with the exact same
+/// preconditions (must use check-write first), but instead of
+/// passing a list of bytes, you simply pass the number of zero-bytes
+/// that should be written.
+i1.Result<void, StreamError> writeZeroes({required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import942(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, StreamError> tmp5;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp5 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+late final StreamError tmp4;
+switch (tmp2.toIntUnsigned()) {
+case 0: {
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp4 = StreamErrorLastOperationFailed(Error._own(tmp3.toIntUnsigned()));
+}
+case 1: {
+
+tmp4 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp5 = i1.Result.error(tmp4);
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp5;
+
+}
+/// Perform a write of up to 4096 zeroes, and then flush the stream.
+/// Block until all of these operations are complete, or an error
+/// occurs.
+/// 
+/// Functionality is equivelant to `blocking-write-and-flush` with
+/// contents given as a list of len containing only zeroes.
+i1.Result<void, StreamError> blockingWriteZeroesAndFlush({required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import943(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, StreamError> tmp5;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp5 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+late final StreamError tmp4;
+switch (tmp2.toIntUnsigned()) {
+case 0: {
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp4 = StreamErrorLastOperationFailed(Error._own(tmp3.toIntUnsigned()));
+}
+case 1: {
+
+tmp4 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp5 = i1.Result.error(tmp4);
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp5;
+
+}
+/// Read from one stream and write to another.
+/// 
+/// The behavior of splice is equivalent to:
+/// 1. calling `check-write` on the `output-stream`
+/// 2. calling `read` on the `input-stream` with the smaller of the
+/// `check-write` permitted length and the `len` provided to `splice`
+/// 3. calling `write` on the `output-stream` with that read data.
+/// 
+/// Any error reported by the call to `check-write`, `read`, or
+/// `write` ends the splice and reports that error.
+/// 
+/// This function returns the number of bytes transferred; it may be less
+/// than `len`.
+i1.Result<int, StreamError> splice({required InputStream src, required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import944(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(src.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<int, StreamError> tmp6;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.ok(tmp2.toInt());
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+late final StreamError tmp5;
+switch (tmp3.toIntUnsigned()) {
+case 0: {
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+
+tmp5 = StreamErrorLastOperationFailed(Error._own(tmp4.toIntUnsigned()));
+}
+case 1: {
+
+tmp5 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp6 = i1.Result.error(tmp5);
+}
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp6;
+
+}
+/// Read from one stream and write to another, with blocking.
+/// 
+/// This is similar to `splice`, except that it blocks until the
+/// `output-stream` is ready for writing, and the `input-stream`
+/// is ready for reading, before performing the `splice`.
+i1.Result<int, StreamError> blockingSplice({required InputStream src, required int len, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import945(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(src.resourceHandle), i0.WasmI64.fromInt(len), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<int, StreamError> tmp6;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.ok(tmp2.toInt());
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+late final StreamError tmp5;
+switch (tmp3.toIntUnsigned()) {
+case 0: {
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+
+tmp5 = StreamErrorLastOperationFailed(Error._own(tmp4.toIntUnsigned()));
+}
+case 1: {
+
+tmp5 = const StreamErrorClosed();
+}
+default: throw StateError('invalid variant discriminant for StreamError');
+}
+
+tmp6 = i1.Result.error(tmp5);
+}
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp6;
+
+}
+}
+/// Error codes returned by functions, similar to `errno` in POSIX.
+/// Not all of these error codes are returned by the functions provided by this
+/// API; some are used in higher-level library layers, and others are provided
+/// merely for alignment with POSIX.
+enum ErrorCode {
+/// Permission denied, similar to `EACCES` in POSIX.
+  access,
+/// Resource unavailable, or operation would block, similar to `EAGAIN` and `EWOULDBLOCK` in POSIX.
+  wouldBlock,
+/// Connection already in progress, similar to `EALREADY` in POSIX.
+  already,
+/// Bad descriptor, similar to `EBADF` in POSIX.
+  badDescriptor,
+/// Device or resource busy, similar to `EBUSY` in POSIX.
+  busy,
+/// Resource deadlock would occur, similar to `EDEADLK` in POSIX.
+  deadlock,
+/// Storage quota exceeded, similar to `EDQUOT` in POSIX.
+  quota,
+/// File exists, similar to `EEXIST` in POSIX.
+  exist,
+/// File too large, similar to `EFBIG` in POSIX.
+  fileTooLarge,
+/// Illegal byte sequence, similar to `EILSEQ` in POSIX.
+  illegalByteSequence,
+/// Operation in progress, similar to `EINPROGRESS` in POSIX.
+  inProgress,
+/// Interrupted function, similar to `EINTR` in POSIX.
+  interrupted,
+/// Invalid argument, similar to `EINVAL` in POSIX.
+  invalid,
+/// I/O error, similar to `EIO` in POSIX.
+  io,
+/// Is a directory, similar to `EISDIR` in POSIX.
+  isDirectory,
+/// Too many levels of symbolic links, similar to `ELOOP` in POSIX.
+  loop,
+/// Too many links, similar to `EMLINK` in POSIX.
+  tooManyLinks,
+/// Message too large, similar to `EMSGSIZE` in POSIX.
+  messageSize,
+/// Filename too long, similar to `ENAMETOOLONG` in POSIX.
+  nameTooLong,
+/// No such device, similar to `ENODEV` in POSIX.
+  noDevice,
+/// No such file or directory, similar to `ENOENT` in POSIX.
+  noEntry,
+/// No locks available, similar to `ENOLCK` in POSIX.
+  noLock,
+/// Not enough space, similar to `ENOMEM` in POSIX.
+  insufficientMemory,
+/// No space left on device, similar to `ENOSPC` in POSIX.
+  insufficientSpace,
+/// Not a directory or a symbolic link to a directory, similar to `ENOTDIR` in POSIX.
+  notDirectory,
+/// Directory not empty, similar to `ENOTEMPTY` in POSIX.
+  notEmpty,
+/// State not recoverable, similar to `ENOTRECOVERABLE` in POSIX.
+  notRecoverable,
+/// Not supported, similar to `ENOTSUP` and `ENOSYS` in POSIX.
+  unsupported,
+/// Inappropriate I/O control operation, similar to `ENOTTY` in POSIX.
+  noTty,
+/// No such device or address, similar to `ENXIO` in POSIX.
+  noSuchDevice,
+/// Value too large to be stored in data type, similar to `EOVERFLOW` in POSIX.
+  overflow,
+/// Operation not permitted, similar to `EPERM` in POSIX.
+  notPermitted,
+/// Broken pipe, similar to `EPIPE` in POSIX.
+  pipe,
+/// Read-only file system, similar to `EROFS` in POSIX.
+  readOnly,
+/// Invalid seek, similar to `ESPIPE` in POSIX.
+  invalidSeek,
+/// Text file busy, similar to `ETXTBSY` in POSIX.
+  textFileBusy,
+/// Cross-device link, similar to `EXDEV` in POSIX.
+  crossDevice,
+}
+@pragma("wasm:import", r"component._import946")
+external i0.WasmVoid _import946(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import947")
+external i0.WasmVoid _import947(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import948")
+external i0.WasmVoid _import948(i0.WasmI32 p0, i0.WasmI32 p1);
+/// File or memory access pattern advisory information.
+enum Advice {
+/// The application has no advice to give on its behavior with respect
+/// to the specified data.
+  normal,
+/// The application expects to access the specified data sequentially
+/// from lower offsets to higher offsets.
+  sequential,
+/// The application expects to access the specified data in a random
+/// order.
+  random,
+/// The application expects to access the specified data in the near
+/// future.
+  willNeed,
+/// The application expects that it will not access the specified data
+/// in the near future.
+  dontNeed,
+/// The application expects to access the specified data once and then
+/// not reuse it thereafter.
+  noReuse,
+}
+@pragma("wasm:import", r"component._import949")
+external i0.WasmVoid _import949(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import950")
+external i0.WasmVoid _import950(i0.WasmI32 p0, i0.WasmI32 p1);
+/// Descriptor flags.
+/// 
+/// Note: This was called `fdflags` in earlier versions of WASI.
+enum DescriptorFlagsFlag {
+/// Read mode: Data can be read.
+  read,
+/// Write mode: Data can be written to.
+  write,
+/// Request that writes be performed according to synchronized I/O file
+/// integrity completion. The data stored in the file and the file's
+/// metadata are synchronized. This is similar to `O_SYNC` in POSIX.
+/// 
+/// The precise semantics of this operation have not yet been defined for
+/// WASI. At this time, it should be interpreted as a request, and not a
+/// requirement.
+  fileIntegritySync,
+/// Request that writes be performed according to synchronized I/O data
+/// integrity completion. Only the data stored in the file is
+/// synchronized. This is similar to `O_DSYNC` in POSIX.
+/// 
+/// The precise semantics of this operation have not yet been defined for
+/// WASI. At this time, it should be interpreted as a request, and not a
+/// requirement.
+  dataIntegritySync,
+/// Requests that reads be performed at the same level of integrity
+/// requested for writes. This is similar to `O_RSYNC` in POSIX.
+/// 
+/// The precise semantics of this operation have not yet been defined for
+/// WASI. At this time, it should be interpreted as a request, and not a
+/// requirement.
+  requestedWriteSync,
+/// Mutating directories mode: Directory contents may be mutated.
+/// 
+/// When this flag is unset on a descriptor, operations using the
+/// descriptor which would create, rename, delete, modify the data or
+/// metadata of filesystem objects, or obtain another handle which
+/// would permit any of those, shall fail with `error-code::read-only` if
+/// they would otherwise succeed.
+/// 
+/// This may only be set on directories.
+  mutateDirectory,
+}
+@pragma("wasm:import", r"component._import951")
+external i0.WasmVoid _import951(i0.WasmI32 p0, i0.WasmI32 p1);
+/// The type of a filesystem object referenced by a descriptor.
+/// 
+/// Note: This was called `filetype` in earlier versions of WASI.
+enum DescriptorType {
+/// The type of the descriptor or file is unknown or is different from
+/// any of the other types specified.
+  unknown,
+/// The descriptor refers to a block device inode.
+  blockDevice,
+/// The descriptor refers to a character device inode.
+  characterDevice,
+/// The descriptor refers to a directory inode.
+  directory,
+/// The descriptor refers to a named pipe.
+  fifo,
+/// The file refers to a symbolic link inode.
+  symbolicLink,
+/// The descriptor refers to a regular file inode.
+  regularFile,
+/// The descriptor refers to a socket.
+  socket,
+}
+@pragma("wasm:import", r"component._import952")
+external i0.WasmVoid _import952(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import953")
+external i0.WasmVoid _import953(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+/// A time and date in seconds plus nanoseconds.
+final class Datetime {
+  final int seconds;
+  final int nanoseconds;
+  const Datetime({required this.seconds, required this.nanoseconds, });
+  Datetime copyWith({int? seconds, int? nanoseconds, }) => Datetime(seconds: seconds ?? this.seconds, nanoseconds: nanoseconds ?? this.nanoseconds, );
+}
+/// When setting a timestamp, this gives the value to set it to.
+sealed class NewTimestamp {
+  const NewTimestamp();
+}
+/// Leave the timestamp set to its previous value.
+final class NewTimestampNoChange extends NewTimestamp {
+  const NewTimestampNoChange();
+}
+/// Set the timestamp to the current time of the system clock associated
+/// with the filesystem.
+final class NewTimestampNow extends NewTimestamp {
+  const NewTimestampNow();
+}
+/// Set the timestamp to the given value.
+final class NewTimestampTimestamp extends NewTimestamp {
+  final Datetime value;
+  const NewTimestampTimestamp(this.value);
+}
+@pragma("wasm:import", r"component._import954")
+external i0.WasmVoid _import954(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI64 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI64 p5, i0.WasmI32 p6, i0.WasmI32 p7);
+@pragma("wasm:import", r"component._import955")
+external i0.WasmVoid _import955(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import956")
+external i0.WasmVoid _import956(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI64 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import957")
+external i0.WasmVoid _import957(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import958")
+external i0.WasmVoid _import958(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import959")
+external i0.WasmVoid _import959(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+/// File attributes.
+/// 
+/// Note: This was called `filestat` in earlier versions of WASI.
+final class DescriptorStat {
+/// File type.
+  final DescriptorType type;
+/// Number of hard links to the file.
+  final int linkCount;
+/// For regular files, the file size in bytes. For symbolic links, the
+/// length in bytes of the pathname contained in the symbolic link.
+  final int size;
+/// Last data access timestamp.
+/// 
+/// If the `option` is none, the platform doesn't maintain an access
+/// timestamp for this file.
+  final Datetime? dataAccessTimestamp;
+/// Last data modification timestamp.
+/// 
+/// If the `option` is none, the platform doesn't maintain a
+/// modification timestamp for this file.
+  final Datetime? dataModificationTimestamp;
+/// Last file status-change timestamp.
+/// 
+/// If the `option` is none, the platform doesn't maintain a
+/// status-change timestamp for this file.
+  final Datetime? statusChangeTimestamp;
+  const DescriptorStat({required this.type, required this.linkCount, required this.size, required this.dataAccessTimestamp, required this.dataModificationTimestamp, required this.statusChangeTimestamp, });
+  DescriptorStat copyWith({DescriptorType? type, int? linkCount, int? size, Datetime? dataAccessTimestamp, bool clearDataAccessTimestamp = false, Datetime? dataModificationTimestamp, bool clearDataModificationTimestamp = false, Datetime? statusChangeTimestamp, bool clearStatusChangeTimestamp = false, }) => DescriptorStat(type: type ?? this.type, linkCount: linkCount ?? this.linkCount, size: size ?? this.size, dataAccessTimestamp: clearDataAccessTimestamp ? null : (dataAccessTimestamp ?? this.dataAccessTimestamp), dataModificationTimestamp: clearDataModificationTimestamp ? null : (dataModificationTimestamp ?? this.dataModificationTimestamp), statusChangeTimestamp: clearStatusChangeTimestamp ? null : (statusChangeTimestamp ?? this.statusChangeTimestamp), );
+}
+@pragma("wasm:import", r"component._import960")
+external i0.WasmVoid _import960(i0.WasmI32 p0, i0.WasmI32 p1);
+/// Flags determining the method of how paths are resolved.
+enum PathFlagsFlag {
+/// As long as the resolved path corresponds to a symbolic link, it is
+/// expanded.
+  symlinkFollow,
+}
+@pragma("wasm:import", r"component._import961")
+external i0.WasmVoid _import961(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import962")
+external i0.WasmVoid _import962(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI64 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI64 p8, i0.WasmI32 p9, i0.WasmI32 p10);
+@pragma("wasm:import", r"component._import963")
+external i0.WasmVoid _import963(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
+/// Open flags used by `open-at`.
+enum OpenFlagsFlag {
+/// Create file if it does not exist, similar to `O_CREAT` in POSIX.
+  create,
+/// Fail if not a directory, similar to `O_DIRECTORY` in POSIX.
+  directory,
+/// Fail if file already exists, similar to `O_EXCL` in POSIX.
+  exclusive,
+/// Truncate file to size 0, similar to `O_TRUNC` in POSIX.
+  truncate,
+}
+@pragma("wasm:import", r"component._import964")
+external i0.WasmVoid _import964(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import965")
+external i0.WasmVoid _import965(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import966")
+external i0.WasmVoid _import966(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import967")
+external i0.WasmVoid _import967(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import968")
+external i0.WasmVoid _import968(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import969")
+external i0.WasmVoid _import969(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import970")
+external i0.WasmI32 _import970(i0.WasmI32 p0, i0.WasmI32 p1);
+/// A 128-bit hash value, split into parts because wasm doesn't have a
+/// 128-bit integer type.
+final class MetadataHashValue {
+/// 64 bits of a 128-bit hash value.
+  final int lower;
+/// Another 64 bits of a 128-bit hash value.
+  final int upper;
+  const MetadataHashValue({required this.lower, required this.upper, });
+  MetadataHashValue copyWith({int? lower, int? upper, }) => MetadataHashValue(lower: lower ?? this.lower, upper: upper ?? this.upper, );
+}
+@pragma("wasm:import", r"component._import971")
+external i0.WasmVoid _import971(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import972")
+external i0.WasmVoid _import972(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._drop92")
+external i0.WasmVoid _drop92(i0.WasmI32 handle);
+/// A descriptor is a reference to a filesystem object, which may be a file,
+/// directory, named pipe, special file, or other object on which filesystem
+/// calls may be made.
+final class Descriptor extends i1.Resource {
+  Descriptor._own(int handle) : super.owned(handle, _dropDescriptor);
+  Descriptor._borrowed(int handle) : super.borrowed(handle);
+  static void _dropDescriptor(int handle) { _drop92(i0.WasmI32.fromInt(handle)); }
+/// Return a stream for reading from a file, if available.
+/// 
+/// May fail with an error-code describing why the file cannot be read.
+/// 
+/// Multiple read, write, and append streams may be active on the same open
+/// file and they do not interfere with each other.
+/// 
+/// Note: This allows using `read-stream`, which is similar to `read` in POSIX.
+i1.Result<InputStream, ErrorCode> readViaStream({required int offset, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import946(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(offset), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<InputStream, ErrorCode> tmp4;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.ok(InputStream._own(tmp2.toIntUnsigned()));
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(8), const i0.WasmI32(4));
+return tmp4;
+
+}
+/// Return a stream for writing to a file, if available.
+/// 
+/// May fail with an error-code describing why the file cannot be written.
+/// 
+/// Note: This allows using `write-stream`, which is similar to `write` in
+/// POSIX.
+i1.Result<OutputStream, ErrorCode> writeViaStream({required int offset, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import947(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(offset), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<OutputStream, ErrorCode> tmp4;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.ok(OutputStream._own(tmp2.toIntUnsigned()));
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(8), const i0.WasmI32(4));
+return tmp4;
+
+}
+/// Return a stream for appending to a file, if available.
+/// 
+/// May fail with an error-code describing why the file cannot be appended.
+/// 
+/// Note: This allows using `write-stream`, which is similar to `write` with
+/// `O_APPEND` in POSIX.
+i1.Result<OutputStream, ErrorCode> appendViaStream() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import948(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<OutputStream, ErrorCode> tmp4;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.ok(OutputStream._own(tmp2.toIntUnsigned()));
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(8), const i0.WasmI32(4));
+return tmp4;
+
+}
+/// Provide file advisory information on a descriptor.
+/// 
+/// This is similar to `posix_fadvise` in POSIX.
+i1.Result<void, ErrorCode> advise({required int offset, required int length, required Advice advice, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import949(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(offset), i0.WasmI64.fromInt(length), i0.WasmI32.fromInt(advice.index), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp3;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp3 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+tmp3 = i1.Result.error(ErrorCode.values[tmp2.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp3;
+
+}
+/// Synchronize the data of a file to disk.
+/// 
+/// This function succeeds with no effect if the file descriptor is not
+/// opened for writing.
+/// 
+/// Note: This is similar to `fdatasync` in POSIX.
+i1.Result<void, ErrorCode> syncData() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import950(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp3;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp3 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+tmp3 = i1.Result.error(ErrorCode.values[tmp2.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp3;
+
+}
+/// Get flags associated with a descriptor.
+/// 
+/// Note: This returns similar flags to `fcntl(fd, F_GETFL)` in POSIX.
+/// 
+/// Note: This returns the value that was the `fs_flags` value returned
+/// from `fdstat_get` in earlier versions of WASI.
+i1.Result<Set<DescriptorFlagsFlag>, ErrorCode> getFlags() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import951(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<Set<DescriptorFlagsFlag>, ErrorCode> tmp5;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+final tmp3 = <DescriptorFlagsFlag>{};
+if (tmp2.toIntUnsigned() & 1 != 0) tmp3.add(DescriptorFlagsFlag.read);
+if (tmp2.toIntUnsigned() & 2 != 0) tmp3.add(DescriptorFlagsFlag.write);
+if (tmp2.toIntUnsigned() & 4 != 0) tmp3.add(DescriptorFlagsFlag.fileIntegritySync);
+if (tmp2.toIntUnsigned() & 8 != 0) tmp3.add(DescriptorFlagsFlag.dataIntegritySync);
+if (tmp2.toIntUnsigned() & 16 != 0) tmp3.add(DescriptorFlagsFlag.requestedWriteSync);
+if (tmp2.toIntUnsigned() & 32 != 0) tmp3.add(DescriptorFlagsFlag.mutateDirectory);
+
+tmp5 = i1.Result.ok(tmp3);
+} else {
+final tmp4 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+tmp5 = i1.Result.error(ErrorCode.values[tmp4.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp5;
+
+}
+/// Get the dynamic type of a descriptor.
+/// 
+/// Note: This returns the same value as the `type` field of the `fd-stat`
+/// returned by `stat`, `stat-at` and similar.
+/// 
+/// Note: This returns similar flags to the `st_mode & S_IFMT` value provided
+/// by `fstat` in POSIX.
+/// 
+/// Note: This returns the value that was the `fs_filetype` value returned
+/// from `fdstat_get` in earlier versions of WASI.
+i1.Result<DescriptorType, ErrorCode> getType() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import952(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<DescriptorType, ErrorCode> tmp4;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+tmp4 = i1.Result.ok(DescriptorType.values[tmp2.toIntUnsigned()]);
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp4;
+
+}
+/// Adjust the size of an open file. If this increases the file's size, the
+/// extra bytes are filled with zeros.
+/// 
+/// Note: This was called `fd_filestat_set_size` in earlier versions of WASI.
+i1.Result<void, ErrorCode> setSize({required int size, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import953(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(size), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp3;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp3 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+tmp3 = i1.Result.error(ErrorCode.values[tmp2.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp3;
+
+}
+/// Adjust the timestamps of an open file or directory.
+/// 
+/// Note: This is similar to `futimens` in POSIX.
+/// 
+/// Note: This was called `fd_filestat_set_times` in earlier versions of WASI.
+i1.Result<void, ErrorCode> setTimes({required NewTimestamp dataAccessTimestamp, required NewTimestamp dataModificationTimestamp, }) {
+final self = this;
+i0.WasmI32 tmp3;
+i0.WasmI64 tmp4;
+i0.WasmI32 tmp5;
+switch (dataAccessTimestamp) {
+case NewTimestampNoChange():
+
+tmp3 = const i0.WasmI32(0);
+tmp4 = i0.WasmI64.fromInt(0);
+tmp5 = i0.WasmI32.fromInt(0);
+case NewTimestampNow():
+
+tmp3 = const i0.WasmI32(1);
+tmp4 = i0.WasmI64.fromInt(0);
+tmp5 = i0.WasmI32.fromInt(0);
+case NewTimestampTimestamp(value: final tmp2):
+
+tmp3 = const i0.WasmI32(2);
+tmp4 = i0.WasmI64.fromInt(tmp2.seconds);
+tmp5 = i0.WasmI32.fromInt(tmp2.nanoseconds);
+}
+i0.WasmI32 tmp9;
+i0.WasmI64 tmp10;
+i0.WasmI32 tmp11;
+switch (dataModificationTimestamp) {
+case NewTimestampNoChange():
+
+tmp9 = const i0.WasmI32(0);
+tmp10 = i0.WasmI64.fromInt(0);
+tmp11 = i0.WasmI32.fromInt(0);
+case NewTimestampNow():
+
+tmp9 = const i0.WasmI32(1);
+tmp10 = i0.WasmI64.fromInt(0);
+tmp11 = i0.WasmI32.fromInt(0);
+case NewTimestampTimestamp(value: final tmp8):
+
+tmp9 = const i0.WasmI32(2);
+tmp10 = i0.WasmI64.fromInt(tmp8.seconds);
+tmp11 = i0.WasmI32.fromInt(tmp8.nanoseconds);
+}
+var tmp12 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import954(i0.WasmI32.fromInt(self.resourceHandle), tmp3, tmp4, tmp5, tmp9, tmp10, tmp11, tmp12);
+final tmp13 = i1.memory.loadUint8(tmp12.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp15;
+if (tmp13.toIntUnsigned() == 0) {
+
+tmp15 = i1.Result.ok(null);
+} else {
+final tmp14 = i1.memory.loadUint8(tmp12.toIntUnsigned(), offset: 1);
+
+tmp15 = i1.Result.error(ErrorCode.values[tmp14.toIntUnsigned()]);
+}
+i1.dartFree(tmp12, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp15;
+
+}
+/// Read from a descriptor, without using and updating the descriptor's offset.
+/// 
+/// This function returns a list of bytes containing the data that was
+/// read, along with a bool which, when true, indicates that the end of the
+/// file was reached. The returned list will contain up to `length` bytes; it
+/// may return fewer than requested, if the end of the file is reached or
+/// if the I/O operation is interrupted.
+/// 
+/// In the future, this may change to return a `stream<u8, error-code>`.
+/// 
+/// Note: This is similar to `pread` in POSIX.
+i1.Result<(List<int>, bool, ), ErrorCode> read({required int length, required int offset, }) {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(16));
+_import955(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI64.fromInt(length), i0.WasmI64.fromInt(offset), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<(List<int>, bool, ), ErrorCode> tmp9;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+final tmp5 = <int>[];
+for (var i = 0; i < tmp3.toIntUnsigned(); i++) {
+final elementPtr = i0.WasmI32.fromInt(tmp2.toIntUnsigned() + i * 1);
+final tmp4 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 0);
+
+tmp5.add(tmp4.toIntUnsigned());
+}
+final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 12);
+final tmp7 = (tmp5, tmp6.toBool(), );
+
+tmp9 = i1.Result.ok(tmp7);
+} else {
+final tmp8 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+
+tmp9 = i1.Result.error(ErrorCode.values[tmp8.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(4));
+return tmp9;
+
+}
+/// Write to a descriptor, without using and updating the descriptor's offset.
+/// 
+/// It is valid to write past the end of a file; the file is extended to the
+/// extent of the write, with bytes between the previous end and the start of
+/// the write set to zero.
+/// 
+/// In the future, this may change to take a `stream<u8, error-code>`.
+/// 
+/// Note: This is similar to `pwrite` in POSIX.
+i1.Result<int, ErrorCode> write({required List<int> buffer, required int offset, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = buffer.length;
+final tmp1 = i1.mallocAligned(i0.WasmI32.fromInt(1), i0.WasmI32.fromInt(1 * tmp0));
+for (var i = 0; i < tmp0; i++) {
+final tmp2 = buffer[i];
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 1);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp2), offset: 0);
+
+}
+final tmp3 = i0.WasmI32.fromInt(tmp0);
+_cleanups.add(() { i1.dartFree(tmp1, i0.WasmI32.fromInt(1 * tmp0), const i0.WasmI32(1)); });
+var tmp4 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import956(i0.WasmI32.fromInt(self.resourceHandle), tmp1, tmp3, i0.WasmI64.fromInt(offset), tmp4);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp5 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 0);
+late final i1.Result<int, ErrorCode> tmp8;
+if (tmp5.toIntUnsigned() == 0) {
+final tmp6 = i1.memory.loadInt64(tmp4.toIntUnsigned(), offset: 8);
+
+tmp8 = i1.Result.ok(tmp6.toInt());
+} else {
+final tmp7 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 8);
+
+tmp8 = i1.Result.error(ErrorCode.values[tmp7.toIntUnsigned()]);
+}
+i1.dartFree(tmp4, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp8;
+
+}
+/// Read directory entries from a directory.
+/// 
+/// On filesystems where directories contain entries referring to themselves
+/// and their parents, often named `.` and `..` respectively, these entries
+/// are omitted.
+/// 
+/// This always returns a new stream which starts at the beginning of the
+/// directory. Multiple streams may be active on the same directory, and they
+/// do not interfere with each other.
+i1.Result<DirectoryEntryStream, ErrorCode> readDirectory() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import957(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<DirectoryEntryStream, ErrorCode> tmp4;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.ok(DirectoryEntryStream._own(tmp2.toIntUnsigned()));
+} else {
+final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(8), const i0.WasmI32(4));
+return tmp4;
+
+}
+/// Synchronize the data and metadata of a file to disk.
+/// 
+/// This function succeeds with no effect if the file descriptor is not
+/// opened for writing.
+/// 
+/// Note: This is similar to `fsync` in POSIX.
+i1.Result<void, ErrorCode> sync() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import958(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp3;
+if (tmp1.toIntUnsigned() == 0) {
+
+tmp3 = i1.Result.ok(null);
+} else {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+tmp3 = i1.Result.error(ErrorCode.values[tmp2.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp3;
+
+}
+/// Create a directory.
+/// 
+/// Note: This is similar to `mkdirat` in POSIX.
+i1.Result<void, ErrorCode> createDirectoryAt({required String path, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp0.free);
+var tmp1 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import959(i0.WasmI32.fromInt(self.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp4;
+if (tmp2.toIntUnsigned() == 0) {
+
+tmp4 = i1.Result.ok(null);
+} else {
+final tmp3 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 1);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp1, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp4;
+
+}
+/// Return the attributes of an open file or directory.
+/// 
+/// Note: This is similar to `fstat` in POSIX, except that it does not return
+/// device and inode information. For testing whether two descriptors refer to
+/// the same underlying filesystem object, use `is-same-object`. To obtain
+/// additional data that can be used do determine whether a file has been
+/// modified, use `metadata-hash`.
+/// 
+/// Note: This was called `fd_filestat_get` in earlier versions of WASI.
+i1.Result<DescriptorStat, ErrorCode> stat() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(104));
+_import960(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<DescriptorStat, ErrorCode> tmp22;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+final tmp3 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 16);
+final tmp4 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 24);
+final tmp5 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 32);
+Datetime? tmp9;
+if (tmp5.toBool()) {
+  final tmp6 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 40);
+final tmp7 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+  final tmp8 = Datetime(seconds: tmp6.toInt(), nanoseconds: tmp7.toIntUnsigned(), );
+
+  tmp9 = tmp8;
+} else {
+  
+  tmp9 = null;
+}
+final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
+Datetime? tmp14;
+if (tmp10.toBool()) {
+  final tmp11 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 64);
+final tmp12 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 72);
+  final tmp13 = Datetime(seconds: tmp11.toInt(), nanoseconds: tmp12.toIntUnsigned(), );
+
+  tmp14 = tmp13;
+} else {
+  
+  tmp14 = null;
+}
+final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 80);
+Datetime? tmp19;
+if (tmp15.toBool()) {
+  final tmp16 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 88);
+final tmp17 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 96);
+  final tmp18 = Datetime(seconds: tmp16.toInt(), nanoseconds: tmp17.toIntUnsigned(), );
+
+  tmp19 = tmp18;
+} else {
+  
+  tmp19 = null;
+}
+  final tmp20 = DescriptorStat(type: DescriptorType.values[tmp2.toIntUnsigned()], linkCount: tmp3.toInt(), size: tmp4.toInt(), dataAccessTimestamp: tmp9, dataModificationTimestamp: tmp14, statusChangeTimestamp: tmp19, );
+
+tmp22 = i1.Result.ok(tmp20);
+} else {
+final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+
+tmp22 = i1.Result.error(ErrorCode.values[tmp21.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(104), const i0.WasmI32(8));
+return tmp22;
+
+}
+/// Return the attributes of a file or directory.
+/// 
+/// Note: This is similar to `fstatat` in POSIX, except that it does not
+/// return device and inode information. See the `stat` description for a
+/// discussion of alternatives.
+/// 
+/// Note: This was called `path_filestat_get` in earlier versions of WASI.
+i1.Result<DescriptorStat, ErrorCode> statAt({required Set<PathFlagsFlag> pathFlags, required String path, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i0.WasmI32.fromInt((pathFlags.contains(PathFlagsFlag.symlinkFollow) ? 1 : 0));
+final tmp1 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp1.free);
+var tmp2 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(104));
+_import961(i0.WasmI32.fromInt(self.resourceHandle), tmp0, tmp1.ptr, tmp1.packedLength, tmp2);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
+late final i1.Result<DescriptorStat, ErrorCode> tmp24;
+if (tmp3.toIntUnsigned() == 0) {
+final tmp4 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 8);
+final tmp5 = i1.memory.loadInt64(tmp2.toIntUnsigned(), offset: 16);
+final tmp6 = i1.memory.loadInt64(tmp2.toIntUnsigned(), offset: 24);
+final tmp7 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 32);
+Datetime? tmp11;
+if (tmp7.toBool()) {
+  final tmp8 = i1.memory.loadInt64(tmp2.toIntUnsigned(), offset: 40);
+final tmp9 = i1.memory.loadInt32(tmp2.toIntUnsigned(), offset: 48);
+  final tmp10 = Datetime(seconds: tmp8.toInt(), nanoseconds: tmp9.toIntUnsigned(), );
+
+  tmp11 = tmp10;
+} else {
+  
+  tmp11 = null;
+}
+final tmp12 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 56);
+Datetime? tmp16;
+if (tmp12.toBool()) {
+  final tmp13 = i1.memory.loadInt64(tmp2.toIntUnsigned(), offset: 64);
+final tmp14 = i1.memory.loadInt32(tmp2.toIntUnsigned(), offset: 72);
+  final tmp15 = Datetime(seconds: tmp13.toInt(), nanoseconds: tmp14.toIntUnsigned(), );
+
+  tmp16 = tmp15;
+} else {
+  
+  tmp16 = null;
+}
+final tmp17 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 80);
+Datetime? tmp21;
+if (tmp17.toBool()) {
+  final tmp18 = i1.memory.loadInt64(tmp2.toIntUnsigned(), offset: 88);
+final tmp19 = i1.memory.loadInt32(tmp2.toIntUnsigned(), offset: 96);
+  final tmp20 = Datetime(seconds: tmp18.toInt(), nanoseconds: tmp19.toIntUnsigned(), );
+
+  tmp21 = tmp20;
+} else {
+  
+  tmp21 = null;
+}
+  final tmp22 = DescriptorStat(type: DescriptorType.values[tmp4.toIntUnsigned()], linkCount: tmp5.toInt(), size: tmp6.toInt(), dataAccessTimestamp: tmp11, dataModificationTimestamp: tmp16, statusChangeTimestamp: tmp21, );
+
+tmp24 = i1.Result.ok(tmp22);
+} else {
+final tmp23 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 8);
+
+tmp24 = i1.Result.error(ErrorCode.values[tmp23.toIntUnsigned()]);
+}
+i1.dartFree(tmp2, const i0.WasmI32(104), const i0.WasmI32(8));
+return tmp24;
+
+}
+/// Adjust the timestamps of a file or directory.
+/// 
+/// Note: This is similar to `utimensat` in POSIX.
+/// 
+/// Note: This was called `path_filestat_set_times` in earlier versions of
+/// WASI.
+i1.Result<void, ErrorCode> setTimesAt({required Set<PathFlagsFlag> pathFlags, required String path, required NewTimestamp dataAccessTimestamp, required NewTimestamp dataModificationTimestamp, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i0.WasmI32.fromInt((pathFlags.contains(PathFlagsFlag.symlinkFollow) ? 1 : 0));
+final tmp1 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp1.free);
+i0.WasmI32 tmp5;
+i0.WasmI64 tmp6;
+i0.WasmI32 tmp7;
+switch (dataAccessTimestamp) {
+case NewTimestampNoChange():
+
+tmp5 = const i0.WasmI32(0);
+tmp6 = i0.WasmI64.fromInt(0);
+tmp7 = i0.WasmI32.fromInt(0);
+case NewTimestampNow():
+
+tmp5 = const i0.WasmI32(1);
+tmp6 = i0.WasmI64.fromInt(0);
+tmp7 = i0.WasmI32.fromInt(0);
+case NewTimestampTimestamp(value: final tmp4):
+
+tmp5 = const i0.WasmI32(2);
+tmp6 = i0.WasmI64.fromInt(tmp4.seconds);
+tmp7 = i0.WasmI32.fromInt(tmp4.nanoseconds);
+}
+i0.WasmI32 tmp11;
+i0.WasmI64 tmp12;
+i0.WasmI32 tmp13;
+switch (dataModificationTimestamp) {
+case NewTimestampNoChange():
+
+tmp11 = const i0.WasmI32(0);
+tmp12 = i0.WasmI64.fromInt(0);
+tmp13 = i0.WasmI32.fromInt(0);
+case NewTimestampNow():
+
+tmp11 = const i0.WasmI32(1);
+tmp12 = i0.WasmI64.fromInt(0);
+tmp13 = i0.WasmI32.fromInt(0);
+case NewTimestampTimestamp(value: final tmp10):
+
+tmp11 = const i0.WasmI32(2);
+tmp12 = i0.WasmI64.fromInt(tmp10.seconds);
+tmp13 = i0.WasmI32.fromInt(tmp10.nanoseconds);
+}
+var tmp14 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import962(i0.WasmI32.fromInt(self.resourceHandle), tmp0, tmp1.ptr, tmp1.packedLength, tmp5, tmp6, tmp7, tmp11, tmp12, tmp13, tmp14);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp15 = i1.memory.loadUint8(tmp14.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp17;
+if (tmp15.toIntUnsigned() == 0) {
+
+tmp17 = i1.Result.ok(null);
+} else {
+final tmp16 = i1.memory.loadUint8(tmp14.toIntUnsigned(), offset: 1);
+
+tmp17 = i1.Result.error(ErrorCode.values[tmp16.toIntUnsigned()]);
+}
+i1.dartFree(tmp14, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp17;
+
+}
+/// Create a hard link.
+/// 
+/// Fails with `error-code::no-entry` if the old path does not exist,
+/// with `error-code::exist` if the new path already exists, and
+/// `error-code::not-permitted` if the old path is not a file.
+/// 
+/// Note: This is similar to `linkat` in POSIX.
+i1.Result<void, ErrorCode> linkAt({required Set<PathFlagsFlag> oldPathFlags, required String oldPath, required Descriptor newDescriptor, required String newPath, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i0.WasmI32.fromInt((oldPathFlags.contains(PathFlagsFlag.symlinkFollow) ? 1 : 0));
+final tmp1 = i1.AllocatedString.allocateUtf16(oldPath);
+_cleanups.add(tmp1.free);
+final tmp2 = i1.AllocatedString.allocateUtf16(newPath);
+_cleanups.add(tmp2.free);
+var tmp3 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import963(i0.WasmI32.fromInt(self.resourceHandle), tmp0, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromInt(newDescriptor.resourceHandle), tmp2.ptr, tmp2.packedLength, tmp3);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp4 = i1.memory.loadUint8(tmp3.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp6;
+if (tmp4.toIntUnsigned() == 0) {
+
+tmp6 = i1.Result.ok(null);
+} else {
+final tmp5 = i1.memory.loadUint8(tmp3.toIntUnsigned(), offset: 1);
+
+tmp6 = i1.Result.error(ErrorCode.values[tmp5.toIntUnsigned()]);
+}
+i1.dartFree(tmp3, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp6;
+
+}
+/// Open a file or directory.
+/// 
+/// If `flags` contains `descriptor-flags::mutate-directory`, and the base
+/// descriptor doesn't have `descriptor-flags::mutate-directory` set,
+/// `open-at` fails with `error-code::read-only`.
+/// 
+/// If `flags` contains `write` or `mutate-directory`, or `open-flags`
+/// contains `truncate` or `create`, and the base descriptor doesn't have
+/// `descriptor-flags::mutate-directory` set, `open-at` fails with
+/// `error-code::read-only`.
+/// 
+/// Note: This is similar to `openat` in POSIX.
+i1.Result<Descriptor, ErrorCode> openAt({required Set<PathFlagsFlag> pathFlags, required String path, required Set<OpenFlagsFlag> openFlags, required Set<DescriptorFlagsFlag> flags, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i0.WasmI32.fromInt((pathFlags.contains(PathFlagsFlag.symlinkFollow) ? 1 : 0));
+final tmp1 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp1.free);
+final tmp2 = i0.WasmI32.fromInt((openFlags.contains(OpenFlagsFlag.create) ? 1 : 0) | (openFlags.contains(OpenFlagsFlag.directory) ? 2 : 0) | (openFlags.contains(OpenFlagsFlag.exclusive) ? 4 : 0) | (openFlags.contains(OpenFlagsFlag.truncate) ? 8 : 0));
+final tmp3 = i0.WasmI32.fromInt((flags.contains(DescriptorFlagsFlag.read) ? 1 : 0) | (flags.contains(DescriptorFlagsFlag.write) ? 2 : 0) | (flags.contains(DescriptorFlagsFlag.fileIntegritySync) ? 4 : 0) | (flags.contains(DescriptorFlagsFlag.dataIntegritySync) ? 8 : 0) | (flags.contains(DescriptorFlagsFlag.requestedWriteSync) ? 16 : 0) | (flags.contains(DescriptorFlagsFlag.mutateDirectory) ? 32 : 0));
+var tmp4 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import964(i0.WasmI32.fromInt(self.resourceHandle), tmp0, tmp1.ptr, tmp1.packedLength, tmp2, tmp3, tmp4);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp5 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 0);
+late final i1.Result<Descriptor, ErrorCode> tmp8;
+if (tmp5.toIntUnsigned() == 0) {
+final tmp6 = i1.memory.loadInt32(tmp4.toIntUnsigned(), offset: 4);
+
+tmp8 = i1.Result.ok(Descriptor._own(tmp6.toIntUnsigned()));
+} else {
+final tmp7 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 4);
+
+tmp8 = i1.Result.error(ErrorCode.values[tmp7.toIntUnsigned()]);
+}
+i1.dartFree(tmp4, const i0.WasmI32(8), const i0.WasmI32(4));
+return tmp8;
+
+}
+/// Read the contents of a symbolic link.
+/// 
+/// If the contents contain an absolute or rooted path in the underlying
+/// filesystem, this function fails with `error-code::not-permitted`.
+/// 
+/// Note: This is similar to `readlinkat` in POSIX.
+i1.Result<String, ErrorCode> readlinkAt({required String path, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp0.free);
+var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import965(i0.WasmI32.fromInt(self.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
+late final i1.Result<String, ErrorCode> tmp6;
+if (tmp2.toIntUnsigned() == 0) {
+final tmp3 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 4);
+final tmp4 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.ok(i1.AllocatedString.read(tmp3, tmp4));
+} else {
+final tmp5 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 4);
+
+tmp6 = i1.Result.error(ErrorCode.values[tmp5.toIntUnsigned()]);
+}
+i1.dartFree(tmp1, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp6;
+
+}
+/// Remove a directory.
+/// 
+/// Return `error-code::not-empty` if the directory is not empty.
+/// 
+/// Note: This is similar to `unlinkat(fd, path, AT_REMOVEDIR)` in POSIX.
+i1.Result<void, ErrorCode> removeDirectoryAt({required String path, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp0.free);
+var tmp1 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import966(i0.WasmI32.fromInt(self.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp4;
+if (tmp2.toIntUnsigned() == 0) {
+
+tmp4 = i1.Result.ok(null);
+} else {
+final tmp3 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 1);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp1, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp4;
+
+}
+/// Rename a filesystem object.
+/// 
+/// Note: This is similar to `renameat` in POSIX.
+i1.Result<void, ErrorCode> renameAt({required String oldPath, required Descriptor newDescriptor, required String newPath, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i1.AllocatedString.allocateUtf16(oldPath);
+_cleanups.add(tmp0.free);
+final tmp1 = i1.AllocatedString.allocateUtf16(newPath);
+_cleanups.add(tmp1.free);
+var tmp2 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import967(i0.WasmI32.fromInt(self.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(newDescriptor.resourceHandle), tmp1.ptr, tmp1.packedLength, tmp2);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp5;
+if (tmp3.toIntUnsigned() == 0) {
+
+tmp5 = i1.Result.ok(null);
+} else {
+final tmp4 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 1);
+
+tmp5 = i1.Result.error(ErrorCode.values[tmp4.toIntUnsigned()]);
+}
+i1.dartFree(tmp2, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp5;
+
+}
+/// Create a symbolic link (also known as a "symlink").
+/// 
+/// If `old-path` starts with `/`, the function fails with
+/// `error-code::not-permitted`.
+/// 
+/// Note: This is similar to `symlinkat` in POSIX.
+i1.Result<void, ErrorCode> symlinkAt({required String oldPath, required String newPath, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i1.AllocatedString.allocateUtf16(oldPath);
+_cleanups.add(tmp0.free);
+final tmp1 = i1.AllocatedString.allocateUtf16(newPath);
+_cleanups.add(tmp1.free);
+var tmp2 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import968(i0.WasmI32.fromInt(self.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp2);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp5;
+if (tmp3.toIntUnsigned() == 0) {
+
+tmp5 = i1.Result.ok(null);
+} else {
+final tmp4 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 1);
+
+tmp5 = i1.Result.error(ErrorCode.values[tmp4.toIntUnsigned()]);
+}
+i1.dartFree(tmp2, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp5;
+
+}
+/// Unlink a filesystem object that is not a directory.
+/// 
+/// Return `error-code::is-directory` if the path refers to a directory.
+/// Note: This is similar to `unlinkat(fd, path, 0)` in POSIX.
+i1.Result<void, ErrorCode> unlinkFileAt({required String path, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp0.free);
+var tmp1 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import969(i0.WasmI32.fromInt(self.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
+late final i1.Result<void, ErrorCode> tmp4;
+if (tmp2.toIntUnsigned() == 0) {
+
+tmp4 = i1.Result.ok(null);
+} else {
+final tmp3 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 1);
+
+tmp4 = i1.Result.error(ErrorCode.values[tmp3.toIntUnsigned()]);
+}
+i1.dartFree(tmp1, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp4;
+
+}
+/// Test whether two descriptors refer to the same filesystem object.
+/// 
+/// In POSIX, this corresponds to testing whether the two descriptors have the
+/// same device (`st_dev`) and inode (`st_ino` or `d_ino`) numbers.
+/// wasi-filesystem does not expose device and inode numbers, so this function
+/// may be used instead.
+bool isSameObject({required Descriptor other, }) {
+final self = this;
+final tmp0 = _import970(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(other.resourceHandle));
+return tmp0.toBool();
+
+}
+/// Return a hash of the metadata associated with a filesystem object referred
+/// to by a descriptor.
+/// 
+/// This returns a hash of the last-modification timestamp and file size, and
+/// may also include the inode number, device number, birth timestamp, and
+/// other metadata fields that may change when the file is modified or
+/// replaced. It may also include a secret value chosen by the
+/// implementation and not otherwise exposed.
+/// 
+/// Implementations are encouraged to provide the following properties:
+/// 
+///  - If the file is not modified or replaced, the computed hash value should
+///    usually not change.
+///  - If the object is modified or replaced, the computed hash value should
+///    usually change.
+///  - The inputs to the hash should not be easily computable from the
+///    computed hash.
+/// 
+/// However, none of these is required.
+i1.Result<MetadataHashValue, ErrorCode> metadataHash() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(24));
+_import971(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<MetadataHashValue, ErrorCode> tmp6;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 8);
+final tmp3 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 16);
+  final tmp4 = MetadataHashValue(lower: tmp2.toInt(), upper: tmp3.toInt(), );
+
+tmp6 = i1.Result.ok(tmp4);
+} else {
+final tmp5 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.error(ErrorCode.values[tmp5.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(24), const i0.WasmI32(8));
+return tmp6;
+
+}
+/// Return a hash of the metadata associated with a filesystem object referred
+/// to by a directory descriptor and a relative path.
+/// 
+/// This performs the same hash computation as `metadata-hash`.
+i1.Result<MetadataHashValue, ErrorCode> metadataHashAt({required Set<PathFlagsFlag> pathFlags, required String path, }) {
+final self = this;
+final _cleanups = <void Function()>[];
+final tmp0 = i0.WasmI32.fromInt((pathFlags.contains(PathFlagsFlag.symlinkFollow) ? 1 : 0));
+final tmp1 = i1.AllocatedString.allocateUtf16(path);
+_cleanups.add(tmp1.free);
+var tmp2 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(24));
+_import972(i0.WasmI32.fromInt(self.resourceHandle), tmp0, tmp1.ptr, tmp1.packedLength, tmp2);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
+late final i1.Result<MetadataHashValue, ErrorCode> tmp8;
+if (tmp3.toIntUnsigned() == 0) {
+final tmp4 = i1.memory.loadInt64(tmp2.toIntUnsigned(), offset: 8);
+final tmp5 = i1.memory.loadInt64(tmp2.toIntUnsigned(), offset: 16);
+  final tmp6 = MetadataHashValue(lower: tmp4.toInt(), upper: tmp5.toInt(), );
+
+tmp8 = i1.Result.ok(tmp6);
+} else {
+final tmp7 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 8);
+
+tmp8 = i1.Result.error(ErrorCode.values[tmp7.toIntUnsigned()]);
+}
+i1.dartFree(tmp2, const i0.WasmI32(24), const i0.WasmI32(8));
+return tmp8;
+
+}
+/// Get flags associated with a descriptor.
+/// 
+/// Note: This returns similar flags to `fcntl(fd, F_GETFL)` in POSIX.
+/// 
+/// Note: This returns the value that was the `fs_flags` value returned
+/// from `fdstat_get` in earlier versions of WASI.
+i1.Result<Set<DescriptorFlagsFlag>, ErrorCode> get flags => getFlags();
+/// Get the dynamic type of a descriptor.
+/// 
+/// Note: This returns the same value as the `type` field of the `fd-stat`
+/// returned by `stat`, `stat-at` and similar.
+/// 
+/// Note: This returns similar flags to the `st_mode & S_IFMT` value provided
+/// by `fstat` in POSIX.
+/// 
+/// Note: This returns the value that was the `fs_filetype` value returned
+/// from `fdstat_get` in earlier versions of WASI.
+i1.Result<DescriptorType, ErrorCode> get type => getType();
+}
+/// A directory entry.
+final class DirectoryEntry {
+/// The type of the file referred to by this directory entry.
+  final DescriptorType type;
+/// The name of the object.
+  final String name;
+  const DirectoryEntry({required this.type, required this.name, });
+  DirectoryEntry copyWith({DescriptorType? type, String? name, }) => DirectoryEntry(type: type ?? this.type, name: name ?? this.name, );
+}
+@pragma("wasm:import", r"component._import973")
+external i0.WasmVoid _import973(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._drop93")
+external i0.WasmVoid _drop93(i0.WasmI32 handle);
+/// A stream of directory entries.
+final class DirectoryEntryStream extends i1.Resource {
+  DirectoryEntryStream._own(int handle) : super.owned(handle, _dropDirectoryEntryStream);
+  DirectoryEntryStream._borrowed(int handle) : super.borrowed(handle);
+  static void _dropDirectoryEntryStream(int handle) { _drop93(i0.WasmI32.fromInt(handle)); }
+/// Read a single directory entry from a `directory-entry-stream`.
+i1.Result<DirectoryEntry?, ErrorCode> readDirectoryEntry() {
+final self = this;
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(20));
+_import973(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<DirectoryEntry?, ErrorCode> tmp9;
+if (tmp1.toIntUnsigned() == 0) {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+DirectoryEntry? tmp7;
+if (tmp2.toBool()) {
+  final tmp3 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+final tmp5 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 16);
+  final tmp6 = DirectoryEntry(type: DescriptorType.values[tmp3.toIntUnsigned()], name: i1.AllocatedString.read(tmp4, tmp5), );
+
+  tmp7 = tmp6;
+} else {
+  
+  tmp7 = null;
+}
+
+tmp9 = i1.Result.ok(tmp7);
+} else {
+final tmp8 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 4);
+
+tmp9 = i1.Result.error(ErrorCode.values[tmp8.toIntUnsigned()]);
+}
+i1.dartFree(tmp0, const i0.WasmI32(20), const i0.WasmI32(4));
+return tmp9;
+
+}
+}
+abstract interface class ErrorInterface {
+}
+final class _Imported$ErrorInterface implements ErrorInterface {
+  const _Imported$ErrorInterface();
+}
+const error = _Imported$ErrorInterface();
+/// A poll API intended to let users wait for I/O events on multiple handles
+/// at once.
+abstract interface class Poll {
+/// Poll for completion on a set of pollables.
+/// 
+/// This function takes a list of pollables, which identify I/O sources of
+/// interest, and waits until one or more of the events is ready for I/O.
+/// 
+/// The result `list<u32>` contains one or more indices of handles in the
+/// argument list that is ready for I/O.
+/// 
+/// This function traps if either:
+/// - the list is empty, or:
+/// - the list contains more elements than can be indexed with a `u32` value.
+/// 
+/// A timeout can be implemented by adding a pollable from the
+/// wasi-clocks API to the list.
+/// 
+/// This function does not return a `result`; polling in itself does not
+/// do any I/O so it doesn't fail. If any of the I/O sources identified by
+/// the pollables has an error, it is indicated by marking the source as
+/// being ready for I/O.
+List<int> poll({required List<Pollable> in_, });
+}
+@pragma("wasm:import", r"component._import974")
+external i0.WasmVoid _import974(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+final class _Imported$Poll implements Poll {
+  const _Imported$Poll();
+@override
+List<int> poll({required List<Pollable> in_, }){
+final _cleanups = <void Function()>[];
+final tmp0 = in_.length;
+final tmp1 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(4 * tmp0));
+for (var i = 0; i < tmp0; i++) {
+final tmp2 = in_[i];
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 4);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp2.resourceHandle), offset: 0);
+
+}
+final tmp3 = i0.WasmI32.fromInt(tmp0);
+_cleanups.add(() { i1.dartFree(tmp1, i0.WasmI32.fromInt(4 * tmp0), const i0.WasmI32(4)); });
+var tmp4 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import974(tmp1, tmp3, tmp4);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp5 = i1.memory.loadInt32(tmp4.toIntUnsigned(), offset: 0);
+final tmp6 = i1.memory.loadInt32(tmp4.toIntUnsigned(), offset: 4);
+final tmp8 = <int>[];
+for (var i = 0; i < tmp6.toIntUnsigned(); i++) {
+final elementPtr = i0.WasmI32.fromInt(tmp5.toIntUnsigned() + i * 4);
+final tmp7 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
+
+tmp8.add(tmp7.toIntUnsigned());
+}
+i1.dartFree(tmp4, const i0.WasmI32(8), const i0.WasmI32(4));
+return tmp8;
+
+}
+}
+const poll = _Imported$Poll();
+/// WASI I/O is an I/O abstraction API which is currently focused on providing
+/// stream types.
+/// 
+/// In the future, the component model is expected to add built-in stream types;
+/// when it does, they are expected to subsume this API.
+abstract interface class Streams {
+}
+final class _Imported$Streams implements Streams {
+  const _Imported$Streams();
+}
+const streams = _Imported$Streams();
+/// WASI Wall Clock is a clock API intended to let users query the current
+/// time. The name "wall" makes an analogy to a "clock on the wall", which
+/// is not necessarily monotonic as it may be reset.
+/// 
+/// It is intended to be portable at least between Unix-family platforms and
+/// Windows.
+/// 
+/// A wall clock is a clock which measures the date and time according to
+/// some external reference.
+/// 
+/// External references may be reset, so this clock is not necessarily
+/// monotonic, making it unsuitable for measuring elapsed time.
+/// 
+/// It is intended for reporting the current date and time for humans.
+abstract interface class WallClock {
+/// Read the current value of the clock.
+/// 
+/// This clock is not monotonic, therefore calling this function repeatedly
+/// will not necessarily produce a sequence of non-decreasing values.
+/// 
+/// The returned timestamps represent the number of seconds since
+/// 1970-01-01T00:00:00Z, also known as [POSIX's Seconds Since the Epoch],
+/// also known as [Unix Time].
+/// 
+/// The nanoseconds field of the output is always less than 1000000000.
+/// 
+/// [POSIX's Seconds Since the Epoch]: https://pubs.opengroup.org/onlinepubs/9699919799/xrat/V4_xbd_chap04.html#tag_21_04_16
+/// [Unix Time]: https://en.wikipedia.org/wiki/Unix_time
+Datetime now();
+/// Query the resolution of the clock.
+/// 
+/// The nanoseconds field of the output is always less than 1000000000.
+Datetime resolution();
+}
+@pragma("wasm:import", r"component._import975")
+external i0.WasmVoid _import975(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import976")
+external i0.WasmVoid _import976(i0.WasmI32 p0);
+final class _Imported$WallClock implements WallClock {
+  const _Imported$WallClock();
+@override
+Datetime now(){
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import975(tmp0);
+final tmp1 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 0);
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+  final tmp3 = Datetime(seconds: tmp1.toInt(), nanoseconds: tmp2.toIntUnsigned(), );
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp3;
+
+}
+@override
+Datetime resolution(){
+var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
+_import976(tmp0);
+final tmp1 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 0);
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+  final tmp3 = Datetime(seconds: tmp1.toInt(), nanoseconds: tmp2.toIntUnsigned(), );
+i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
+return tmp3;
+
+}
+}
+const wallClock = _Imported$WallClock();
+/// WASI filesystem is a filesystem API primarily intended to let users run WASI
+/// programs that access their files on their existing filesystems, without
+/// significant overhead.
+/// 
+/// It is intended to be roughly portable between Unix-family platforms and
+/// Windows, though it does not hide many of the major differences.
+/// 
+/// Paths are passed as interface-type `string`s, meaning they must consist of
+/// a sequence of Unicode Scalar Values (USVs). Some filesystems may contain
+/// paths which are not accessible by this API.
+/// 
+/// The directory separator in WASI is always the forward-slash (`/`).
+/// 
+/// All paths in WASI are relative paths, and are interpreted relative to a
+/// `descriptor` referring to a base directory. If a `path` argument to any WASI
+/// function starts with `/`, or if any step of resolving a `path`, including
+/// `..` and symbolic link steps, reaches a directory outside of the base
+/// directory, or reaches a symlink to an absolute or rooted path in the
+/// underlying filesystem, the function fails with `error-code::not-permitted`.
+/// 
+/// For more information about WASI path resolution and sandboxing, see
+/// [WASI filesystem path resolution].
+/// 
+/// [WASI filesystem path resolution]: https://github.com/WebAssembly/wasi-filesystem/blob/main/path-resolution.md
+abstract interface class Types {
+/// Attempts to extract a filesystem-related `error-code` from the stream
+/// `error` provided.
+/// 
+/// Stream operations which return `stream-error::last-operation-failed`
+/// have a payload with more information about the operation that failed.
+/// This payload can be passed through to this function to see if there's
+/// filesystem-related information about the error to return.
+/// 
+/// Note that this function is fallible because not all stream-related
+/// errors are filesystem-related errors.
+ErrorCode? filesystemErrorCode({required Error err, });
+}
+@pragma("wasm:import", r"component._import977")
+external i0.WasmVoid _import977(i0.WasmI32 p0, i0.WasmI32 p1);
+final class _Imported$Types implements Types {
+  const _Imported$Types();
+@override
+ErrorCode? filesystemErrorCode({required Error err, }){
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import977(i0.WasmI32.fromInt(err.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+ErrorCode? tmp3;
+if (tmp1.toBool()) {
+  final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+  tmp3 = ErrorCode.values[tmp2.toIntUnsigned()];
+} else {
+  
+  tmp3 = null;
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp3;
+
+}
+}
+const types = _Imported$Types();
+abstract interface class Preopens {
+/// Return the set of preopened directories, and their paths.
+List<(Descriptor, String, )> getDirectories();
+}
+@pragma("wasm:import", r"component._import978")
+external i0.WasmVoid _import978(i0.WasmI32 p0);
+final class _Imported$Preopens implements Preopens {
+  const _Imported$Preopens();
+@override
+List<(Descriptor, String, )> getDirectories(){
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
+_import978(tmp0);
+final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
+final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp7 = <(Descriptor, String, )>[];
+for (var i = 0; i < tmp2.toIntUnsigned(); i++) {
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 12);
+final tmp3 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
+final tmp4 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 4);
+final tmp5 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
+final tmp6 = (Descriptor._own(tmp3.toIntUnsigned()), i1.AllocatedString.read(tmp4, tmp5), );
+
+tmp7.add(tmp6);
+}
+i1.dartFree(tmp0, const i0.WasmI32(8), const i0.WasmI32(4));
+return tmp7;
+
+}
+}
+const preopens = _Imported$Preopens();
 enum Level {
   trace,
   debug,
@@ -32382,10 +34659,10 @@ void log({required Level level, required String message, });
 /// This function is meant to be used by the tracing crate.
 void logTracing({required List<int> event, });
 }
-@pragma("wasm:import", r"component._import928")
-external i0.WasmVoid _import928(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import929")
-external i0.WasmVoid _import929(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import979")
+external i0.WasmVoid _import979(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import980")
+external i0.WasmVoid _import980(i0.WasmI32 p0, i0.WasmI32 p1);
 final class _Imported$Logging implements Logging {
   const _Imported$Logging();
 @override
@@ -32393,7 +34670,7 @@ void log({required Level level, required String message, }){
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(message);
 _cleanups.add(tmp0.free);
-_import928(i0.WasmI32.fromInt(level.index), tmp0.ptr, tmp0.packedLength);
+_import979(i0.WasmI32.fromInt(level.index), tmp0.ptr, tmp0.packedLength);
 for (final cleanup in _cleanups) { cleanup(); }
 
 }
@@ -32410,7 +34687,7 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp2), o
 }
 final tmp3 = i0.WasmI32.fromInt(tmp0);
 _cleanups.add(() { i1.dartFree(tmp1, i0.WasmI32.fromInt(1 * tmp0), const i0.WasmI32(1)); });
-_import929(tmp1, tmp3);
+_import980(tmp1, tmp3);
 for (final cleanup in _cleanups) { cleanup(); }
 
 }
@@ -32527,18 +34804,18 @@ Uuid? parse({required String s, });
 /// Converts a UUID to its standard string representation.
 String toString_({required Uuid id, });
 }
-@pragma("wasm:import", r"component._import930")
-external i0.WasmVoid _import930(i0.WasmI32 p0);
-@pragma("wasm:import", r"component._import931")
-external i0.WasmVoid _import931(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import932")
-external i0.WasmVoid _import932(i0.WasmI64 p0, i0.WasmI64 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import981")
+external i0.WasmVoid _import981(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import982")
+external i0.WasmVoid _import982(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import983")
+external i0.WasmVoid _import983(i0.WasmI64 p0, i0.WasmI64 p1, i0.WasmI32 p2);
 final class _Imported$UuidInterface implements UuidInterface {
   const _Imported$UuidInterface();
 @override
 Uuid generate(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(16));
-_import930(tmp0);
+_import981(tmp0);
 final tmp1 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt64(tmp0.toIntUnsigned(), offset: 8);
   final tmp3 = Uuid(high: tmp1.toInt(), low: tmp2.toInt(), );
@@ -32552,7 +34829,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(s);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(24));
-_import931(tmp0.ptr, tmp0.packedLength, tmp1);
+_import982(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 Uuid? tmp6;
@@ -32573,7 +34850,7 @@ return tmp6;
 @override
 String toString_({required Uuid id, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import932(i0.WasmI64.fromInt(id.high), i0.WasmI64.fromInt(id.low), tmp0);
+_import983(i0.WasmI64.fromInt(id.high), i0.WasmI64.fromInt(id.low), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 i1.dartFree(tmp0, const i0.WasmI32(8), const i0.WasmI32(4));
@@ -32627,40 +34904,40 @@ BlockState? getDefaultStateFromBlockId({required int blockId, });
 /// Gets the detailed block state for a numerical block state ID.
 BlockState? getBlockStateById({required int stateId, });
 }
-@pragma("wasm:import", r"component._import933")
-external i0.WasmVoid _import933(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import934")
-external i0.WasmVoid _import934(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import935")
-external i0.WasmVoid _import935(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import936")
-external i0.WasmVoid _import936(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import937")
-external i0.WasmVoid _import937(i0.WasmI32 p0);
-@pragma("wasm:import", r"component._import938")
-external i0.WasmVoid _import938(i0.WasmI32 p0);
-@pragma("wasm:import", r"component._import939")
-external i0.WasmI32 _import939();
-@pragma("wasm:import", r"component._import940")
-external i0.WasmI32 _import940();
-@pragma("wasm:import", r"component._import941")
-external i0.WasmVoid _import941(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import942")
-external i0.WasmVoid _import942(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import943")
-external i0.WasmVoid _import943(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import944")
-external i0.WasmVoid _import944(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import945")
-external i0.WasmVoid _import945(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import946")
-external i0.WasmVoid _import946(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import947")
-external i0.WasmVoid _import947(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import948")
-external i0.WasmVoid _import948(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import949")
-external i0.WasmVoid _import949(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import984")
+external i0.WasmVoid _import984(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import985")
+external i0.WasmVoid _import985(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import986")
+external i0.WasmVoid _import986(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import987")
+external i0.WasmVoid _import987(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import988")
+external i0.WasmVoid _import988(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import989")
+external i0.WasmVoid _import989(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import990")
+external i0.WasmI32 _import990();
+@pragma("wasm:import", r"component._import991")
+external i0.WasmI32 _import991();
+@pragma("wasm:import", r"component._import992")
+external i0.WasmVoid _import992(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import993")
+external i0.WasmVoid _import993(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import994")
+external i0.WasmVoid _import994(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import995")
+external i0.WasmVoid _import995(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import996")
+external i0.WasmVoid _import996(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import997")
+external i0.WasmVoid _import997(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import998")
+external i0.WasmVoid _import998(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import999")
+external i0.WasmVoid _import999(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1000")
+external i0.WasmVoid _import1000(i0.WasmI32 p0, i0.WasmI32 p1);
 final class _Imported$WorldInterface implements WorldInterface {
   const _Imported$WorldInterface();
 @override
@@ -32686,7 +34963,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp2.ptr, offset: 8);
 final tmp6 = i0.WasmI32.fromInt(tmp3);
 _cleanups.add(() { i1.dartFree(tmp4, i0.WasmI32.fromInt(16 * tmp3), const i0.WasmI32(4)); });
 var tmp7 = i1.mallocAligned(const i0.WasmI32(2), const i0.WasmI32(4));
-_import933(tmp0.ptr, tmp0.packedLength, tmp4, tmp6, tmp7);
+_import984(tmp0.ptr, tmp0.packedLength, tmp4, tmp6, tmp7);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp8 = i1.memory.loadUint8(tmp7.toIntUnsigned(), offset: 0);
 int? tmp10;
@@ -32705,7 +34982,7 @@ return tmp10;
 @override
 BlockStateInfo? blockStateToInfo({required int stateId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(20));
-_import934(i0.WasmI32.uint16FromInt(stateId), tmp0);
+_import985(i0.WasmI32.uint16FromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 BlockStateInfo? tmp13;
 if (tmp1.toBool()) {
@@ -32738,7 +35015,7 @@ return tmp13;
 @override
 Block? getBlockById({required int id, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
-_import935(i0.WasmI32.uint16FromInt(id), tmp0);
+_import986(i0.WasmI32.uint16FromInt(id), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 Block? tmp26;
 if (tmp1.toBool()) {
@@ -32794,7 +35071,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(name);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
-_import936(tmp0.ptr, tmp0.packedLength, tmp1);
+_import987(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 Block? tmp27;
@@ -32848,7 +35125,7 @@ return tmp27;
 @override
 List<Block> getAllBlocks(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import937(tmp0);
+_import988(tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp27 = <Block>[];
@@ -32900,7 +35177,7 @@ return tmp27;
 @override
 List<String> getAllBlockNames(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import938(tmp0);
+_import989(tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp5 = <String>[];
@@ -32917,13 +35194,13 @@ return tmp5;
 }
 @override
 int getBlockCount(){
-final tmp0 = _import939();
+final tmp0 = _import990();
 return tmp0.toIntUnsigned();
 
 }
 @override
 int getBlockStateCount(){
-final tmp0 = _import940();
+final tmp0 = _import991();
 return tmp0.toIntUnsigned();
 
 }
@@ -32971,7 +35248,7 @@ i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 51);
 
 }
 var tmp9 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import941(tmp0, tmp9);
+_import992(tmp0, tmp9);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp10 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 0);
 final tmp11 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 4);
@@ -33066,7 +35343,7 @@ return tmp74;
 @override
 List<BlockState> getStatesForBlockId({required int blockId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import942(i0.WasmI32.uint16FromInt(blockId), tmp0);
+_import993(i0.WasmI32.uint16FromInt(blockId), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp65 = <BlockState>[];
@@ -33159,7 +35436,7 @@ return tmp65;
 @override
 List<int> getStateIdsForBlockId({required int blockId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import943(i0.WasmI32.uint16FromInt(blockId), tmp0);
+_import994(i0.WasmI32.uint16FromInt(blockId), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp4 = <int>[];
@@ -33176,7 +35453,7 @@ return tmp4;
 @override
 List<(String, String, )> getBlockProperties({required int stateId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import944(i0.WasmI32.uint16FromInt(stateId), tmp0);
+_import995(i0.WasmI32.uint16FromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp8 = <(String, String, )>[];
@@ -33197,7 +35474,7 @@ return tmp8;
 @override
 Block? getBlockFromStateId({required int stateId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
-_import945(i0.WasmI32.uint16FromInt(stateId), tmp0);
+_import996(i0.WasmI32.uint16FromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 Block? tmp26;
 if (tmp1.toBool()) {
@@ -33336,7 +35613,7 @@ _cleanups.add(() { i1.dartFree(tmp13, i0.WasmI32.fromInt(16 * tmp12), const i0.W
 i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp15, offset: 68);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp13, offset: 64);
 var tmp16 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(56));
-_import946(tmp0, tmp16);
+_import997(tmp0, tmp16);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp17 = i1.memory.loadUint16(tmp16.toIntUnsigned(), offset: 0);
 final tmp18 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 4);
@@ -33423,7 +35700,7 @@ i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 51);
 
 }
 var tmp9 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(72));
-_import947(tmp0, tmp9);
+_import998(tmp0, tmp9);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp10 = i1.memory.loadUint16(tmp9.toIntUnsigned(), offset: 0);
 final tmp11 = i1.memory.loadUint16(tmp9.toIntUnsigned(), offset: 2);
@@ -33510,7 +35787,7 @@ return tmp71;
 @override
 BlockState? getDefaultStateFromBlockId({required int blockId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
-_import948(i0.WasmI32.uint16FromInt(blockId), tmp0);
+_import999(i0.WasmI32.uint16FromInt(blockId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 BlockState? tmp64;
 if (tmp1.toBool()) {
@@ -33604,7 +35881,7 @@ return tmp64;
 @override
 BlockState? getBlockStateById({required int stateId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
-_import949(i0.WasmI32.uint16FromInt(stateId), tmp0);
+_import1000(i0.WasmI32.uint16FromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 BlockState? tmp64;
 if (tmp1.toBool()) {
@@ -33759,14 +36036,14 @@ abstract interface class PlayerInterface {
 /// Returns a list of all players in a specific world.
 List<Player> getWorldPlayers({required World worldRef, });
 }
-@pragma("wasm:import", r"component._import950")
-external i0.WasmVoid _import950(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1001")
+external i0.WasmVoid _import1001(i0.WasmI32 p0, i0.WasmI32 p1);
 final class _Imported$PlayerInterface implements PlayerInterface {
   const _Imported$PlayerInterface();
 @override
 List<Player> getWorldPlayers({required World worldRef, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import950(i0.WasmI32.fromInt(worldRef.takeHandle()), tmp0);
+_import1001(i0.WasmI32.fromInt(worldRef.takeHandle()), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp4 = <Player>[];
@@ -33837,10 +36114,10 @@ String translate({required String key, required Locale locale, });
 /// * `locale`: The target locale for these translations.
 void loadTranslations({required String namespace, required String json, required Locale locale, });
 }
-@pragma("wasm:import", r"component._import951")
-external i0.WasmVoid _import951(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import952")
-external i0.WasmVoid _import952(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1002")
+external i0.WasmVoid _import1002(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1003")
+external i0.WasmVoid _import1003(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$I18n implements I18n {
   const _Imported$I18n();
 @override
@@ -33849,7 +36126,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import951(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(locale.index), tmp1);
+_import1002(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(locale.index), tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 0);
 final tmp3 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 4);
@@ -33864,7 +36141,7 @@ final tmp0 = i1.AllocatedString.allocateUtf16(namespace);
 _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(json);
 _cleanups.add(tmp1.free);
-_import952(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromInt(locale.index));
+_import1003(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromInt(locale.index));
 for (final cleanup in _cleanups) { cleanup(); }
 
 }
@@ -33892,29 +36169,29 @@ int scheduleRepeatingTask({required int handlerId, required int delayTicks, requ
 /// * `task-id`: The ID of the task to cancel.
 void cancelTask({required int taskId, });
 }
-@pragma("wasm:import", r"component._import953")
-external i0.WasmI32 _import953(i0.WasmI32 p0, i0.WasmI64 p1);
-@pragma("wasm:import", r"component._import954")
-external i0.WasmI32 _import954(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2);
-@pragma("wasm:import", r"component._import955")
-external i0.WasmVoid _import955(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1004")
+external i0.WasmI32 _import1004(i0.WasmI32 p0, i0.WasmI64 p1);
+@pragma("wasm:import", r"component._import1005")
+external i0.WasmI32 _import1005(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2);
+@pragma("wasm:import", r"component._import1006")
+external i0.WasmVoid _import1006(i0.WasmI32 p0);
 final class _Imported$Scheduler implements Scheduler {
   const _Imported$Scheduler();
 @override
 int scheduleDelayedTask({required int handlerId, required int delayTicks, }){
-final tmp0 = _import953(i0.WasmI32.fromInt(handlerId), i0.WasmI64.fromInt(delayTicks));
+final tmp0 = _import1004(i0.WasmI32.fromInt(handlerId), i0.WasmI64.fromInt(delayTicks));
 return tmp0.toIntUnsigned();
 
 }
 @override
 int scheduleRepeatingTask({required int handlerId, required int delayTicks, required int periodTicks, }){
-final tmp0 = _import954(i0.WasmI32.fromInt(handlerId), i0.WasmI64.fromInt(delayTicks), i0.WasmI64.fromInt(periodTicks));
+final tmp0 = _import1005(i0.WasmI32.fromInt(handlerId), i0.WasmI64.fromInt(delayTicks), i0.WasmI64.fromInt(periodTicks));
 return tmp0.toIntUnsigned();
 
 }
 @override
 void cancelTask({required int taskId, }){
-_import955(i0.WasmI32.fromInt(taskId));
+_import1006(i0.WasmI32.fromInt(taskId));
 
 }
 }
@@ -33935,8 +36212,8 @@ abstract interface class Ipc {
 /// Sends a message to the specified plugin, synchronously receiving a response (or an error).
 i1.Result<i1.Result<List<int>, String>, void> sendIpcMessage({required String recipient, required List<int> message, });
 }
-@pragma("wasm:import", r"component._import956")
-external i0.WasmVoid _import956(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1007")
+external i0.WasmVoid _import1007(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$Ipc implements Ipc {
   const _Imported$Ipc();
 @override
@@ -33955,7 +36232,7 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp3), o
 final tmp4 = i0.WasmI32.fromInt(tmp1);
 _cleanups.add(() { i1.dartFree(tmp2, i0.WasmI32.fromInt(1 * tmp1), const i0.WasmI32(1)); });
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(16));
-_import956(tmp0.ptr, tmp0.packedLength, tmp2, tmp4, tmp5);
+_import1007(tmp0.ptr, tmp0.packedLength, tmp2, tmp4, tmp5);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<i1.Result<List<int>, String>, void> tmp15;

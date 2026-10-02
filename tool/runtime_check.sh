@@ -17,7 +17,7 @@ CHECKS=$(grep -oE "^  '[A-Za-z_0-9]+':" example/hello_plugin/bin/runtime_check.d
 set --
 for check in $CHECKS; do set -- "$@" "t $check"; done
 
-tool/smoke_test.sh "$OUT/runtime_check.wasm" "$@" > "$OUT/log" 2>&1 || true
+ALLOW_PERMISSIONS="fs.write.data" tool/smoke_test.sh "$OUT/runtime_check.wasm" "$@" > "$OUT/log" 2>&1 || true
 grep -E "RT (OK|FAIL)" "$OUT/log" | sed 's/^.*\[plugin\] //'
 
 PASSED=$(grep -c "RT OK" "$OUT/log" || true)

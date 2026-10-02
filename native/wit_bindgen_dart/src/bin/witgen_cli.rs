@@ -26,7 +26,7 @@
 use std::path::PathBuf;
 
 use wit_bindgen_dart::generate_dart_bindings_for_world;
-use wit_bindgen_dart::wit_parser::{Resolve, UnresolvedPackageGroup};
+use wit_bindgen_dart::wit_parser::Resolve;
 
 struct Args {
     input: PathBuf,
@@ -68,9 +68,9 @@ fn parse_args() -> anyhow::Result<Args> {
 fn main() -> anyhow::Result<()> {
     let args = parse_args()?;
 
-    let group = UnresolvedPackageGroup::parse_dir(&args.input)?;
+    // `push_dir` also loads the packages in `<input>/deps`.
     let mut resolve = Resolve::default();
-    let package_id = resolve.push_group(group)?;
+    let (package_id, _) = resolve.push_dir(&args.input)?;
     let world = resolve.select_world(&[package_id], Some(&args.world))?;
 
     let (dart_source, abi_json) = generate_dart_bindings_for_world(&mut resolve, world)?;

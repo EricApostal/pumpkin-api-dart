@@ -86,6 +86,7 @@ Objects from the server (`Player`, `World`, ...) are only valid until the
 callback that received them returns; call `keep()` to hold on to one. Callbacks
 can be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
 [docs/lifetimes.md](docs/lifetimes.md) and [docs/async.md](docs/async.md).
+[docs/files.md](docs/files.md) covers reading and writing files with `context.files`.
 [docs/generated-api.md](docs/generated-api.md) explains how WIT maps to Dart (`T?`, properties, mob views).
 [docs/runtime.md](docs/runtime.md) lists what the Dart core libraries support
 (`RegExp`, `double` formatting, `jsonDecode`, ...), and
@@ -98,6 +99,7 @@ See [`example/hello_plugin`](example/hello_plugin) for a complete plugin.
 | Path | Contents |
 | --- | --- |
 | `wit/` | Git submodule: `pumpkin-plugin-wit` (`v0.1`, `v0.2`). |
+| `wit-dart/` | The world bindings are generated from: Pumpkin's plugin world plus WASI (files). |
 | `packages/pumpkin_api` | The plugin API: generated bindings plus the wrapper (`Plugin`, events, commands, scheduler). |
 | `packages/pumpkin_tools` | The `pumpkin` CLI (`new`, `build`). |
 | `packages/wasm_tools` | Compiler from Dart programs to components (fork of [wasm.dart](https://github.com/simolus3/wasm.dart)). |

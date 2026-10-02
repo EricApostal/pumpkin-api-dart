@@ -1,0 +1,15 @@
+package dart-api:plugin@0.1.0;
+
+/// The Pumpkin plugin world, plus the WASI imports plugins can use from Dart.
+/// `tool/generate_bindings.sh` generates the bindings from this world: it is
+/// the Pumpkin world (`include`) with extra imports on top, so a plugin still
+/// exports exactly what the server expects.
+world plugin {
+    include pumpkin:plugin/plugin@0.2.0;
+
+    // Files: the plugin's data folder (needs the `fs.read.data` /
+    // `fs.write.data` permissions). WASI 0.2 is used because 0.3 only offers
+    // async streams, which plugin exports (synchronous) are not allowed to wait on.
+    import wasi:filesystem/types@0.2.12;
+    import wasi:filesystem/preopens@0.2.12;
+}

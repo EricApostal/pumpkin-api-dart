@@ -4,6 +4,7 @@
 #
 # Usage: PUMPKIN_BIN=/path/to/pumpkin tool/smoke_test.sh plugin.wasm [command...]
 #
+# Set ALLOW_PERMISSIONS to pre-approve plugin permissions.
 # Set PORT_OFFSET (e.g. 100) to run several smoke tests at the same time.
 #
 # Each command is typed into the server console one second apart, after the
@@ -24,6 +25,14 @@ cp "$WASM" "$DIR/plugins/"
 sed -e "s/0.0.0.0:25565/0.0.0.0:$JAVA/; s/0.0.0.0:25575/0.0.0.0:$RCON/; s/0.0.0.0:19132/0.0.0.0:$BEDROCK/" \
   "$PUMPKIN_CONFIG" > "$DIR/pumpkin.toml"
 
+# Plugins that request permissions are normally approved interactively, which a
+# scripted run can't do. ALLOW_PERMISSIONS="fs.write.data fs.read.data" grants
+# them up front.
+if [ -n "$ALLOW_PERMISSIONS" ]; then
+  LIST=$(for permission in $ALLOW_PERMISSIONS; do printf '"%s", ' "$permission"; done)
+  sed -i.bak "s/^allowed_permissions = .*/allowed_permissions = [${LIST%, }]/" "$DIR/pumpkin.toml"
+fi
+
 cd "$DIR"
 (
   sleep "$STARTUP_SECONDS"
@@ -31,3 +40,9 @@ cd "$DIR"
   echo stop
   sleep 3
 ) | timeout 180 "$PUMPKIN_BIN" 2>&1 | sed 's/\x1b\[[0-9;]*m//g'
+
+# SHOW_FILES=1 lists what the plugins left under plugins/data.
+if [ -n "$SHOW_FILES" ]; then
+  echo "--- files under plugins/data:"
+  (cd "$DIR/plugins" && find data -type f 2>/dev/null | sort) || true
+fi

@@ -16,6 +16,8 @@
 
 * **`wit/`**: the interface Pumpkin exposes to plugins, a submodule of
   `pumpkin-plugin-wit`.
+* **`wit-dart/`**: the world the bindings are generated from: Pumpkin's `plugin`
+  world plus WASI imports (files), with the WASI WIT vendored in `deps/`.
 * **`native/wit_bindgen_dart`**: reads the WIT and generates the Dart bindings
   plus a JSON description of the ABI (`hook/wasm_abi.json`) that the compiler
   needs to build the component. Only maintainers run it.

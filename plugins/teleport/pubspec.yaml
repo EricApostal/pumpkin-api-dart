@@ -1,0 +1,13 @@
+name: teleport
+description: Homes, warps, spawn and teleport requests (/tpa) for Pumpkin.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  pumpkin_api:
+
+dev_dependencies:
+  test: ^1.25.6

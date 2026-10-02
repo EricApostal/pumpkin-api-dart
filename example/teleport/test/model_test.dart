@@ -1,7 +1,14 @@
-import 'package:teleport/src/model.dart';
+import '../lib/src/model.dart';
+
 import 'package:test/test.dart';
 
-const home = Location(world: 'minecraft:overworld', x: 10.5, y: 64, z: -3, yaw: 90);
+const home = Location(
+  world: 'minecraft:overworld',
+  x: 10.5,
+  y: 64,
+  z: -3,
+  yaw: 90,
+);
 
 void main() {
   test('locations round trip through JSON', () {
@@ -82,11 +89,19 @@ void main() {
 
     setUp(() {
       now = DateTime.utc(2026, 1, 1);
-      requests = TpaRequests(timeout: const Duration(seconds: 60), now: () => now);
+      requests = TpaRequests(
+        timeout: const Duration(seconds: 60),
+        now: () => now,
+      );
     });
 
     TpaRequest request(String from, String to, [TpaKind kind = TpaKind.to]) =>
-        requests.create(fromUuid: from, fromName: from.toUpperCase(), toUuid: to, kind: kind);
+        requests.create(
+          fromUuid: from,
+          fromName: from.toUpperCase(),
+          toUuid: to,
+          kind: kind,
+        );
 
     test('are delivered to the target, newest first', () {
       request('a', 'x');

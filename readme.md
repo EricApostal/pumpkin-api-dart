@@ -77,7 +77,18 @@ Uncaught exceptions in any callback are logged and reported to the server
 instead of crashing the plugin. The whole host API is available underneath
 (`Player`, `World`, `Entity`, ...), straight from the WIT.
 
-Not wrapped yet: mob AI goals and chunk generators (their callbacks are no-ops).
+Mob AI goals (`AiGoal`, `Mob.addGoal`) and chunk generators (`ChunkGenerator`,
+`World.setGenerator`) are plain classes you override.
+
+### Resources and `async`
+
+Objects from the server (`Player`, `World`, ...) are only valid until the
+callback that received them returns; call `keep()` to hold on to one. Callbacks
+can be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
+[docs/lifetimes.md](docs/lifetimes.md) and [docs/async.md](docs/async.md).
+[docs/runtime.md](docs/runtime.md) lists what the Dart core libraries support
+(`RegExp`, `double` formatting, `jsonDecode`, ...), and
+[docs/architecture.md](docs/architecture.md) shows how everything fits together.
 
 See [`example/hello_plugin`](example/hello_plugin) for a complete plugin.
 

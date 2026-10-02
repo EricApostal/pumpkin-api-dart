@@ -131,6 +131,12 @@ final class ComponentAssembler {
     for (final export in [...abi.bareExports, ...abi.functionExports.values]) {
       _markSignatureLive(export.rawJson, visited);
     }
+    // Resources that get dropped must be exported by the instance that owns
+    // them, so they can be aliased.
+    for (final drop
+        in abi.functionImports.values.whereType<ImportedResourceDrop>()) {
+      _markLive(drop.typeId, visited);
+    }
   }
 
   /// Interfaces that must be imported: those with called functions, plus those

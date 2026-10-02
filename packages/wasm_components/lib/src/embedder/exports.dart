@@ -78,11 +78,6 @@ WasmExternRef i64ToString(WasmI64 value, WasmI32 radix) {
 }
 
 @pragma('wasm:export')
-WasmExternRef f64ToString(WasmF64 value) {
-  throw UnimplementedError('f64ToString');
-}
-
-@pragma('wasm:export')
 WasmI32 stringLength(WasmExternRef? string) {
   return WasmStringImplementation.fromExtern(string).length.toWasmI32();
 }

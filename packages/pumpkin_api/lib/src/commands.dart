@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:wasm_components/wasm_components.dart' show Option, OkResult;
 
 import 'bindings.g.dart';
@@ -6,8 +8,18 @@ import 'registry.dart';
 /// Runs when a command is executed. Return the command's result code, `1`
 /// for success by convention, or throw a [CommandException] to report a
 /// failure to the sender.
+///
+/// The handler may be `async`. The server can't wait for it though, so a
+/// handler that is still running after its first `await` reports success
+/// right away, and any error it hits later is logged. Don't use [sender] or
+/// [server] after an `await`: they are only valid until the handler first
+/// yields.
 typedef CommandHandler =
-    int Function(CommandSender sender, Server server, ConsumedArgs args);
+    FutureOr<int> Function(
+      CommandSender sender,
+      Server server,
+      ConsumedArgs args,
+    );
 
 /// Computes tab completions for an argument.
 typedef SuggestionHandler =

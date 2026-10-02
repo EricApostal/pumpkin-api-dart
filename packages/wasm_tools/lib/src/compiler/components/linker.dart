@@ -214,6 +214,20 @@ final class CanonContextSet extends CanonPrimitive {
   }
 }
 
+/// `canon resource.drop`, releasing a handle to the resource type
+/// [resourceType] (a component type index).
+final class ResourceDrop extends CanonPrimitive {
+  final ComponentTypeIndex resourceType;
+
+  ResourceDrop(super.createdCoreFunction, this.resourceType);
+
+  @override
+  void serialize(w.Serializer s) {
+    s.writeByte(0x03);
+    s.writeUnsigned(resourceType.index);
+  }
+}
+
 final class WaitableSetNew extends CanonPrimitive {
   new(super.createdCoreFunction);
 

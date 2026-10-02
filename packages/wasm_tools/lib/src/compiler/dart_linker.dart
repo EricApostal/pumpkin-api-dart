@@ -104,6 +104,20 @@ final class DartLinker {
       lowered[primitive] = primitive.resolve(this);
     }
 
+    for (final drop
+        in abi.functionImports.values.whereType<ImportedResourceDrop>()) {
+      final typeDef = abi.rawTypeDefs[drop.typeId];
+      final owner = (typeDef['owner'] as Map)['interface'] as int;
+      final instance = instances[abi.interfacesByIndex[owner]]!;
+      final resourceType = builder.aliasInstanceTypeExport(
+        instance,
+        typeDef['name'] as String,
+      );
+      lowered[drop] = builder.linker.addCanonPrimitive(
+        (idx) => ResourceDrop(idx, resourceType),
+      );
+    }
+
     final inlineExports = <(String, Sort, Index)>[];
     for (final MapEntry(:key, :value) in abi.functionImports.entries) {
       inlineExports.add((

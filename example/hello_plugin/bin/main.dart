@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 const _permission = 'hello_plugin:command.hello';
@@ -42,11 +44,23 @@ final class HelloPlugin extends Plugin {
     )..execute(_echo);
     command.then(node: message);
 
+    // /hello countdown   -> async: waits between steps without blocking
+    command.then(
+      node: CommandNode.literal(name: 'countdown')..execute(_countdown),
+    );
+
     context.registerCommand(command: command, permission: _permission);
 
     // Greet players as they join.
     context.listen(Events.playerJoin, (server, event) {
       logger.info('${event.player.getName()} joined the server');
+    });
+
+    // Standard Dart timers work too, on a one tick (50ms) resolution.
+    var beats = 0;
+    Timer.periodic(const Duration(seconds: 2), (timer) {
+      logger.info('heartbeat ${++beats}');
+      if (beats == 3) timer.cancel();
     });
 
     // Runs once, five seconds (100 ticks) after the plugin loads.
@@ -60,6 +74,22 @@ final class HelloPlugin extends Plugin {
       'Hello ${sender.getName()} from Dart! '
       '${server.getPlayerCount()} player(s) online. Try /hello <message>.',
     );
+    return 1;
+  }
+
+  Future<int> _countdown(
+    CommandSender sender,
+    Server server,
+    ConsumedArgs args,
+  ) async {
+    // Use `sender` and `server` before the first `await`: the host only lends
+    // them for the duration of the call.
+    sender.reply('Counting down, watch the server log...');
+    for (var i = 3; i > 0; i--) {
+      logger.info('$i...');
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+    logger.info('Liftoff!');
     return 1;
   }
 

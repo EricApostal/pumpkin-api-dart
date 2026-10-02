@@ -1,4 +1,6 @@
-import 'package:wasm_components/wasm_components.dart' show Result;
+import 'dart:async';
+
+import 'package:wasm_components/wasm_components.dart' show Result, printHandler;
 
 import 'src_exports.dart';
 
@@ -55,10 +57,13 @@ abstract class Plugin {
 
   /// Called when the server loads the plugin. Register commands, event
   /// handlers and tasks here. Throwing aborts loading the plugin.
-  void onLoad(Context context) {}
+  ///
+  /// May be `async`, though the server doesn't wait for work that happens after
+  /// the first `await`. [context] is only valid until the first `await`.
+  FutureOr<void> onLoad(Context context) {}
 
   /// Called when the server unloads the plugin.
-  void onUnload(Context context) {}
+  FutureOr<void> onUnload(Context context) {}
 
   /// Called when another plugin sends this plugin a message. Return the reply,
   /// or throw to report an error to the sender.
@@ -69,6 +74,8 @@ abstract class Plugin {
 
 /// Registers [plugin] with the server. Call this from `main`.
 void runPlugin(Plugin plugin) {
+  // `print` writes to the server log.
+  printHandler = logger.info;
   definePlugin(exports: _Exports(plugin), metadata: _Metadata(plugin));
 }
 
@@ -114,7 +121,11 @@ final class _Exports implements PluginExports {
     final handler = eventHandlers[eventId];
     if (handler == null) return event;
     try {
-      return handler(server, event);
+      final outcome = runCallback<Event>(
+        'event handler',
+        () => handler(server, event),
+      );
+      return outcome.completed ? outcome.value! : event;
     } catch (e, s) {
       _logFailure('event handler', e, s);
       return event;
@@ -135,7 +146,12 @@ final class _Exports implements PluginExports {
       );
     }
     try {
-      return Result.ok(handler(sender, server, args));
+      final outcome = runCallback<int>(
+        'command',
+        () => handler(sender, server, args),
+      );
+      // The server can't wait for a command that is still running.
+      return Result.ok(outcome.completed ? outcome.value! : 1);
     } catch (e, s) {
       if (e is! CommandException) _logFailure('command', e, s);
       return Result.error(commandErrorFor(e));
@@ -157,7 +173,11 @@ final class _Exports implements PluginExports {
     final handler = suggestionHandlers[handlerId];
     if (handler == null) return none;
     try {
-      return handler(sender, server, request);
+      final outcome = runCallback<CommandSuggestions>(
+        'suggestion handler',
+        () => handler(sender, server, request),
+      );
+      return outcome.completed ? outcome.value! : none;
     } catch (e, s) {
       _logFailure('suggestion handler', e, s);
       return none;
@@ -169,7 +189,7 @@ final class _Exports implements PluginExports {
     final task = taskHandlers[handlerId];
     if (task == null) return;
     try {
-      task(server);
+      runTask(task, server);
     } catch (e, s) {
       _logFailure('scheduled task', e, s);
     }
@@ -181,39 +201,76 @@ final class _Exports implements PluginExports {
     List<int> message,
   ) {
     try {
-      return Result.ok(_plugin.onMessage(sender, message));
+      final outcome = runCallback<List<int>>(
+        'onMessage',
+        () => _plugin.onMessage(sender, message),
+      );
+      return Result.ok(outcome.value!);
     } catch (e) {
       return Result.error('$e');
     }
   }
 
-  // Mob AI goals and chunk generators don't have a wrapper API yet.
   @override
-  bool handleAiGoalCanStart(int goalId, Server server, Entity entity) => false;
+  bool handleAiGoalCanStart(int goalId, Server server, Entity entity) =>
+      _goal(goalId, false, (g) => g.canStart(server, entity));
 
   @override
   bool handleAiGoalShouldContinue(int goalId, Server server, Entity entity) =>
-      false;
+      _goal(goalId, false, (g) => g.shouldContinue(server, entity));
 
   @override
-  void handleAiGoalStart(int goalId, Server server, Entity entity) {}
+  void handleAiGoalStart(int goalId, Server server, Entity entity) =>
+      _goal(goalId, null, (g) => g.start(server, entity));
 
   @override
-  void handleAiGoalTick(int goalId, Server server, Entity entity) {}
+  void handleAiGoalTick(int goalId, Server server, Entity entity) =>
+      _goal(goalId, null, (g) => g.tick(server, entity));
 
   @override
-  void handleAiGoalStop(int goalId, Server server, Entity entity) {}
+  void handleAiGoalStop(int goalId, Server server, Entity entity) =>
+      _goal(goalId, null, (g) => g.stop(server, entity));
+
+  R _goal<R>(int goalId, R fallback, R Function(AiGoal goal) call) {
+    final goal = aiGoals[goalId];
+    if (goal == null) return fallback;
+    try {
+      return runCallback<R>('AI goal', () => call(goal)).value ?? fallback;
+    } catch (e, s) {
+      _logFailure('AI goal', e, s);
+      return fallback;
+    }
+  }
 
   @override
   void handleGeneratePhase(
     int generatorId,
     GenerationPhase phase,
     ChunkBuffer chunk,
-  ) {}
-
-  Result<void, String> _guard(String what, void Function() body) {
+  ) {
+    final generator = chunkGenerators[generatorId];
+    if (generator == null) return;
     try {
-      body();
+      runCallback<void>('chunk generator', () {
+        switch (phase) {
+          case GenerationPhase.biomes:
+            generator.generateBiomes(chunk);
+          case GenerationPhase.noise:
+            generator.generateNoise(chunk);
+          case GenerationPhase.surface:
+            generator.generateSurface(chunk);
+          case GenerationPhase.features:
+            generator.generateFeatures(chunk);
+        }
+      });
+    } catch (e, s) {
+      _logFailure('chunk generator', e, s);
+    }
+  }
+
+  Result<void, String> _guard(String what, FutureOr<void> Function() body) {
+    try {
+      runCallback<void>(what, body);
       return const Result.ok(null);
     } catch (e, s) {
       _logFailure(what, e, s);

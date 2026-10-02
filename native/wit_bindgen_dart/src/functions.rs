@@ -135,6 +135,7 @@ impl<'a> DartFunctionGenerator<'a> {
         method: &str,
         offset: &ArchitectureSize,
     ) {
+        self.options.use_memory = true;
         let ptr = operands.pop().unwrap();
         let value = operands.pop().unwrap();
 
@@ -154,6 +155,7 @@ impl<'a> DartFunctionGenerator<'a> {
         method: &str,
         offset: &ArchitectureSize,
     ) {
+        self.options.use_memory = true;
         let ptr = operands.pop().unwrap();
         let tmp = self.temporary_variable();
 
@@ -951,13 +953,20 @@ if ({has_value}.toBool()) {{
                 results.push(tmp);
             }
             Instruction::HandleLower {
-                handle: _,
+                handle,
                 name: _,
                 ty: _,
             } => {
                 let value = operands.pop().unwrap();
+                // Passing an `own` handle gives it away: the wrapper becomes
+                // invalid and mustn't be dropped by us. A `borrow` only lends
+                // it for the duration of the call.
+                let access = match handle {
+                    Handle::Own(_) => "takeHandle()",
+                    Handle::Borrow(_) => "resourceHandle",
+                };
                 results.push(Rc::new(format!(
-                    "{}.WasmI32.fromInt({value}._handle)",
+                    "{}.WasmI32.fromInt({value}.{access})",
                     self.dart_wasm_import()
                 )));
             }
@@ -967,8 +976,12 @@ if ({has_value}.toBool()) {{
                 };
                 let value = operands.pop().unwrap();
                 let resource_name = self.dart.named_type(resolve, resource_id);
+                let constructor = match handle {
+                    Handle::Own(_) => "_own",
+                    Handle::Borrow(_) => "_borrowed",
+                };
                 results.push(Rc::new(format!(
-                    "{resource_name}._fromHandle({value}.toIntUnsigned())"
+                    "{resource_name}.{constructor}({value}.toIntUnsigned())"
                 )));
             }
             Instruction::DropHandle { ty: _ } => {
@@ -1096,6 +1109,7 @@ if ({has_value}.toBool()) {{
             }
             Instruction::ListLift { element, .. } => {
                 self.options.use_memory = true;
+                self.options.needs_realloc = true;
                 let (body, body_results, _) = self.blocks.pop().unwrap();
                 let length = operands.pop().unwrap();
                 let ptr = operands.pop().unwrap();
@@ -1223,6 +1237,9 @@ if ({has_value}.toBool()) {{
     }
 
     fn return_pointer(&mut self, size: ArchitectureSize, align: Alignment) -> Self::Operand {
+        // Results (or arguments) passed through memory need the canonical
+        // `memory` option.
+        self.options.use_memory = true;
         let is_extra = self.allocated_return_value.is_some();
         assert!(
             !is_extra || matches!(self.mode, FunctionMode::Imported(_)),

@@ -113,6 +113,16 @@ final class DartProgramAbi {
       functionImports[coreFunctionName] = instanceFunction;
     }
 
+    for (final rawDrop
+        in (encoding['resource_drops'] as List? ?? const [])
+            .cast<Map<String, Object?>>()) {
+      final coreName = rawDrop['core_name'] as String;
+      functionImports[coreName] = ImportedResourceDrop(
+        coreName,
+        rawDrop['type_id'] as int,
+      );
+    }
+
     final exports = (encoding['exports'] as List).cast<Map<String, Object?>>();
     for (final rawExport in exports) {
       final interface = interfaces[rawExport['interface_id'] as int];
@@ -239,6 +249,13 @@ final class ImportedCanonPrimitive extends ImportedInstanceFunctionOrCanon {
   CanonPrimitive Function(DartLinker) resolve;
 
   new(super.coreImport, this.resolve);
+}
+
+/// A `resource.drop` for the resource at `type_defs[typeId]`.
+final class ImportedResourceDrop extends ImportedInstanceFunctionOrCanon {
+  final int typeId;
+
+  new(super.coreImport, this.typeId);
 }
 
 final class ExportedInstanceFunction {

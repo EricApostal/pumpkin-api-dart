@@ -5,12 +5,14 @@ use serde::{
 use wit_bindgen_core::wit_parser::{Function, IndexMap, Interface, Resolve};
 
 use crate::bindgen::{
-    ExportedCoreFunction, ExportedInstance, ImportedCoreFunction, SerializableBareExport,
+    ExportedCoreFunction, ExportedInstance, ImportedCoreFunction, ResourceDropImport,
+    SerializableBareExport,
 };
 
 pub struct SerializableAbi<'a> {
     pub resolve: &'a Resolve,
     pub imports: &'a [ImportedCoreFunction],
+    pub resource_drops: &'a [ResourceDropImport],
     pub exports: &'a [ExportedInstance],
     pub bare_exports: &'a [SerializableBareExport],
 }
@@ -33,7 +35,7 @@ impl<'a> Serialize for SerializableAbi<'a> {
     where
         S: serde::Serializer,
     {
-        let mut s = serializer.serialize_struct("ProgramAbi", 4)?;
+        let mut s = serializer.serialize_struct("ProgramAbi", 6)?;
         s.serialize_field("type_defs", &SerializableTypes(self.resolve))?;
 
         let interfaces: Vec<_> = self
@@ -48,6 +50,7 @@ impl<'a> Serialize for SerializableAbi<'a> {
         s.serialize_field("interfaces", &interfaces)?;
 
         s.serialize_field("imports", &self.imports)?;
+        s.serialize_field("resource_drops", &self.resource_drops)?;
 
         let exports: Vec<_> = self
             .exports

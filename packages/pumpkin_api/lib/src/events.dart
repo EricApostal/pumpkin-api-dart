@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'bindings.g.dart';
 import 'registry.dart';
 
@@ -15,13 +17,13 @@ final class EventKind<D> {
   Event wrap(D data) => _wrap(data);
 }
 
-typedef _ErasedEventHandler = Event Function(Server server, Event event);
+typedef _ErasedEventHandler = FutureOr<Event> Function(Server server, Event event);
 
 final eventHandlers = HandlerRegistry<_ErasedEventHandler>();
 
 extension EventApi on Context {
   /// Calls [handler] when the server fires an [event] without waiting for it
-  /// to finish. The handler can't change the event.
+  /// to finish. The handler can't change the event, and may be `async`.
   ///
   /// ```dart
   /// context.listen(Events.playerJoin, (server, event) {
@@ -30,11 +32,12 @@ extension EventApi on Context {
   /// ```
   void listen<D>(
     EventKind<D> event,
-    void Function(Server server, D data) handler, {
+    FutureOr<void> Function(Server server, D data) handler, {
     EventPriority priority = EventPriority.normal,
   }) {
     final id = eventHandlers.add((server, raw) {
-      handler(server, event.unwrap(raw));
+      final result = handler(server, event.unwrap(raw));
+      if (result is Future) return result.then((_) => raw);
       return raw;
     });
     registerEvent(

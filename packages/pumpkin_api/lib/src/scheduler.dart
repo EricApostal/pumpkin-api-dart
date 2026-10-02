@@ -1,68 +1,60 @@
-import 'bindings.g.dart' as wit;
+import 'dart:async';
+
+import 'async_runtime.dart';
 import 'bindings.g.dart' show Context, Server;
-import 'registry.dart';
 
 /// Code that runs on the server's tick loop.
-typedef TaskHandler = void Function(Server server);
+typedef TickCallback = void Function(Server server);
 
-final taskHandlers = HandlerRegistry<TaskHandler>();
-
-/// A task scheduled with [SchedulerApi.runLater] or
-/// [SchedulerApi.runRepeating].
+/// A task scheduled with `runLater` or `runRepeating`.
 final class ScheduledTask {
-  final int _taskId;
-  final int _handlerId;
+  final Timer _timer;
 
-  ScheduledTask._(this._taskId, this._handlerId);
+  ScheduledTask._(this._timer);
+
+  bool get isActive => _timer.isActive;
 
   /// Stops the task. Does nothing if it already ran or was cancelled.
-  void cancel() {
-    wit.scheduler.cancelTask(taskId: _taskId);
-    taskHandlers.remove(_handlerId);
-  }
+  void cancel() => _timer.cancel();
 }
 
-/// Schedules closures to run on the server's tick loop (20 ticks per second).
+/// Durations in server ticks. The server runs 20 ticks per second.
+extension Ticks on int {
+  /// This many ticks as a [Duration]: `20.ticks` is one second.
+  Duration get ticks => Duration(milliseconds: this * millisecondsPerTick);
+}
+
+extension DurationTicks on Duration {
+  /// How many whole ticks this duration lasts, rounding up.
+  int get inTicks =>
+      (inMilliseconds + millisecondsPerTick - 1) ~/ millisecondsPerTick;
+}
+
+/// Schedules closures to run on the server's tick loop.
+///
+/// Plain Dart timers and `Future.delayed` work as well, with a resolution of
+/// one tick (50ms).
 extension SchedulerApi on Server {
   /// Runs [task] once, after [delayTicks] ticks.
-  ScheduledTask runLater(int delayTicks, TaskHandler task) =>
-      _runLater(delayTicks, task);
+  ScheduledTask runLater(int delayTicks, TickCallback task) =>
+      ScheduledTask._(scheduleTicks(delayTicks, null, task));
 
   /// Runs [task] every [periodTicks] ticks, starting after [delayTicks].
   ScheduledTask runRepeating(
     int periodTicks,
-    TaskHandler task, {
+    TickCallback task, {
     int delayTicks = 0,
-  }) => _runRepeating(delayTicks, periodTicks, task);
+  }) => ScheduledTask._(scheduleTicks(delayTicks, periodTicks, task));
 }
 
 /// Same as [SchedulerApi], available while the plugin is loading.
 extension ContextSchedulerApi on Context {
-  ScheduledTask runLater(int delayTicks, TaskHandler task) =>
-      _runLater(delayTicks, task);
+  ScheduledTask runLater(int delayTicks, TickCallback task) =>
+      ScheduledTask._(scheduleTicks(delayTicks, null, task));
 
   ScheduledTask runRepeating(
     int periodTicks,
-    TaskHandler task, {
+    TickCallback task, {
     int delayTicks = 0,
-  }) => _runRepeating(delayTicks, periodTicks, task);
-}
-
-ScheduledTask _runLater(int delayTicks, TaskHandler task) {
-  final handlerId = taskHandlers.add(task);
-  final taskId = wit.scheduler.scheduleDelayedTask(
-    handlerId: handlerId,
-    delayTicks: delayTicks,
-  );
-  return ScheduledTask._(taskId, handlerId);
-}
-
-ScheduledTask _runRepeating(int delayTicks, int periodTicks, TaskHandler task) {
-  final handlerId = taskHandlers.add(task);
-  final taskId = wit.scheduler.scheduleRepeatingTask(
-    handlerId: handlerId,
-    delayTicks: delayTicks,
-    periodTicks: periodTicks,
-  );
-  return ScheduledTask._(taskId, handlerId);
+  }) => ScheduledTask._(scheduleTicks(delayTicks, periodTicks, task));
 }

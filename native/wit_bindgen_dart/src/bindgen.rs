@@ -28,6 +28,9 @@ use crate::{
 pub struct FunctionOptions {
     pub use_memory: bool,
     pub uses_strings: bool,
+    /// The function receives lists, which the host allocates in guest memory
+    /// through `realloc`.
+    pub needs_realloc: bool,
     pub uses_callback: bool,
     /// Only set on lifted (export) functions, a function to clean up temporary values allocated by
     /// this function.
@@ -35,6 +38,15 @@ pub struct FunctionOptions {
     pub post_return: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub task_return_import: Option<String>,
+}
+
+/// A core import that drops handles of one resource type, lowered to
+/// `canon resource.drop`.
+#[derive(Serialize)]
+pub struct ResourceDropImport {
+    pub core_name: String,
+    /// Index of the resource in the ABI's `type_defs`.
+    pub type_id: usize,
 }
 
 #[derive(Serialize)]
@@ -94,6 +106,8 @@ pub struct DartWorldGenerator {
     pub size_align: SizeAlign,
     pub main: DartSource,
     pub function_imports: Vec<ImportedCoreFunction>,
+    /// One `resource.drop` import per resource type.
+    pub resource_drops: Vec<ResourceDropImport>,
     pub instance_exports: Vec<ExportedInstance>,
     pub pending_bare_exports: Vec<PendingBareExport>,
     pub bare_exports: Vec<SerializableBareExport>,
@@ -108,6 +122,7 @@ impl DartWorldGenerator {
         Ok(serde_json::to_string(&SerializableAbi {
             resolve,
             imports: &self.function_imports,
+            resource_drops: &self.resource_drops,
             exports: &self.instance_exports,
             bare_exports: &self.bare_exports,
         })?)
@@ -168,6 +183,43 @@ impl DartWorldGenerator {
         }
     }
 
+
+    /// Starts the Dart class for a resource: the `resource.drop` import, the
+    /// class declaration extending the runtime's `Resource`, and its owned
+    /// and borrowed constructors.
+    fn write_resource_header(
+        &mut self,
+        def: &mut DartDefinition,
+        id: TypeId,
+        class_name: &str,
+        docs: &wit_bindgen_core::wit_parser::Docs,
+    ) {
+        let drop_name = format!("_drop{}", self.resource_drops.len());
+        self.resource_drops.push(ResourceDropImport {
+            core_name: drop_name.clone(),
+            type_id: id.index(),
+        });
+        uwriteln!(def, "@pragma(\"wasm:import\", r\"component.{drop_name}\")");
+        uwrite!(def, "external ");
+        def.imported_identifier(&mut self.main, KnownDartUri::DartWasm, "WasmVoid");
+        uwrite!(def, " {drop_name}(");
+        def.imported_identifier(&mut self.main, KnownDartUri::DartWasm, "WasmI32");
+        uwriteln!(def, " handle);");
+
+        def.write_docs(docs);
+        uwrite!(def, "final class {class_name} extends ");
+        def.imported_identifier(&mut self.main, KnownDartUri::PkgWasmComponents, "Resource");
+        uwriteln!(def, " {{");
+        uwriteln!(
+            def,
+            "  {class_name}._own(int handle) : super.owned(handle, _drop{class_name});"
+        );
+        uwriteln!(def, "  {class_name}._borrowed(int handle) : super.borrowed(handle);");
+        uwrite!(def, "  static void _drop{class_name}(int handle) {{ {drop_name}(");
+        def.imported_identifier(&mut self.main, KnownDartUri::DartWasm, "WasmI32");
+        uwriteln!(def, ".fromInt(handle)); }}");
+    }
+
     fn generate_resource(&mut self, resolve: &Resolve, id: TypeId) {
         let def = &resolve.types[id];
         let class_name = self.main.reserve_resource_name(resolve, id);
@@ -178,22 +230,14 @@ impl DartWorldGenerator {
             // in a world) have no functions to bind; still emit a bare
             // handle-wrapper class so references to the type compile.
             let mut def = DartDefinition::default();
-            let _ = writeln!(def, "final class {class_name} {{");
-            let _ = writeln!(def, "  final int _handle;");
-            let _ = writeln!(def, "  const {class_name}._fromHandle(this._handle);");
+            self.write_resource_header(&mut def, id, &class_name, &resolve.types[id].docs);
             let _ = writeln!(def, "}}");
             self.main.consume_definition(def);
             return;
         };
 
         let mut body = DartDefinition::default();
-        body.write_docs(&def.docs);
-        let _ = writeln!(body, "final class {class_name} {{");
-        let _ = writeln!(body, "  final int _handle;");
-        let _ = writeln!(
-            body,
-            "  const {class_name}._fromHandle(this._handle);"
-        );
+        self.write_resource_header(&mut body, id, &class_name, &def.docs);
 
         let interface = &resolve.interfaces[owner_iface];
         for (name, function) in &interface.functions {
@@ -640,7 +684,11 @@ return task.finishEventLoopIteration().toWasmI32();
 }}"
                     );
                 } else {
-                    uwriteln!(def, "{{\n{body}\n}}");
+                    let components = generator.dart.import(KnownDartUri::PkgWasmComponents);
+                    uwriteln!(
+                        def,
+                        "{{\nfinal _scope = {components}.ResourceScope.enter();\ntry {{\n{body}\n}} finally {{\n_scope.exit();\n}}\n}}"
+                    );
                 }
 
                 let mut options = generator.options;
@@ -780,7 +828,11 @@ return task.finishEventLoopIteration().toWasmI32();
                     function.name
                 );
             } else {
-                uwriteln!(def, "{{\n{body}\n}}");
+                let components = generator.dart.import(KnownDartUri::PkgWasmComponents);
+                uwriteln!(
+                    def,
+                    "{{\nfinal _scope = {components}.ResourceScope.enter();\ntry {{\n{body}\n}} finally {{\n_scope.exit();\n}}\n}}"
+                );
             }
 
             let mut options = generator.options;

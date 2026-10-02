@@ -14,6 +14,7 @@ final class DatapackInfo {
   final int recipeCount;
   final int functionCount;
   const DatapackInfo({required this.id, required this.name, required this.description, required this.packFormat, required this.isEnabled, required this.recipeCount, required this.functionCount, });
+  DatapackInfo copyWith({String? id, String? name, String? description, int? packFormat, bool? isEnabled, int? recipeCount, int? functionCount, }) => DatapackInfo(id: id ?? this.id, name: name ?? this.name, description: description ?? this.description, packFormat: packFormat ?? this.packFormat, isEnabled: isEnabled ?? this.isEnabled, recipeCount: recipeCount ?? this.recipeCount, functionCount: functionCount ?? this.functionCount, );
 }
 @pragma("wasm:import", r"component._import0")
 external i0.WasmVoid _import0(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -365,6 +366,7 @@ final class RgbColor {
   final int g;
   final int b;
   const RgbColor({required this.r, required this.g, required this.b, });
+  RgbColor copyWith({int? r, int? g, int? b, }) => RgbColor(r: r ?? this.r, g: g ?? this.g, b: b ?? this.b, );
 }
 @pragma("wasm:import", r"component._import25")
 external i0.WasmVoid _import25(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -395,6 +397,7 @@ final class ArgbColor {
   final int g;
   final int b;
   const ArgbColor({required this.a, required this.r, required this.g, required this.b, });
+  ArgbColor copyWith({int? a, int? r, int? g, int? b, }) => ArgbColor(a: a ?? this.a, r: r ?? this.r, g: g ?? this.g, b: b ?? this.b, );
 }
 @pragma("wasm:import", r"component._import36")
 external i0.WasmVoid _import36(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
@@ -863,6 +866,7 @@ final class CustomEnchantment {
 /// List of exclusive/conflicting enchantment IDs.
   final List<String> exclusiveSet;
   const CustomEnchantment({required this.id, required this.description, required this.maxLevel, required this.anvilCost, required this.supportedItems, required this.weight, required this.slots, required this.exclusiveSet, });
+  CustomEnchantment copyWith({String? id, TextComponent? description, int? maxLevel, int? anvilCost, String? supportedItems, int? weight, List<AttributeModifierSlot>? slots, List<String>? exclusiveSet, }) => CustomEnchantment(id: id ?? this.id, description: description ?? this.description, maxLevel: maxLevel ?? this.maxLevel, anvilCost: anvilCost ?? this.anvilCost, supportedItems: supportedItems ?? this.supportedItems, weight: weight ?? this.weight, slots: slots ?? this.slots, exclusiveSet: exclusiveSet ?? this.exclusiveSet, );
 }
 @pragma("wasm:import", r"component._import46")
 external i0.WasmVoid _import46(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13);
@@ -1067,6 +1071,7 @@ final class EnchantmentValue {
   final Enchantment enchantment;
   final int level;
   const EnchantmentValue({required this.enchantment, required this.level, });
+  EnchantmentValue copyWith({Enchantment? enchantment, int? level, }) => EnchantmentValue(enchantment: enchantment ?? this.enchantment, level: level ?? this.level, );
 }
 @pragma("wasm:import", r"component._import55")
 external i0.WasmVoid _import55(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -1079,6 +1084,7 @@ final class CustomEnchantmentValue {
   final String enchantmentId;
   final int level;
   const CustomEnchantmentValue({required this.enchantmentId, required this.level, });
+  CustomEnchantmentValue copyWith({String? enchantmentId, int? level, }) => CustomEnchantmentValue(enchantmentId: enchantmentId ?? this.enchantmentId, level: level ?? this.level, );
 }
 @pragma("wasm:import", r"component._import58")
 external i0.WasmVoid _import58(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -1142,6 +1148,7 @@ final class AttributeModifier {
   final double amount;
   final ModifierOperation operation;
   const AttributeModifier({required this.id, required this.amount, required this.operation, });
+  AttributeModifier copyWith({String? id, double? amount, ModifierOperation? operation, }) => AttributeModifier(id: id ?? this.id, amount: amount ?? this.amount, operation: operation ?? this.operation, );
 }
 /// Represents an attribute modifier applied to an item stack for a specific slot.
 final class ItemAttributeModifier {
@@ -1149,6 +1156,7 @@ final class ItemAttributeModifier {
   final AttributeModifier modifier;
   final AttributeModifierSlot slot;
   const ItemAttributeModifier({required this.attribute, required this.modifier, required this.slot, });
+  ItemAttributeModifier copyWith({Attribute? attribute, AttributeModifier? modifier, AttributeModifierSlot? slot, }) => ItemAttributeModifier(attribute: attribute ?? this.attribute, modifier: modifier ?? this.modifier, slot: slot ?? this.slot, );
 }
 @pragma("wasm:import", r"component._import63")
 external i0.WasmVoid _import63(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -1173,6 +1181,7 @@ final class NbtEntry {
   final String key;
   final int value;
   const NbtEntry({required this.key, required this.value, });
+  NbtEntry copyWith({String? key, int? value, }) => NbtEntry(key: key ?? this.key, value: value ?? this.value, );
 }
 /// Represents a Minecraft NBT tag.
 sealed class NbtTag {
@@ -1231,6 +1240,7 @@ final class NbtTree {
   final int root;
   final List<NbtTag> tags;
   const NbtTree({required this.root, required this.tags, });
+  NbtTree copyWith({int? root, List<NbtTag>? tags, }) => NbtTree(root: root ?? this.root, tags: tags ?? this.tags, );
 }
 @pragma("wasm:import", r"component._import72")
 external i0.WasmVoid _import72(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
@@ -1370,6 +1380,7 @@ final class DataComponentValue {
 /// The serialized value of the component.
   final List<int> value;
   const DataComponentValue({required this.component, required this.value, });
+  DataComponentValue copyWith({DataComponent? component, List<int>? value, }) => DataComponentValue(component: component ?? this.component, value: value ?? this.value, );
 }
 @pragma("wasm:import", r"component._import76")
 external i0.WasmVoid _import76(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -2488,6 +2499,7 @@ final class BlockPos {
   final int y;
   final int z;
   const BlockPos({required this.x, required this.y, required this.z, });
+  BlockPos copyWith({int? x, int? y, int? z, }) => BlockPos(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, );
 }
 @pragma("wasm:import", r"component._import108")
 external i0.WasmVoid _import108(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -3053,6 +3065,7 @@ final class SignText {
   final DyeColor color;
   final bool hasGlowingText;
   const SignText({required this.messages, required this.color, required this.hasGlowingText, });
+  SignText copyWith({List<String>? messages, DyeColor? color, bool? hasGlowingText, }) => SignText(messages: messages ?? this.messages, color: color ?? this.color, hasGlowingText: hasGlowingText ?? this.hasGlowingText, );
 }
 @pragma("wasm:import", r"component._import133")
 external i0.WasmVoid _import133(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -4831,6 +4844,7 @@ final class ShapedRecipe {
 /// Whether to show a toast notification when the recipe is unlocked.
   final i1.Option<bool> showNotification;
   const ShapedRecipe({required this.pattern, required this.key, required this.output, required this.group, required this.category, required this.showNotification, });
+  ShapedRecipe copyWith({List<String>? pattern, List<(String, Ingredient, )>? key, ItemStack? output, i1.Option<String>? group, i1.Option<RecipeCategory>? category, i1.Option<bool>? showNotification, }) => ShapedRecipe(pattern: pattern ?? this.pattern, key: key ?? this.key, output: output ?? this.output, group: group ?? this.group, category: category ?? this.category, showNotification: showNotification ?? this.showNotification, );
 }
 @pragma("wasm:import", r"component._import292")
 external i0.WasmVoid _import292(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13, i0.WasmI32 p14);
@@ -4845,6 +4859,7 @@ final class ShapelessRecipe {
 /// The recipe category in the recipe book.
   final i1.Option<RecipeCategory> category;
   const ShapelessRecipe({required this.ingredients, required this.output, required this.group, required this.category, });
+  ShapelessRecipe copyWith({List<Ingredient>? ingredients, ItemStack? output, i1.Option<String>? group, i1.Option<RecipeCategory>? category, }) => ShapelessRecipe(ingredients: ingredients ?? this.ingredients, output: output ?? this.output, group: group ?? this.group, category: category ?? this.category, );
 }
 @pragma("wasm:import", r"component._import293")
 external i0.WasmVoid _import293(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10);
@@ -4870,6 +4885,7 @@ final class CookingRecipe {
 /// The recipe category in the recipe book.
   final i1.Option<RecipeCategory> category;
   const CookingRecipe({required this.ingredient, required this.output, required this.experience, required this.cookingTime, required this.group, required this.category, });
+  CookingRecipe copyWith({Ingredient? ingredient, ItemStack? output, double? experience, int? cookingTime, i1.Option<String>? group, i1.Option<RecipeCategory>? category, }) => CookingRecipe(ingredient: ingredient ?? this.ingredient, output: output ?? this.output, experience: experience ?? this.experience, cookingTime: cookingTime ?? this.cookingTime, group: group ?? this.group, category: category ?? this.category, );
 }
 @pragma("wasm:import", r"component._import294")
 external i0.WasmVoid _import294(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmF32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13, i0.WasmI32 p14);
@@ -5222,6 +5238,7 @@ final class TeamSettings {
   final TextComponent prefix;
   final TextComponent suffix;
   const TeamSettings({required this.displayName, required this.friendlyFire, required this.seeFriendlyInvisibles, required this.nametagVisibility, required this.collisionRule, required this.color, required this.prefix, required this.suffix, });
+  TeamSettings copyWith({TextComponent? displayName, bool? friendlyFire, bool? seeFriendlyInvisibles, NametagVisibility? nametagVisibility, CollisionRule? collisionRule, NamedColor? color, TextComponent? prefix, TextComponent? suffix, }) => TeamSettings(displayName: displayName ?? this.displayName, friendlyFire: friendlyFire ?? this.friendlyFire, seeFriendlyInvisibles: seeFriendlyInvisibles ?? this.seeFriendlyInvisibles, nametagVisibility: nametagVisibility ?? this.nametagVisibility, collisionRule: collisionRule ?? this.collisionRule, color: color ?? this.color, prefix: prefix ?? this.prefix, suffix: suffix ?? this.suffix, );
 }
 @pragma("wasm:import", r"component._import304")
 external i0.WasmVoid _import304(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10);
@@ -5689,6 +5706,7 @@ final class Uuid {
   final int high;
   final int low;
   const Uuid({required this.high, required this.low, });
+  Uuid copyWith({int? high, int? low, }) => Uuid(high: high ?? this.high, low: low ?? this.low, );
 }
 @pragma("wasm:import", r"component._import324")
 external i0.WasmVoid _import324(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -6003,6 +6021,7 @@ final class BoundingBox {
   final (double, double, double, ) min;
   final (double, double, double, ) max;
   const BoundingBox({required this.min, required this.max, });
+  BoundingBox copyWith({(double, double, double, )? min, (double, double, double, )? max, }) => BoundingBox(min: min ?? this.min, max: max ?? this.max, );
 }
 @pragma("wasm:import", r"component._import386")
 external i0.WasmVoid _import386(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -6028,6 +6047,7 @@ final class RaycastResult {
 /// The face of the block that was hit.
   final BlockDirection face;
   const RaycastResult({required this.pos, required this.face, });
+  RaycastResult copyWith({BlockPos? pos, BlockDirection? face, }) => RaycastResult(pos: pos ?? this.pos, face: face ?? this.face, );
 }
 @pragma("wasm:import", r"component._import390")
 external i0.WasmVoid _import390(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -6040,6 +6060,7 @@ final class RayTraceBlockResult {
 /// The exact hit coordinates in world space.
   final (double, double, double, ) hitPos;
   const RayTraceBlockResult({required this.pos, required this.face, required this.hitPos, });
+  RayTraceBlockResult copyWith({BlockPos? pos, BlockDirection? face, (double, double, double, )? hitPos, }) => RayTraceBlockResult(pos: pos ?? this.pos, face: face ?? this.face, hitPos: hitPos ?? this.hitPos, );
 }
 @pragma("wasm:import", r"component._import391")
 external i0.WasmVoid _import391(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -6052,6 +6073,7 @@ final class RayTraceEntityResult {
 /// The distance from the ray start to the hit position.
   final double distance;
   const RayTraceEntityResult({required this.entity, required this.hitPos, required this.distance, });
+  RayTraceEntityResult copyWith({Entity? entity, (double, double, double, )? hitPos, double? distance, }) => RayTraceEntityResult(entity: entity ?? this.entity, hitPos: hitPos ?? this.hitPos, distance: distance ?? this.distance, );
 }
 @pragma("wasm:import", r"component._import392")
 external i0.WasmVoid _import392(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmI32 p2);
@@ -7451,6 +7473,7 @@ final class SheepData {
   final WorldDyeColor color;
   final bool isSheared;
   const SheepData({required this.color, required this.isSheared, });
+  SheepData copyWith({WorldDyeColor? color, bool? isSheared, }) => SheepData(color: color ?? this.color, isSheared: isSheared ?? this.isSheared, );
 }
 /// Specialized data for wolf entities.
 final class WolfData {
@@ -7461,6 +7484,7 @@ final class WolfData {
   final bool isAngry;
   final bool isBegging;
   const WolfData({required this.isTamed, required this.owner, required this.isSitting, required this.collarColor, required this.isAngry, required this.isBegging, });
+  WolfData copyWith({bool? isTamed, i1.Option<Uuid>? owner, bool? isSitting, WorldDyeColor? collarColor, bool? isAngry, bool? isBegging, }) => WolfData(isTamed: isTamed ?? this.isTamed, owner: owner ?? this.owner, isSitting: isSitting ?? this.isSitting, collarColor: collarColor ?? this.collarColor, isAngry: isAngry ?? this.isAngry, isBegging: isBegging ?? this.isBegging, );
 }
 /// Specialized data for cat entities.
 final class CatData {
@@ -7469,6 +7493,7 @@ final class CatData {
   final bool isSitting;
   final WorldDyeColor collarColor;
   const CatData({required this.isTamed, required this.owner, required this.isSitting, required this.collarColor, });
+  CatData copyWith({bool? isTamed, i1.Option<Uuid>? owner, bool? isSitting, WorldDyeColor? collarColor, }) => CatData(isTamed: isTamed ?? this.isTamed, owner: owner ?? this.owner, isSitting: isSitting ?? this.isSitting, collarColor: collarColor ?? this.collarColor, );
 }
 /// Villager profession identifiers.
 enum VillagerProfession {
@@ -7494,6 +7519,7 @@ final class VillagerData {
   final int level;
   final int experience;
   const VillagerData({required this.profession, required this.level, required this.experience, });
+  VillagerData copyWith({VillagerProfession? profession, int? level, int? experience, }) => VillagerData(profession: profession ?? this.profession, level: level ?? this.level, experience: experience ?? this.experience, );
 }
 /// Specialized data for creeper entities.
 final class CreeperData {
@@ -7502,11 +7528,13 @@ final class CreeperData {
   final bool isIgnited;
   final int explosionRadius;
   const CreeperData({required this.isPowered, required this.fuse, required this.isIgnited, required this.explosionRadius, });
+  CreeperData copyWith({bool? isPowered, int? fuse, bool? isIgnited, int? explosionRadius, }) => CreeperData(isPowered: isPowered ?? this.isPowered, fuse: fuse ?? this.fuse, isIgnited: isIgnited ?? this.isIgnited, explosionRadius: explosionRadius ?? this.explosionRadius, );
 }
 /// Specialized data for slime and magma cube entities.
 final class SlimeData {
   final int size;
   const SlimeData({required this.size, });
+  SlimeData copyWith({int? size, }) => SlimeData(size: size ?? this.size, );
 }
 /// Specialized data for enderman entities.
 final class EndermanData {
@@ -7514,11 +7542,13 @@ final class EndermanData {
   final bool isScreaming;
   final bool isStaring;
   const EndermanData({required this.carriedBlockState, required this.isScreaming, required this.isStaring, });
+  EndermanData copyWith({i1.Option<int>? carriedBlockState, bool? isScreaming, bool? isStaring, }) => EndermanData(carriedBlockState: carriedBlockState ?? this.carriedBlockState, isScreaming: isScreaming ?? this.isScreaming, isStaring: isStaring ?? this.isStaring, );
 }
 /// Specialized data for iron golem entities.
 final class IronGolemData {
   final bool isPlayerCreated;
   const IronGolemData({required this.isPlayerCreated, });
+  IronGolemData copyWith({bool? isPlayerCreated, }) => IronGolemData(isPlayerCreated: isPlayerCreated ?? this.isPlayerCreated, );
 }
 /// Specialized data for fox entities.
 final class FoxData {
@@ -7526,6 +7556,7 @@ final class FoxData {
   final bool isSleeping;
   final bool isCrouching;
   const FoxData({required this.isSitting, required this.isSleeping, required this.isCrouching, });
+  FoxData copyWith({bool? isSitting, bool? isSleeping, bool? isCrouching, }) => FoxData(isSitting: isSitting ?? this.isSitting, isSleeping: isSleeping ?? this.isSleeping, isCrouching: isCrouching ?? this.isCrouching, );
 }
 /// Specialized data for ageable animal mobs.
 final class AgeableData {
@@ -7533,12 +7564,14 @@ final class AgeableData {
   final int age;
   final int inLoveTicks;
   const AgeableData({required this.isBaby, required this.age, required this.inLoveTicks, });
+  AgeableData copyWith({bool? isBaby, int? age, int? inLoveTicks, }) => AgeableData(isBaby: isBaby ?? this.isBaby, age: age ?? this.age, inLoveTicks: inLoveTicks ?? this.inLoveTicks, );
 }
 /// Specialized data for zombie entities.
 final class ZombieData {
   final bool isBaby;
   final bool canBreakDoors;
   const ZombieData({required this.isBaby, required this.canBreakDoors, });
+  ZombieData copyWith({bool? isBaby, bool? canBreakDoors, }) => ZombieData(isBaby: isBaby ?? this.isBaby, canBreakDoors: canBreakDoors ?? this.canBreakDoors, );
 }
 /// Specialized data for shulker entities.
 final class ShulkerData {
@@ -7546,6 +7579,7 @@ final class ShulkerData {
   final int peekAmount;
   final i1.Option<WorldDyeColor> color;
   const ShulkerData({required this.attachedFace, required this.peekAmount, required this.color, });
+  ShulkerData copyWith({BlockDirection? attachedFace, int? peekAmount, i1.Option<WorldDyeColor>? color, }) => ShulkerData(attachedFace: attachedFace ?? this.attachedFace, peekAmount: peekAmount ?? this.peekAmount, color: color ?? this.color, );
 }
 /// Tagged variant holding specialized data for specific mob types.
 sealed class MobData {
@@ -8297,6 +8331,7 @@ final class BlockState {
 /// The block state's property key-value pairs (e.g. facing=north).
   final List<(String, String, )> properties;
   const BlockState({required this.id, required this.blockId, required this.blockName, required this.luminance, required this.opacity, required this.hardness, required this.isAir, required this.isLiquid, required this.isSolid, required this.isFullCube, required this.pistonBehavior, required this.hasRandomTicks, required this.burnable, required this.toolRequired, required this.sidedTransparency, required this.replaceable, required this.isSolidBlock, required this.blockEntityType, required this.instrument, required this.collisionShapes, required this.outlineShapes, required this.downSideSolid, required this.upSideSolid, required this.northSideSolid, required this.southSideSolid, required this.westSideSolid, required this.eastSideSolid, required this.downCenterSolid, required this.upCenterSolid, required this.mapColor, required this.properties, });
+  BlockState copyWith({int? id, int? blockId, String? blockName, int? luminance, int? opacity, double? hardness, bool? isAir, bool? isLiquid, bool? isSolid, bool? isFullCube, PistonBehavior? pistonBehavior, bool? hasRandomTicks, bool? burnable, bool? toolRequired, bool? sidedTransparency, bool? replaceable, bool? isSolidBlock, int? blockEntityType, NoteblockInstrument? instrument, List<BoundingBox>? collisionShapes, List<BoundingBox>? outlineShapes, bool? downSideSolid, bool? upSideSolid, bool? northSideSolid, bool? southSideSolid, bool? westSideSolid, bool? eastSideSolid, bool? downCenterSolid, bool? upCenterSolid, int? mapColor, List<(String, String, )>? properties, }) => BlockState(id: id ?? this.id, blockId: blockId ?? this.blockId, blockName: blockName ?? this.blockName, luminance: luminance ?? this.luminance, opacity: opacity ?? this.opacity, hardness: hardness ?? this.hardness, isAir: isAir ?? this.isAir, isLiquid: isLiquid ?? this.isLiquid, isSolid: isSolid ?? this.isSolid, isFullCube: isFullCube ?? this.isFullCube, pistonBehavior: pistonBehavior ?? this.pistonBehavior, hasRandomTicks: hasRandomTicks ?? this.hasRandomTicks, burnable: burnable ?? this.burnable, toolRequired: toolRequired ?? this.toolRequired, sidedTransparency: sidedTransparency ?? this.sidedTransparency, replaceable: replaceable ?? this.replaceable, isSolidBlock: isSolidBlock ?? this.isSolidBlock, blockEntityType: blockEntityType ?? this.blockEntityType, instrument: instrument ?? this.instrument, collisionShapes: collisionShapes ?? this.collisionShapes, outlineShapes: outlineShapes ?? this.outlineShapes, downSideSolid: downSideSolid ?? this.downSideSolid, upSideSolid: upSideSolid ?? this.upSideSolid, northSideSolid: northSideSolid ?? this.northSideSolid, southSideSolid: southSideSolid ?? this.southSideSolid, westSideSolid: westSideSolid ?? this.westSideSolid, eastSideSolid: eastSideSolid ?? this.eastSideSolid, downCenterSolid: downCenterSolid ?? this.downCenterSolid, upCenterSolid: upCenterSolid ?? this.upCenterSolid, mapColor: mapColor ?? this.mapColor, properties: properties ?? this.properties, );
 }
 @pragma("wasm:import", r"component._import454")
 external i0.WasmVoid _import454(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
@@ -8307,6 +8342,7 @@ final class Flammable {
   final int spreadChance;
   final int burnChance;
   const Flammable({required this.spreadChance, required this.burnChance, });
+  Flammable copyWith({int? spreadChance, int? burnChance, }) => Flammable(spreadChance: spreadChance ?? this.spreadChance, burnChance: burnChance ?? this.burnChance, );
 }
 /// Static definition of a Minecraft block type.
 final class Block {
@@ -8341,6 +8377,7 @@ final class Block {
 /// Flammability details if flammable.
   final i1.Option<Flammable> flammable;
   const Block({required this.id, required this.name, required this.hardness, required this.blastResistance, required this.mapColor, required this.slipperiness, required this.velocityMultiplier, required this.jumpVelocityMultiplier, required this.itemId, required this.defaultStateId, required this.stateIds, required this.isSolid, required this.isAir, required this.isFlammable, required this.flammable, });
+  Block copyWith({int? id, String? name, double? hardness, double? blastResistance, int? mapColor, double? slipperiness, double? velocityMultiplier, double? jumpVelocityMultiplier, int? itemId, int? defaultStateId, List<int>? stateIds, bool? isSolid, bool? isAir, bool? isFlammable, i1.Option<Flammable>? flammable, }) => Block(id: id ?? this.id, name: name ?? this.name, hardness: hardness ?? this.hardness, blastResistance: blastResistance ?? this.blastResistance, mapColor: mapColor ?? this.mapColor, slipperiness: slipperiness ?? this.slipperiness, velocityMultiplier: velocityMultiplier ?? this.velocityMultiplier, jumpVelocityMultiplier: jumpVelocityMultiplier ?? this.jumpVelocityMultiplier, itemId: itemId ?? this.itemId, defaultStateId: defaultStateId ?? this.defaultStateId, stateIds: stateIds ?? this.stateIds, isSolid: isSolid ?? this.isSolid, isAir: isAir ?? this.isAir, isFlammable: isFlammable ?? this.isFlammable, flammable: flammable ?? this.flammable, );
 }
 @pragma("wasm:import", r"component._import456")
 external i0.WasmVoid _import456(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
@@ -9778,6 +9815,7 @@ final class WorldSpawnLocation {
 /// The pitch players should use when spawning here.
   final double pitch;
   const WorldSpawnLocation({required this.pos, required this.yaw, required this.pitch, });
+  WorldSpawnLocation copyWith({BlockPos? pos, double? yaw, double? pitch, }) => WorldSpawnLocation(pos: pos ?? this.pos, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, );
 }
 @pragma("wasm:import", r"component._import508")
 external i0.WasmVoid _import508(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -13489,6 +13527,7 @@ final class Vector3f {
   final double y;
   final double z;
   const Vector3f({required this.x, required this.y, required this.z, });
+  Vector3f copyWith({double? x, double? y, double? z, }) => Vector3f(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, );
 }
 /// Single-precision quaternion representing a 3D rotation.
 final class Quaternionf {
@@ -13497,6 +13536,7 @@ final class Quaternionf {
   final double z;
   final double w;
   const Quaternionf({required this.x, required this.y, required this.z, required this.w, });
+  Quaternionf copyWith({double? x, double? y, double? z, double? w, }) => Quaternionf(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, w: w ?? this.w, );
 }
 /// Transformation (translation, scale, left and right rotations) for display entities.
 final class DisplayTransformation {
@@ -13505,6 +13545,7 @@ final class DisplayTransformation {
   final Quaternionf leftRotation;
   final Quaternionf rightRotation;
   const DisplayTransformation({required this.translation, required this.scale, required this.leftRotation, required this.rightRotation, });
+  DisplayTransformation copyWith({Vector3f? translation, Vector3f? scale, Quaternionf? leftRotation, Quaternionf? rightRotation, }) => DisplayTransformation(translation: translation ?? this.translation, scale: scale ?? this.scale, leftRotation: leftRotation ?? this.leftRotation, rightRotation: rightRotation ?? this.rightRotation, );
 }
 @pragma("wasm:import", r"component._import560")
 external i0.WasmVoid _import560(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -14351,6 +14392,7 @@ final class ServerLink {
   final ServerLinkLabel label;
   final String url;
   const ServerLink({required this.label, required this.url, });
+  ServerLink copyWith({ServerLinkLabel? label, String? url, }) => ServerLink(label: label ?? this.label, url: url ?? this.url, );
 }
 @pragma("wasm:import", r"component._import679")
 external i0.WasmVoid _import679(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -14377,6 +14419,7 @@ final class BanPlayerOptions {
 /// Whether to log the ban action to the server console (default: true).
   final bool logToConsole;
   const BanPlayerOptions({required this.reason, required this.source, required this.expiresAtUtc, required this.durationSeconds, required this.kickIfOnline, required this.logToConsole, });
+  BanPlayerOptions copyWith({i1.Option<TextComponent>? reason, i1.Option<String>? source, i1.Option<String>? expiresAtUtc, i1.Option<int>? durationSeconds, bool? kickIfOnline, bool? logToConsole, }) => BanPlayerOptions(reason: reason ?? this.reason, source: source ?? this.source, expiresAtUtc: expiresAtUtc ?? this.expiresAtUtc, durationSeconds: durationSeconds ?? this.durationSeconds, kickIfOnline: kickIfOnline ?? this.kickIfOnline, logToConsole: logToConsole ?? this.logToConsole, );
 }
 @pragma("wasm:import", r"component._import684")
 external i0.WasmVoid _import684(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI64 p10, i0.WasmI32 p11, i0.WasmI32 p12);
@@ -14395,6 +14438,7 @@ final class BanIpOptions {
 /// Whether to log the IP ban action to the server console (default: true).
   final bool logToConsole;
   const BanIpOptions({required this.reason, required this.source, required this.expiresAtUtc, required this.durationSeconds, required this.kickMatchingPlayers, required this.logToConsole, });
+  BanIpOptions copyWith({i1.Option<TextComponent>? reason, i1.Option<String>? source, i1.Option<String>? expiresAtUtc, i1.Option<int>? durationSeconds, bool? kickMatchingPlayers, bool? logToConsole, }) => BanIpOptions(reason: reason ?? this.reason, source: source ?? this.source, expiresAtUtc: expiresAtUtc ?? this.expiresAtUtc, durationSeconds: durationSeconds ?? this.durationSeconds, kickMatchingPlayers: kickMatchingPlayers ?? this.kickMatchingPlayers, logToConsole: logToConsole ?? this.logToConsole, );
 }
 @pragma("wasm:import", r"component._import685")
 external i0.WasmVoid _import685(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI64 p10, i0.WasmI32 p11, i0.WasmI32 p12);
@@ -14449,6 +14493,7 @@ final class StatusEffectInstance {
   final bool showParticles;
   final bool showIcon;
   const StatusEffectInstance({required this.effectType, required this.duration, required this.amplifier, required this.ambient, required this.showParticles, required this.showIcon, });
+  StatusEffectInstance copyWith({StatusEffectType? effectType, int? duration, int? amplifier, bool? ambient, bool? showParticles, bool? showIcon, }) => StatusEffectInstance(effectType: effectType ?? this.effectType, duration: duration ?? this.duration, amplifier: amplifier ?? this.amplifier, ambient: ambient ?? this.ambient, showParticles: showParticles ?? this.showParticles, showIcon: showIcon ?? this.showIcon, );
 }
 @pragma("wasm:import", r"component._import687")
 external i0.WasmVoid _import687(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
@@ -14672,6 +14717,7 @@ final class PlayerAbilities {
 /// The speed at which the player walks.
   final double walkSpeed;
   const PlayerAbilities({required this.invulnerable, required this.flying, required this.allowFlying, required this.creative, required this.allowModifyWorld, required this.flySpeed, required this.walkSpeed, });
+  PlayerAbilities copyWith({bool? invulnerable, bool? flying, bool? allowFlying, bool? creative, bool? allowModifyWorld, double? flySpeed, double? walkSpeed, }) => PlayerAbilities(invulnerable: invulnerable ?? this.invulnerable, flying: flying ?? this.flying, allowFlying: allowFlying ?? this.allowFlying, creative: creative ?? this.creative, allowModifyWorld: allowModifyWorld ?? this.allowModifyWorld, flySpeed: flySpeed ?? this.flySpeed, walkSpeed: walkSpeed ?? this.walkSpeed, );
 }
 @pragma("wasm:import", r"component._import744")
 external i0.WasmVoid _import744(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -14686,6 +14732,7 @@ final class PlayerSkin {
 /// The optional signature for the texture data.
   final i1.Option<String> signature;
   const PlayerSkin({required this.value, required this.signature, });
+  PlayerSkin copyWith({String? value, i1.Option<String>? signature, }) => PlayerSkin(value: value ?? this.value, signature: signature ?? this.signature, );
 }
 @pragma("wasm:import", r"component._import747")
 external i0.WasmVoid _import747(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -14779,6 +14826,7 @@ final class AdvancementProgress {
   final List<String> awardedCriteria;
   final List<String> remainingCriteria;
   const AdvancementProgress({required this.advancementId, required this.done, required this.awardedCriteria, required this.remainingCriteria, });
+  AdvancementProgress copyWith({String? advancementId, bool? done, List<String>? awardedCriteria, List<String>? remainingCriteria, }) => AdvancementProgress(advancementId: advancementId ?? this.advancementId, done: done ?? this.done, awardedCriteria: awardedCriteria ?? this.awardedCriteria, remainingCriteria: remainingCriteria ?? this.remainingCriteria, );
 }
 @pragma("wasm:import", r"component._import776")
 external i0.WasmVoid _import776(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -16829,6 +16877,7 @@ final class JavaPlayerSettings {
 /// Whether the player wants to appear in the server list.
   final bool serverListing;
   const JavaPlayerSettings({required this.locale, required this.viewDistance, required this.chatMode, required this.chatColors, required this.skinParts, required this.mainHand, required this.textFiltering, required this.serverListing, });
+  JavaPlayerSettings copyWith({String? locale, int? viewDistance, ChatMode? chatMode, bool? chatColors, Set<SkinPartsFlag>? skinParts, Hand? mainHand, bool? textFiltering, bool? serverListing, }) => JavaPlayerSettings(locale: locale ?? this.locale, viewDistance: viewDistance ?? this.viewDistance, chatMode: chatMode ?? this.chatMode, chatColors: chatColors ?? this.chatColors, skinParts: skinParts ?? this.skinParts, mainHand: mainHand ?? this.mainHand, textFiltering: textFiltering ?? this.textFiltering, serverListing: serverListing ?? this.serverListing, );
 }
 @pragma("wasm:import", r"component._import790")
 external i0.WasmVoid _import790(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -16839,100 +16888,123 @@ final class ConfigCConfigAddResourcePack {
   final bool forced;
   final i1.Option<String> promptMessage;
   const ConfigCConfigAddResourcePack({required this.uuid, required this.url, required this.hash, required this.forced, required this.promptMessage, });
+  ConfigCConfigAddResourcePack copyWith({Uuid? uuid, String? url, String? hash, bool? forced, i1.Option<String>? promptMessage, }) => ConfigCConfigAddResourcePack(uuid: uuid ?? this.uuid, url: url ?? this.url, hash: hash ?? this.hash, forced: forced ?? this.forced, promptMessage: promptMessage ?? this.promptMessage, );
 }
 final class ConfigCCodeOfConduct {
   final String codeOfConduct;
   const ConfigCCodeOfConduct({required this.codeOfConduct, });
+  ConfigCCodeOfConduct copyWith({String? codeOfConduct, }) => ConfigCCodeOfConduct(codeOfConduct: codeOfConduct ?? this.codeOfConduct, );
 }
 final class ConfigCConfigDisconnect {
   final String reason;
   const ConfigCConfigDisconnect({required this.reason, });
+  ConfigCConfigDisconnect copyWith({String? reason, }) => ConfigCConfigDisconnect(reason: reason ?? this.reason, );
 }
 final class ConfigCCookieRequest {
   final String key;
   const ConfigCCookieRequest({required this.key, });
+  ConfigCCookieRequest copyWith({String? key, }) => ConfigCCookieRequest(key: key ?? this.key, );
 }
 final class ConfigCConfigCustomReportDetails {
   final List<(String, String, )> details;
   const ConfigCConfigCustomReportDetails({required this.details, });
+  ConfigCConfigCustomReportDetails copyWith({List<(String, String, )>? details, }) => ConfigCConfigCustomReportDetails(details: details ?? this.details, );
 }
 final class ConfigCFeatureFlags {
   final List<String> features;
   const ConfigCFeatureFlags({required this.features, });
+  ConfigCFeatureFlags copyWith({List<String>? features, }) => ConfigCFeatureFlags(features: features ?? this.features, );
 }
 final class ConfigCKnownPacks {
   final List<String> knownPacks;
   const ConfigCKnownPacks({required this.knownPacks, });
+  ConfigCKnownPacks copyWith({List<String>? knownPacks, }) => ConfigCKnownPacks(knownPacks: knownPacks ?? this.knownPacks, );
 }
 final class ConfigCConfigPing {
   final int id;
   const ConfigCConfigPing({required this.id, });
+  ConfigCConfigPing copyWith({int? id, }) => ConfigCConfigPing(id: id ?? this.id, );
 }
 final class ConfigCPluginMessage {
   final String channel;
   final List<int> data;
   const ConfigCPluginMessage({required this.channel, required this.data, });
+  ConfigCPluginMessage copyWith({String? channel, List<int>? data, }) => ConfigCPluginMessage(channel: channel ?? this.channel, data: data ?? this.data, );
 }
 final class ConfigCConfigPostEffects {
   final List<String> effects;
   const ConfigCConfigPostEffects({required this.effects, });
+  ConfigCConfigPostEffects copyWith({List<String>? effects, }) => ConfigCConfigPostEffects(effects: effects ?? this.effects, );
 }
 final class ConfigCRegistryData {
   final String registryId;
   final List<String> entries;
   const ConfigCRegistryData({required this.registryId, required this.entries, });
+  ConfigCRegistryData copyWith({String? registryId, List<String>? entries, }) => ConfigCRegistryData(registryId: registryId ?? this.registryId, entries: entries ?? this.entries, );
 }
 final class ConfigCConfigRemoveResourcePack {
   final i1.Option<Uuid> uuid;
   const ConfigCConfigRemoveResourcePack({required this.uuid, });
+  ConfigCConfigRemoveResourcePack copyWith({i1.Option<Uuid>? uuid, }) => ConfigCConfigRemoveResourcePack(uuid: uuid ?? this.uuid, );
 }
 final class ConfigCConfigServerLinks {
   final List<String> links;
   const ConfigCConfigServerLinks({required this.links, });
+  ConfigCConfigServerLinks copyWith({List<String>? links, }) => ConfigCConfigServerLinks(links: links ?? this.links, );
 }
 final class ConfigCConfigShowDialog {
   final String dialog;
   const ConfigCConfigShowDialog({required this.dialog, });
+  ConfigCConfigShowDialog copyWith({String? dialog, }) => ConfigCConfigShowDialog(dialog: dialog ?? this.dialog, );
 }
 final class ConfigCStoreCookie {
   final String key;
   final List<int> payload;
   const ConfigCStoreCookie({required this.key, required this.payload, });
+  ConfigCStoreCookie copyWith({String? key, List<int>? payload, }) => ConfigCStoreCookie(key: key ?? this.key, payload: payload ?? this.payload, );
 }
 final class ConfigCTransfer {
   final String host;
   final int port;
   const ConfigCTransfer({required this.host, required this.port, });
+  ConfigCTransfer copyWith({String? host, int? port, }) => ConfigCTransfer(host: host ?? this.host, port: port ?? this.port, );
 }
 final class ConfigCUpdateTags {
   final List<String> tags;
   const ConfigCUpdateTags({required this.tags, });
+  ConfigCUpdateTags copyWith({List<String>? tags, }) => ConfigCUpdateTags(tags: tags ?? this.tags, );
 }
 final class LoginCLoginCookieRequest {
   final String key;
   const LoginCLoginCookieRequest({required this.key, });
+  LoginCLoginCookieRequest copyWith({String? key, }) => LoginCLoginCookieRequest(key: key ?? this.key, );
 }
 final class LoginCLoginDisconnect {
   final String jsonReason;
   const LoginCLoginDisconnect({required this.jsonReason, });
+  LoginCLoginDisconnect copyWith({String? jsonReason, }) => LoginCLoginDisconnect(jsonReason: jsonReason ?? this.jsonReason, );
 }
 final class LoginCLoginPluginRequest {
   final int messageId;
   final String channel;
   final List<int> data;
   const LoginCLoginPluginRequest({required this.messageId, required this.channel, required this.data, });
+  LoginCLoginPluginRequest copyWith({int? messageId, String? channel, List<int>? data, }) => LoginCLoginPluginRequest(messageId: messageId ?? this.messageId, channel: channel ?? this.channel, data: data ?? this.data, );
 }
 final class LoginCSetCompression {
   final int threshold;
   const LoginCSetCompression({required this.threshold, });
+  LoginCSetCompression copyWith({int? threshold, }) => LoginCSetCompression(threshold: threshold ?? this.threshold, );
 }
 final class CAcknowledgeBlockChange {
   final int sequenceId;
   const CAcknowledgeBlockChange({required this.sequenceId, });
+  CAcknowledgeBlockChange copyWith({int? sequenceId, }) => CAcknowledgeBlockChange(sequenceId: sequenceId ?? this.sequenceId, );
 }
 final class CActionBar {
   final String actionBar;
   const CActionBar({required this.actionBar, });
+  CActionBar copyWith({String? actionBar, }) => CActionBar(actionBar: actionBar ?? this.actionBar, );
 }
 final class CAddResourcePack {
   final Uuid uuid;
@@ -16941,28 +17013,33 @@ final class CAddResourcePack {
   final bool forced;
   final i1.Option<String> promptMessage;
   const CAddResourcePack({required this.uuid, required this.url, required this.hash, required this.forced, required this.promptMessage, });
+  CAddResourcePack copyWith({Uuid? uuid, String? url, String? hash, bool? forced, i1.Option<String>? promptMessage, }) => CAddResourcePack(uuid: uuid ?? this.uuid, url: url ?? this.url, hash: hash ?? this.hash, forced: forced ?? this.forced, promptMessage: promptMessage ?? this.promptMessage, );
 }
 final class Statistic {
   final int categoryId;
   final int statisticId;
   final int value;
   const Statistic({required this.categoryId, required this.statisticId, required this.value, });
+  Statistic copyWith({int? categoryId, int? statisticId, int? value, }) => Statistic(categoryId: categoryId ?? this.categoryId, statisticId: statisticId ?? this.statisticId, value: value ?? this.value, );
 }
 final class CAwardStats {
   final List<Statistic> stats;
   const CAwardStats({required this.stats, });
+  CAwardStats copyWith({List<Statistic>? stats, }) => CAwardStats(stats: stats ?? this.stats, );
 }
 final class CSetBlockDestroyStage {
   final int entityId;
   final (int, int, int, ) location;
   final int destroyStage;
   const CSetBlockDestroyStage({required this.entityId, required this.location, required this.destroyStage, });
+  CSetBlockDestroyStage copyWith({int? entityId, (int, int, int, )? location, int? destroyStage, }) => CSetBlockDestroyStage(entityId: entityId ?? this.entityId, location: location ?? this.location, destroyStage: destroyStage ?? this.destroyStage, );
 }
 final class CBlockEntityData {
   final (int, int, int, ) location;
   final int rType;
   final List<int> nbtData;
   const CBlockEntityData({required this.location, required this.rType, required this.nbtData, });
+  CBlockEntityData copyWith({(int, int, int, )? location, int? rType, List<int>? nbtData, }) => CBlockEntityData(location: location ?? this.location, rType: rType ?? this.rType, nbtData: nbtData ?? this.nbtData, );
 }
 final class JavaPacketsCBlockEvent {
   final (int, int, int, ) location;
@@ -16970,11 +17047,13 @@ final class JavaPacketsCBlockEvent {
   final int actionParameter;
   final int blockType;
   const JavaPacketsCBlockEvent({required this.location, required this.actionId, required this.actionParameter, required this.blockType, });
+  JavaPacketsCBlockEvent copyWith({(int, int, int, )? location, int? actionId, int? actionParameter, int? blockType, }) => JavaPacketsCBlockEvent(location: location ?? this.location, actionId: actionId ?? this.actionId, actionParameter: actionParameter ?? this.actionParameter, blockType: blockType ?? this.blockType, );
 }
 final class CBlockUpdate {
   final (int, int, int, ) location;
   final int stateId;
   const CBlockUpdate({required this.location, required this.stateId, });
+  CBlockUpdate copyWith({(int, int, int, )? location, int? stateId, }) => CBlockUpdate(location: location ?? this.location, stateId: stateId ?? this.stateId, );
 }
 final class BosseventActionAdd {
   final String title;
@@ -16983,11 +17062,13 @@ final class BosseventActionAdd {
   final int division;
   final int flags;
   const BosseventActionAdd({required this.title, required this.health, required this.color, required this.division, required this.flags, });
+  BosseventActionAdd copyWith({String? title, double? health, int? color, int? division, int? flags, }) => BosseventActionAdd(title: title ?? this.title, health: health ?? this.health, color: color ?? this.color, division: division ?? this.division, flags: flags ?? this.flags, );
 }
 final class BosseventActionUpdateStyle {
   final int color;
   final int dividers;
   const BosseventActionUpdateStyle({required this.color, required this.dividers, });
+  BosseventActionUpdateStyle copyWith({int? color, int? dividers, }) => BosseventActionUpdateStyle(color: color ?? this.color, dividers: dividers ?? this.dividers, );
 }
 sealed class BosseventAction {
   const BosseventAction();
@@ -17019,52 +17100,63 @@ final class JavaPacketsCBossEvent {
   final Uuid uuid;
   final BosseventAction action;
   const JavaPacketsCBossEvent({required this.uuid, required this.action, });
+  JavaPacketsCBossEvent copyWith({Uuid? uuid, BosseventAction? action, }) => JavaPacketsCBossEvent(uuid: uuid ?? this.uuid, action: action ?? this.action, );
 }
 final class CCenterChunk {
   final int chunkX;
   final int chunkZ;
   const CCenterChunk({required this.chunkX, required this.chunkZ, });
+  CCenterChunk copyWith({int? chunkX, int? chunkZ, }) => CCenterChunk(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, );
 }
 final class CChangeDifficulty {
   final int difficulty;
   final bool locked;
   const CChangeDifficulty({required this.difficulty, required this.locked, });
+  CChangeDifficulty copyWith({int? difficulty, bool? locked, }) => CChangeDifficulty(difficulty: difficulty ?? this.difficulty, locked: locked ?? this.locked, );
 }
 final class CChunkBatchEnd {
   final int batchSize;
   const CChunkBatchEnd({required this.batchSize, });
+  CChunkBatchEnd copyWith({int? batchSize, }) => CChunkBatchEnd(batchSize: batchSize ?? this.batchSize, );
 }
 final class ChunkBiomeEntry {
   final int chunkX;
   final int chunkZ;
   final List<int> data;
   const ChunkBiomeEntry({required this.chunkX, required this.chunkZ, required this.data, });
+  ChunkBiomeEntry copyWith({int? chunkX, int? chunkZ, List<int>? data, }) => ChunkBiomeEntry(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, data: data ?? this.data, );
 }
 final class CChunksBiomes {
   final List<ChunkBiomeEntry> chunks;
   const CChunksBiomes({required this.chunks, });
+  CChunksBiomes copyWith({List<ChunkBiomeEntry>? chunks, }) => CChunksBiomes(chunks: chunks ?? this.chunks, );
 }
 final class CClearTitle {
   final bool reset;
   const CClearTitle({required this.reset, });
+  CClearTitle copyWith({bool? reset, }) => CClearTitle(reset: reset ?? this.reset, );
 }
 final class CCloseContainer {
   final int syncId;
   const CCloseContainer({required this.syncId, });
+  CCloseContainer copyWith({int? syncId, }) => CCloseContainer(syncId: syncId ?? this.syncId, );
 }
 final class CCombatDeath {
   final int playerId;
   final String message;
   const CCombatDeath({required this.playerId, required this.message, });
+  CCombatDeath copyWith({int? playerId, String? message, }) => CCombatDeath(playerId: playerId ?? this.playerId, message: message ?? this.message, );
 }
 final class CCombatEnd {
   final int durationTicks;
   const CCombatEnd({required this.durationTicks, });
+  CCombatEnd copyWith({int? durationTicks, }) => CCombatEnd(durationTicks: durationTicks ?? this.durationTicks, );
 }
 final class CommandSuggestion {
   final String suggestion;
   final i1.Option<String> tooltip;
   const CommandSuggestion({required this.suggestion, required this.tooltip, });
+  CommandSuggestion copyWith({String? suggestion, i1.Option<String>? tooltip, }) => CommandSuggestion(suggestion: suggestion ?? this.suggestion, tooltip: tooltip ?? this.tooltip, );
 }
 final class CCommandSuggestions {
   final int id;
@@ -17072,6 +17164,7 @@ final class CCommandSuggestions {
   final int length;
   final List<CommandSuggestion> matches;
   const CCommandSuggestions({required this.id, required this.start, required this.length, required this.matches, });
+  CCommandSuggestions copyWith({int? id, int? start, int? length, List<CommandSuggestion>? matches, }) => CCommandSuggestions(id: id ?? this.id, start: start ?? this.start, length: length ?? this.length, matches: matches ?? this.matches, );
 }
 final class ProtoNodeTypeLiteral {
   final String name;
@@ -17079,26 +17172,31 @@ final class ProtoNodeTypeLiteral {
   final i1.Option<int> redirectTarget;
   final bool restricted;
   const ProtoNodeTypeLiteral({required this.name, required this.isExecutable, required this.redirectTarget, required this.restricted, });
+  ProtoNodeTypeLiteral copyWith({String? name, bool? isExecutable, i1.Option<int>? redirectTarget, bool? restricted, }) => ProtoNodeTypeLiteral(name: name ?? this.name, isExecutable: isExecutable ?? this.isExecutable, redirectTarget: redirectTarget ?? this.redirectTarget, restricted: restricted ?? this.restricted, );
 }
 final class ArgumentTypeFloat {
   final i1.Option<double> min;
   final i1.Option<double> max;
   const ArgumentTypeFloat({required this.min, required this.max, });
+  ArgumentTypeFloat copyWith({i1.Option<double>? min, i1.Option<double>? max, }) => ArgumentTypeFloat(min: min ?? this.min, max: max ?? this.max, );
 }
 final class ArgumentTypeDouble {
   final i1.Option<double> min;
   final i1.Option<double> max;
   const ArgumentTypeDouble({required this.min, required this.max, });
+  ArgumentTypeDouble copyWith({i1.Option<double>? min, i1.Option<double>? max, }) => ArgumentTypeDouble(min: min ?? this.min, max: max ?? this.max, );
 }
 final class ArgumentTypeInteger {
   final i1.Option<int> min;
   final i1.Option<int> max;
   const ArgumentTypeInteger({required this.min, required this.max, });
+  ArgumentTypeInteger copyWith({i1.Option<int>? min, i1.Option<int>? max, }) => ArgumentTypeInteger(min: min ?? this.min, max: max ?? this.max, );
 }
 final class ArgumentTypeLong {
   final i1.Option<int> min;
   final i1.Option<int> max;
   const ArgumentTypeLong({required this.min, required this.max, });
+  ArgumentTypeLong copyWith({i1.Option<int>? min, i1.Option<int>? max, }) => ArgumentTypeLong(min: min ?? this.min, max: max ?? this.max, );
 }
 enum StringProtoArgBehavior {
   singleWord,
@@ -17108,30 +17206,37 @@ enum StringProtoArgBehavior {
 final class ArgumentTypeEntity {
   final int flags;
   const ArgumentTypeEntity({required this.flags, });
+  ArgumentTypeEntity copyWith({int? flags, }) => ArgumentTypeEntity(flags: flags ?? this.flags, );
 }
 final class ArgumentTypeScoreHolder {
   final int flags;
   const ArgumentTypeScoreHolder({required this.flags, });
+  ArgumentTypeScoreHolder copyWith({int? flags, }) => ArgumentTypeScoreHolder(flags: flags ?? this.flags, );
 }
 final class ArgumentTypeTime {
   final int min;
   const ArgumentTypeTime({required this.min, });
+  ArgumentTypeTime copyWith({int? min, }) => ArgumentTypeTime(min: min ?? this.min, );
 }
 final class ArgumentTypeResourceOrTag {
   final String identifier;
   const ArgumentTypeResourceOrTag({required this.identifier, });
+  ArgumentTypeResourceOrTag copyWith({String? identifier, }) => ArgumentTypeResourceOrTag(identifier: identifier ?? this.identifier, );
 }
 final class ArgumentTypeResourceOrTagKey {
   final String identifier;
   const ArgumentTypeResourceOrTagKey({required this.identifier, });
+  ArgumentTypeResourceOrTagKey copyWith({String? identifier, }) => ArgumentTypeResourceOrTagKey(identifier: identifier ?? this.identifier, );
 }
 final class ArgumentTypeResource {
   final String identifier;
   const ArgumentTypeResource({required this.identifier, });
+  ArgumentTypeResource copyWith({String? identifier, }) => ArgumentTypeResource(identifier: identifier ?? this.identifier, );
 }
 final class ArgumentTypeResourceKey {
   final String identifier;
   const ArgumentTypeResourceKey({required this.identifier, });
+  ArgumentTypeResourceKey copyWith({String? identifier, }) => ArgumentTypeResourceKey(identifier: identifier ?? this.identifier, );
 }
 sealed class ArgumentType {
   const ArgumentType();
@@ -17333,6 +17438,7 @@ final class ProtoNodeTypeArgument {
   final i1.Option<SuggestionProviders> overrideSuggestionType;
   final bool restricted;
   const ProtoNodeTypeArgument({required this.name, required this.isExecutable, required this.redirectTarget, required this.parser, required this.overrideSuggestionType, required this.restricted, });
+  ProtoNodeTypeArgument copyWith({String? name, bool? isExecutable, i1.Option<int>? redirectTarget, ArgumentType? parser, i1.Option<SuggestionProviders>? overrideSuggestionType, bool? restricted, }) => ProtoNodeTypeArgument(name: name ?? this.name, isExecutable: isExecutable ?? this.isExecutable, redirectTarget: redirectTarget ?? this.redirectTarget, parser: parser ?? this.parser, overrideSuggestionType: overrideSuggestionType ?? this.overrideSuggestionType, restricted: restricted ?? this.restricted, );
 }
 sealed class ProtoNodeType {
   const ProtoNodeType();
@@ -17352,29 +17458,35 @@ final class ProtoNode {
   final List<int> children;
   final ProtoNodeType nodeType;
   const ProtoNode({required this.children, required this.nodeType, });
+  ProtoNode copyWith({List<int>? children, ProtoNodeType? nodeType, }) => ProtoNode(children: children ?? this.children, nodeType: nodeType ?? this.nodeType, );
 }
 final class CCommands {
   final List<ProtoNode> nodes;
   final int rootNodeIndex;
   const CCommands({required this.nodes, required this.rootNodeIndex, });
+  CCommands copyWith({List<ProtoNode>? nodes, int? rootNodeIndex, }) => CCommands(nodes: nodes ?? this.nodes, rootNodeIndex: rootNodeIndex ?? this.rootNodeIndex, );
 }
 final class CPlayCookieRequest {
   final String key;
   const CPlayCookieRequest({required this.key, });
+  CPlayCookieRequest copyWith({String? key, }) => CPlayCookieRequest(key: key ?? this.key, );
 }
 final class CCustomChatCompletions {
   final int action;
   final List<String> entries;
   const CCustomChatCompletions({required this.action, required this.entries, });
+  CCustomChatCompletions copyWith({int? action, List<String>? entries, }) => CCustomChatCompletions(action: action ?? this.action, entries: entries ?? this.entries, );
 }
 final class CCustomPayload {
   final String channel;
   final List<int> data;
   const CCustomPayload({required this.channel, required this.data, });
+  CCustomPayload copyWith({String? channel, List<int>? data, }) => CCustomPayload(channel: channel ?? this.channel, data: data ?? this.data, );
 }
 final class CPlayCustomReportDetails {
   final List<(String, String, )> details;
   const CPlayCustomReportDetails({required this.details, });
+  CPlayCustomReportDetails copyWith({List<(String, String, )>? details, }) => CPlayCustomReportDetails(details: details ?? this.details, );
 }
 final class CDamageEvent {
   final int entityId;
@@ -17383,43 +17495,51 @@ final class CDamageEvent {
   final int sourceDirectId;
   final i1.Option<(double, double, double, )> sourcePosition;
   const CDamageEvent({required this.entityId, required this.sourceTypeId, required this.sourceCauseId, required this.sourceDirectId, required this.sourcePosition, });
+  CDamageEvent copyWith({int? entityId, int? sourceTypeId, int? sourceCauseId, int? sourceDirectId, i1.Option<(double, double, double, )>? sourcePosition, }) => CDamageEvent(entityId: entityId ?? this.entityId, sourceTypeId: sourceTypeId ?? this.sourceTypeId, sourceCauseId: sourceCauseId ?? this.sourceCauseId, sourceDirectId: sourceDirectId ?? this.sourceDirectId, sourcePosition: sourcePosition ?? this.sourcePosition, );
 }
 final class CDebugBlockValue {
   final (int, int, int, ) pos;
   final String name;
   final String value;
   const CDebugBlockValue({required this.pos, required this.name, required this.value, });
+  CDebugBlockValue copyWith({(int, int, int, )? pos, String? name, String? value, }) => CDebugBlockValue(pos: pos ?? this.pos, name: name ?? this.name, value: value ?? this.value, );
 }
 final class CDebugChunkValue {
   final (double, double, ) chunkPos;
   final String name;
   final String value;
   const CDebugChunkValue({required this.chunkPos, required this.name, required this.value, });
+  CDebugChunkValue copyWith({(double, double, )? chunkPos, String? name, String? value, }) => CDebugChunkValue(chunkPos: chunkPos ?? this.chunkPos, name: name ?? this.name, value: value ?? this.value, );
 }
 final class CDebugEntityValue {
   final int entityId;
   final String name;
   final String value;
   const CDebugEntityValue({required this.entityId, required this.name, required this.value, });
+  CDebugEntityValue copyWith({int? entityId, String? name, String? value, }) => CDebugEntityValue(entityId: entityId ?? this.entityId, name: name ?? this.name, value: value ?? this.value, );
 }
 final class CDebugEvent {
   final String name;
   final List<int> data;
   const CDebugEvent({required this.name, required this.data, });
+  CDebugEvent copyWith({String? name, List<int>? data, }) => CDebugEvent(name: name ?? this.name, data: data ?? this.data, );
 }
 final class CDebugSample {
   final List<int> sample;
   final int sampleType;
   const CDebugSample({required this.sample, required this.sampleType, });
+  CDebugSample copyWith({List<int>? sample, int? sampleType, }) => CDebugSample(sample: sample ?? this.sample, sampleType: sampleType ?? this.sampleType, );
 }
 final class CDeleteChat {
   final int signatureId;
   final i1.Option<List<int>> signature;
   const CDeleteChat({required this.signatureId, required this.signature, });
+  CDeleteChat copyWith({int? signatureId, i1.Option<List<int>>? signature, }) => CDeleteChat(signatureId: signatureId ?? this.signatureId, signature: signature ?? this.signature, );
 }
 final class CPlayDisconnect {
   final String reason;
   const CPlayDisconnect({required this.reason, });
+  CPlayDisconnect copyWith({String? reason, }) => CPlayDisconnect(reason: reason ?? this.reason, );
 }
 final class CDisguisedChatMessage {
   final String message;
@@ -17427,21 +17547,25 @@ final class CDisguisedChatMessage {
   final String senderName;
   final i1.Option<String> targetName;
   const CDisguisedChatMessage({required this.message, required this.chatType, required this.senderName, required this.targetName, });
+  CDisguisedChatMessage copyWith({String? message, int? chatType, String? senderName, i1.Option<String>? targetName, }) => CDisguisedChatMessage(message: message ?? this.message, chatType: chatType ?? this.chatType, senderName: senderName ?? this.senderName, targetName: targetName ?? this.targetName, );
 }
 final class CDisplayObjective {
   final int position;
   final String scoreName;
   const CDisplayObjective({required this.position, required this.scoreName, });
+  CDisplayObjective copyWith({int? position, String? scoreName, }) => CDisplayObjective(position: position ?? this.position, scoreName: scoreName ?? this.scoreName, );
 }
 final class CEntityAnimation {
   final int entityId;
   final int animation;
   const CEntityAnimation({required this.entityId, required this.animation, });
+  CEntityAnimation copyWith({int? entityId, int? animation, }) => CEntityAnimation(entityId: entityId ?? this.entityId, animation: animation ?? this.animation, );
 }
 final class CSetEntityMetadata {
   final int entityId;
   final List<int> metadata;
   const CSetEntityMetadata({required this.entityId, required this.metadata, });
+  CSetEntityMetadata copyWith({int? entityId, List<int>? metadata, }) => CSetEntityMetadata(entityId: entityId ?? this.entityId, metadata: metadata ?? this.metadata, );
 }
 final class CEntitySoundEffect {
   final String soundEvent;
@@ -17451,16 +17575,19 @@ final class CEntitySoundEffect {
   final double pitch;
   final int seed;
   const CEntitySoundEffect({required this.soundEvent, required this.soundCategory, required this.entityId, required this.volume, required this.pitch, required this.seed, });
+  CEntitySoundEffect copyWith({String? soundEvent, int? soundCategory, int? entityId, double? volume, double? pitch, int? seed, }) => CEntitySoundEffect(soundEvent: soundEvent ?? this.soundEvent, soundCategory: soundCategory ?? this.soundCategory, entityId: entityId ?? this.entityId, volume: volume ?? this.volume, pitch: pitch ?? this.pitch, seed: seed ?? this.seed, );
 }
 final class CEntityStatus {
   final int entityId;
   final int entityStatus;
   const CEntityStatus({required this.entityId, required this.entityStatus, });
+  CEntityStatus copyWith({int? entityId, int? entityStatus, }) => CEntityStatus(entityId: entityId ?? this.entityId, entityStatus: entityStatus ?? this.entityStatus, );
 }
 final class CEntityVelocity {
   final int entityId;
   final String velocity;
   const CEntityVelocity({required this.entityId, required this.velocity, });
+  CEntityVelocity copyWith({int? entityId, String? velocity, }) => CEntityVelocity(entityId: entityId ?? this.entityId, velocity: velocity ?? this.velocity, );
 }
 final class CExplosion {
   final (double, double, double, ) center;
@@ -17471,15 +17598,18 @@ final class CExplosion {
   final String sound;
   final int blockParticlesPoolSize;
   const CExplosion({required this.center, required this.radius, required this.blockCount, required this.knockback, required this.particle, required this.sound, required this.blockParticlesPoolSize, });
+  CExplosion copyWith({(double, double, double, )? center, double? radius, int? blockCount, i1.Option<(double, double, double, )>? knockback, int? particle, String? sound, int? blockParticlesPoolSize, }) => CExplosion(center: center ?? this.center, radius: radius ?? this.radius, blockCount: blockCount ?? this.blockCount, knockback: knockback ?? this.knockback, particle: particle ?? this.particle, sound: sound ?? this.sound, blockParticlesPoolSize: blockParticlesPoolSize ?? this.blockParticlesPoolSize, );
 }
 final class CGameEvent {
   final int event;
   final double value;
   const CGameEvent({required this.event, required this.value, });
+  CGameEvent copyWith({int? event, double? value, }) => CGameEvent(event: event ?? this.event, value: value ?? this.value, );
 }
 final class CGameRuleValues {
   final List<(String, String, )> rules;
   const CGameRuleValues({required this.rules, });
+  CGameRuleValues copyWith({List<(String, String, )>? rules, }) => CGameRuleValues(rules: rules ?? this.rules, );
 }
 final class CGameTestHighlightPos {
   final (int, int, int, ) pos;
@@ -17487,16 +17617,19 @@ final class CGameTestHighlightPos {
   final String label;
   final int durationMs;
   const CGameTestHighlightPos({required this.pos, required this.color, required this.label, required this.durationMs, });
+  CGameTestHighlightPos copyWith({(int, int, int, )? pos, int? color, String? label, int? durationMs, }) => CGameTestHighlightPos(pos: pos ?? this.pos, color: color ?? this.color, label: label ?? this.label, durationMs: durationMs ?? this.durationMs, );
 }
 final class CHeadRot {
   final int entityId;
   final int headYaw;
   const CHeadRot({required this.entityId, required this.headYaw, });
+  CHeadRot copyWith({int? entityId, int? headYaw, }) => CHeadRot(entityId: entityId ?? this.entityId, headYaw: headYaw ?? this.headYaw, );
 }
 final class CHurtAnimation {
   final int entityId;
   final double yaw;
   const CHurtAnimation({required this.entityId, required this.yaw, });
+  CHurtAnimation copyWith({int? entityId, double? yaw, }) => CHurtAnimation(entityId: entityId ?? this.entityId, yaw: yaw ?? this.yaw, );
 }
 final class CInitializeWorldBorder {
   final double x;
@@ -17508,15 +17641,18 @@ final class CInitializeWorldBorder {
   final int warningBlocks;
   final int warningTime;
   const CInitializeWorldBorder({required this.x, required this.z, required this.oldDiameter, required this.newDiameter, required this.speed, required this.portalTeleportBoundary, required this.warningBlocks, required this.warningTime, });
+  CInitializeWorldBorder copyWith({double? x, double? z, double? oldDiameter, double? newDiameter, int? speed, int? portalTeleportBoundary, int? warningBlocks, int? warningTime, }) => CInitializeWorldBorder(x: x ?? this.x, z: z ?? this.z, oldDiameter: oldDiameter ?? this.oldDiameter, newDiameter: newDiameter ?? this.newDiameter, speed: speed ?? this.speed, portalTeleportBoundary: portalTeleportBoundary ?? this.portalTeleportBoundary, warningBlocks: warningBlocks ?? this.warningBlocks, warningTime: warningTime ?? this.warningTime, );
 }
 final class CItemCooldown {
   final String group;
   final int cooldown;
   const CItemCooldown({required this.group, required this.cooldown, });
+  CItemCooldown copyWith({String? group, int? cooldown, }) => CItemCooldown(group: group ?? this.group, cooldown: cooldown ?? this.cooldown, );
 }
 final class CKeepAlive {
   final int keepAliveId;
   const CKeepAlive({required this.keepAliveId, });
+  CKeepAlive copyWith({int? keepAliveId, }) => CKeepAlive(keepAliveId: keepAliveId ?? this.keepAliveId, );
 }
 final class JavaPacketsCLevelEvent {
   final int event;
@@ -17524,6 +17660,7 @@ final class JavaPacketsCLevelEvent {
   final int data;
   final bool disableRelativeVolume;
   const JavaPacketsCLevelEvent({required this.event, required this.location, required this.data, required this.disableRelativeVolume, });
+  JavaPacketsCLevelEvent copyWith({int? event, (int, int, int, )? location, int? data, bool? disableRelativeVolume, }) => JavaPacketsCLevelEvent(event: event ?? this.event, location: location ?? this.location, data: data ?? this.data, disableRelativeVolume: disableRelativeVolume ?? this.disableRelativeVolume, );
 }
 final class LightData {
   final bool trustEdges;
@@ -17534,12 +17671,14 @@ final class LightData {
   final List<List<int>> skyLightArrays;
   final List<List<int>> blockLightArrays;
   const LightData({required this.trustEdges, required this.skyLightMask, required this.blockLightMask, required this.emptySkyLightMask, required this.emptyBlockLightMask, required this.skyLightArrays, required this.blockLightArrays, });
+  LightData copyWith({bool? trustEdges, List<int>? skyLightMask, List<int>? blockLightMask, List<int>? emptySkyLightMask, List<int>? emptyBlockLightMask, List<List<int>>? skyLightArrays, List<List<int>>? blockLightArrays, }) => LightData(trustEdges: trustEdges ?? this.trustEdges, skyLightMask: skyLightMask ?? this.skyLightMask, blockLightMask: blockLightMask ?? this.blockLightMask, emptySkyLightMask: emptySkyLightMask ?? this.emptySkyLightMask, emptyBlockLightMask: emptyBlockLightMask ?? this.emptyBlockLightMask, skyLightArrays: skyLightArrays ?? this.skyLightArrays, blockLightArrays: blockLightArrays ?? this.blockLightArrays, );
 }
 final class CLightUpdate {
   final int chunkX;
   final int chunkZ;
   final LightData lightData;
   const CLightUpdate({required this.chunkX, required this.chunkZ, required this.lightData, });
+  CLightUpdate copyWith({int? chunkX, int? chunkZ, LightData? lightData, }) => CLightUpdate(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, lightData: lightData ?? this.lightData, );
 }
 final class PlayerSpawnData {
   final String dimension;
@@ -17552,6 +17691,7 @@ final class PlayerSpawnData {
   final int portalCooldown;
   final int sealevel;
   const PlayerSpawnData({required this.dimension, required this.hashedSeed, required this.gameMode, required this.previousGamemode, required this.debug, required this.isFlat, required this.deathDimensionName, required this.portalCooldown, required this.sealevel, });
+  PlayerSpawnData copyWith({String? dimension, int? hashedSeed, int? gameMode, int? previousGamemode, bool? debug, bool? isFlat, i1.Option<(String, (int, int, int, ), )>? deathDimensionName, int? portalCooldown, int? sealevel, }) => PlayerSpawnData(dimension: dimension ?? this.dimension, hashedSeed: hashedSeed ?? this.hashedSeed, gameMode: gameMode ?? this.gameMode, previousGamemode: previousGamemode ?? this.previousGamemode, debug: debug ?? this.debug, isFlat: isFlat ?? this.isFlat, deathDimensionName: deathDimensionName ?? this.deathDimensionName, portalCooldown: portalCooldown ?? this.portalCooldown, sealevel: sealevel ?? this.sealevel, );
 }
 final class CLogin {
   final int entityId;
@@ -17567,6 +17707,7 @@ final class CLogin {
   final bool onlineMode;
   final bool enforceSecureChat;
   const CLogin({required this.entityId, required this.isHardcore, required this.dimensionNames, required this.maxPlayers, required this.viewDistance, required this.simulatedDistance, required this.reducedDebugInfo, required this.enabledRespawnScreen, required this.limitedCrafting, required this.spawnData, required this.onlineMode, required this.enforceSecureChat, });
+  CLogin copyWith({int? entityId, bool? isHardcore, List<String>? dimensionNames, int? maxPlayers, int? viewDistance, int? simulatedDistance, bool? reducedDebugInfo, bool? enabledRespawnScreen, bool? limitedCrafting, PlayerSpawnData? spawnData, bool? onlineMode, bool? enforceSecureChat, }) => CLogin(entityId: entityId ?? this.entityId, isHardcore: isHardcore ?? this.isHardcore, dimensionNames: dimensionNames ?? this.dimensionNames, maxPlayers: maxPlayers ?? this.maxPlayers, viewDistance: viewDistance ?? this.viewDistance, simulatedDistance: simulatedDistance ?? this.simulatedDistance, reducedDebugInfo: reducedDebugInfo ?? this.reducedDebugInfo, enabledRespawnScreen: enabledRespawnScreen ?? this.enabledRespawnScreen, limitedCrafting: limitedCrafting ?? this.limitedCrafting, spawnData: spawnData ?? this.spawnData, onlineMode: onlineMode ?? this.onlineMode, enforceSecureChat: enforceSecureChat ?? this.enforceSecureChat, );
 }
 final class MapIcon {
   final int iconType;
@@ -17575,6 +17716,7 @@ final class MapIcon {
   final int direction;
   final i1.Option<String> displayName;
   const MapIcon({required this.iconType, required this.x, required this.z, required this.direction, required this.displayName, });
+  MapIcon copyWith({int? iconType, int? x, int? z, int? direction, i1.Option<String>? displayName, }) => MapIcon(iconType: iconType ?? this.iconType, x: x ?? this.x, z: z ?? this.z, direction: direction ?? this.direction, displayName: displayName ?? this.displayName, );
 }
 final class MapPatch {
   final int columns;
@@ -17583,6 +17725,7 @@ final class MapPatch {
   final int z;
   final List<int> data;
   const MapPatch({required this.columns, required this.rows, required this.x, required this.z, required this.data, });
+  MapPatch copyWith({int? columns, int? rows, int? x, int? z, List<int>? data, }) => MapPatch(columns: columns ?? this.columns, rows: rows ?? this.rows, x: x ?? this.x, z: z ?? this.z, data: data ?? this.data, );
 }
 final class CMapItemData {
   final int mapId;
@@ -17592,6 +17735,7 @@ final class CMapItemData {
   final i1.Option<List<MapIcon>> icons;
   final i1.Option<MapPatch> data;
   const CMapItemData({required this.mapId, required this.scale, required this.trackingPosition, required this.locked, required this.icons, required this.data, });
+  CMapItemData copyWith({int? mapId, int? scale, bool? trackingPosition, bool? locked, i1.Option<List<MapIcon>>? icons, i1.Option<MapPatch>? data, }) => CMapItemData(mapId: mapId ?? this.mapId, scale: scale ?? this.scale, trackingPosition: trackingPosition ?? this.trackingPosition, locked: locked ?? this.locked, icons: icons ?? this.icons, data: data ?? this.data, );
 }
 final class MerchantOffer {
   final String baseCostA;
@@ -17605,6 +17749,7 @@ final class MerchantOffer {
   final double priceMultiplier;
   final int demand;
   const MerchantOffer({required this.baseCostA, required this.output, required this.costB, required this.rewardExp, required this.uses, required this.maxUses, required this.xp, required this.specialPrice, required this.priceMultiplier, required this.demand, });
+  MerchantOffer copyWith({String? baseCostA, String? output, i1.Option<String>? costB, bool? rewardExp, int? uses, int? maxUses, int? xp, int? specialPrice, double? priceMultiplier, int? demand, }) => MerchantOffer(baseCostA: baseCostA ?? this.baseCostA, output: output ?? this.output, costB: costB ?? this.costB, rewardExp: rewardExp ?? this.rewardExp, uses: uses ?? this.uses, maxUses: maxUses ?? this.maxUses, xp: xp ?? this.xp, specialPrice: specialPrice ?? this.specialPrice, priceMultiplier: priceMultiplier ?? this.priceMultiplier, demand: demand ?? this.demand, );
 }
 final class CMerchantOffers {
   final int windowId;
@@ -17614,6 +17759,7 @@ final class CMerchantOffers {
   final bool isRegularVillager;
   final bool canRestock;
   const CMerchantOffers({required this.windowId, required this.offers, required this.villagerLevel, required this.experience, required this.isRegularVillager, required this.canRestock, });
+  CMerchantOffers copyWith({int? windowId, List<MerchantOffer>? offers, int? villagerLevel, int? experience, bool? isRegularVillager, bool? canRestock, }) => CMerchantOffers(windowId: windowId ?? this.windowId, offers: offers ?? this.offers, villagerLevel: villagerLevel ?? this.villagerLevel, experience: experience ?? this.experience, isRegularVillager: isRegularVillager ?? this.isRegularVillager, canRestock: canRestock ?? this.canRestock, );
 }
 final class MinecartStep {
   final (double, double, double, ) position;
@@ -17622,11 +17768,13 @@ final class MinecartStep {
   final double pitch;
   final double weight;
   const MinecartStep({required this.position, required this.movement, required this.yaw, required this.pitch, required this.weight, });
+  MinecartStep copyWith({(double, double, double, )? position, (double, double, double, )? movement, double? yaw, double? pitch, double? weight, }) => MinecartStep(position: position ?? this.position, movement: movement ?? this.movement, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, weight: weight ?? this.weight, );
 }
 final class CMoveMinecartAlongTrack {
   final int entityId;
   final List<MinecartStep> steps;
   const CMoveMinecartAlongTrack({required this.entityId, required this.steps, });
+  CMoveMinecartAlongTrack copyWith({int? entityId, List<MinecartStep>? steps, }) => CMoveMinecartAlongTrack(entityId: entityId ?? this.entityId, steps: steps ?? this.steps, );
 }
 final class CMoveVehicle {
   final double x;
@@ -17635,33 +17783,39 @@ final class CMoveVehicle {
   final double yaw;
   final double pitch;
   const CMoveVehicle({required this.x, required this.y, required this.z, required this.yaw, required this.pitch, });
+  CMoveVehicle copyWith({double? x, double? y, double? z, double? yaw, double? pitch, }) => CMoveVehicle(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, );
 }
 final class CMultiBlockUpdate {
   final (double, double, double, ) chunkSection;
   final bool suppressLightUpdates;
   final List<((int, int, int, ), String, )> updates;
   const CMultiBlockUpdate({required this.chunkSection, required this.suppressLightUpdates, required this.updates, });
+  CMultiBlockUpdate copyWith({(double, double, double, )? chunkSection, bool? suppressLightUpdates, List<((int, int, int, ), String, )>? updates, }) => CMultiBlockUpdate(chunkSection: chunkSection ?? this.chunkSection, suppressLightUpdates: suppressLightUpdates ?? this.suppressLightUpdates, updates: updates ?? this.updates, );
 }
 final class COpenBook {
   final int hand;
   const COpenBook({required this.hand, });
+  COpenBook copyWith({int? hand, }) => COpenBook(hand: hand ?? this.hand, );
 }
 final class COpenMountScreen {
   final int windowId;
   final int slotCount;
   final int entityId;
   const COpenMountScreen({required this.windowId, required this.slotCount, required this.entityId, });
+  COpenMountScreen copyWith({int? windowId, int? slotCount, int? entityId, }) => COpenMountScreen(windowId: windowId ?? this.windowId, slotCount: slotCount ?? this.slotCount, entityId: entityId ?? this.entityId, );
 }
 final class COpenScreen {
   final int syncId;
   final int windowType;
   final String windowTitle;
   const COpenScreen({required this.syncId, required this.windowType, required this.windowTitle, });
+  COpenScreen copyWith({int? syncId, int? windowType, String? windowTitle, }) => COpenScreen(syncId: syncId ?? this.syncId, windowType: windowType ?? this.windowType, windowTitle: windowTitle ?? this.windowTitle, );
 }
 final class COpenSignEditor {
   final (int, int, int, ) location;
   final bool isFrontText;
   const COpenSignEditor({required this.location, required this.isFrontText, });
+  COpenSignEditor copyWith({(int, int, int, )? location, bool? isFrontText, }) => COpenSignEditor(location: location ?? this.location, isFrontText: isFrontText ?? this.isFrontText, );
 }
 final class CParticle {
   final bool forceSpawn;
@@ -17673,30 +17827,36 @@ final class CParticle {
   final int particleId;
   final List<int> data;
   const CParticle({required this.forceSpawn, required this.important, required this.position, required this.offset, required this.maxSpeed, required this.particleCount, required this.particleId, required this.data, });
+  CParticle copyWith({bool? forceSpawn, bool? important, (double, double, double, )? position, (double, double, double, )? offset, double? maxSpeed, int? particleCount, int? particleId, List<int>? data, }) => CParticle(forceSpawn: forceSpawn ?? this.forceSpawn, important: important ?? this.important, position: position ?? this.position, offset: offset ?? this.offset, maxSpeed: maxSpeed ?? this.maxSpeed, particleCount: particleCount ?? this.particleCount, particleId: particleId ?? this.particleId, data: data ?? this.data, );
 }
 final class CPlayPing {
   final int id;
   const CPlayPing({required this.id, });
+  CPlayPing copyWith({int? id, }) => CPlayPing(id: id ?? this.id, );
 }
 final class CPingResponse {
   final int payload;
   const CPingResponse({required this.payload, });
+  CPingResponse copyWith({int? payload, }) => CPingResponse(payload: payload ?? this.payload, );
 }
 final class CPlaceGhostRecipe {
   final int windowId;
   final String recipeId;
   const CPlaceGhostRecipe({required this.windowId, required this.recipeId, });
+  CPlaceGhostRecipe copyWith({int? windowId, String? recipeId, }) => CPlaceGhostRecipe(windowId: windowId ?? this.windowId, recipeId: recipeId ?? this.recipeId, );
 }
 final class CPlayerAbilities {
   final int flags;
   final double flyingSpeed;
   final double fieldOfView;
   const CPlayerAbilities({required this.flags, required this.flyingSpeed, required this.fieldOfView, });
+  CPlayerAbilities copyWith({int? flags, double? flyingSpeed, double? fieldOfView, }) => CPlayerAbilities(flags: flags ?? this.flags, flyingSpeed: flyingSpeed ?? this.flyingSpeed, fieldOfView: fieldOfView ?? this.fieldOfView, );
 }
 final class PreviousMessage {
   final int id;
   final i1.Option<List<int>> signature;
   const PreviousMessage({required this.id, required this.signature, });
+  PreviousMessage copyWith({int? id, i1.Option<List<int>>? signature, }) => PreviousMessage(id: id ?? this.id, signature: signature ?? this.signature, );
 }
 sealed class FilterType {
   const FilterType();
@@ -17726,23 +17886,27 @@ final class CPlayerChatMessage {
   final String senderName;
   final i1.Option<String> targetName;
   const CPlayerChatMessage({required this.globalIndex, required this.sender, required this.index, required this.messageSignature, required this.message, required this.timestamp, required this.salt, required this.previousMessages, required this.unsignedContent, required this.filterType, required this.chatType, required this.senderName, required this.targetName, });
+  CPlayerChatMessage copyWith({int? globalIndex, Uuid? sender, int? index, i1.Option<List<int>>? messageSignature, String? message, int? timestamp, int? salt, List<PreviousMessage>? previousMessages, i1.Option<String>? unsignedContent, FilterType? filterType, int? chatType, String? senderName, i1.Option<String>? targetName, }) => CPlayerChatMessage(globalIndex: globalIndex ?? this.globalIndex, sender: sender ?? this.sender, index: index ?? this.index, messageSignature: messageSignature ?? this.messageSignature, message: message ?? this.message, timestamp: timestamp ?? this.timestamp, salt: salt ?? this.salt, previousMessages: previousMessages ?? this.previousMessages, unsignedContent: unsignedContent ?? this.unsignedContent, filterType: filterType ?? this.filterType, chatType: chatType ?? this.chatType, senderName: senderName ?? this.senderName, targetName: targetName ?? this.targetName, );
 }
 final class JavaPacketsAttributeModifier {
   final String id;
   final double amount;
   final int operation;
   const JavaPacketsAttributeModifier({required this.id, required this.amount, required this.operation, });
+  JavaPacketsAttributeModifier copyWith({String? id, double? amount, int? operation, }) => JavaPacketsAttributeModifier(id: id ?? this.id, amount: amount ?? this.amount, operation: operation ?? this.operation, );
 }
 final class Property {
   final int id;
   final double value;
   final List<JavaPacketsAttributeModifier> modifiers;
   const Property({required this.id, required this.value, required this.modifiers, });
+  Property copyWith({int? id, double? value, List<JavaPacketsAttributeModifier>? modifiers, }) => Property(id: id ?? this.id, value: value ?? this.value, modifiers: modifiers ?? this.modifiers, );
 }
 final class PlayerActionAddPlayer {
   final String name;
   final List<Property> properties;
   const PlayerActionAddPlayer({required this.name, required this.properties, });
+  PlayerActionAddPlayer copyWith({String? name, List<Property>? properties, }) => PlayerActionAddPlayer(name: name ?? this.name, properties: properties ?? this.properties, );
 }
 final class InitChat {
   final Uuid sessionId;
@@ -17750,6 +17914,7 @@ final class InitChat {
   final List<int> publicKey;
   final List<int> signature;
   const InitChat({required this.sessionId, required this.expiresAt, required this.publicKey, required this.signature, });
+  InitChat copyWith({Uuid? sessionId, int? expiresAt, List<int>? publicKey, List<int>? signature, }) => InitChat(sessionId: sessionId ?? this.sessionId, expiresAt: expiresAt ?? this.expiresAt, publicKey: publicKey ?? this.publicKey, signature: signature ?? this.signature, );
 }
 sealed class PlayerAction {
   const PlayerAction();
@@ -17790,11 +17955,13 @@ final class JavaPacketsPlayer {
   final Uuid uuid;
   final List<PlayerAction> actions;
   const JavaPacketsPlayer({required this.uuid, required this.actions, });
+  JavaPacketsPlayer copyWith({Uuid? uuid, List<PlayerAction>? actions, }) => JavaPacketsPlayer(uuid: uuid ?? this.uuid, actions: actions ?? this.actions, );
 }
 final class CPlayerInfoUpdate {
   final int actions;
   final List<JavaPacketsPlayer> players;
   const CPlayerInfoUpdate({required this.actions, required this.players, });
+  CPlayerInfoUpdate copyWith({int? actions, List<JavaPacketsPlayer>? players, }) => CPlayerInfoUpdate(actions: actions ?? this.actions, players: players ?? this.players, );
 }
 final class CPlayerLookAt {
   final int fromAnchor;
@@ -17803,6 +17970,7 @@ final class CPlayerLookAt {
   final double targetZ;
   final i1.Option<(int, int, )> entity;
   const CPlayerLookAt({required this.fromAnchor, required this.targetX, required this.targetY, required this.targetZ, required this.entity, });
+  CPlayerLookAt copyWith({int? fromAnchor, double? targetX, double? targetY, double? targetZ, i1.Option<(int, int, )>? entity, }) => CPlayerLookAt(fromAnchor: fromAnchor ?? this.fromAnchor, targetX: targetX ?? this.targetX, targetY: targetY ?? this.targetY, targetZ: targetZ ?? this.targetZ, entity: entity ?? this.entity, );
 }
 final class CPlayerPosition {
   final int teleportId;
@@ -17812,15 +17980,18 @@ final class CPlayerPosition {
   final double pitch;
   final List<String> relatives;
   const CPlayerPosition({required this.teleportId, required this.position, required this.delta, required this.yaw, required this.pitch, required this.relatives, });
+  CPlayerPosition copyWith({int? teleportId, (double, double, double, )? position, (double, double, double, )? delta, double? yaw, double? pitch, List<String>? relatives, }) => CPlayerPosition(teleportId: teleportId ?? this.teleportId, position: position ?? this.position, delta: delta ?? this.delta, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, relatives: relatives ?? this.relatives, );
 }
 final class CRemovePlayerInfo {
   final List<Uuid> players;
   const CRemovePlayerInfo({required this.players, });
+  CRemovePlayerInfo copyWith({List<Uuid>? players, }) => CRemovePlayerInfo(players: players ?? this.players, );
 }
 final class CPlayerRotation {
   final double yaw;
   final double pitch;
   const CPlayerRotation({required this.yaw, required this.pitch, });
+  CPlayerRotation copyWith({double? yaw, double? pitch, }) => CPlayerRotation(yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, );
 }
 final class CPlayerSpawnPosition {
   final String dimensionName;
@@ -17828,10 +17999,12 @@ final class CPlayerSpawnPosition {
   final double yaw;
   final double pitch;
   const CPlayerSpawnPosition({required this.dimensionName, required this.location, required this.yaw, required this.pitch, });
+  CPlayerSpawnPosition copyWith({String? dimensionName, (int, int, int, )? location, double? yaw, double? pitch, }) => CPlayerSpawnPosition(dimensionName: dimensionName ?? this.dimensionName, location: location ?? this.location, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, );
 }
 final class CPostEffects {
   final List<String> effects;
   const CPostEffects({required this.effects, });
+  CPostEffects copyWith({List<String>? effects, }) => CPostEffects(effects: effects ?? this.effects, );
 }
 final class CProjectilePower {
   final int entityId;
@@ -17839,14 +18012,17 @@ final class CProjectilePower {
   final double yPower;
   final double zPower;
   const CProjectilePower({required this.entityId, required this.xPower, required this.yPower, required this.zPower, });
+  CProjectilePower copyWith({int? entityId, double? xPower, double? yPower, double? zPower, }) => CProjectilePower(entityId: entityId ?? this.entityId, xPower: xPower ?? this.xPower, yPower: yPower ?? this.yPower, zPower: zPower ?? this.zPower, );
 }
 final class CRecipeBookAdd {
   final bool replace;
   const CRecipeBookAdd({required this.replace, });
+  CRecipeBookAdd copyWith({bool? replace, }) => CRecipeBookAdd(replace: replace ?? this.replace, );
 }
 final class CRecipeBookRemove {
   final List<int> recipes;
   const CRecipeBookRemove({required this.recipes, });
+  CRecipeBookRemove copyWith({List<int>? recipes, }) => CRecipeBookRemove(recipes: recipes ?? this.recipes, );
 }
 final class CRecipeBookSettings {
   final bool craftingOpen;
@@ -17858,73 +18034,89 @@ final class CRecipeBookSettings {
   final bool smokerOpen;
   final bool smokerFiltering;
   const CRecipeBookSettings({required this.craftingOpen, required this.craftingFiltering, required this.furnaceOpen, required this.furnaceFiltering, required this.blastFurnaceOpen, required this.blastFurnaceFiltering, required this.smokerOpen, required this.smokerFiltering, });
+  CRecipeBookSettings copyWith({bool? craftingOpen, bool? craftingFiltering, bool? furnaceOpen, bool? furnaceFiltering, bool? blastFurnaceOpen, bool? blastFurnaceFiltering, bool? smokerOpen, bool? smokerFiltering, }) => CRecipeBookSettings(craftingOpen: craftingOpen ?? this.craftingOpen, craftingFiltering: craftingFiltering ?? this.craftingFiltering, furnaceOpen: furnaceOpen ?? this.furnaceOpen, furnaceFiltering: furnaceFiltering ?? this.furnaceFiltering, blastFurnaceOpen: blastFurnaceOpen ?? this.blastFurnaceOpen, blastFurnaceFiltering: blastFurnaceFiltering ?? this.blastFurnaceFiltering, smokerOpen: smokerOpen ?? this.smokerOpen, smokerFiltering: smokerFiltering ?? this.smokerFiltering, );
 }
 final class CRemoveEntities {
   final List<int> entityIds;
   const CRemoveEntities({required this.entityIds, });
+  CRemoveEntities copyWith({List<int>? entityIds, }) => CRemoveEntities(entityIds: entityIds ?? this.entityIds, );
 }
 final class CRemoveMobEffect {
   final int entityId;
   final int effectId;
   const CRemoveMobEffect({required this.entityId, required this.effectId, });
+  CRemoveMobEffect copyWith({int? entityId, int? effectId, }) => CRemoveMobEffect(entityId: entityId ?? this.entityId, effectId: effectId ?? this.effectId, );
 }
 final class CRemoveResourcePack {
   final i1.Option<Uuid> uuid;
   const CRemoveResourcePack({required this.uuid, });
+  CRemoveResourcePack copyWith({i1.Option<Uuid>? uuid, }) => CRemoveResourcePack(uuid: uuid ?? this.uuid, );
 }
 final class CResetScore {
   final String entityName;
   final i1.Option<String> objectiveName;
   const CResetScore({required this.entityName, required this.objectiveName, });
+  CResetScore copyWith({String? entityName, i1.Option<String>? objectiveName, }) => CResetScore(entityName: entityName ?? this.entityName, objectiveName: objectiveName ?? this.objectiveName, );
 }
 final class CRespawn {
   final PlayerSpawnData playerSpawnInfo;
   final int dataKept;
   const CRespawn({required this.playerSpawnInfo, required this.dataKept, });
+  CRespawn copyWith({PlayerSpawnData? playerSpawnInfo, int? dataKept, }) => CRespawn(playerSpawnInfo: playerSpawnInfo ?? this.playerSpawnInfo, dataKept: dataKept ?? this.dataKept, );
 }
 final class CSelectAdvancementsTab {
   final i1.Option<String> tabId;
   const CSelectAdvancementsTab({required this.tabId, });
+  CSelectAdvancementsTab copyWith({i1.Option<String>? tabId, }) => CSelectAdvancementsTab(tabId: tabId ?? this.tabId, );
 }
 final class CServerData {
   final String motd;
   final i1.Option<String> iconBase64;
   const CServerData({required this.motd, required this.iconBase64, });
+  CServerData copyWith({String? motd, i1.Option<String>? iconBase64, }) => CServerData(motd: motd ?? this.motd, iconBase64: iconBase64 ?? this.iconBase64, );
 }
 final class CPlayServerLinks {
   final List<String> links;
   const CPlayServerLinks({required this.links, });
+  CPlayServerLinks copyWith({List<String>? links, }) => CPlayServerLinks(links: links ?? this.links, );
 }
 final class CSetBorderCenter {
   final double x;
   final double z;
   const CSetBorderCenter({required this.x, required this.z, });
+  CSetBorderCenter copyWith({double? x, double? z, }) => CSetBorderCenter(x: x ?? this.x, z: z ?? this.z, );
 }
 final class CSetBorderLerpSize {
   final double oldDiameter;
   final double newDiameter;
   final int speed;
   const CSetBorderLerpSize({required this.oldDiameter, required this.newDiameter, required this.speed, });
+  CSetBorderLerpSize copyWith({double? oldDiameter, double? newDiameter, int? speed, }) => CSetBorderLerpSize(oldDiameter: oldDiameter ?? this.oldDiameter, newDiameter: newDiameter ?? this.newDiameter, speed: speed ?? this.speed, );
 }
 final class CSetBorderSize {
   final double diameter;
   const CSetBorderSize({required this.diameter, });
+  CSetBorderSize copyWith({double? diameter, }) => CSetBorderSize(diameter: diameter ?? this.diameter, );
 }
 final class CSetBorderWarningDelay {
   final int warningTime;
   const CSetBorderWarningDelay({required this.warningTime, });
+  CSetBorderWarningDelay copyWith({int? warningTime, }) => CSetBorderWarningDelay(warningTime: warningTime ?? this.warningTime, );
 }
 final class CSetBorderWarningDistance {
   final int warningBlocks;
   const CSetBorderWarningDistance({required this.warningBlocks, });
+  CSetBorderWarningDistance copyWith({int? warningBlocks, }) => CSetBorderWarningDistance(warningBlocks: warningBlocks ?? this.warningBlocks, );
 }
 final class CSetCamera {
   final int cameraId;
   const CSetCamera({required this.cameraId, });
+  CSetCamera copyWith({int? cameraId, }) => CSetCamera(cameraId: cameraId ?? this.cameraId, );
 }
 final class CSetChunkCacheRadius {
   final int radius;
   const CSetChunkCacheRadius({required this.radius, });
+  CSetChunkCacheRadius copyWith({int? radius, }) => CSetChunkCacheRadius(radius: radius ?? this.radius, );
 }
 final class CSetContainerContent {
   final int windowId;
@@ -17932,12 +18124,14 @@ final class CSetContainerContent {
   final List<String> slotData;
   final String carriedItem;
   const CSetContainerContent({required this.windowId, required this.stateId, required this.slotData, required this.carriedItem, });
+  CSetContainerContent copyWith({int? windowId, int? stateId, List<String>? slotData, String? carriedItem, }) => CSetContainerContent(windowId: windowId ?? this.windowId, stateId: stateId ?? this.stateId, slotData: slotData ?? this.slotData, carriedItem: carriedItem ?? this.carriedItem, );
 }
 final class CSetContainerProperty {
   final int windowId;
   final int property;
   final int value;
   const CSetContainerProperty({required this.windowId, required this.property, required this.value, });
+  CSetContainerProperty copyWith({int? windowId, int? property, int? value, }) => CSetContainerProperty(windowId: windowId ?? this.windowId, property: property ?? this.property, value: value ?? this.value, );
 }
 final class CSetContainerSlot {
   final int windowId;
@@ -17945,43 +18139,51 @@ final class CSetContainerSlot {
   final int slot;
   final String slotData;
   const CSetContainerSlot({required this.windowId, required this.stateId, required this.slot, required this.slotData, });
+  CSetContainerSlot copyWith({int? windowId, int? stateId, int? slot, String? slotData, }) => CSetContainerSlot(windowId: windowId ?? this.windowId, stateId: stateId ?? this.stateId, slot: slot ?? this.slot, slotData: slotData ?? this.slotData, );
 }
 final class CSetCursorItem {
   final String stack;
   const CSetCursorItem({required this.stack, });
+  CSetCursorItem copyWith({String? stack, }) => CSetCursorItem(stack: stack ?? this.stack, );
 }
 final class CSetEntityLink {
   final int attachedEntityId;
   final int holdingEntityId;
   final bool leash;
   const CSetEntityLink({required this.attachedEntityId, required this.holdingEntityId, required this.leash, });
+  CSetEntityLink copyWith({int? attachedEntityId, int? holdingEntityId, bool? leash, }) => CSetEntityLink(attachedEntityId: attachedEntityId ?? this.attachedEntityId, holdingEntityId: holdingEntityId ?? this.holdingEntityId, leash: leash ?? this.leash, );
 }
 final class CSetEquipment {
   final int entityId;
   final List<(int, String, )> equipment;
   const CSetEquipment({required this.entityId, required this.equipment, });
+  CSetEquipment copyWith({int? entityId, List<(int, String, )>? equipment, }) => CSetEquipment(entityId: entityId ?? this.entityId, equipment: equipment ?? this.equipment, );
 }
 final class CSetExperience {
   final double progress;
   final int level;
   final int totalExperience;
   const CSetExperience({required this.progress, required this.level, required this.totalExperience, });
+  CSetExperience copyWith({double? progress, int? level, int? totalExperience, }) => CSetExperience(progress: progress ?? this.progress, level: level ?? this.level, totalExperience: totalExperience ?? this.totalExperience, );
 }
 final class JavaPacketsCSetHealth {
   final double health;
   final int food;
   final double foodSaturation;
   const JavaPacketsCSetHealth({required this.health, required this.food, required this.foodSaturation, });
+  JavaPacketsCSetHealth copyWith({double? health, int? food, double? foodSaturation, }) => JavaPacketsCSetHealth(health: health ?? this.health, food: food ?? this.food, foodSaturation: foodSaturation ?? this.foodSaturation, );
 }
 final class CSetPassengers {
   final int entityId;
   final List<int> passengers;
   const CSetPassengers({required this.entityId, required this.passengers, });
+  CSetPassengers copyWith({int? entityId, List<int>? passengers, }) => CSetPassengers(entityId: entityId ?? this.entityId, passengers: passengers ?? this.passengers, );
 }
 final class CSetPlayerInventory {
   final int slot;
   final String item;
   const CSetPlayerInventory({required this.slot, required this.item, });
+  CSetPlayerInventory copyWith({int? slot, String? item, }) => CSetPlayerInventory(slot: slot ?? this.slot, item: item ?? this.item, );
 }
 enum TeamMethod {
   create,
@@ -17999,6 +18201,7 @@ final class TeamParameters {
   final String playerPrefix;
   final String playerSuffix;
   const TeamParameters({required this.displayName, required this.options, required this.nametagVisibility, required this.collisionRule, required this.color, required this.playerPrefix, required this.playerSuffix, });
+  TeamParameters copyWith({String? displayName, int? options, String? nametagVisibility, String? collisionRule, int? color, String? playerPrefix, String? playerSuffix, }) => TeamParameters(displayName: displayName ?? this.displayName, options: options ?? this.options, nametagVisibility: nametagVisibility ?? this.nametagVisibility, collisionRule: collisionRule ?? this.collisionRule, color: color ?? this.color, playerPrefix: playerPrefix ?? this.playerPrefix, playerSuffix: playerSuffix ?? this.playerSuffix, );
 }
 final class CSetPlayerTeam {
   final String teamName;
@@ -18006,29 +18209,35 @@ final class CSetPlayerTeam {
   final i1.Option<TeamParameters> parameters;
   final List<String> players;
   const CSetPlayerTeam({required this.teamName, required this.method, required this.parameters, required this.players, });
+  CSetPlayerTeam copyWith({String? teamName, TeamMethod? method, i1.Option<TeamParameters>? parameters, List<String>? players, }) => CSetPlayerTeam(teamName: teamName ?? this.teamName, method: method ?? this.method, parameters: parameters ?? this.parameters, players: players ?? this.players, );
 }
 final class CSetSimulationDistance {
   final int simulationDistance;
   const CSetSimulationDistance({required this.simulationDistance, });
+  CSetSimulationDistance copyWith({int? simulationDistance, }) => CSetSimulationDistance(simulationDistance: simulationDistance ?? this.simulationDistance, );
 }
 final class CUpdateTime {
   final int gameTime;
   final List<(int, int, double, double, )> clockUpdates;
   const CUpdateTime({required this.gameTime, required this.clockUpdates, });
+  CUpdateTime copyWith({int? gameTime, List<(int, int, double, double, )>? clockUpdates, }) => CUpdateTime(gameTime: gameTime ?? this.gameTime, clockUpdates: clockUpdates ?? this.clockUpdates, );
 }
 final class CTitleText {
   final String title;
   const CTitleText({required this.title, });
+  CTitleText copyWith({String? title, }) => CTitleText(title: title ?? this.title, );
 }
 final class CTitleAnimation {
   final int fadeInTicks;
   final int stayTicks;
   final int fadeOutTicks;
   const CTitleAnimation({required this.fadeInTicks, required this.stayTicks, required this.fadeOutTicks, });
+  CTitleAnimation copyWith({int? fadeInTicks, int? stayTicks, int? fadeOutTicks, }) => CTitleAnimation(fadeInTicks: fadeInTicks ?? this.fadeInTicks, stayTicks: stayTicks ?? this.stayTicks, fadeOutTicks: fadeOutTicks ?? this.fadeOutTicks, );
 }
 final class CPlayShowDialog {
   final String dialog;
   const CPlayShowDialog({required this.dialog, });
+  CPlayShowDialog copyWith({String? dialog, }) => CPlayShowDialog(dialog: dialog ?? this.dialog, );
 }
 final class CSoundEffect {
   final String soundEvent;
@@ -18038,6 +18247,7 @@ final class CSoundEffect {
   final double pitch;
   final int seed;
   const CSoundEffect({required this.soundEvent, required this.soundCategory, required this.position, required this.volume, required this.pitch, required this.seed, });
+  CSoundEffect copyWith({String? soundEvent, int? soundCategory, (double, double, double, )? position, double? volume, double? pitch, int? seed, }) => CSoundEffect(soundEvent: soundEvent ?? this.soundEvent, soundCategory: soundCategory ?? this.soundCategory, position: position ?? this.position, volume: volume ?? this.volume, pitch: pitch ?? this.pitch, seed: seed ?? this.seed, );
 }
 final class CSpawnEntity {
   final int entityId;
@@ -18050,36 +18260,43 @@ final class CSpawnEntity {
   final int headYaw;
   final int data;
   const CSpawnEntity({required this.entityId, required this.entityUuid, required this.rType, required this.position, required this.velocity, required this.pitch, required this.yaw, required this.headYaw, required this.data, });
+  CSpawnEntity copyWith({int? entityId, Uuid? entityUuid, int? rType, (double, double, double, )? position, String? velocity, int? pitch, int? yaw, int? headYaw, int? data, }) => CSpawnEntity(entityId: entityId ?? this.entityId, entityUuid: entityUuid ?? this.entityUuid, rType: rType ?? this.rType, position: position ?? this.position, velocity: velocity ?? this.velocity, pitch: pitch ?? this.pitch, yaw: yaw ?? this.yaw, headYaw: headYaw ?? this.headYaw, data: data ?? this.data, );
 }
 final class CStopSound {
   final i1.Option<String> soundId;
   final i1.Option<String> category;
   const CStopSound({required this.soundId, required this.category, });
+  CStopSound copyWith({i1.Option<String>? soundId, i1.Option<String>? category, }) => CStopSound(soundId: soundId ?? this.soundId, category: category ?? this.category, );
 }
 final class CStoreCookie {
   final String key;
   final List<int> payload;
   const CStoreCookie({required this.key, required this.payload, });
+  CStoreCookie copyWith({String? key, List<int>? payload, }) => CStoreCookie(key: key ?? this.key, payload: payload ?? this.payload, );
 }
 final class CSubtitle {
   final String subtitle;
   const CSubtitle({required this.subtitle, });
+  CSubtitle copyWith({String? subtitle, }) => CSubtitle(subtitle: subtitle ?? this.subtitle, );
 }
 final class CTabList {
   final String header;
   final String footer;
   const CTabList({required this.header, required this.footer, });
+  CTabList copyWith({String? header, String? footer, }) => CTabList(header: header ?? this.header, footer: footer ?? this.footer, );
 }
 final class CTagQueryResponse {
   final int transactionId;
   final List<int> nbtBytes;
   const CTagQueryResponse({required this.transactionId, required this.nbtBytes, });
+  CTagQueryResponse copyWith({int? transactionId, List<int>? nbtBytes, }) => CTagQueryResponse(transactionId: transactionId ?? this.transactionId, nbtBytes: nbtBytes ?? this.nbtBytes, );
 }
 final class CTakeItemEntity {
   final int entityId;
   final int collectorEntityId;
   final int stackAmount;
   const CTakeItemEntity({required this.entityId, required this.collectorEntityId, required this.stackAmount, });
+  CTakeItemEntity copyWith({int? entityId, int? collectorEntityId, int? stackAmount, }) => CTakeItemEntity(entityId: entityId ?? this.entityId, collectorEntityId: collectorEntityId ?? this.collectorEntityId, stackAmount: stackAmount ?? this.stackAmount, );
 }
 final class CTeleportEntity {
   final int entityId;
@@ -18090,31 +18307,37 @@ final class CTeleportEntity {
   final List<String> relatives;
   final bool onGround;
   const CTeleportEntity({required this.entityId, required this.position, required this.delta, required this.yaw, required this.pitch, required this.relatives, required this.onGround, });
+  CTeleportEntity copyWith({int? entityId, (double, double, double, )? position, (double, double, double, )? delta, double? yaw, double? pitch, List<String>? relatives, bool? onGround, }) => CTeleportEntity(entityId: entityId ?? this.entityId, position: position ?? this.position, delta: delta ?? this.delta, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, relatives: relatives ?? this.relatives, onGround: onGround ?? this.onGround, );
 }
 final class CTestInstanceBlockStatus {
   final (int, int, int, ) pos;
   final int status;
   final i1.Option<String> message;
   const CTestInstanceBlockStatus({required this.pos, required this.status, required this.message, });
+  CTestInstanceBlockStatus copyWith({(int, int, int, )? pos, int? status, i1.Option<String>? message, }) => CTestInstanceBlockStatus(pos: pos ?? this.pos, status: status ?? this.status, message: message ?? this.message, );
 }
 final class CTickingState {
   final double tickRate;
   final bool isFrozen;
   const CTickingState({required this.tickRate, required this.isFrozen, });
+  CTickingState copyWith({double? tickRate, bool? isFrozen, }) => CTickingState(tickRate: tickRate ?? this.tickRate, isFrozen: isFrozen ?? this.isFrozen, );
 }
 final class CTickingStep {
   final int tickSteps;
   const CTickingStep({required this.tickSteps, });
+  CTickingStep copyWith({int? tickSteps, }) => CTickingStep(tickSteps: tickSteps ?? this.tickSteps, );
 }
 final class JavaPacketsCTransfer {
   final String host;
   final int port;
   const JavaPacketsCTransfer({required this.host, required this.port, });
+  JavaPacketsCTransfer copyWith({String? host, int? port, }) => JavaPacketsCTransfer(host: host ?? this.host, port: port ?? this.port, );
 }
 final class CUnloadChunk {
   final int x;
   final int z;
   const CUnloadChunk({required this.x, required this.z, });
+  CUnloadChunk copyWith({int? x, int? z, }) => CUnloadChunk(x: x ?? this.x, z: z ?? this.z, );
 }
 final class CUpdateAdvancements {
   final bool reset;
@@ -18123,17 +18346,20 @@ final class CUpdateAdvancements {
   final List<String> progress;
   final bool showAdvancements;
   const CUpdateAdvancements({required this.reset, required this.added, required this.removed, required this.progress, required this.showAdvancements, });
+  CUpdateAdvancements copyWith({bool? reset, List<String>? added, List<String>? removed, List<String>? progress, bool? showAdvancements, }) => CUpdateAdvancements(reset: reset ?? this.reset, added: added ?? this.added, removed: removed ?? this.removed, progress: progress ?? this.progress, showAdvancements: showAdvancements ?? this.showAdvancements, );
 }
 final class JavaPacketsCUpdateAttributes {
   final int entityId;
   final List<Property> properties;
   const JavaPacketsCUpdateAttributes({required this.entityId, required this.properties, });
+  JavaPacketsCUpdateAttributes copyWith({int? entityId, List<Property>? properties, }) => JavaPacketsCUpdateAttributes(entityId: entityId ?? this.entityId, properties: properties ?? this.properties, );
 }
 final class CUpdateEntityPos {
   final int entityId;
   final (double, double, double, ) delta;
   final bool onGround;
   const CUpdateEntityPos({required this.entityId, required this.delta, required this.onGround, });
+  CUpdateEntityPos copyWith({int? entityId, (double, double, double, )? delta, bool? onGround, }) => CUpdateEntityPos(entityId: entityId ?? this.entityId, delta: delta ?? this.delta, onGround: onGround ?? this.onGround, );
 }
 final class CUpdateEntityPosRot {
   final int entityId;
@@ -18142,6 +18368,7 @@ final class CUpdateEntityPosRot {
   final int pitch;
   final bool onGround;
   const CUpdateEntityPosRot({required this.entityId, required this.delta, required this.yaw, required this.pitch, required this.onGround, });
+  CUpdateEntityPosRot copyWith({int? entityId, (double, double, double, )? delta, int? yaw, int? pitch, bool? onGround, }) => CUpdateEntityPosRot(entityId: entityId ?? this.entityId, delta: delta ?? this.delta, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, onGround: onGround ?? this.onGround, );
 }
 final class CUpdateEntityRot {
   final int entityId;
@@ -18149,6 +18376,7 @@ final class CUpdateEntityRot {
   final int pitch;
   final bool onGround;
   const CUpdateEntityRot({required this.entityId, required this.yaw, required this.pitch, required this.onGround, });
+  CUpdateEntityRot copyWith({int? entityId, int? yaw, int? pitch, bool? onGround, }) => CUpdateEntityRot(entityId: entityId ?? this.entityId, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, onGround: onGround ?? this.onGround, );
 }
 final class CUpdateMobEffect {
   final int entityId;
@@ -18157,6 +18385,7 @@ final class CUpdateMobEffect {
   final int duration;
   final int flags;
   const CUpdateMobEffect({required this.entityId, required this.effectId, required this.amplifier, required this.duration, required this.flags, });
+  CUpdateMobEffect copyWith({int? entityId, int? effectId, int? amplifier, int? duration, int? flags, }) => CUpdateMobEffect(entityId: entityId ?? this.entityId, effectId: effectId ?? this.effectId, amplifier: amplifier ?? this.amplifier, duration: duration ?? this.duration, flags: flags ?? this.flags, );
 }
 final class CUpdateObjectives {
   final String objectiveName;
@@ -18165,10 +18394,12 @@ final class CUpdateObjectives {
   final int renderType;
   final i1.Option<String> numberFormat;
   const CUpdateObjectives({required this.objectiveName, required this.mode, required this.displayName, required this.renderType, required this.numberFormat, });
+  CUpdateObjectives copyWith({String? objectiveName, int? mode, String? displayName, int? renderType, i1.Option<String>? numberFormat, }) => CUpdateObjectives(objectiveName: objectiveName ?? this.objectiveName, mode: mode ?? this.mode, displayName: displayName ?? this.displayName, renderType: renderType ?? this.renderType, numberFormat: numberFormat ?? this.numberFormat, );
 }
 final class CUpdateRecipes {
   final List<int> rawData;
   const CUpdateRecipes({required this.rawData, });
+  CUpdateRecipes copyWith({List<int>? rawData, }) => CUpdateRecipes(rawData: rawData ?? this.rawData, );
 }
 final class CUpdateScore {
   final String entityName;
@@ -18177,6 +18408,7 @@ final class CUpdateScore {
   final i1.Option<String> displayName;
   final i1.Option<String> numberFormat;
   const CUpdateScore({required this.entityName, required this.objectiveName, required this.value, required this.displayName, required this.numberFormat, });
+  CUpdateScore copyWith({String? entityName, String? objectiveName, int? value, i1.Option<String>? displayName, i1.Option<String>? numberFormat, }) => CUpdateScore(entityName: entityName ?? this.entityName, objectiveName: objectiveName ?? this.objectiveName, value: value ?? this.value, displayName: displayName ?? this.displayName, numberFormat: numberFormat ?? this.numberFormat, );
 }
 enum WaypointOperation {
   track,
@@ -18187,11 +18419,13 @@ final class WaypointIcon {
   final i1.Option<String> style;
   final int color;
   const WaypointIcon({required this.style, required this.color, });
+  WaypointIcon copyWith({i1.Option<String>? style, int? color, }) => WaypointIcon(style: style ?? this.style, color: color ?? this.color, );
 }
 final class WaypointTargetChunk {
   final int x;
   final int z;
   const WaypointTargetChunk({required this.x, required this.z, });
+  WaypointTargetChunk copyWith({int? x, int? z, }) => WaypointTargetChunk(x: x ?? this.x, z: z ?? this.z, );
 }
 sealed class WaypointTarget {
   const WaypointTarget();
@@ -18216,11 +18450,13 @@ final class TrackedWaypoint {
   final i1.Option<WaypointIcon> icon;
   final WaypointTarget target;
   const TrackedWaypoint({required this.identifier, required this.icon, required this.target, });
+  TrackedWaypoint copyWith({Uuid? identifier, i1.Option<WaypointIcon>? icon, WaypointTarget? target, }) => TrackedWaypoint(identifier: identifier ?? this.identifier, icon: icon ?? this.icon, target: target ?? this.target, );
 }
 final class CWaypoint {
   final WaypointOperation operation;
   final TrackedWaypoint waypoint;
   const CWaypoint({required this.operation, required this.waypoint, });
+  CWaypoint copyWith({WaypointOperation? operation, TrackedWaypoint? waypoint, }) => CWaypoint(operation: operation ?? this.operation, waypoint: waypoint ?? this.waypoint, );
 }
 final class CWorldEvent {
   final int event;
@@ -18228,14 +18464,17 @@ final class CWorldEvent {
   final int data;
   final bool disableRelativeVolume;
   const CWorldEvent({required this.event, required this.location, required this.data, required this.disableRelativeVolume, });
+  CWorldEvent copyWith({int? event, (int, int, int, )? location, int? data, bool? disableRelativeVolume, }) => CWorldEvent(event: event ?? this.event, location: location ?? this.location, data: data ?? this.data, disableRelativeVolume: disableRelativeVolume ?? this.disableRelativeVolume, );
 }
 final class StatusCPingResponse {
   final int payload;
   const StatusCPingResponse({required this.payload, });
+  StatusCPingResponse copyWith({int? payload, }) => StatusCPingResponse(payload: payload ?? this.payload, );
 }
 final class StatusCStatusResponse {
   final String jsonResponse;
   const StatusCStatusResponse({required this.jsonResponse, });
+  StatusCStatusResponse copyWith({String? jsonResponse, }) => StatusCStatusResponse(jsonResponse: jsonResponse ?? this.jsonResponse, );
 }
 sealed class JavaPacketsClientboundPacket {
   const JavaPacketsClientboundPacket();
@@ -18926,6 +19165,7 @@ final class DialogInputBool {
   final TextComponent label;
   final bool defaultValue;
   const DialogInputBool({required this.label, required this.defaultValue, });
+  DialogInputBool copyWith({TextComponent? label, bool? defaultValue, }) => DialogInputBool(label: label ?? this.label, defaultValue: defaultValue ?? this.defaultValue, );
 }
 /// A text field input control.
 final class DialogInputText {
@@ -18933,6 +19173,7 @@ final class DialogInputText {
   final TextComponent placeholder;
   final String defaultValue;
   const DialogInputText({required this.label, required this.placeholder, required this.defaultValue, });
+  DialogInputText copyWith({TextComponent? label, TextComponent? placeholder, String? defaultValue, }) => DialogInputText(label: label ?? this.label, placeholder: placeholder ?? this.placeholder, defaultValue: defaultValue ?? this.defaultValue, );
 }
 /// A numerical range slider input control.
 final class DialogInputNumberRange {
@@ -18943,6 +19184,7 @@ final class DialogInputNumberRange {
   final double step;
   final i1.Option<String> labelFormat;
   const DialogInputNumberRange({required this.label, required this.minValue, required this.maxValue, required this.initialValue, required this.step, required this.labelFormat, });
+  DialogInputNumberRange copyWith({TextComponent? label, double? minValue, double? maxValue, double? initialValue, double? step, i1.Option<String>? labelFormat, }) => DialogInputNumberRange(label: label ?? this.label, minValue: minValue ?? this.minValue, maxValue: maxValue ?? this.maxValue, initialValue: initialValue ?? this.initialValue, step: step ?? this.step, labelFormat: labelFormat ?? this.labelFormat, );
 }
 /// A multiple-choice selection input control.
 final class DialogInputSingleOption {
@@ -18950,6 +19192,7 @@ final class DialogInputSingleOption {
   final List<TextComponent> options;
   final int initialIndex;
   const DialogInputSingleOption({required this.label, required this.options, required this.initialIndex, });
+  DialogInputSingleOption copyWith({TextComponent? label, List<TextComponent>? options, int? initialIndex, }) => DialogInputSingleOption(label: label ?? this.label, options: options ?? this.options, initialIndex: initialIndex ?? this.initialIndex, );
 }
 /// Represents an interactive input control in a dialog.
 sealed class DialogInput {
@@ -18982,6 +19225,7 @@ final class CustomClickAction {
 /// Optional binary data to send with the action.
   final i1.Option<List<int>> payload;
   const CustomClickAction({required this.id, required this.payload, });
+  CustomClickAction copyWith({String? id, i1.Option<List<int>>? payload, }) => CustomClickAction(id: id ?? this.id, payload: payload ?? this.payload, );
 }
 /// Represents an action triggered by a button click.
 sealed class Action {
@@ -19004,6 +19248,7 @@ final class ActionButton {
   final i1.Option<int> width;
   final Action action;
   const ActionButton({required this.text, required this.tooltip, required this.width, required this.action, });
+  ActionButton copyWith({TextComponent? text, i1.Option<TextComponent>? tooltip, i1.Option<int>? width, Action? action, }) => ActionButton(text: text ?? this.text, tooltip: tooltip ?? this.tooltip, width: width ?? this.width, action: action ?? this.action, );
 }
 /// Built-in link types recognized by the Java Edition client.
 enum LinkType {
@@ -19039,6 +19284,7 @@ final class Link {
 /// The URL the link points to.
   final String url;
   const Link({required this.label, required this.url, });
+  Link copyWith({LinkLabel? label, String? url, }) => Link(label: label ?? this.label, url: url ?? this.url, );
 }
 /// Defines what happens after a dialog is closed.
 enum AfterAction {
@@ -19068,6 +19314,7 @@ final class Dialog {
 /// The text shown on buttons that link to/open this dialog.
   final i1.Option<TextComponent> externalTitle;
   const Dialog({required this.title, required this.type, required this.body, required this.inputs, required this.buttons, required this.links, required this.afterAction, required this.canCloseWithEscape, required this.externalTitle, });
+  Dialog copyWith({TextComponent? title, DialogType? type, List<DialogBody>? body, List<DialogInput>? inputs, List<ActionButton>? buttons, List<Link>? links, i1.Option<AfterAction>? afterAction, bool? canCloseWithEscape, i1.Option<TextComponent>? externalTitle, }) => Dialog(title: title ?? this.title, type: type ?? this.type, body: body ?? this.body, inputs: inputs ?? this.inputs, buttons: buttons ?? this.buttons, links: links ?? this.links, afterAction: afterAction ?? this.afterAction, canCloseWithEscape: canCloseWithEscape ?? this.canCloseWithEscape, externalTitle: externalTitle ?? this.externalTitle, );
 }
 @pragma("wasm:import", r"component._import793")
 external i0.WasmVoid _import793(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13, i0.WasmI32 p14, i0.WasmI32 p15);
@@ -19090,6 +19337,7 @@ final class JavaResourcePack {
 /// Optional prompt message displayed in the pack acceptance screen.
   final i1.Option<TextComponent> promptMessage;
   const JavaResourcePack({required this.id, required this.url, required this.hash, required this.forced, required this.promptMessage, });
+  JavaResourcePack copyWith({Uuid? id, String? url, String? hash, bool? forced, i1.Option<TextComponent>? promptMessage, }) => JavaResourcePack(id: id ?? this.id, url: url ?? this.url, hash: hash ?? this.hash, forced: forced ?? this.forced, promptMessage: promptMessage ?? this.promptMessage, );
 }
 @pragma("wasm:import", r"component._import797")
 external i0.WasmVoid _import797(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9);
@@ -19115,6 +19363,7 @@ final class JavaKickOptions {
 /// How the connection is closed (default: graceful).
   final SocketTeardownPolicy teardownPolicy;
   const JavaKickOptions({required this.reason, required this.logToConsole, required this.teardownPolicy, });
+  JavaKickOptions copyWith({TextComponent? reason, bool? logToConsole, SocketTeardownPolicy? teardownPolicy, }) => JavaKickOptions(reason: reason ?? this.reason, logToConsole: logToConsole ?? this.logToConsole, teardownPolicy: teardownPolicy ?? this.teardownPolicy, );
 }
 @pragma("wasm:import", r"component._import800")
 external i0.WasmVoid _import800(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -22547,6 +22796,7 @@ final class BedrockPlayerSettings {
 /// Whether the skin is from a trusted source.
   final bool isTrustedSkin;
   const BedrockPlayerSettings({required this.gameVersion, required this.deviceOs, required this.deviceId, required this.deviceModel, required this.languageCode, required this.currentInputMode, required this.defaultInputMode, required this.uiProfile, required this.guiScale, required this.isEditorMode, required this.maxViewDistance, required this.memoryTier, required this.graphicsMode, required this.playfabId, required this.clientRandomId, required this.platformOfflineId, required this.platformOnlineId, required this.skinId, required this.armSize, required this.isPersonaSkin, required this.isPremiumSkin, required this.isTrustedSkin, });
+  BedrockPlayerSettings copyWith({String? gameVersion, BedrockDeviceOs? deviceOs, String? deviceId, String? deviceModel, String? languageCode, BedrockInputMode? currentInputMode, BedrockInputMode? defaultInputMode, BedrockUiProfile? uiProfile, int? guiScale, bool? isEditorMode, int? maxViewDistance, int? memoryTier, BedrockGraphicsMode? graphicsMode, String? playfabId, int? clientRandomId, String? platformOfflineId, String? platformOnlineId, String? skinId, String? armSize, bool? isPersonaSkin, bool? isPremiumSkin, bool? isTrustedSkin, }) => BedrockPlayerSettings(gameVersion: gameVersion ?? this.gameVersion, deviceOs: deviceOs ?? this.deviceOs, deviceId: deviceId ?? this.deviceId, deviceModel: deviceModel ?? this.deviceModel, languageCode: languageCode ?? this.languageCode, currentInputMode: currentInputMode ?? this.currentInputMode, defaultInputMode: defaultInputMode ?? this.defaultInputMode, uiProfile: uiProfile ?? this.uiProfile, guiScale: guiScale ?? this.guiScale, isEditorMode: isEditorMode ?? this.isEditorMode, maxViewDistance: maxViewDistance ?? this.maxViewDistance, memoryTier: memoryTier ?? this.memoryTier, graphicsMode: graphicsMode ?? this.graphicsMode, playfabId: playfabId ?? this.playfabId, clientRandomId: clientRandomId ?? this.clientRandomId, platformOfflineId: platformOfflineId ?? this.platformOfflineId, platformOnlineId: platformOnlineId ?? this.platformOnlineId, skinId: skinId ?? this.skinId, armSize: armSize ?? this.armSize, isPersonaSkin: isPersonaSkin ?? this.isPersonaSkin, isPremiumSkin: isPremiumSkin ?? this.isPremiumSkin, isTrustedSkin: isTrustedSkin ?? this.isTrustedSkin, );
 }
 @pragma("wasm:import", r"component._import804")
 external i0.WasmVoid _import804(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -22859,11 +23109,13 @@ final class SyncedAttribute {
   final double currentValue;
   final double maxValue;
   const SyncedAttribute({required this.attributeName, required this.minValue, required this.currentValue, required this.maxValue, });
+  SyncedAttribute copyWith({String? attributeName, double? minValue, double? currentValue, double? maxValue, }) => SyncedAttribute(attributeName: attributeName ?? this.attributeName, minValue: minValue ?? this.minValue, currentValue: currentValue ?? this.currentValue, maxValue: maxValue ?? this.maxValue, );
 }
 final class PropertySyncData {
   final List<(int, int, )> intEntriesList;
   final List<(int, double, )> floatEntriesList;
   const PropertySyncData({required this.intEntriesList, required this.floatEntriesList, });
+  PropertySyncData copyWith({List<(int, int, )>? intEntriesList, List<(int, double, )>? floatEntriesList, }) => PropertySyncData(intEntriesList: intEntriesList ?? this.intEntriesList, floatEntriesList: floatEntriesList ?? this.floatEntriesList, );
 }
 final class ActorLink {
   final int riddenUniqueId;
@@ -22873,6 +23125,7 @@ final class ActorLink {
   final bool riderInitiated;
   final double vehicleAngularVelocity;
   const ActorLink({required this.riddenUniqueId, required this.riderUniqueId, required this.linkType, required this.immediate, required this.riderInitiated, required this.vehicleAngularVelocity, });
+  ActorLink copyWith({int? riddenUniqueId, int? riderUniqueId, int? linkType, bool? immediate, bool? riderInitiated, double? vehicleAngularVelocity, }) => ActorLink(riddenUniqueId: riddenUniqueId ?? this.riddenUniqueId, riderUniqueId: riderUniqueId ?? this.riderUniqueId, linkType: linkType ?? this.linkType, immediate: immediate ?? this.immediate, riderInitiated: riderInitiated ?? this.riderInitiated, vehicleAngularVelocity: vehicleAngularVelocity ?? this.vehicleAngularVelocity, );
 }
 final class CAddActor {
   final int targetActorId;
@@ -22888,6 +23141,7 @@ final class CAddActor {
   final PropertySyncData syncedProperties;
   final List<ActorLink> actorLinks;
   const CAddActor({required this.targetActorId, required this.targetRuntimeId, required this.actorType, required this.position, required this.velocity, required this.rotation, required this.yHeadRotation, required this.yBodyRotation, required this.attributesList, required this.actorData, required this.syncedProperties, required this.actorLinks, });
+  CAddActor copyWith({int? targetActorId, int? targetRuntimeId, String? actorType, (double, double, double, )? position, (double, double, double, )? velocity, (double, double, )? rotation, double? yHeadRotation, double? yBodyRotation, List<SyncedAttribute>? attributesList, String? actorData, PropertySyncData? syncedProperties, List<ActorLink>? actorLinks, }) => CAddActor(targetActorId: targetActorId ?? this.targetActorId, targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, actorType: actorType ?? this.actorType, position: position ?? this.position, velocity: velocity ?? this.velocity, rotation: rotation ?? this.rotation, yHeadRotation: yHeadRotation ?? this.yHeadRotation, yBodyRotation: yBodyRotation ?? this.yBodyRotation, attributesList: attributesList ?? this.attributesList, actorData: actorData ?? this.actorData, syncedProperties: syncedProperties ?? this.syncedProperties, actorLinks: actorLinks ?? this.actorLinks, );
 }
 final class ItemStackWrapper {
   final int id;
@@ -22900,6 +23154,7 @@ final class ItemStackWrapper {
   final int shieldBlockingTick;
   final i1.Option<int> netId;
   const ItemStackWrapper({required this.id, required this.stackSize, required this.auxValue, required this.blockRuntimeId, required this.nbtData, required this.placeOnBlocks, required this.destroyBlocks, required this.shieldBlockingTick, required this.netId, });
+  ItemStackWrapper copyWith({int? id, int? stackSize, int? auxValue, int? blockRuntimeId, String? nbtData, List<String>? placeOnBlocks, List<String>? destroyBlocks, int? shieldBlockingTick, i1.Option<int>? netId, }) => ItemStackWrapper(id: id ?? this.id, stackSize: stackSize ?? this.stackSize, auxValue: auxValue ?? this.auxValue, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, nbtData: nbtData ?? this.nbtData, placeOnBlocks: placeOnBlocks ?? this.placeOnBlocks, destroyBlocks: destroyBlocks ?? this.destroyBlocks, shieldBlockingTick: shieldBlockingTick ?? this.shieldBlockingTick, netId: netId ?? this.netId, );
 }
 final class CAddItemActor {
   final int targetActorId;
@@ -22910,6 +23165,7 @@ final class CAddItemActor {
   final String entityData;
   final bool isFromFishing;
   const CAddItemActor({required this.targetActorId, required this.targetRuntimeId, required this.item, required this.position, required this.velocity, required this.entityData, required this.isFromFishing, });
+  CAddItemActor copyWith({int? targetActorId, int? targetRuntimeId, ItemStackWrapper? item, (double, double, double, )? position, (double, double, double, )? velocity, String? entityData, bool? isFromFishing, }) => CAddItemActor(targetActorId: targetActorId ?? this.targetActorId, targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, item: item ?? this.item, position: position ?? this.position, velocity: velocity ?? this.velocity, entityData: entityData ?? this.entityData, isFromFishing: isFromFishing ?? this.isFromFishing, );
 }
 final class NetworkItemStackDescriptor {
   final int id;
@@ -22919,6 +23175,7 @@ final class NetworkItemStackDescriptor {
   final List<int> extraData;
   final i1.Option<int> netId;
   const NetworkItemStackDescriptor({required this.id, required this.stackSize, required this.auxValue, required this.blockRuntimeId, required this.extraData, required this.netId, });
+  NetworkItemStackDescriptor copyWith({int? id, int? stackSize, int? auxValue, int? blockRuntimeId, List<int>? extraData, i1.Option<int>? netId, }) => NetworkItemStackDescriptor(id: id ?? this.id, stackSize: stackSize ?? this.stackSize, auxValue: auxValue ?? this.auxValue, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, extraData: extraData ?? this.extraData, netId: netId ?? this.netId, );
 }
 enum GameType {
   unknown,
@@ -22950,6 +23207,7 @@ final class SerializedAbilitiesDataSerializedLayer {
   final double verticalFlySpeed;
   final double walkSpeed;
   const SerializedAbilitiesDataSerializedLayer({required this.serializedLayer, required this.abilitiesSet, required this.abilityValue, required this.flySpeed, required this.verticalFlySpeed, required this.walkSpeed, });
+  SerializedAbilitiesDataSerializedLayer copyWith({int? serializedLayer, int? abilitiesSet, int? abilityValue, double? flySpeed, double? verticalFlySpeed, double? walkSpeed, }) => SerializedAbilitiesDataSerializedLayer(serializedLayer: serializedLayer ?? this.serializedLayer, abilitiesSet: abilitiesSet ?? this.abilitiesSet, abilityValue: abilityValue ?? this.abilityValue, flySpeed: flySpeed ?? this.flySpeed, verticalFlySpeed: verticalFlySpeed ?? this.verticalFlySpeed, walkSpeed: walkSpeed ?? this.walkSpeed, );
 }
 final class SerializedAbilitiesData {
   final int targetPlayerRawId;
@@ -22957,6 +23215,7 @@ final class SerializedAbilitiesData {
   final CommandPermissionLevel commandPermissions;
   final List<SerializedAbilitiesDataSerializedLayer> layers;
   const SerializedAbilitiesData({required this.targetPlayerRawId, required this.playerPermissions, required this.commandPermissions, required this.layers, });
+  SerializedAbilitiesData copyWith({int? targetPlayerRawId, PlayerPermissionLevel? playerPermissions, CommandPermissionLevel? commandPermissions, List<SerializedAbilitiesDataSerializedLayer>? layers, }) => SerializedAbilitiesData(targetPlayerRawId: targetPlayerRawId ?? this.targetPlayerRawId, playerPermissions: playerPermissions ?? this.playerPermissions, commandPermissions: commandPermissions ?? this.commandPermissions, layers: layers ?? this.layers, );
 }
 enum BuildPlatform {
   unknown,
@@ -22993,21 +23252,25 @@ final class CAddPlayer {
   final String deviceId;
   final BuildPlatform buildPlatform;
   const CAddPlayer({required this.uuid, required this.playerName, required this.targetRuntimeId, required this.platformChatId, required this.position, required this.velocity, required this.rotation, required this.yHeadRotation, required this.carriedItem, required this.playerGameType, required this.entityData, required this.syncedProperties, required this.abilitiesData, required this.actorLinks, required this.deviceId, required this.buildPlatform, });
+  CAddPlayer copyWith({Uuid? uuid, String? playerName, int? targetRuntimeId, String? platformChatId, (double, double, double, )? position, (double, double, double, )? velocity, (double, double, )? rotation, double? yHeadRotation, NetworkItemStackDescriptor? carriedItem, GameType? playerGameType, String? entityData, PropertySyncData? syncedProperties, SerializedAbilitiesData? abilitiesData, List<ActorLink>? actorLinks, String? deviceId, BuildPlatform? buildPlatform, }) => CAddPlayer(uuid: uuid ?? this.uuid, playerName: playerName ?? this.playerName, targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, platformChatId: platformChatId ?? this.platformChatId, position: position ?? this.position, velocity: velocity ?? this.velocity, rotation: rotation ?? this.rotation, yHeadRotation: yHeadRotation ?? this.yHeadRotation, carriedItem: carriedItem ?? this.carriedItem, playerGameType: playerGameType ?? this.playerGameType, entityData: entityData ?? this.entityData, syncedProperties: syncedProperties ?? this.syncedProperties, abilitiesData: abilitiesData ?? this.abilitiesData, actorLinks: actorLinks ?? this.actorLinks, deviceId: deviceId ?? this.deviceId, buildPlatform: buildPlatform ?? this.buildPlatform, );
 }
 final class EnumData {
   final String name;
   final List<int> values;
   const EnumData({required this.name, required this.values, });
+  EnumData copyWith({String? name, List<int>? values, }) => EnumData(name: name ?? this.name, values: values ?? this.values, );
 }
 final class ChainedSubcommandRelationship {
   final int index;
   final int value;
   const ChainedSubcommandRelationship({required this.index, required this.value, });
+  ChainedSubcommandRelationship copyWith({int? index, int? value, }) => ChainedSubcommandRelationship(index: index ?? this.index, value: value ?? this.value, );
 }
 final class ChainedSubcommandData {
   final String name;
   final List<ChainedSubcommandRelationship> subcommandValues;
   const ChainedSubcommandData({required this.name, required this.subcommandValues, });
+  ChainedSubcommandData copyWith({String? name, List<ChainedSubcommandRelationship>? subcommandValues, }) => ChainedSubcommandData(name: name ?? this.name, subcommandValues: subcommandValues ?? this.subcommandValues, );
 }
 final class ParamData {
   final String name;
@@ -23015,11 +23278,13 @@ final class ParamData {
   final bool isOptional;
   final int options;
   const ParamData({required this.name, required this.parseSymbol, required this.isOptional, required this.options, });
+  ParamData copyWith({String? name, int? parseSymbol, bool? isOptional, int? options, }) => ParamData(name: name ?? this.name, parseSymbol: parseSymbol ?? this.parseSymbol, isOptional: isOptional ?? this.isOptional, options: options ?? this.options, );
 }
 final class OverloadData {
   final bool isChaining;
   final List<ParamData> parameterData;
   const OverloadData({required this.isChaining, required this.parameterData, });
+  OverloadData copyWith({bool? isChaining, List<ParamData>? parameterData, }) => OverloadData(isChaining: isChaining ?? this.isChaining, parameterData: parameterData ?? this.parameterData, );
 }
 final class CommandData {
   final String name;
@@ -23030,17 +23295,20 @@ final class CommandData {
   final List<int> commandDataChainedSubcommandIndexes;
   final List<OverloadData> overloads;
   const CommandData({required this.name, required this.description, required this.flags, required this.permissionLevel, required this.aliasEnum, required this.commandDataChainedSubcommandIndexes, required this.overloads, });
+  CommandData copyWith({String? name, String? description, int? flags, CommandPermissionLevel? permissionLevel, int? aliasEnum, List<int>? commandDataChainedSubcommandIndexes, List<OverloadData>? overloads, }) => CommandData(name: name ?? this.name, description: description ?? this.description, flags: flags ?? this.flags, permissionLevel: permissionLevel ?? this.permissionLevel, aliasEnum: aliasEnum ?? this.aliasEnum, commandDataChainedSubcommandIndexes: commandDataChainedSubcommandIndexes ?? this.commandDataChainedSubcommandIndexes, overloads: overloads ?? this.overloads, );
 }
 final class SoftEnumData {
   final String enumName;
   final List<String> enumOptions;
   const SoftEnumData({required this.enumName, required this.enumOptions, });
+  SoftEnumData copyWith({String? enumName, List<String>? enumOptions, }) => SoftEnumData(enumName: enumName ?? this.enumName, enumOptions: enumOptions ?? this.enumOptions, );
 }
 final class ConstrainedValueData {
   final int enumValueSymbol;
   final int enumSymbol;
   final List<int> constraintIndices;
   const ConstrainedValueData({required this.enumValueSymbol, required this.enumSymbol, required this.constraintIndices, });
+  ConstrainedValueData copyWith({int? enumValueSymbol, int? enumSymbol, List<int>? constraintIndices, }) => ConstrainedValueData(enumValueSymbol: enumValueSymbol ?? this.enumValueSymbol, enumSymbol: enumSymbol ?? this.enumSymbol, constraintIndices: constraintIndices ?? this.constraintIndices, );
 }
 final class CAvailableCommands {
   final List<String> enumValues;
@@ -23052,17 +23320,20 @@ final class CAvailableCommands {
   final List<SoftEnumData> softEnums;
   final List<ConstrainedValueData> constraints;
   const CAvailableCommands({required this.enumValues, required this.chainedSubcommandValues, required this.postFixes, required this.enumData, required this.chainedSubcommandData, required this.commands, required this.softEnums, required this.constraints, });
+  CAvailableCommands copyWith({List<String>? enumValues, List<String>? chainedSubcommandValues, List<String>? postFixes, List<EnumData>? enumData, List<ChainedSubcommandData>? chainedSubcommandData, List<CommandData>? commands, List<SoftEnumData>? softEnums, List<ConstrainedValueData>? constraints, }) => CAvailableCommands(enumValues: enumValues ?? this.enumValues, chainedSubcommandValues: chainedSubcommandValues ?? this.chainedSubcommandValues, postFixes: postFixes ?? this.postFixes, enumData: enumData ?? this.enumData, chainedSubcommandData: chainedSubcommandData ?? this.chainedSubcommandData, commands: commands ?? this.commands, softEnums: softEnums ?? this.softEnums, constraints: constraints ?? this.constraints, );
 }
 final class CBlockActorData {
   final (int, int, int, ) blockPosition;
   final String actorDataTags;
   const CBlockActorData({required this.blockPosition, required this.actorDataTags, });
+  CBlockActorData copyWith({(int, int, int, )? blockPosition, String? actorDataTags, }) => CBlockActorData(blockPosition: blockPosition ?? this.blockPosition, actorDataTags: actorDataTags ?? this.actorDataTags, );
 }
 final class CBlockEvent {
   final (int, int, int, ) blockPosition;
   final int eventType;
   final int eventValue;
   const CBlockEvent({required this.blockPosition, required this.eventType, required this.eventValue, });
+  CBlockEvent copyWith({(int, int, int, )? blockPosition, int? eventType, int? eventValue, }) => CBlockEvent(blockPosition: blockPosition ?? this.blockPosition, eventType: eventType ?? this.eventType, eventValue: eventValue ?? this.eventValue, );
 }
 final class CBossEvent {
   final int bossEntityId;
@@ -23073,6 +23344,7 @@ final class CBossEvent {
   final int color;
   final int overlay;
   const CBossEvent({required this.bossEntityId, required this.eventType, required this.title, required this.filteredTitle, required this.healthPercentage, required this.color, required this.overlay, });
+  CBossEvent copyWith({int? bossEntityId, int? eventType, String? title, String? filteredTitle, double? healthPercentage, int? color, int? overlay, }) => CBossEvent(bossEntityId: bossEntityId ?? this.bossEntityId, eventType: eventType ?? this.eventType, title: title ?? this.title, filteredTitle: filteredTitle ?? this.filteredTitle, healthPercentage: healthPercentage ?? this.healthPercentage, color: color ?? this.color, overlay: overlay ?? this.overlay, );
 }
 final class CChangeDimension {
   final int dimensionId;
@@ -23080,19 +23352,23 @@ final class CChangeDimension {
   final bool respawn;
   final i1.Option<int> loadingScreenId;
   const CChangeDimension({required this.dimensionId, required this.position, required this.respawn, required this.loadingScreenId, });
+  CChangeDimension copyWith({int? dimensionId, (double, double, double, )? position, bool? respawn, i1.Option<int>? loadingScreenId, }) => CChangeDimension(dimensionId: dimensionId ?? this.dimensionId, position: position ?? this.position, respawn: respawn ?? this.respawn, loadingScreenId: loadingScreenId ?? this.loadingScreenId, );
 }
 final class CChunkRadiusUpdated {
   final int chunkRadius;
   const CChunkRadiusUpdated({required this.chunkRadius, });
+  CChunkRadiusUpdated copyWith({int? chunkRadius, }) => CChunkRadiusUpdated(chunkRadius: chunkRadius ?? this.chunkRadius, );
 }
 final class MissingBlobData {
   final int blobId;
   final List<int> blobData;
   const MissingBlobData({required this.blobId, required this.blobData, });
+  MissingBlobData copyWith({int? blobId, List<int>? blobData, }) => MissingBlobData(blobId: blobId ?? this.blobId, blobData: blobData ?? this.blobData, );
 }
 final class CClientCacheMissResponse {
   final List<MissingBlobData> missingBlobs;
   const CClientCacheMissResponse({required this.missingBlobs, });
+  CClientCacheMissResponse copyWith({List<MissingBlobData>? missingBlobs, }) => CClientCacheMissResponse(missingBlobs: missingBlobs ?? this.missingBlobs, );
 }
 final class CContainerOpen {
   final int containerId;
@@ -23100,6 +23376,7 @@ final class CContainerOpen {
   final (int, int, int, ) position;
   final int targetEntityId;
   const CContainerOpen({required this.containerId, required this.containerType, required this.position, required this.targetEntityId, });
+  CContainerOpen copyWith({int? containerId, int? containerType, (int, int, int, )? position, int? targetEntityId, }) => CContainerOpen(containerId: containerId ?? this.containerId, containerType: containerType ?? this.containerType, position: position ?? this.position, targetEntityId: targetEntityId ?? this.targetEntityId, );
 }
 final class CCorrectPlayerMovePrediction {
   final int predictionType;
@@ -23110,11 +23387,13 @@ final class CCorrectPlayerMovePrediction {
   final bool onGround;
   final int tick;
   const CCorrectPlayerMovePrediction({required this.predictionType, required this.pos, required this.posDelta, required this.rotation, required this.vehicleAngularVelocity, required this.onGround, required this.tick, });
+  CCorrectPlayerMovePrediction copyWith({int? predictionType, (double, double, double, )? pos, (double, double, double, )? posDelta, (double, double, )? rotation, i1.Option<double>? vehicleAngularVelocity, bool? onGround, int? tick, }) => CCorrectPlayerMovePrediction(predictionType: predictionType ?? this.predictionType, pos: pos ?? this.pos, posDelta: posDelta ?? this.posDelta, rotation: rotation ?? this.rotation, vehicleAngularVelocity: vehicleAngularVelocity ?? this.vehicleAngularVelocity, onGround: onGround ?? this.onGround, tick: tick ?? this.tick, );
 }
 final class RecipeItemDescriptorItem {
   final String identifier;
   final int metadataValue;
   const RecipeItemDescriptorItem({required this.identifier, required this.metadataValue, });
+  RecipeItemDescriptorItem copyWith({String? identifier, int? metadataValue, }) => RecipeItemDescriptorItem(identifier: identifier ?? this.identifier, metadataValue: metadataValue ?? this.metadataValue, );
 }
 sealed class RecipeItemDescriptor {
   const RecipeItemDescriptor();
@@ -23134,6 +23413,7 @@ final class ItemDescriptorCount {
   final RecipeItemDescriptor descriptor;
   final int count;
   const ItemDescriptorCount({required this.descriptor, required this.count, });
+  ItemDescriptorCount copyWith({RecipeItemDescriptor? descriptor, int? count, }) => ItemDescriptorCount(descriptor: descriptor ?? this.descriptor, count: count ?? this.count, );
 }
 final class NetworkItemDescriptor {
   final int id;
@@ -23145,10 +23425,12 @@ final class NetworkItemDescriptor {
   final List<String> destroyBlocks;
   final int shieldBlockingTick;
   const NetworkItemDescriptor({required this.id, required this.stackSize, required this.auxValue, required this.blockRuntimeId, required this.nbtData, required this.placeOnBlocks, required this.destroyBlocks, required this.shieldBlockingTick, });
+  NetworkItemDescriptor copyWith({int? id, int? stackSize, int? auxValue, int? blockRuntimeId, String? nbtData, List<String>? placeOnBlocks, List<String>? destroyBlocks, int? shieldBlockingTick, }) => NetworkItemDescriptor(id: id ?? this.id, stackSize: stackSize ?? this.stackSize, auxValue: auxValue ?? this.auxValue, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, nbtData: nbtData ?? this.nbtData, placeOnBlocks: placeOnBlocks ?? this.placeOnBlocks, destroyBlocks: destroyBlocks ?? this.destroyBlocks, shieldBlockingTick: shieldBlockingTick ?? this.shieldBlockingTick, );
 }
 final class RecipeUnlockRequirement {
   final int context;
   const RecipeUnlockRequirement({required this.context, });
+  RecipeUnlockRequirement copyWith({int? context, }) => RecipeUnlockRequirement(context: context ?? this.context, );
 }
 final class BedrockShapelessRecipe {
   final String recipeId;
@@ -23160,6 +23442,7 @@ final class BedrockShapelessRecipe {
   final RecipeUnlockRequirement unlockRequirement;
   final int recipeNetworkId;
   const BedrockShapelessRecipe({required this.recipeId, required this.input, required this.output, required this.uuid, required this.block, required this.priority, required this.unlockRequirement, required this.recipeNetworkId, });
+  BedrockShapelessRecipe copyWith({String? recipeId, List<ItemDescriptorCount>? input, List<NetworkItemDescriptor>? output, Uuid? uuid, String? block, int? priority, RecipeUnlockRequirement? unlockRequirement, int? recipeNetworkId, }) => BedrockShapelessRecipe(recipeId: recipeId ?? this.recipeId, input: input ?? this.input, output: output ?? this.output, uuid: uuid ?? this.uuid, block: block ?? this.block, priority: priority ?? this.priority, unlockRequirement: unlockRequirement ?? this.unlockRequirement, recipeNetworkId: recipeNetworkId ?? this.recipeNetworkId, );
 }
 final class BedrockShapedRecipe {
   final String recipeId;
@@ -23174,6 +23457,7 @@ final class BedrockShapedRecipe {
   final RecipeUnlockRequirement unlockRequirement;
   final int recipeNetworkId;
   const BedrockShapedRecipe({required this.recipeId, required this.width, required this.height, required this.input, required this.output, required this.uuid, required this.block, required this.priority, required this.assumeSymmetry, required this.unlockRequirement, required this.recipeNetworkId, });
+  BedrockShapedRecipe copyWith({String? recipeId, int? width, int? height, List<ItemDescriptorCount>? input, List<NetworkItemDescriptor>? output, Uuid? uuid, String? block, int? priority, bool? assumeSymmetry, RecipeUnlockRequirement? unlockRequirement, int? recipeNetworkId, }) => BedrockShapedRecipe(recipeId: recipeId ?? this.recipeId, width: width ?? this.width, height: height ?? this.height, input: input ?? this.input, output: output ?? this.output, uuid: uuid ?? this.uuid, block: block ?? this.block, priority: priority ?? this.priority, assumeSymmetry: assumeSymmetry ?? this.assumeSymmetry, unlockRequirement: unlockRequirement ?? this.unlockRequirement, recipeNetworkId: recipeNetworkId ?? this.recipeNetworkId, );
 }
 sealed class BedrockRecipe {
   const BedrockRecipe();
@@ -23190,6 +23474,7 @@ final class CCraftingData {
   final List<BedrockRecipe> recipes;
   final bool cleanRecipes;
   const CCraftingData({required this.recipes, required this.cleanRecipes, });
+  CCraftingData copyWith({List<BedrockRecipe>? recipes, bool? cleanRecipes, }) => CCraftingData(recipes: recipes ?? this.recipes, cleanRecipes: cleanRecipes ?? this.cleanRecipes, );
 }
 enum CreativeCategory {
   all,
@@ -23205,17 +23490,20 @@ final class CreativeGroupInfoPayload {
   final String name;
   final NetworkItemDescriptor groupIconItem;
   const CreativeGroupInfoPayload({required this.creativeCategory, required this.name, required this.groupIconItem, });
+  CreativeGroupInfoPayload copyWith({CreativeCategory? creativeCategory, String? name, NetworkItemDescriptor? groupIconItem, }) => CreativeGroupInfoPayload(creativeCategory: creativeCategory ?? this.creativeCategory, name: name ?? this.name, groupIconItem: groupIconItem ?? this.groupIconItem, );
 }
 final class CreativeItemEntryPayload {
   final int id;
   final NetworkItemDescriptor item;
   final int groupIndex;
   const CreativeItemEntryPayload({required this.id, required this.item, required this.groupIndex, });
+  CreativeItemEntryPayload copyWith({int? id, NetworkItemDescriptor? item, int? groupIndex, }) => CreativeItemEntryPayload(id: id ?? this.id, item: item ?? this.item, groupIndex: groupIndex ?? this.groupIndex, );
 }
 final class CCreativeContent {
   final List<CreativeGroupInfoPayload> groups;
   final List<CreativeItemEntryPayload> entries;
   const CCreativeContent({required this.groups, required this.entries, });
+  CCreativeContent copyWith({List<CreativeGroupInfoPayload>? groups, List<CreativeItemEntryPayload>? entries, }) => CCreativeContent(groups: groups ?? this.groups, entries: entries ?? this.entries, );
 }
 final class CDisconnect {
   final int reason;
@@ -23223,6 +23511,7 @@ final class CDisconnect {
   final String message;
   final String filteredMessage;
   const CDisconnect({required this.reason, required this.skipMessage, required this.message, required this.filteredMessage, });
+  CDisconnect copyWith({int? reason, bool? skipMessage, String? message, String? filteredMessage, }) => CDisconnect(reason: reason ?? this.reason, skipMessage: skipMessage ?? this.skipMessage, message: message ?? this.message, filteredMessage: filteredMessage ?? this.filteredMessage, );
 }
 enum RuleValue {
   null_,
@@ -23232,10 +23521,12 @@ final class BedrockPacketsGameRule {
   final bool ruleCanBeModified;
   final RuleValue ruleValue;
   const BedrockPacketsGameRule({required this.ruleName, required this.ruleCanBeModified, required this.ruleValue, });
+  BedrockPacketsGameRule copyWith({String? ruleName, bool? ruleCanBeModified, RuleValue? ruleValue, }) => BedrockPacketsGameRule(ruleName: ruleName ?? this.ruleName, ruleCanBeModified: ruleCanBeModified ?? this.ruleCanBeModified, ruleValue: ruleValue ?? this.ruleValue, );
 }
 final class CGamerulesChanged {
   final List<BedrockPacketsGameRule> ruleData;
   const CGamerulesChanged({required this.ruleData, });
+  CGamerulesChanged copyWith({List<BedrockPacketsGameRule>? ruleData, }) => CGamerulesChanged(ruleData: ruleData ?? this.ruleData, );
 }
 enum ContainerName {
   anvilInput,
@@ -23310,6 +23601,7 @@ final class FullContainerName {
   final ContainerName containerName;
   final i1.Option<int> dynamicId;
   const FullContainerName({required this.containerName, required this.dynamicId, });
+  FullContainerName copyWith({ContainerName? containerName, i1.Option<int>? dynamicId, }) => FullContainerName(containerName: containerName ?? this.containerName, dynamicId: dynamicId ?? this.dynamicId, );
 }
 final class CInventoryContent {
   final int containerId;
@@ -23317,6 +23609,7 @@ final class CInventoryContent {
   final FullContainerName fullContainerName;
   final NetworkItemStackDescriptor storageItem;
   const CInventoryContent({required this.containerId, required this.slots, required this.fullContainerName, required this.storageItem, });
+  CInventoryContent copyWith({int? containerId, List<NetworkItemStackDescriptor>? slots, FullContainerName? fullContainerName, NetworkItemStackDescriptor? storageItem, }) => CInventoryContent(containerId: containerId ?? this.containerId, slots: slots ?? this.slots, fullContainerName: fullContainerName ?? this.fullContainerName, storageItem: storageItem ?? this.storageItem, );
 }
 final class CInventorySlot {
   final int containerId;
@@ -23325,6 +23618,7 @@ final class CInventorySlot {
   final i1.Option<NetworkItemStackDescriptor> storageItem;
   final NetworkItemStackDescriptor item;
   const CInventorySlot({required this.containerId, required this.slot, required this.fullContainerName, required this.storageItem, required this.item, });
+  CInventorySlot copyWith({int? containerId, int? slot, i1.Option<FullContainerName>? fullContainerName, i1.Option<NetworkItemStackDescriptor>? storageItem, NetworkItemStackDescriptor? item, }) => CInventorySlot(containerId: containerId ?? this.containerId, slot: slot ?? this.slot, fullContainerName: fullContainerName ?? this.fullContainerName, storageItem: storageItem ?? this.storageItem, item: item ?? this.item, );
 }
 final class ItemData {
   final String itemName;
@@ -23333,10 +23627,12 @@ final class ItemData {
   final int itemVersion;
   final List<int> componentData;
   const ItemData({required this.itemName, required this.itemId, required this.isComponentBased, required this.itemVersion, required this.componentData, });
+  ItemData copyWith({String? itemName, int? itemId, bool? isComponentBased, int? itemVersion, List<int>? componentData, }) => ItemData(itemName: itemName ?? this.itemName, itemId: itemId ?? this.itemId, isComponentBased: isComponentBased ?? this.isComponentBased, itemVersion: itemVersion ?? this.itemVersion, componentData: componentData ?? this.componentData, );
 }
 final class CItemRegistry {
   final List<ItemData> items;
   const CItemRegistry({required this.items, });
+  CItemRegistry copyWith({List<ItemData>? items, }) => CItemRegistry(items: items ?? this.items, );
 }
 final class ItemStackResponseSlotInfo {
   final int requestedSlot;
@@ -23347,27 +23643,32 @@ final class ItemStackResponseSlotInfo {
   final String filteredCustomName;
   final int durabilityCorrection;
   const ItemStackResponseSlotInfo({required this.requestedSlot, required this.slot, required this.amount, required this.itemStackNetId, required this.customName, required this.filteredCustomName, required this.durabilityCorrection, });
+  ItemStackResponseSlotInfo copyWith({int? requestedSlot, int? slot, int? amount, int? itemStackNetId, String? customName, String? filteredCustomName, int? durabilityCorrection, }) => ItemStackResponseSlotInfo(requestedSlot: requestedSlot ?? this.requestedSlot, slot: slot ?? this.slot, amount: amount ?? this.amount, itemStackNetId: itemStackNetId ?? this.itemStackNetId, customName: customName ?? this.customName, filteredCustomName: filteredCustomName ?? this.filteredCustomName, durabilityCorrection: durabilityCorrection ?? this.durabilityCorrection, );
 }
 final class ItemStackResponseContainerInfo {
   final FullContainerName fullContainerName;
   final List<ItemStackResponseSlotInfo> slots;
   const ItemStackResponseContainerInfo({required this.fullContainerName, required this.slots, });
+  ItemStackResponseContainerInfo copyWith({FullContainerName? fullContainerName, List<ItemStackResponseSlotInfo>? slots, }) => ItemStackResponseContainerInfo(fullContainerName: fullContainerName ?? this.fullContainerName, slots: slots ?? this.slots, );
 }
 final class ItemStackResponseInfo {
   final int result;
   final int clientRequestId;
   final List<ItemStackResponseContainerInfo> containers;
   const ItemStackResponseInfo({required this.result, required this.clientRequestId, required this.containers, });
+  ItemStackResponseInfo copyWith({int? result, int? clientRequestId, List<ItemStackResponseContainerInfo>? containers, }) => ItemStackResponseInfo(result: result ?? this.result, clientRequestId: clientRequestId ?? this.clientRequestId, containers: containers ?? this.containers, );
 }
 final class CItemStackResponse {
   final List<ItemStackResponseInfo> responses;
   const CItemStackResponse({required this.responses, });
+  CItemStackResponse copyWith({List<ItemStackResponseInfo>? responses, }) => CItemStackResponse(responses: responses ?? this.responses, );
 }
 final class CLevelEvent {
   final int eventId;
   final (double, double, double, ) position;
   final int data;
   const CLevelEvent({required this.eventId, required this.position, required this.data, });
+  CLevelEvent copyWith({int? eventId, (double, double, double, )? position, int? data, }) => CLevelEvent(eventId: eventId ?? this.eventId, position: position ?? this.position, data: data ?? this.data, );
 }
 final class CLevelSoundEvent {
   final String soundEvent;
@@ -23379,6 +23680,7 @@ final class CLevelSoundEvent {
   final int actorUniqueId;
   final i1.Option<(double, double, double, )> fireAtPosition;
   const CLevelSoundEvent({required this.soundEvent, required this.position, required this.data, required this.actorIdentifier, required this.isBaby, required this.isGlobal, required this.actorUniqueId, required this.fireAtPosition, });
+  CLevelSoundEvent copyWith({String? soundEvent, (double, double, double, )? position, int? data, String? actorIdentifier, bool? isBaby, bool? isGlobal, int? actorUniqueId, i1.Option<(double, double, double, )>? fireAtPosition, }) => CLevelSoundEvent(soundEvent: soundEvent ?? this.soundEvent, position: position ?? this.position, data: data ?? this.data, actorIdentifier: actorIdentifier ?? this.actorIdentifier, isBaby: isBaby ?? this.isBaby, isGlobal: isGlobal ?? this.isGlobal, actorUniqueId: actorUniqueId ?? this.actorUniqueId, fireAtPosition: fireAtPosition ?? this.fireAtPosition, );
 }
 final class CMobEffect {
   final int targetRuntimeId;
@@ -23390,6 +23692,7 @@ final class CMobEffect {
   final int tick;
   final bool ambient;
   const CMobEffect({required this.targetRuntimeId, required this.eventId, required this.effectId, required this.effectAmplifier, required this.showParticles, required this.effectDurationTicks, required this.tick, required this.ambient, });
+  CMobEffect copyWith({int? targetRuntimeId, int? eventId, int? effectId, int? effectAmplifier, bool? showParticles, int? effectDurationTicks, int? tick, bool? ambient, }) => CMobEffect(targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, eventId: eventId ?? this.eventId, effectId: effectId ?? this.effectId, effectAmplifier: effectAmplifier ?? this.effectAmplifier, showParticles: showParticles ?? this.showParticles, effectDurationTicks: effectDurationTicks ?? this.effectDurationTicks, tick: tick ?? this.tick, ambient: ambient ?? this.ambient, );
 }
 final class CMobEquipment {
   final int targetRuntimeId;
@@ -23398,11 +23701,13 @@ final class CMobEquipment {
   final int selectedSlot;
   final int containerId;
   const CMobEquipment({required this.targetRuntimeId, required this.item, required this.slot, required this.selectedSlot, required this.containerId, });
+  CMobEquipment copyWith({int? targetRuntimeId, NetworkItemStackDescriptor? item, int? slot, int? selectedSlot, int? containerId, }) => CMobEquipment(targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, item: item ?? this.item, slot: slot ?? this.slot, selectedSlot: selectedSlot ?? this.selectedSlot, containerId: containerId ?? this.containerId, );
 }
 final class CModalFormRequest {
   final int formId;
   final String formUiJson;
   const CModalFormRequest({required this.formId, required this.formUiJson, });
+  CModalFormRequest copyWith({int? formId, String? formUiJson, }) => CModalFormRequest(formId: formId ?? this.formId, formUiJson: formUiJson ?? this.formUiJson, );
 }
 final class CMoveActorAbsolute {
   final int actorRuntimeId;
@@ -23412,6 +23717,7 @@ final class CMoveActorAbsolute {
   final int rotationY;
   final int rotationYHead;
   const CMoveActorAbsolute({required this.actorRuntimeId, required this.header, required this.position, required this.rotationX, required this.rotationY, required this.rotationYHead, });
+  CMoveActorAbsolute copyWith({int? actorRuntimeId, int? header, (double, double, double, )? position, int? rotationX, int? rotationY, int? rotationYHead, }) => CMoveActorAbsolute(actorRuntimeId: actorRuntimeId ?? this.actorRuntimeId, header: header ?? this.header, position: position ?? this.position, rotationX: rotationX ?? this.rotationX, rotationY: rotationY ?? this.rotationY, rotationYHead: rotationYHead ?? this.rotationYHead, );
 }
 final class CMoveActorDelta {
   final int entityRuntimeId;
@@ -23424,6 +23730,7 @@ final class CMoveActorDelta {
   final int headYaw;
   final int tick;
   const CMoveActorDelta({required this.entityRuntimeId, required this.flags, required this.x, required this.y, required this.z, required this.pitch, required this.yaw, required this.headYaw, required this.tick, });
+  CMoveActorDelta copyWith({int? entityRuntimeId, int? flags, double? x, double? y, double? z, int? pitch, int? yaw, int? headYaw, int? tick, }) => CMoveActorDelta(entityRuntimeId: entityRuntimeId ?? this.entityRuntimeId, flags: flags ?? this.flags, x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, pitch: pitch ?? this.pitch, yaw: yaw ?? this.yaw, headYaw: headYaw ?? this.headYaw, tick: tick ?? this.tick, );
 }
 final class CMovePlayer {
   final int playerRuntimeId;
@@ -23438,12 +23745,14 @@ final class CMovePlayer {
   final int teleportSourceEntityType;
   final int tick;
   const CMovePlayer({required this.playerRuntimeId, required this.position, required this.pitch, required this.yaw, required this.headYaw, required this.mode, required this.onGround, required this.ridingRuntimeId, required this.teleportCause, required this.teleportSourceEntityType, required this.tick, });
+  CMovePlayer copyWith({int? playerRuntimeId, (double, double, double, )? position, double? pitch, double? yaw, double? headYaw, int? mode, bool? onGround, int? ridingRuntimeId, int? teleportCause, int? teleportSourceEntityType, int? tick, }) => CMovePlayer(playerRuntimeId: playerRuntimeId ?? this.playerRuntimeId, position: position ?? this.position, pitch: pitch ?? this.pitch, yaw: yaw ?? this.yaw, headYaw: headYaw ?? this.headYaw, mode: mode ?? this.mode, onGround: onGround ?? this.onGround, ridingRuntimeId: ridingRuntimeId ?? this.ridingRuntimeId, teleportCause: teleportCause ?? this.teleportCause, teleportSourceEntityType: teleportSourceEntityType ?? this.teleportSourceEntityType, tick: tick ?? this.tick, );
 }
 final class CNetworkChunkPublisherUpdate {
   final (int, int, int, ) posForView;
   final int newRadius;
   final List<(double, double, )> serverBuildChunkList;
   const CNetworkChunkPublisherUpdate({required this.posForView, required this.newRadius, required this.serverBuildChunkList, });
+  CNetworkChunkPublisherUpdate copyWith({(int, int, int, )? posForView, int? newRadius, List<(double, double, )>? serverBuildChunkList, }) => CNetworkChunkPublisherUpdate(posForView: posForView ?? this.posForView, newRadius: newRadius ?? this.newRadius, serverBuildChunkList: serverBuildChunkList ?? this.serverBuildChunkList, );
 }
 final class CNetworkSettings {
   final int compressionThreshold;
@@ -23452,6 +23761,7 @@ final class CNetworkSettings {
   final int clientThrottleThreshold;
   final double clientThrottleScalar;
   const CNetworkSettings({required this.compressionThreshold, required this.compressionAlgorithm, required this.clientThrottleEnabled, required this.clientThrottleThreshold, required this.clientThrottleScalar, });
+  CNetworkSettings copyWith({int? compressionThreshold, int? compressionAlgorithm, bool? clientThrottleEnabled, int? clientThrottleThreshold, double? clientThrottleScalar, }) => CNetworkSettings(compressionThreshold: compressionThreshold ?? this.compressionThreshold, compressionAlgorithm: compressionAlgorithm ?? this.compressionAlgorithm, clientThrottleEnabled: clientThrottleEnabled ?? this.clientThrottleEnabled, clientThrottleThreshold: clientThrottleThreshold ?? this.clientThrottleThreshold, clientThrottleScalar: clientThrottleScalar ?? this.clientThrottleScalar, );
 }
 enum CPlayStatus {
   loginSuccess,
@@ -23470,6 +23780,7 @@ final class CPlayerHotbar {
   final int containerId;
   final bool shouldSelectSlot;
   const CPlayerHotbar({required this.selectedSlot, required this.containerId, required this.shouldSelectSlot, });
+  CPlayerHotbar copyWith({int? selectedSlot, int? containerId, bool? shouldSelectSlot, }) => CPlayerHotbar(selectedSlot: selectedSlot ?? this.selectedSlot, containerId: containerId ?? this.containerId, shouldSelectSlot: shouldSelectSlot ?? this.shouldSelectSlot, );
 }
 final class SkinAnimation {
   final double frames;
@@ -23479,6 +23790,7 @@ final class SkinAnimation {
   final int animationType;
   final int animationExpression;
   const SkinAnimation({required this.frames, required this.image, required this.imageHeight, required this.imageWidth, required this.animationType, required this.animationExpression, });
+  SkinAnimation copyWith({double? frames, String? image, int? imageHeight, int? imageWidth, int? animationType, int? animationExpression, }) => SkinAnimation(frames: frames ?? this.frames, image: image ?? this.image, imageHeight: imageHeight ?? this.imageHeight, imageWidth: imageWidth ?? this.imageWidth, animationType: animationType ?? this.animationType, animationExpression: animationExpression ?? this.animationExpression, );
 }
 final class PersonaPiece {
   final bool isDefault;
@@ -23487,11 +23799,13 @@ final class PersonaPiece {
   final String pieceType;
   final String productId;
   const PersonaPiece({required this.isDefault, required this.packId, required this.pieceId, required this.pieceType, required this.productId, });
+  PersonaPiece copyWith({bool? isDefault, String? packId, String? pieceId, String? pieceType, String? productId, }) => PersonaPiece(isDefault: isDefault ?? this.isDefault, packId: packId ?? this.packId, pieceId: pieceId ?? this.pieceId, pieceType: pieceType ?? this.pieceType, productId: productId ?? this.productId, );
 }
 final class PieceTintColor {
   final String pieceType;
   final List<int> colors;
   const PieceTintColor({required this.pieceType, required this.colors, });
+  PieceTintColor copyWith({String? pieceType, List<int>? colors, }) => PieceTintColor(pieceType: pieceType ?? this.pieceType, colors: colors ?? this.colors, );
 }
 final class Skin {
   final String skinId;
@@ -23521,6 +23835,7 @@ final class Skin {
   final bool isTrusted;
   final String profileHash;
   const Skin({required this.skinId, required this.playFabId, required this.resourcePatch, required this.imageWidth, required this.imageHeight, required this.skinData, required this.animations, required this.capeWidth, required this.capeHeight, required this.capeData, required this.geometryData, required this.animationData, required this.geometryDataEngineVersion, required this.capeId, required this.fullId, required this.armSize, required this.skinColor, required this.personaPieces, required this.pieceTintColors, required this.isPremium, required this.isPersona, required this.personaCapeOnClassic, required this.isPrimaryUser, required this.overrideAppearance, required this.isTrusted, required this.profileHash, });
+  Skin copyWith({String? skinId, String? playFabId, List<int>? resourcePatch, int? imageWidth, int? imageHeight, List<int>? skinData, List<SkinAnimation>? animations, int? capeWidth, int? capeHeight, List<int>? capeData, List<int>? geometryData, List<int>? animationData, List<int>? geometryDataEngineVersion, String? capeId, String? fullId, String? armSize, String? skinColor, List<PersonaPiece>? personaPieces, List<PieceTintColor>? pieceTintColors, bool? isPremium, bool? isPersona, bool? personaCapeOnClassic, bool? isPrimaryUser, bool? overrideAppearance, bool? isTrusted, String? profileHash, }) => Skin(skinId: skinId ?? this.skinId, playFabId: playFabId ?? this.playFabId, resourcePatch: resourcePatch ?? this.resourcePatch, imageWidth: imageWidth ?? this.imageWidth, imageHeight: imageHeight ?? this.imageHeight, skinData: skinData ?? this.skinData, animations: animations ?? this.animations, capeWidth: capeWidth ?? this.capeWidth, capeHeight: capeHeight ?? this.capeHeight, capeData: capeData ?? this.capeData, geometryData: geometryData ?? this.geometryData, animationData: animationData ?? this.animationData, geometryDataEngineVersion: geometryDataEngineVersion ?? this.geometryDataEngineVersion, capeId: capeId ?? this.capeId, fullId: fullId ?? this.fullId, armSize: armSize ?? this.armSize, skinColor: skinColor ?? this.skinColor, personaPieces: personaPieces ?? this.personaPieces, pieceTintColors: pieceTintColors ?? this.pieceTintColors, isPremium: isPremium ?? this.isPremium, isPersona: isPersona ?? this.isPersona, personaCapeOnClassic: personaCapeOnClassic ?? this.personaCapeOnClassic, isPrimaryUser: isPrimaryUser ?? this.isPrimaryUser, overrideAppearance: overrideAppearance ?? this.overrideAppearance, isTrusted: isTrusted ?? this.isTrusted, profileHash: profileHash ?? this.profileHash, );
 }
 final class PlayerListEntry {
   final Uuid uuid;
@@ -23535,35 +23850,42 @@ final class PlayerListEntry {
   final bool isSubClient;
   final List<int> playerColor;
   const PlayerListEntry({required this.uuid, required this.entityUniqueId, required this.username, required this.xuid, required this.platformChatId, required this.buildPlatform, required this.skin, required this.isTeacher, required this.isHost, required this.isSubClient, required this.playerColor, });
+  PlayerListEntry copyWith({Uuid? uuid, int? entityUniqueId, String? username, String? xuid, String? platformChatId, BuildPlatform? buildPlatform, Skin? skin, bool? isTeacher, bool? isHost, bool? isSubClient, List<int>? playerColor, }) => PlayerListEntry(uuid: uuid ?? this.uuid, entityUniqueId: entityUniqueId ?? this.entityUniqueId, username: username ?? this.username, xuid: xuid ?? this.xuid, platformChatId: platformChatId ?? this.platformChatId, buildPlatform: buildPlatform ?? this.buildPlatform, skin: skin ?? this.skin, isTeacher: isTeacher ?? this.isTeacher, isHost: isHost ?? this.isHost, isSubClient: isSubClient ?? this.isSubClient, playerColor: playerColor ?? this.playerColor, );
 }
 final class CPlayerList {
   final int action;
   final List<PlayerListEntry> entries;
   const CPlayerList({required this.action, required this.entries, });
+  CPlayerList copyWith({int? action, List<PlayerListEntry>? entries, }) => CPlayerList(action: action ?? this.action, entries: entries ?? this.entries, );
 }
 final class CRemoveActor {
   final int targetActorId;
   const CRemoveActor({required this.targetActorId, });
+  CRemoveActor copyWith({int? targetActorId, }) => CRemoveActor(targetActorId: targetActorId ?? this.targetActorId, );
 }
 final class CRemoveObjective {
   final String objectiveName;
   const CRemoveObjective({required this.objectiveName, });
+  CRemoveObjective copyWith({String? objectiveName, }) => CRemoveObjective(objectiveName: objectiveName ?? this.objectiveName, );
 }
 final class PackInstanceId {
   final String packId;
   final String version;
   final String subPackName;
   const PackInstanceId({required this.packId, required this.version, required this.subPackName, });
+  PackInstanceId copyWith({String? packId, String? version, String? subPackName, }) => PackInstanceId(packId: packId ?? this.packId, version: version ?? this.version, subPackName: subPackName ?? this.subPackName, );
 }
 final class ExperimentToggle {
   final String name;
   final bool enabled;
   const ExperimentToggle({required this.name, required this.enabled, });
+  ExperimentToggle copyWith({String? name, bool? enabled, }) => ExperimentToggle(name: name ?? this.name, enabled: enabled ?? this.enabled, );
 }
 final class Experiments {
   final List<ExperimentToggle> toggles;
   final bool experimentsEverToggled;
   const Experiments({required this.toggles, required this.experimentsEverToggled, });
+  Experiments copyWith({List<ExperimentToggle>? toggles, bool? experimentsEverToggled, }) => Experiments(toggles: toggles ?? this.toggles, experimentsEverToggled: experimentsEverToggled ?? this.experimentsEverToggled, );
 }
 final class CResourcePackStackPacket {
   final bool texturePackRequired;
@@ -23572,11 +23894,13 @@ final class CResourcePackStackPacket {
   final Experiments experiments;
   final bool includeEditorPacks;
   const CResourcePackStackPacket({required this.texturePackRequired, required this.texturePackList, required this.baseGameVersion, required this.experiments, required this.includeEditorPacks, });
+  CResourcePackStackPacket copyWith({bool? texturePackRequired, List<PackInstanceId>? texturePackList, String? baseGameVersion, Experiments? experiments, bool? includeEditorPacks, }) => CResourcePackStackPacket(texturePackRequired: texturePackRequired ?? this.texturePackRequired, texturePackList: texturePackList ?? this.texturePackList, baseGameVersion: baseGameVersion ?? this.baseGameVersion, experiments: experiments ?? this.experiments, includeEditorPacks: includeEditorPacks ?? this.includeEditorPacks, );
 }
 final class PackIdVersion {
   final Uuid packUuid;
   final String packVersion;
   const PackIdVersion({required this.packUuid, required this.packVersion, });
+  PackIdVersion copyWith({Uuid? packUuid, String? packVersion, }) => PackIdVersion(packUuid: packUuid ?? this.packUuid, packVersion: packVersion ?? this.packVersion, );
 }
 final class PackInfoData {
   final PackIdVersion packIdVersion;
@@ -23589,6 +23913,7 @@ final class PackInfoData {
   final bool isRayTracingCapable;
   final String cdnUrl;
   const PackInfoData({required this.packIdVersion, required this.packSize, required this.contentKey, required this.subpackName, required this.contentIdentity, required this.hasScripts, required this.isAddonPack, required this.isRayTracingCapable, required this.cdnUrl, });
+  PackInfoData copyWith({PackIdVersion? packIdVersion, int? packSize, String? contentKey, String? subpackName, String? contentIdentity, bool? hasScripts, bool? isAddonPack, bool? isRayTracingCapable, String? cdnUrl, }) => PackInfoData(packIdVersion: packIdVersion ?? this.packIdVersion, packSize: packSize ?? this.packSize, contentKey: contentKey ?? this.contentKey, subpackName: subpackName ?? this.subpackName, contentIdentity: contentIdentity ?? this.contentIdentity, hasScripts: hasScripts ?? this.hasScripts, isAddonPack: isAddonPack ?? this.isAddonPack, isRayTracingCapable: isRayTracingCapable ?? this.isRayTracingCapable, cdnUrl: cdnUrl ?? this.cdnUrl, );
 }
 final class CResourcePacksInfo {
   final bool resourcePackRequired;
@@ -23598,6 +23923,7 @@ final class CResourcePacksInfo {
   final PackIdVersion worldTemplateIdAndVersion;
   final List<PackInfoData> resourcePacks;
   const CResourcePacksInfo({required this.resourcePackRequired, required this.hasAddonPacks, required this.hasScripts, required this.forceDisableVibrantVisuals, required this.worldTemplateIdAndVersion, required this.resourcePacks, });
+  CResourcePacksInfo copyWith({bool? resourcePackRequired, bool? hasAddonPacks, bool? hasScripts, bool? forceDisableVibrantVisuals, PackIdVersion? worldTemplateIdAndVersion, List<PackInfoData>? resourcePacks, }) => CResourcePacksInfo(resourcePackRequired: resourcePackRequired ?? this.resourcePackRequired, hasAddonPacks: hasAddonPacks ?? this.hasAddonPacks, hasScripts: hasScripts ?? this.hasScripts, forceDisableVibrantVisuals: forceDisableVibrantVisuals ?? this.forceDisableVibrantVisuals, worldTemplateIdAndVersion: worldTemplateIdAndVersion ?? this.worldTemplateIdAndVersion, resourcePacks: resourcePacks ?? this.resourcePacks, );
 }
 final class CSetActorData {
   final int targetRuntimeId;
@@ -23605,20 +23931,24 @@ final class CSetActorData {
   final PropertySyncData syncedProperties;
   final int tick;
   const CSetActorData({required this.targetRuntimeId, required this.actorData, required this.syncedProperties, required this.tick, });
+  CSetActorData copyWith({int? targetRuntimeId, String? actorData, PropertySyncData? syncedProperties, int? tick, }) => CSetActorData(targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, actorData: actorData ?? this.actorData, syncedProperties: syncedProperties ?? this.syncedProperties, tick: tick ?? this.tick, );
 }
 final class CSetActorLink {
   final ActorLink link;
   const CSetActorLink({required this.link, });
+  CSetActorLink copyWith({ActorLink? link, }) => CSetActorLink(link: link ?? this.link, );
 }
 final class CSetActorMotion {
   final int targetRuntimeId;
   final (double, double, double, ) motion;
   final int tick;
   const CSetActorMotion({required this.targetRuntimeId, required this.motion, required this.tick, });
+  CSetActorMotion copyWith({int? targetRuntimeId, (double, double, double, )? motion, int? tick, }) => CSetActorMotion(targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, motion: motion ?? this.motion, tick: tick ?? this.tick, );
 }
 final class CSetDifficulty {
   final int difficulty;
   const CSetDifficulty({required this.difficulty, });
+  CSetDifficulty copyWith({int? difficulty, }) => CSetDifficulty(difficulty: difficulty ?? this.difficulty, );
 }
 final class CSetDisplayObjective {
   final String displaySlotName;
@@ -23627,14 +23957,17 @@ final class CSetDisplayObjective {
   final String criteriaName;
   final int sortOrder;
   const CSetDisplayObjective({required this.displaySlotName, required this.objectiveName, required this.objectiveDisplayName, required this.criteriaName, required this.sortOrder, });
+  CSetDisplayObjective copyWith({String? displaySlotName, String? objectiveName, String? objectiveDisplayName, String? criteriaName, int? sortOrder, }) => CSetDisplayObjective(displaySlotName: displaySlotName ?? this.displaySlotName, objectiveName: objectiveName ?? this.objectiveName, objectiveDisplayName: objectiveDisplayName ?? this.objectiveDisplayName, criteriaName: criteriaName ?? this.criteriaName, sortOrder: sortOrder ?? this.sortOrder, );
 }
 final class CSetHealth {
   final int health;
   const CSetHealth({required this.health, });
+  CSetHealth copyWith({int? health, }) => CSetHealth(health: health ?? this.health, );
 }
 final class CSetPlayerGameType {
   final GameType playerGameType;
   const CSetPlayerGameType({required this.playerGameType, });
+  CSetPlayerGameType copyWith({GameType? playerGameType, }) => CSetPlayerGameType(playerGameType: playerGameType ?? this.playerGameType, );
 }
 final class ScoreEntry {
   final int scoreboardId;
@@ -23644,11 +23977,13 @@ final class ScoreEntry {
   final int entityUniqueId;
   final String customName;
   const ScoreEntry({required this.scoreboardId, required this.objectiveName, required this.score, required this.entryType, required this.entityUniqueId, required this.customName, });
+  ScoreEntry copyWith({int? scoreboardId, String? objectiveName, int? score, int? entryType, int? entityUniqueId, String? customName, }) => ScoreEntry(scoreboardId: scoreboardId ?? this.scoreboardId, objectiveName: objectiveName ?? this.objectiveName, score: score ?? this.score, entryType: entryType ?? this.entryType, entityUniqueId: entityUniqueId ?? this.entityUniqueId, customName: customName ?? this.customName, );
 }
 final class CSetScore {
   final int action;
   final List<ScoreEntry> entries;
   const CSetScore({required this.action, required this.entries, });
+  CSetScore copyWith({int? action, List<ScoreEntry>? entries, }) => CSetScore(action: action ?? this.action, entries: entries ?? this.entries, );
 }
 enum SpawnPositionType {
   playerRespawn,
@@ -23660,10 +23995,12 @@ final class CSetSpawnPosition {
   final int dimensionType;
   final (int, int, int, ) spawnBlockPos;
   const CSetSpawnPosition({required this.spawnPositionType, required this.blockPosition, required this.dimensionType, required this.spawnBlockPos, });
+  CSetSpawnPosition copyWith({SpawnPositionType? spawnPositionType, (int, int, int, )? blockPosition, int? dimensionType, (int, int, int, )? spawnBlockPos, }) => CSetSpawnPosition(spawnPositionType: spawnPositionType ?? this.spawnPositionType, blockPosition: blockPosition ?? this.blockPosition, dimensionType: dimensionType ?? this.dimensionType, spawnBlockPos: spawnBlockPos ?? this.spawnBlockPos, );
 }
 final class CSetTime {
   final int time;
   const CSetTime({required this.time, });
+  CSetTime copyWith({int? time, }) => CSetTime(time: time ?? this.time, );
 }
 enum TitleType {
   clear,
@@ -23686,11 +24023,13 @@ final class CSetTitle {
   final String platformOnlineId;
   final String filteredTitleMessage;
   const CSetTitle({required this.titleType, required this.titleText, required this.fadeInTime, required this.stayTime, required this.fadeOutTime, required this.xuid, required this.platformOnlineId, required this.filteredTitleMessage, });
+  CSetTitle copyWith({TitleType? titleType, String? titleText, int? fadeInTime, int? stayTime, int? fadeOutTime, String? xuid, String? platformOnlineId, String? filteredTitleMessage, }) => CSetTitle(titleType: titleType ?? this.titleType, titleText: titleText ?? this.titleText, fadeInTime: fadeInTime ?? this.fadeInTime, stayTime: stayTime ?? this.stayTime, fadeOutTime: fadeOutTime ?? this.fadeOutTime, xuid: xuid ?? this.xuid, platformOnlineId: platformOnlineId ?? this.platformOnlineId, filteredTitleMessage: filteredTitleMessage ?? this.filteredTitleMessage, );
 }
 final class CShowCredits {
   final int playerRuntimeId;
   final int creditsState;
   const CShowCredits({required this.playerRuntimeId, required this.creditsState, });
+  CShowCredits copyWith({int? playerRuntimeId, int? creditsState, }) => CShowCredits(playerRuntimeId: playerRuntimeId ?? this.playerRuntimeId, creditsState: creditsState ?? this.creditsState, );
 }
 enum GamePublishSetting {
   noMultiPlay,
@@ -23754,6 +24093,7 @@ final class LevelSettings {
   final int serverEditorConnectionPolicy;
   final bool allowAnonymousBlockDropsInEditorWorlds;
   const LevelSettings({required this.seed, required this.spawnBiomeType, required this.customBiomeName, required this.dimension, required this.generatorType, required this.worldGamemode, required this.hardcore, required this.difficulty, required this.spawnPosition, required this.hasAchievementsDisabled, required this.editorWorldType, required this.isCreatedInEditor, required this.isExportedFromEditor, required this.dayCycleStopTime, required this.educationEditionOffer, required this.hasEducationFeaturesEnabled, required this.educationProductId, required this.rainLevel, required this.lightningLevel, required this.hasConfirmedPlatformLockedContent, required this.wasMultiplayerIntended, required this.wasLanBroadcastingIntended, required this.xboxLiveBroadcastSetting, required this.platformBroadcastSetting, required this.commandsEnabled, required this.isTexturePacksRequired, required this.ruleData, required this.experiments, required this.bonusChest, required this.hasStartWithMapEnabled, required this.permissionLevel, required this.serverSimulationDistance, required this.hasLockedBehaviorPack, required this.hasLockedResourcePack, required this.isFromLockedWorldTemplate, required this.isUsingMsaGamertagsOnly, required this.isFromWorldTemplate, required this.isWorldTemplateOptionLocked, required this.isOnlySpawningV1Villagers, required this.isDisablingPersonas, required this.isDisablingCustomSkins, required this.emoteChatMuted, required this.gameVersion, required this.limitedWorldWidth, required this.limitedWorldHeight, required this.newNether, required this.eduSharedUriButtonName, required this.eduSharedUriLinkUri, required this.overrideForceExperimentalGameplayHasValue, required this.chatRestrictionLevel, required this.disablePlayerInteractions, required this.serverEditorConnectionPolicy, required this.allowAnonymousBlockDropsInEditorWorlds, });
+  LevelSettings copyWith({int? seed, int? spawnBiomeType, String? customBiomeName, int? dimension, int? generatorType, GameType? worldGamemode, bool? hardcore, int? difficulty, (int, int, int, )? spawnPosition, bool? hasAchievementsDisabled, int? editorWorldType, bool? isCreatedInEditor, bool? isExportedFromEditor, int? dayCycleStopTime, int? educationEditionOffer, bool? hasEducationFeaturesEnabled, String? educationProductId, double? rainLevel, double? lightningLevel, bool? hasConfirmedPlatformLockedContent, bool? wasMultiplayerIntended, bool? wasLanBroadcastingIntended, GamePublishSetting? xboxLiveBroadcastSetting, GamePublishSetting? platformBroadcastSetting, bool? commandsEnabled, bool? isTexturePacksRequired, List<BedrockPacketsGameRule>? ruleData, Experiments? experiments, bool? bonusChest, bool? hasStartWithMapEnabled, int? permissionLevel, int? serverSimulationDistance, bool? hasLockedBehaviorPack, bool? hasLockedResourcePack, bool? isFromLockedWorldTemplate, bool? isUsingMsaGamertagsOnly, bool? isFromWorldTemplate, bool? isWorldTemplateOptionLocked, bool? isOnlySpawningV1Villagers, bool? isDisablingPersonas, bool? isDisablingCustomSkins, bool? emoteChatMuted, String? gameVersion, int? limitedWorldWidth, int? limitedWorldHeight, bool? newNether, String? eduSharedUriButtonName, String? eduSharedUriLinkUri, bool? overrideForceExperimentalGameplayHasValue, int? chatRestrictionLevel, bool? disablePlayerInteractions, int? serverEditorConnectionPolicy, bool? allowAnonymousBlockDropsInEditorWorlds, }) => LevelSettings(seed: seed ?? this.seed, spawnBiomeType: spawnBiomeType ?? this.spawnBiomeType, customBiomeName: customBiomeName ?? this.customBiomeName, dimension: dimension ?? this.dimension, generatorType: generatorType ?? this.generatorType, worldGamemode: worldGamemode ?? this.worldGamemode, hardcore: hardcore ?? this.hardcore, difficulty: difficulty ?? this.difficulty, spawnPosition: spawnPosition ?? this.spawnPosition, hasAchievementsDisabled: hasAchievementsDisabled ?? this.hasAchievementsDisabled, editorWorldType: editorWorldType ?? this.editorWorldType, isCreatedInEditor: isCreatedInEditor ?? this.isCreatedInEditor, isExportedFromEditor: isExportedFromEditor ?? this.isExportedFromEditor, dayCycleStopTime: dayCycleStopTime ?? this.dayCycleStopTime, educationEditionOffer: educationEditionOffer ?? this.educationEditionOffer, hasEducationFeaturesEnabled: hasEducationFeaturesEnabled ?? this.hasEducationFeaturesEnabled, educationProductId: educationProductId ?? this.educationProductId, rainLevel: rainLevel ?? this.rainLevel, lightningLevel: lightningLevel ?? this.lightningLevel, hasConfirmedPlatformLockedContent: hasConfirmedPlatformLockedContent ?? this.hasConfirmedPlatformLockedContent, wasMultiplayerIntended: wasMultiplayerIntended ?? this.wasMultiplayerIntended, wasLanBroadcastingIntended: wasLanBroadcastingIntended ?? this.wasLanBroadcastingIntended, xboxLiveBroadcastSetting: xboxLiveBroadcastSetting ?? this.xboxLiveBroadcastSetting, platformBroadcastSetting: platformBroadcastSetting ?? this.platformBroadcastSetting, commandsEnabled: commandsEnabled ?? this.commandsEnabled, isTexturePacksRequired: isTexturePacksRequired ?? this.isTexturePacksRequired, ruleData: ruleData ?? this.ruleData, experiments: experiments ?? this.experiments, bonusChest: bonusChest ?? this.bonusChest, hasStartWithMapEnabled: hasStartWithMapEnabled ?? this.hasStartWithMapEnabled, permissionLevel: permissionLevel ?? this.permissionLevel, serverSimulationDistance: serverSimulationDistance ?? this.serverSimulationDistance, hasLockedBehaviorPack: hasLockedBehaviorPack ?? this.hasLockedBehaviorPack, hasLockedResourcePack: hasLockedResourcePack ?? this.hasLockedResourcePack, isFromLockedWorldTemplate: isFromLockedWorldTemplate ?? this.isFromLockedWorldTemplate, isUsingMsaGamertagsOnly: isUsingMsaGamertagsOnly ?? this.isUsingMsaGamertagsOnly, isFromWorldTemplate: isFromWorldTemplate ?? this.isFromWorldTemplate, isWorldTemplateOptionLocked: isWorldTemplateOptionLocked ?? this.isWorldTemplateOptionLocked, isOnlySpawningV1Villagers: isOnlySpawningV1Villagers ?? this.isOnlySpawningV1Villagers, isDisablingPersonas: isDisablingPersonas ?? this.isDisablingPersonas, isDisablingCustomSkins: isDisablingCustomSkins ?? this.isDisablingCustomSkins, emoteChatMuted: emoteChatMuted ?? this.emoteChatMuted, gameVersion: gameVersion ?? this.gameVersion, limitedWorldWidth: limitedWorldWidth ?? this.limitedWorldWidth, limitedWorldHeight: limitedWorldHeight ?? this.limitedWorldHeight, newNether: newNether ?? this.newNether, eduSharedUriButtonName: eduSharedUriButtonName ?? this.eduSharedUriButtonName, eduSharedUriLinkUri: eduSharedUriLinkUri ?? this.eduSharedUriLinkUri, overrideForceExperimentalGameplayHasValue: overrideForceExperimentalGameplayHasValue ?? this.overrideForceExperimentalGameplayHasValue, chatRestrictionLevel: chatRestrictionLevel ?? this.chatRestrictionLevel, disablePlayerInteractions: disablePlayerInteractions ?? this.disablePlayerInteractions, serverEditorConnectionPolicy: serverEditorConnectionPolicy ?? this.serverEditorConnectionPolicy, allowAnonymousBlockDropsInEditorWorlds: allowAnonymousBlockDropsInEditorWorlds ?? this.allowAnonymousBlockDropsInEditorWorlds, );
 }
 final class GatheringJoinInfo {
   final Uuid experienceId;
@@ -23765,22 +24105,26 @@ final class GatheringJoinInfo {
   final Uuid unknownUuid2;
   final String serverId;
   const GatheringJoinInfo({required this.experienceId, required this.experienceName, required this.experienceWorldId, required this.experienceWorldName, required this.creatorId, required this.unknownUuid1, required this.unknownUuid2, required this.serverId, });
+  GatheringJoinInfo copyWith({Uuid? experienceId, String? experienceName, Uuid? experienceWorldId, String? experienceWorldName, String? creatorId, Uuid? unknownUuid1, Uuid? unknownUuid2, String? serverId, }) => GatheringJoinInfo(experienceId: experienceId ?? this.experienceId, experienceName: experienceName ?? this.experienceName, experienceWorldId: experienceWorldId ?? this.experienceWorldId, experienceWorldName: experienceWorldName ?? this.experienceWorldName, creatorId: creatorId ?? this.creatorId, unknownUuid1: unknownUuid1 ?? this.unknownUuid1, unknownUuid2: unknownUuid2 ?? this.unknownUuid2, serverId: serverId ?? this.serverId, );
 }
 final class StoreEntryPointInfo {
   final String storeId;
   final String storeName;
   const StoreEntryPointInfo({required this.storeId, required this.storeName, });
+  StoreEntryPointInfo copyWith({String? storeId, String? storeName, }) => StoreEntryPointInfo(storeId: storeId ?? this.storeId, storeName: storeName ?? this.storeName, );
 }
 final class PresenceInfo {
   final String experienceName;
   final String worldName;
   const PresenceInfo({required this.experienceName, required this.worldName, });
+  PresenceInfo copyWith({String? experienceName, String? worldName, }) => PresenceInfo(experienceName: experienceName ?? this.experienceName, worldName: worldName ?? this.worldName, );
 }
 final class ServerJoinInformation {
   final i1.Option<GatheringJoinInfo> gathering;
   final i1.Option<StoreEntryPointInfo> storeEntryPoint;
   final i1.Option<PresenceInfo> presence;
   const ServerJoinInformation({required this.gathering, required this.storeEntryPoint, required this.presence, });
+  ServerJoinInformation copyWith({i1.Option<GatheringJoinInfo>? gathering, i1.Option<StoreEntryPointInfo>? storeEntryPoint, i1.Option<PresenceInfo>? presence, }) => ServerJoinInformation(gathering: gathering ?? this.gathering, storeEntryPoint: storeEntryPoint ?? this.storeEntryPoint, presence: presence ?? this.presence, );
 }
 final class ServerTelemetryData {
   final String serverId;
@@ -23788,6 +24132,7 @@ final class ServerTelemetryData {
   final String worldId;
   final String ownerId;
   const ServerTelemetryData({required this.serverId, required this.scenarioId, required this.worldId, required this.ownerId, });
+  ServerTelemetryData copyWith({String? serverId, String? scenarioId, String? worldId, String? ownerId, }) => ServerTelemetryData(serverId: serverId ?? this.serverId, scenarioId: scenarioId ?? this.scenarioId, worldId: worldId ?? this.worldId, ownerId: ownerId ?? this.ownerId, );
 }
 final class CStartGame {
   final int entityId;
@@ -23820,21 +24165,25 @@ final class CStartGame {
   final i1.Option<ServerJoinInformation> serverJoinInformation;
   final ServerTelemetryData telemetry;
   const CStartGame({required this.entityId, required this.runtimeEntityId, required this.playerGamemode, required this.position, required this.pitch, required this.yaw, required this.levelSettings, required this.levelId, required this.levelName, required this.premiumWorldTemplateId, required this.isTrial, required this.rewindHistorySize, required this.serverAuthoritativeBlockBreaking, required this.currentLevelTime, required this.enchantmentSeed, required this.blockPropertiesSize, required this.multiplayerCorrelationId, required this.enableItemstackNetManager, required this.serverVersion, required this.compoundId, required this.compoundLen, required this.compoundEnd, required this.blockRegistryChecksum, required this.worldTemplateId, required this.enableClientsideGeneration, required this.blocknetworkIdsAreHashed, required this.serverAuthSounds, required this.serverJoinInformation, required this.telemetry, });
+  CStartGame copyWith({int? entityId, int? runtimeEntityId, GameType? playerGamemode, (double, double, double, )? position, double? pitch, double? yaw, LevelSettings? levelSettings, String? levelId, String? levelName, String? premiumWorldTemplateId, bool? isTrial, int? rewindHistorySize, bool? serverAuthoritativeBlockBreaking, int? currentLevelTime, int? enchantmentSeed, int? blockPropertiesSize, String? multiplayerCorrelationId, bool? enableItemstackNetManager, String? serverVersion, int? compoundId, int? compoundLen, int? compoundEnd, int? blockRegistryChecksum, Uuid? worldTemplateId, bool? enableClientsideGeneration, bool? blocknetworkIdsAreHashed, bool? serverAuthSounds, i1.Option<ServerJoinInformation>? serverJoinInformation, ServerTelemetryData? telemetry, }) => CStartGame(entityId: entityId ?? this.entityId, runtimeEntityId: runtimeEntityId ?? this.runtimeEntityId, playerGamemode: playerGamemode ?? this.playerGamemode, position: position ?? this.position, pitch: pitch ?? this.pitch, yaw: yaw ?? this.yaw, levelSettings: levelSettings ?? this.levelSettings, levelId: levelId ?? this.levelId, levelName: levelName ?? this.levelName, premiumWorldTemplateId: premiumWorldTemplateId ?? this.premiumWorldTemplateId, isTrial: isTrial ?? this.isTrial, rewindHistorySize: rewindHistorySize ?? this.rewindHistorySize, serverAuthoritativeBlockBreaking: serverAuthoritativeBlockBreaking ?? this.serverAuthoritativeBlockBreaking, currentLevelTime: currentLevelTime ?? this.currentLevelTime, enchantmentSeed: enchantmentSeed ?? this.enchantmentSeed, blockPropertiesSize: blockPropertiesSize ?? this.blockPropertiesSize, multiplayerCorrelationId: multiplayerCorrelationId ?? this.multiplayerCorrelationId, enableItemstackNetManager: enableItemstackNetManager ?? this.enableItemstackNetManager, serverVersion: serverVersion ?? this.serverVersion, compoundId: compoundId ?? this.compoundId, compoundLen: compoundLen ?? this.compoundLen, compoundEnd: compoundEnd ?? this.compoundEnd, blockRegistryChecksum: blockRegistryChecksum ?? this.blockRegistryChecksum, worldTemplateId: worldTemplateId ?? this.worldTemplateId, enableClientsideGeneration: enableClientsideGeneration ?? this.enableClientsideGeneration, blocknetworkIdsAreHashed: blocknetworkIdsAreHashed ?? this.blocknetworkIdsAreHashed, serverAuthSounds: serverAuthSounds ?? this.serverAuthSounds, serverJoinInformation: serverJoinInformation ?? this.serverJoinInformation, telemetry: telemetry ?? this.telemetry, );
 }
 final class CTakeItemActor {
   final int itemRuntimeId;
   final int actorRuntimeId;
   const CTakeItemActor({required this.itemRuntimeId, required this.actorRuntimeId, });
+  CTakeItemActor copyWith({int? itemRuntimeId, int? actorRuntimeId, }) => CTakeItemActor(itemRuntimeId: itemRuntimeId ?? this.itemRuntimeId, actorRuntimeId: actorRuntimeId ?? this.actorRuntimeId, );
 }
 final class CTransfer {
   final String serverAddress;
   final int serverPort;
   final bool reloadWorld;
   const CTransfer({required this.serverAddress, required this.serverPort, required this.reloadWorld, });
+  CTransfer copyWith({String? serverAddress, int? serverPort, bool? reloadWorld, }) => CTransfer(serverAddress: serverAddress ?? this.serverAddress, serverPort: serverPort ?? this.serverPort, reloadWorld: reloadWorld ?? this.reloadWorld, );
 }
 final class CUpdateAbilities {
   final SerializedAbilitiesData data;
   const CUpdateAbilities({required this.data, });
+  CUpdateAbilities copyWith({SerializedAbilitiesData? data, }) => CUpdateAbilities(data: data ?? this.data, );
 }
 final class BedrockPacketsAttributeModifier {
   final String id;
@@ -23844,6 +24193,7 @@ final class BedrockPacketsAttributeModifier {
   final int operand;
   final bool isSerializable;
   const BedrockPacketsAttributeModifier({required this.id, required this.name, required this.amount, required this.operation, required this.operand, required this.isSerializable, });
+  BedrockPacketsAttributeModifier copyWith({String? id, String? name, double? amount, int? operation, int? operand, bool? isSerializable, }) => BedrockPacketsAttributeModifier(id: id ?? this.id, name: name ?? this.name, amount: amount ?? this.amount, operation: operation ?? this.operation, operand: operand ?? this.operand, isSerializable: isSerializable ?? this.isSerializable, );
 }
 final class AttributeData {
   final double minValue;
@@ -23855,12 +24205,14 @@ final class AttributeData {
   final String name;
   final List<BedrockPacketsAttributeModifier> modifiers;
   const AttributeData({required this.minValue, required this.maxValue, required this.currentValue, required this.defaultMinValue, required this.defaultMaxValue, required this.defaultValue, required this.name, required this.modifiers, });
+  AttributeData copyWith({double? minValue, double? maxValue, double? currentValue, double? defaultMinValue, double? defaultMaxValue, double? defaultValue, String? name, List<BedrockPacketsAttributeModifier>? modifiers, }) => AttributeData(minValue: minValue ?? this.minValue, maxValue: maxValue ?? this.maxValue, currentValue: currentValue ?? this.currentValue, defaultMinValue: defaultMinValue ?? this.defaultMinValue, defaultMaxValue: defaultMaxValue ?? this.defaultMaxValue, defaultValue: defaultValue ?? this.defaultValue, name: name ?? this.name, modifiers: modifiers ?? this.modifiers, );
 }
 final class CUpdateAttributes {
   final int targetRuntimeId;
   final List<AttributeData> attributeList;
   final int tick;
   const CUpdateAttributes({required this.targetRuntimeId, required this.attributeList, required this.tick, });
+  CUpdateAttributes copyWith({int? targetRuntimeId, List<AttributeData>? attributeList, int? tick, }) => CUpdateAttributes(targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, attributeList: attributeList ?? this.attributeList, tick: tick ?? this.tick, );
 }
 final class CUpdateBlock {
   final (int, int, int, ) blockPosition;
@@ -23868,6 +24220,7 @@ final class CUpdateBlock {
   final int flags;
   final int layer;
   const CUpdateBlock({required this.blockPosition, required this.blockRuntimeId, required this.flags, required this.layer, });
+  CUpdateBlock copyWith({(int, int, int, )? blockPosition, int? blockRuntimeId, int? flags, int? layer, }) => CUpdateBlock(blockPosition: blockPosition ?? this.blockPosition, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, flags: flags ?? this.flags, layer: layer ?? this.layer, );
 }
 final class CUpdateTrade {
   final int containerId;
@@ -23881,6 +24234,7 @@ final class CUpdateTrade {
   final bool usingEconomyTrade;
   final String data;
   const CUpdateTrade({required this.containerId, required this.rType, required this.size, required this.traderTier, required this.entityUniqueId, required this.lastTradingPlayer, required this.displayName, required this.useNewTradeScreen, required this.usingEconomyTrade, required this.data, });
+  CUpdateTrade copyWith({int? containerId, int? rType, int? size, int? traderTier, int? entityUniqueId, int? lastTradingPlayer, String? displayName, bool? useNewTradeScreen, bool? usingEconomyTrade, String? data, }) => CUpdateTrade(containerId: containerId ?? this.containerId, rType: rType ?? this.rType, size: size ?? this.size, traderTier: traderTier ?? this.traderTier, entityUniqueId: entityUniqueId ?? this.entityUniqueId, lastTradingPlayer: lastTradingPlayer ?? this.lastTradingPlayer, displayName: displayName ?? this.displayName, useNewTradeScreen: useNewTradeScreen ?? this.useNewTradeScreen, usingEconomyTrade: usingEconomyTrade ?? this.usingEconomyTrade, data: data ?? this.data, );
 }
 sealed class ClientboundPacket {
   const ClientboundPacket();
@@ -24131,17 +24485,20 @@ final class FormImage {
   final ImageType type;
   final String data;
   const FormImage({required this.type, required this.data, });
+  FormImage copyWith({ImageType? type, String? data, }) => FormImage(type: type ?? this.type, data: data ?? this.data, );
 }
 final class SimpleFormButton {
   final TextComponent text;
   final i1.Option<FormImage> image;
   const SimpleFormButton({required this.text, required this.image, });
+  SimpleFormButton copyWith({TextComponent? text, i1.Option<FormImage>? image, }) => SimpleFormButton(text: text ?? this.text, image: image ?? this.image, );
 }
 final class SimpleForm {
   final TextComponent title;
   final TextComponent content;
   final List<SimpleFormButton> buttons;
   const SimpleForm({required this.title, required this.content, required this.buttons, });
+  SimpleForm copyWith({TextComponent? title, TextComponent? content, List<SimpleFormButton>? buttons, }) => SimpleForm(title: title ?? this.title, content: content ?? this.content, buttons: buttons ?? this.buttons, );
 }
 final class ModalForm {
   final TextComponent title;
@@ -24149,6 +24506,7 @@ final class ModalForm {
   final TextComponent button1;
   final TextComponent button2;
   const ModalForm({required this.title, required this.content, required this.button1, required this.button2, });
+  ModalForm copyWith({TextComponent? title, TextComponent? content, TextComponent? button1, TextComponent? button2, }) => ModalForm(title: title ?? this.title, content: content ?? this.content, button1: button1 ?? this.button1, button2: button2 ?? this.button2, );
 }
 sealed class CustomFormElement {
   const CustomFormElement();
@@ -24184,6 +24542,7 @@ final class CustomForm {
   final TextComponent title;
   final List<CustomFormElement> elements;
   const CustomForm({required this.title, required this.elements, });
+  CustomForm copyWith({TextComponent? title, List<CustomFormElement>? elements, }) => CustomForm(title: title ?? this.title, elements: elements ?? this.elements, );
 }
 sealed class Form {
   const Form();
@@ -24229,6 +24588,7 @@ final class BedrockResourcePackEntry {
 /// Whether Ray Tracing / RTX features are enabled for the pack.
   final bool rtxEnabled;
   const BedrockResourcePackEntry({required this.id, required this.version, required this.size, required this.downloadUrl, required this.contentKey, required this.subPackName, required this.contentId, required this.hasScripts, required this.addonPack, required this.rtxEnabled, });
+  BedrockResourcePackEntry copyWith({Uuid? id, String? version, int? size, String? downloadUrl, i1.Option<String>? contentKey, i1.Option<String>? subPackName, i1.Option<String>? contentId, bool? hasScripts, bool? addonPack, bool? rtxEnabled, }) => BedrockResourcePackEntry(id: id ?? this.id, version: version ?? this.version, size: size ?? this.size, downloadUrl: downloadUrl ?? this.downloadUrl, contentKey: contentKey ?? this.contentKey, subPackName: subPackName ?? this.subPackName, contentId: contentId ?? this.contentId, hasScripts: hasScripts ?? this.hasScripts, addonPack: addonPack ?? this.addonPack, rtxEnabled: rtxEnabled ?? this.rtxEnabled, );
 }
 /// Represents the resource packs information payload sent to Bedrock clients.
 final class BedrockResourcePacksInfo {
@@ -24247,6 +24607,7 @@ final class BedrockResourcePacksInfo {
 /// List of resource packs to send to the player.
   final List<BedrockResourcePackEntry> packs;
   const BedrockResourcePacksInfo({required this.required, required this.hasAddonPacks, required this.hasScripts, required this.isVibrantVisualsForceDisabled, required this.worldTemplateId, required this.worldTemplateVersion, required this.packs, });
+  BedrockResourcePacksInfo copyWith({bool? required, bool? hasAddonPacks, bool? hasScripts, bool? isVibrantVisualsForceDisabled, i1.Option<Uuid>? worldTemplateId, i1.Option<String>? worldTemplateVersion, List<BedrockResourcePackEntry>? packs, }) => BedrockResourcePacksInfo(required: required ?? this.required, hasAddonPacks: hasAddonPacks ?? this.hasAddonPacks, hasScripts: hasScripts ?? this.hasScripts, isVibrantVisualsForceDisabled: isVibrantVisualsForceDisabled ?? this.isVibrantVisualsForceDisabled, worldTemplateId: worldTemplateId ?? this.worldTemplateId, worldTemplateVersion: worldTemplateVersion ?? this.worldTemplateVersion, packs: packs ?? this.packs, );
 }
 @pragma("wasm:import", r"component._import813")
 external i0.WasmVoid _import813(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI64 p6, i0.WasmI64 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12);
@@ -24416,6 +24777,7 @@ final class BedrockKickOptions {
 /// How the connection is closed (default: graceful).
   final SocketTeardownPolicy teardownPolicy;
   const BedrockKickOptions({required this.reason, required this.message, required this.skipMessage, required this.filteredMessage, required this.logToConsole, required this.teardownPolicy, });
+  BedrockKickOptions copyWith({BedrockDisconnectReason? reason, String? message, bool? skipMessage, String? filteredMessage, bool? logToConsole, SocketTeardownPolicy? teardownPolicy, }) => BedrockKickOptions(reason: reason ?? this.reason, message: message ?? this.message, skipMessage: skipMessage ?? this.skipMessage, filteredMessage: filteredMessage ?? this.filteredMessage, logToConsole: logToConsole ?? this.logToConsole, teardownPolicy: teardownPolicy ?? this.teardownPolicy, );
 }
 @pragma("wasm:import", r"component._import814")
 external i0.WasmVoid _import814(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8);
@@ -27062,6 +27424,7 @@ final class BossBarMetadata {
 /// If true, fog is created around the players who see the boss bar.
   final bool createFog;
   const BossBarMetadata({required this.darkenSky, required this.dragonBar, required this.createFog, });
+  BossBarMetadata copyWith({bool? darkenSky, bool? dragonBar, bool? createFog, }) => BossBarMetadata(darkenSky: darkenSky ?? this.darkenSky, dragonBar: dragonBar ?? this.dragonBar, createFog: createFog ?? this.createFog, );
 }
 @pragma("wasm:import", r"component._import824")
 external i0.WasmVoid _import824(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -27202,6 +27565,7 @@ final class OpEntry {
   final PermissionLevel level;
   final bool bypassesPlayerLimit;
   const OpEntry({required this.uuid, required this.name, required this.level, required this.bypassesPlayerLimit, });
+  OpEntry copyWith({Uuid? uuid, String? name, PermissionLevel? level, bool? bypassesPlayerLimit, }) => OpEntry(uuid: uuid ?? this.uuid, name: name ?? this.name, level: level ?? this.level, bypassesPlayerLimit: bypassesPlayerLimit ?? this.bypassesPlayerLimit, );
 }
 @pragma("wasm:import", r"component._import831")
 external i0.WasmVoid _import831(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2, i0.WasmI32 p3);
@@ -27311,6 +27675,7 @@ final class BannedPlayerEntry {
   final i1.Option<String> expires;
   final String reason;
   const BannedPlayerEntry({required this.uuid, required this.name, required this.created, required this.source, required this.expires, required this.reason, });
+  BannedPlayerEntry copyWith({Uuid? uuid, String? name, String? created, String? source, i1.Option<String>? expires, String? reason, }) => BannedPlayerEntry(uuid: uuid ?? this.uuid, name: name ?? this.name, created: created ?? this.created, source: source ?? this.source, expires: expires ?? this.expires, reason: reason ?? this.reason, );
 }
 @pragma("wasm:import", r"component._import837")
 external i0.WasmVoid _import837(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2, i0.WasmI32 p3);
@@ -27330,6 +27695,7 @@ final class BannedIpEntry {
   final i1.Option<String> expires;
   final String reason;
   const BannedIpEntry({required this.ip, required this.created, required this.source, required this.expires, required this.reason, });
+  BannedIpEntry copyWith({String? ip, String? created, String? source, i1.Option<String>? expires, String? reason, }) => BannedIpEntry(ip: ip ?? this.ip, created: created ?? this.created, source: source ?? this.source, expires: expires ?? this.expires, reason: reason ?? this.reason, );
 }
 @pragma("wasm:import", r"component._import842")
 external i0.WasmVoid _import842(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -27684,6 +28050,7 @@ final class WhitelistEntry {
   final Uuid uuid;
   final String name;
   const WhitelistEntry({required this.uuid, required this.name, });
+  WhitelistEntry copyWith({Uuid? uuid, String? name, }) => WhitelistEntry(uuid: uuid ?? this.uuid, name: name ?? this.name, );
 }
 @pragma("wasm:import", r"component._import851")
 external i0.WasmVoid _import851(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -27761,6 +28128,7 @@ final class SysInfo {
   final i1.Option<String> osVersion;
   final String pumpkinVersion;
   const SysInfo({required this.cpuCount, required this.totalMemory, required this.usedMemory, required this.osName, required this.osVersion, required this.pumpkinVersion, });
+  SysInfo copyWith({i1.Option<int>? cpuCount, i1.Option<int>? totalMemory, i1.Option<int>? usedMemory, i1.Option<String>? osName, i1.Option<String>? osVersion, String? pumpkinVersion, }) => SysInfo(cpuCount: cpuCount ?? this.cpuCount, totalMemory: totalMemory ?? this.totalMemory, usedMemory: usedMemory ?? this.usedMemory, osName: osName ?? this.osName, osVersion: osVersion ?? this.osVersion, pumpkinVersion: pumpkinVersion ?? this.pumpkinVersion, );
 }
 @pragma("wasm:import", r"component._import852")
 external i0.WasmVoid _import852(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -27877,6 +28245,7 @@ final class AdvancementDisplay {
   final double x;
   final double y;
   const AdvancementDisplay({required this.title, required this.description, required this.frame, required this.showToast, required this.hidden, required this.announceToChat, required this.background, required this.x, required this.y, });
+  AdvancementDisplay copyWith({TextComponent? title, TextComponent? description, FrameType? frame, bool? showToast, bool? hidden, bool? announceToChat, i1.Option<String>? background, double? x, double? y, }) => AdvancementDisplay(title: title ?? this.title, description: description ?? this.description, frame: frame ?? this.frame, showToast: showToast ?? this.showToast, hidden: hidden ?? this.hidden, announceToChat: announceToChat ?? this.announceToChat, background: background ?? this.background, x: x ?? this.x, y: y ?? this.y, );
 }
 /// Detailed information about an advancement.
 final class AdvancementInfo {
@@ -27885,6 +28254,7 @@ final class AdvancementInfo {
   final List<String> criteria;
   final i1.Option<AdvancementDisplay> display;
   const AdvancementInfo({required this.id, required this.parentId, required this.criteria, required this.display, });
+  AdvancementInfo copyWith({String? id, i1.Option<String>? parentId, List<String>? criteria, i1.Option<AdvancementDisplay>? display, }) => AdvancementInfo(id: id ?? this.id, parentId: parentId ?? this.parentId, criteria: criteria ?? this.criteria, display: display ?? this.display, );
 }
 @pragma("wasm:import", r"component._import887")
 external i0.WasmVoid _import887(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -30533,6 +30903,7 @@ final class PermissionChild {
   final String node;
   final bool value;
   const PermissionChild({required this.node, required this.value, });
+  PermissionChild copyWith({String? node, bool? value, }) => PermissionChild(node: node ?? this.node, value: value ?? this.value, );
 }
 /// Defines a permission node in the system
 final class Permission {
@@ -30545,6 +30916,7 @@ final class Permission {
 /// Children nodes that are affected by this permission
   final List<PermissionChild> children;
   const Permission({required this.node, required this.description, required this.default_, required this.children, });
+  Permission copyWith({String? node, String? description, PermissionDefault? default_, List<PermissionChild>? children, }) => Permission(node: node ?? this.node, description: description ?? this.description, default_: default_ ?? this.default_, children: children ?? this.children, );
 }
 @pragma("wasm:import", r"component._import924")
 external i0.WasmVoid _import924(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9);
@@ -30575,6 +30947,7 @@ final class MarketplaceMetadata {
 /// ISO-8601 timestamp of when this binary/license was issued.
   final String issuedAt;
   const MarketplaceMetadata({required this.marketplaceUrl, required this.pluginId, required this.pluginName, required this.version, required this.devId, required this.devName, required this.isPaid, required this.userId, required this.licenseKey, required this.issuedAt, });
+  MarketplaceMetadata copyWith({String? marketplaceUrl, int? pluginId, String? pluginName, String? version, int? devId, String? devName, bool? isPaid, int? userId, i1.Option<String>? licenseKey, String? issuedAt, }) => MarketplaceMetadata(marketplaceUrl: marketplaceUrl ?? this.marketplaceUrl, pluginId: pluginId ?? this.pluginId, pluginName: pluginName ?? this.pluginName, version: version ?? this.version, devId: devId ?? this.devId, devName: devName ?? this.devName, isPaid: isPaid ?? this.isPaid, userId: userId ?? this.userId, licenseKey: licenseKey ?? this.licenseKey, issuedAt: issuedAt ?? this.issuedAt, );
 }
 @pragma("wasm:import", r"component._import927")
 external i0.WasmVoid _import927(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -30943,6 +31316,7 @@ final class BlockStateInfo {
   final String name;
   final List<(String, String, )> properties;
   const BlockStateInfo({required this.name, required this.properties, });
+  BlockStateInfo copyWith({String? name, List<(String, String, )>? properties, }) => BlockStateInfo(name: name ?? this.name, properties: properties ?? this.properties, );
 }
 abstract interface class WorldInterface {
 /// Resolves a block name and optional properties to a block state ID.
@@ -32368,18 +32742,21 @@ final class PlayerJoinEventData {
   final TextComponent joinMessage;
   final bool cancelled;
   const PlayerJoinEventData({required this.player, required this.joinMessage, required this.cancelled, });
+  PlayerJoinEventData copyWith({Player? player, TextComponent? joinMessage, bool? cancelled, }) => PlayerJoinEventData(player: player ?? this.player, joinMessage: joinMessage ?? this.joinMessage, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerLeaveEventData {
   final Player player;
   final TextComponent leaveMessage;
   final bool cancelled;
   const PlayerLeaveEventData({required this.player, required this.leaveMessage, required this.cancelled, });
+  PlayerLeaveEventData copyWith({Player? player, TextComponent? leaveMessage, bool? cancelled, }) => PlayerLeaveEventData(player: player ?? this.player, leaveMessage: leaveMessage ?? this.leaveMessage, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerLoginEventData {
   final Player player;
   final TextComponent kickMessage;
   final bool cancelled;
   const PlayerLoginEventData({required this.player, required this.kickMessage, required this.cancelled, });
+  PlayerLoginEventData copyWith({Player? player, TextComponent? kickMessage, bool? cancelled, }) => PlayerLoginEventData(player: player ?? this.player, kickMessage: kickMessage ?? this.kickMessage, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerChatEventData {
   final Player player;
@@ -32388,18 +32765,21 @@ final class PlayerChatEventData {
   final i1.Option<List<int>> signature;
   final bool cancelled;
   const PlayerChatEventData({required this.player, required this.message, required this.recipients, required this.signature, required this.cancelled, });
+  PlayerChatEventData copyWith({Player? player, String? message, List<Player>? recipients, i1.Option<List<int>>? signature, bool? cancelled, }) => PlayerChatEventData(player: player ?? this.player, message: message ?? this.message, recipients: recipients ?? this.recipients, signature: signature ?? this.signature, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerCommandSendEventData {
   final Player player;
   final String command;
   final bool cancelled;
   const PlayerCommandSendEventData({required this.player, required this.command, required this.cancelled, });
+  PlayerCommandSendEventData copyWith({Player? player, String? command, bool? cancelled, }) => PlayerCommandSendEventData(player: player ?? this.player, command: command ?? this.command, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerPermissionCheckEventData {
   final Player player;
   final String permission;
   final bool permissionResult;
   const PlayerPermissionCheckEventData({required this.player, required this.permission, required this.permissionResult, });
+  PlayerPermissionCheckEventData copyWith({Player? player, String? permission, bool? permissionResult, }) => PlayerPermissionCheckEventData(player: player ?? this.player, permission: permission ?? this.permission, permissionResult: permissionResult ?? this.permissionResult, );
 }
 final class PlayerMoveEventData {
   final Player player;
@@ -32407,6 +32787,7 @@ final class PlayerMoveEventData {
   final (double, double, double, ) toPosition;
   final bool cancelled;
   const PlayerMoveEventData({required this.player, required this.fromPosition, required this.toPosition, required this.cancelled, });
+  PlayerMoveEventData copyWith({Player? player, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => PlayerMoveEventData(player: player ?? this.player, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerTeleportEventData {
   final Player player;
@@ -32414,6 +32795,7 @@ final class PlayerTeleportEventData {
   final (double, double, double, ) toPosition;
   final bool cancelled;
   const PlayerTeleportEventData({required this.player, required this.fromPosition, required this.toPosition, required this.cancelled, });
+  PlayerTeleportEventData copyWith({Player? player, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => PlayerTeleportEventData(player: player ?? this.player, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerChangeWorldEventData {
   final Player player;
@@ -32424,6 +32806,7 @@ final class PlayerChangeWorldEventData {
   final double pitch;
   final bool cancelled;
   const PlayerChangeWorldEventData({required this.player, required this.previousWorld, required this.newWorld, required this.position, required this.yaw, required this.pitch, required this.cancelled, });
+  PlayerChangeWorldEventData copyWith({Player? player, World? previousWorld, World? newWorld, (double, double, double, )? position, double? yaw, double? pitch, bool? cancelled, }) => PlayerChangeWorldEventData(player: player ?? this.player, previousWorld: previousWorld ?? this.previousWorld, newWorld: newWorld ?? this.newWorld, position: position ?? this.position, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerRespawnEventData {
   final Player player;
@@ -32434,11 +32817,13 @@ final class PlayerRespawnEventData {
   final double pitch;
   final bool alive;
   const PlayerRespawnEventData({required this.player, required this.previousWorld, required this.respawnedWorld, required this.position, required this.yaw, required this.pitch, required this.alive, });
+  PlayerRespawnEventData copyWith({Player? player, World? previousWorld, World? respawnedWorld, (double, double, double, )? position, double? yaw, double? pitch, bool? alive, }) => PlayerRespawnEventData(player: player ?? this.player, previousWorld: previousWorld ?? this.previousWorld, respawnedWorld: respawnedWorld ?? this.respawnedWorld, position: position ?? this.position, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, alive: alive ?? this.alive, );
 }
 final class PlayerExpChangeEventData {
   final Player player;
   final int amount;
   const PlayerExpChangeEventData({required this.player, required this.amount, });
+  PlayerExpChangeEventData copyWith({Player? player, int? amount, }) => PlayerExpChangeEventData(player: player ?? this.player, amount: amount ?? this.amount, );
 }
 final class PlayerItemHeldEventData {
   final Player player;
@@ -32446,11 +32831,13 @@ final class PlayerItemHeldEventData {
   final int newSlot;
   final bool cancelled;
   const PlayerItemHeldEventData({required this.player, required this.previousSlot, required this.newSlot, required this.cancelled, });
+  PlayerItemHeldEventData copyWith({Player? player, int? previousSlot, int? newSlot, bool? cancelled, }) => PlayerItemHeldEventData(player: player ?? this.player, previousSlot: previousSlot ?? this.previousSlot, newSlot: newSlot ?? this.newSlot, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerChangedMainHandEventData {
   final Player player;
   final Hand mainHand;
   const PlayerChangedMainHandEventData({required this.player, required this.mainHand, });
+  PlayerChangedMainHandEventData copyWith({Player? player, Hand? mainHand, }) => PlayerChangedMainHandEventData(player: player ?? this.player, mainHand: mainHand ?? this.mainHand, );
 }
 final class PlayerGamemodeChangeEventData {
   final Player player;
@@ -32458,12 +32845,14 @@ final class PlayerGamemodeChangeEventData {
   final GameMode newGamemode;
   final bool cancelled;
   const PlayerGamemodeChangeEventData({required this.player, required this.previousGamemode, required this.newGamemode, required this.cancelled, });
+  PlayerGamemodeChangeEventData copyWith({Player? player, GameMode? previousGamemode, GameMode? newGamemode, bool? cancelled, }) => PlayerGamemodeChangeEventData(player: player ?? this.player, previousGamemode: previousGamemode ?? this.previousGamemode, newGamemode: newGamemode ?? this.newGamemode, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerCustomPayloadEventData {
   final Player player;
   final String channel;
   final List<int> data;
   const PlayerCustomPayloadEventData({required this.player, required this.channel, required this.data, });
+  PlayerCustomPayloadEventData copyWith({Player? player, String? channel, List<int>? data, }) => PlayerCustomPayloadEventData(player: player ?? this.player, channel: channel ?? this.channel, data: data ?? this.data, );
 }
 enum PlayerFishState {
   fishing,
@@ -32484,6 +32873,7 @@ final class PlayerFishEventData {
   final int expToDrop;
   final bool cancelled;
   const PlayerFishEventData({required this.player, required this.caughtUuid, required this.caughtType, required this.hookUuid, required this.state, required this.hand, required this.expToDrop, required this.cancelled, });
+  PlayerFishEventData copyWith({Player? player, i1.Option<Uuid>? caughtUuid, String? caughtType, Uuid? hookUuid, PlayerFishState? state, Hand? hand, int? expToDrop, bool? cancelled, }) => PlayerFishEventData(player: player ?? this.player, caughtUuid: caughtUuid ?? this.caughtUuid, caughtType: caughtType ?? this.caughtType, hookUuid: hookUuid ?? this.hookUuid, state: state ?? this.state, hand: hand ?? this.hand, expToDrop: expToDrop ?? this.expToDrop, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerEggThrowEventData {
   final Player player;
@@ -32493,6 +32883,7 @@ final class PlayerEggThrowEventData {
   final String hatchingType;
   final bool cancelled;
   const PlayerEggThrowEventData({required this.player, required this.eggUuid, required this.hatching, required this.numHatches, required this.hatchingType, required this.cancelled, });
+  PlayerEggThrowEventData copyWith({Player? player, Uuid? eggUuid, bool? hatching, int? numHatches, String? hatchingType, bool? cancelled, }) => PlayerEggThrowEventData(player: player ?? this.player, eggUuid: eggUuid ?? this.eggUuid, hatching: hatching ?? this.hatching, numHatches: numHatches ?? this.numHatches, hatchingType: hatchingType ?? this.hatchingType, cancelled: cancelled ?? this.cancelled, );
 }
 enum EntityInteractionAction {
   interact,
@@ -32505,6 +32896,7 @@ final class PlayerInteractUnknownEntityEventData {
   final EntityInteractionAction action;
   final bool cancelled;
   const PlayerInteractUnknownEntityEventData({required this.player, required this.entityId, required this.action, required this.cancelled, });
+  PlayerInteractUnknownEntityEventData copyWith({Player? player, int? entityId, EntityInteractionAction? action, bool? cancelled, }) => PlayerInteractUnknownEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, action: action ?? this.action, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerInteractEntityEventData {
   final Player player;
@@ -32513,6 +32905,7 @@ final class PlayerInteractEntityEventData {
   final bool sneaking;
   final bool cancelled;
   const PlayerInteractEntityEventData({required this.player, required this.entityId, required this.action, required this.sneaking, required this.cancelled, });
+  PlayerInteractEntityEventData copyWith({Player? player, int? entityId, EntityInteractionAction? action, bool? sneaking, bool? cancelled, }) => PlayerInteractEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, action: action ?? this.action, sneaking: sneaking ?? this.sneaking, cancelled: cancelled ?? this.cancelled, );
 }
 enum InteractAction {
   leftClickBlock,
@@ -32527,24 +32920,28 @@ final class PlayerInteractEventData {
   final String block;
   final bool cancelled;
   const PlayerInteractEventData({required this.player, required this.action, required this.clickedPos, required this.block, required this.cancelled, });
+  PlayerInteractEventData copyWith({Player? player, InteractAction? action, i1.Option<BlockPos>? clickedPos, String? block, bool? cancelled, }) => PlayerInteractEventData(player: player ?? this.player, action: action ?? this.action, clickedPos: clickedPos ?? this.clickedPos, block: block ?? this.block, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerToggleSneakEventData {
   final Player player;
   final bool isSneaking;
   final bool cancelled;
   const PlayerToggleSneakEventData({required this.player, required this.isSneaking, required this.cancelled, });
+  PlayerToggleSneakEventData copyWith({Player? player, bool? isSneaking, bool? cancelled, }) => PlayerToggleSneakEventData(player: player ?? this.player, isSneaking: isSneaking ?? this.isSneaking, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerToggleFlightEventData {
   final Player player;
   final bool isFlying;
   final bool cancelled;
   const PlayerToggleFlightEventData({required this.player, required this.isFlying, required this.cancelled, });
+  PlayerToggleFlightEventData copyWith({Player? player, bool? isFlying, bool? cancelled, }) => PlayerToggleFlightEventData(player: player ?? this.player, isFlying: isFlying ?? this.isFlying, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerToggleSprintEventData {
   final Player player;
   final bool isSprinting;
   final bool cancelled;
   const PlayerToggleSprintEventData({required this.player, required this.isSprinting, required this.cancelled, });
+  PlayerToggleSprintEventData copyWith({Player? player, bool? isSprinting, bool? cancelled, }) => PlayerToggleSprintEventData(player: player ?? this.player, isSprinting: isSprinting ?? this.isSprinting, cancelled: cancelled ?? this.cancelled, );
 }
 /// Represents the type of click interaction in a GUI.
 enum ClickType {
@@ -32570,11 +32967,13 @@ final class InventoryClickEventData {
   final int hotbarButton;
   final bool cancelled;
   const InventoryClickEventData({required this.player, required this.windowType, required this.clickType, required this.slot, required this.rawSlot, required this.clickedItem, required this.cursor, required this.hotbarButton, required this.cancelled, });
+  InventoryClickEventData copyWith({Player? player, i1.Option<Screen>? windowType, ClickType? clickType, int? slot, int? rawSlot, i1.Option<ItemStack>? clickedItem, i1.Option<ItemStack>? cursor, int? hotbarButton, bool? cancelled, }) => InventoryClickEventData(player: player ?? this.player, windowType: windowType ?? this.windowType, clickType: clickType ?? this.clickType, slot: slot ?? this.slot, rawSlot: rawSlot ?? this.rawSlot, clickedItem: clickedItem ?? this.clickedItem, cursor: cursor ?? this.cursor, hotbarButton: hotbarButton ?? this.hotbarButton, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryCloseEventData {
   final Player player;
   final i1.Option<Screen> windowType;
   const InventoryCloseEventData({required this.player, required this.windowType, });
+  InventoryCloseEventData copyWith({Player? player, i1.Option<Screen>? windowType, }) => InventoryCloseEventData(player: player ?? this.player, windowType: windowType ?? this.windowType, );
 }
 final class BlockRedstoneEventData {
   final World targetWorld;
@@ -32584,6 +32983,7 @@ final class BlockRedstoneEventData {
   final int newCurrent;
   final bool cancelled;
   const BlockRedstoneEventData({required this.targetWorld, required this.stateId, required this.blockPos, required this.oldCurrent, required this.newCurrent, required this.cancelled, });
+  BlockRedstoneEventData copyWith({World? targetWorld, int? stateId, BlockPos? blockPos, int? oldCurrent, int? newCurrent, bool? cancelled, }) => BlockRedstoneEventData(targetWorld: targetWorld ?? this.targetWorld, stateId: stateId ?? this.stateId, blockPos: blockPos ?? this.blockPos, oldCurrent: oldCurrent ?? this.oldCurrent, newCurrent: newCurrent ?? this.newCurrent, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockBreakEventData {
   final i1.Option<Player> player;
@@ -32593,12 +32993,14 @@ final class BlockBreakEventData {
   final bool shouldDrop;
   final bool cancelled;
   const BlockBreakEventData({required this.player, required this.block, required this.blockPos, required this.exp, required this.shouldDrop, required this.cancelled, });
+  BlockBreakEventData copyWith({i1.Option<Player>? player, String? block, BlockPos? blockPos, int? exp, bool? shouldDrop, bool? cancelled, }) => BlockBreakEventData(player: player ?? this.player, block: block ?? this.block, blockPos: blockPos ?? this.blockPos, exp: exp ?? this.exp, shouldDrop: shouldDrop ?? this.shouldDrop, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockBurnEventData {
   final String ignitingBlock;
   final String block;
   final bool cancelled;
   const BlockBurnEventData({required this.ignitingBlock, required this.block, required this.cancelled, });
+  BlockBurnEventData copyWith({String? ignitingBlock, String? block, bool? cancelled, }) => BlockBurnEventData(ignitingBlock: ignitingBlock ?? this.ignitingBlock, block: block ?? this.block, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockCanBuildEventData {
   final String blockToBuild;
@@ -32607,6 +33009,7 @@ final class BlockCanBuildEventData {
   final String block;
   final bool cancelled;
   const BlockCanBuildEventData({required this.blockToBuild, required this.buildable, required this.player, required this.block, required this.cancelled, });
+  BlockCanBuildEventData copyWith({String? blockToBuild, bool? buildable, Player? player, String? block, bool? cancelled, }) => BlockCanBuildEventData(blockToBuild: blockToBuild ?? this.blockToBuild, buildable: buildable ?? this.buildable, player: player ?? this.player, block: block ?? this.block, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockGrowEventData {
   final World targetWorld;
@@ -32617,6 +33020,7 @@ final class BlockGrowEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const BlockGrowEventData({required this.targetWorld, required this.oldBlock, required this.oldStateId, required this.newBlock, required this.newStateId, required this.blockPos, required this.cancelled, });
+  BlockGrowEventData copyWith({World? targetWorld, String? oldBlock, int? oldStateId, String? newBlock, int? newStateId, BlockPos? blockPos, bool? cancelled, }) => BlockGrowEventData(targetWorld: targetWorld ?? this.targetWorld, oldBlock: oldBlock ?? this.oldBlock, oldStateId: oldStateId ?? this.oldStateId, newBlock: newBlock ?? this.newBlock, newStateId: newStateId ?? this.newStateId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockPlaceEventData {
   final Player player;
@@ -32626,6 +33030,7 @@ final class BlockPlaceEventData {
   final bool canBuild;
   final bool cancelled;
   const BlockPlaceEventData({required this.player, required this.blockPlaced, required this.blockPlacedAgainst, required this.blockPos, required this.canBuild, required this.cancelled, });
+  BlockPlaceEventData copyWith({Player? player, String? blockPlaced, String? blockPlacedAgainst, BlockPos? blockPos, bool? canBuild, bool? cancelled, }) => BlockPlaceEventData(player: player ?? this.player, blockPlaced: blockPlaced ?? this.blockPlaced, blockPlacedAgainst: blockPlacedAgainst ?? this.blockPlacedAgainst, blockPos: blockPos ?? this.blockPos, canBuild: canBuild ?? this.canBuild, cancelled: cancelled ?? this.cancelled, );
 }
 final class DialogClickActionEventData {
   final Player player;
@@ -32633,33 +33038,39 @@ final class DialogClickActionEventData {
   final i1.Option<List<int>> payload;
   final bool cancelled;
   const DialogClickActionEventData({required this.player, required this.id, required this.payload, required this.cancelled, });
+  DialogClickActionEventData copyWith({Player? player, String? id, i1.Option<List<int>>? payload, bool? cancelled, }) => DialogClickActionEventData(player: player ?? this.player, id: id ?? this.id, payload: payload ?? this.payload, cancelled: cancelled ?? this.cancelled, );
 }
 final class DialogShowEventData {
   final Player player;
   final Dialog dialog;
   final bool cancelled;
   const DialogShowEventData({required this.player, required this.dialog, required this.cancelled, });
+  DialogShowEventData copyWith({Player? player, Dialog? dialog, bool? cancelled, }) => DialogShowEventData(player: player ?? this.player, dialog: dialog ?? this.dialog, cancelled: cancelled ?? this.cancelled, );
 }
 final class DialogClearEventData {
   final Player player;
   final bool cancelled;
   const DialogClearEventData({required this.player, required this.cancelled, });
+  DialogClearEventData copyWith({Player? player, bool? cancelled, }) => DialogClearEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
 }
 final class BedrockFormResponseEventData {
   final Player player;
   final int formId;
   final i1.Option<String> responseData;
   const BedrockFormResponseEventData({required this.player, required this.formId, required this.responseData, });
+  BedrockFormResponseEventData copyWith({Player? player, int? formId, i1.Option<String>? responseData, }) => BedrockFormResponseEventData(player: player ?? this.player, formId: formId ?? this.formId, responseData: responseData ?? this.responseData, );
 }
 final class ServerCommandEventData {
   final String command;
   final bool cancelled;
   const ServerCommandEventData({required this.command, required this.cancelled, });
+  ServerCommandEventData copyWith({String? command, bool? cancelled, }) => ServerCommandEventData(command: command ?? this.command, cancelled: cancelled ?? this.cancelled, );
 }
 final class ServerListPingAddress {
   final String host;
   final int port;
   const ServerListPingAddress({required this.host, required this.port, });
+  ServerListPingAddress copyWith({String? host, int? port, }) => ServerListPingAddress(host: host ?? this.host, port: port ?? this.port, );
 }
 final class ServerListPingEventData {
   final String hostname;
@@ -32669,6 +33080,7 @@ final class ServerListPingEventData {
   final int numPlayers;
   final i1.Option<String> favicon;
   const ServerListPingEventData({required this.hostname, required this.address, required this.motd, required this.maxPlayers, required this.numPlayers, required this.favicon, });
+  ServerListPingEventData copyWith({String? hostname, ServerListPingAddress? address, TextComponent? motd, int? maxPlayers, int? numPlayers, i1.Option<String>? favicon, }) => ServerListPingEventData(hostname: hostname ?? this.hostname, address: address ?? this.address, motd: motd ?? this.motd, maxPlayers: maxPlayers ?? this.maxPlayers, numPlayers: numPlayers ?? this.numPlayers, favicon: favicon ?? this.favicon, );
 }
 enum ServerLoadType {
   startup,
@@ -32677,6 +33089,7 @@ enum ServerLoadType {
 final class ServerLoadEventData {
   final ServerLoadType loadType;
   const ServerLoadEventData({required this.loadType, });
+  ServerLoadEventData copyWith({ServerLoadType? loadType, }) => ServerLoadEventData(loadType: loadType ?? this.loadType, );
 }
 final class SpawnChangeEventData {
   final World targetWorld;
@@ -32687,21 +33100,25 @@ final class SpawnChangeEventData {
   final double newYaw;
   final double newPitch;
   const SpawnChangeEventData({required this.targetWorld, required this.previousPosition, required this.previousYaw, required this.previousPitch, required this.newPosition, required this.newYaw, required this.newPitch, });
+  SpawnChangeEventData copyWith({World? targetWorld, BlockPos? previousPosition, double? previousYaw, double? previousPitch, BlockPos? newPosition, double? newYaw, double? newPitch, }) => SpawnChangeEventData(targetWorld: targetWorld ?? this.targetWorld, previousPosition: previousPosition ?? this.previousPosition, previousYaw: previousYaw ?? this.previousYaw, previousPitch: previousPitch ?? this.previousPitch, newPosition: newPosition ?? this.newPosition, newYaw: newYaw ?? this.newYaw, newPitch: newPitch ?? this.newPitch, );
 }
 final class ServerBroadcastEventData {
   final TextComponent message;
   final TextComponent sender;
   final bool cancelled;
   const ServerBroadcastEventData({required this.message, required this.sender, required this.cancelled, });
+  ServerBroadcastEventData copyWith({TextComponent? message, TextComponent? sender, bool? cancelled, }) => ServerBroadcastEventData(message: message ?? this.message, sender: sender ?? this.sender, cancelled: cancelled ?? this.cancelled, );
 }
 final class ServerTickStartEventData {
   final int tick;
   const ServerTickStartEventData({required this.tick, });
+  ServerTickStartEventData copyWith({int? tick, }) => ServerTickStartEventData(tick: tick ?? this.tick, );
 }
 final class ServerTickEndEventData {
   final int tick;
   final int durationNanos;
   const ServerTickEndEventData({required this.tick, required this.durationNanos, });
+  ServerTickEndEventData copyWith({int? tick, int? durationNanos, }) => ServerTickEndEventData(tick: tick ?? this.tick, durationNanos: durationNanos ?? this.durationNanos, );
 }
 final class ConfigSClientInformationConfig {
   final String locale;
@@ -32713,89 +33130,108 @@ final class ConfigSClientInformationConfig {
   final bool textFiltering;
   final bool serverListing;
   const ConfigSClientInformationConfig({required this.locale, required this.viewDistance, required this.chatMode, required this.chatColors, required this.skinParts, required this.mainHand, required this.textFiltering, required this.serverListing, });
+  ConfigSClientInformationConfig copyWith({String? locale, int? viewDistance, int? chatMode, bool? chatColors, int? skinParts, int? mainHand, bool? textFiltering, bool? serverListing, }) => ConfigSClientInformationConfig(locale: locale ?? this.locale, viewDistance: viewDistance ?? this.viewDistance, chatMode: chatMode ?? this.chatMode, chatColors: chatColors ?? this.chatColors, skinParts: skinParts ?? this.skinParts, mainHand: mainHand ?? this.mainHand, textFiltering: textFiltering ?? this.textFiltering, serverListing: serverListing ?? this.serverListing, );
 }
 final class ConfigSConfigCookieResponse {
   final String key;
   final bool hasPayload;
   final i1.Option<List<int>> payload;
   const ConfigSConfigCookieResponse({required this.key, required this.hasPayload, required this.payload, });
+  ConfigSConfigCookieResponse copyWith({String? key, bool? hasPayload, i1.Option<List<int>>? payload, }) => ConfigSConfigCookieResponse(key: key ?? this.key, hasPayload: hasPayload ?? this.hasPayload, payload: payload ?? this.payload, );
 }
 final class ConfigSCustomClickAction {
   final String actionId;
   final i1.Option<List<int>> payload;
   const ConfigSCustomClickAction({required this.actionId, required this.payload, });
+  ConfigSCustomClickAction copyWith({String? actionId, i1.Option<List<int>>? payload, }) => ConfigSCustomClickAction(actionId: actionId ?? this.actionId, payload: payload ?? this.payload, );
 }
 final class ConfigSKeepAlive {
   final int keepAliveId;
   const ConfigSKeepAlive({required this.keepAliveId, });
+  ConfigSKeepAlive copyWith({int? keepAliveId, }) => ConfigSKeepAlive(keepAliveId: keepAliveId ?? this.keepAliveId, );
 }
 final class ConfigSKnownPacks {
   final List<String> knownPacks;
   const ConfigSKnownPacks({required this.knownPacks, });
+  ConfigSKnownPacks copyWith({List<String>? knownPacks, }) => ConfigSKnownPacks(knownPacks: knownPacks ?? this.knownPacks, );
 }
 final class ConfigSPluginMessage {
   final String channel;
   final List<int> data;
   const ConfigSPluginMessage({required this.channel, required this.data, });
+  ConfigSPluginMessage copyWith({String? channel, List<int>? data, }) => ConfigSPluginMessage(channel: channel ?? this.channel, data: data ?? this.data, );
 }
 final class ConfigSConfigPong {
   final int id;
   const ConfigSConfigPong({required this.id, });
+  ConfigSConfigPong copyWith({int? id, }) => ConfigSConfigPong(id: id ?? this.id, );
 }
 final class ConfigSConfigResourcePack {
   final Uuid uuid;
   final int result;
   const ConfigSConfigResourcePack({required this.uuid, required this.result, });
+  ConfigSConfigResourcePack copyWith({Uuid? uuid, int? result, }) => ConfigSConfigResourcePack(uuid: uuid ?? this.uuid, result: result ?? this.result, );
 }
 final class LoginSLoginCookieResponse {
   final String key;
   final i1.Option<List<int>> payload;
   const LoginSLoginCookieResponse({required this.key, required this.payload, });
+  LoginSLoginCookieResponse copyWith({String? key, i1.Option<List<int>>? payload, }) => LoginSLoginCookieResponse(key: key ?? this.key, payload: payload ?? this.payload, );
 }
 final class LoginSLoginStart {
   final String name;
   final Uuid uuid;
   const LoginSLoginStart({required this.name, required this.uuid, });
+  LoginSLoginStart copyWith({String? name, Uuid? uuid, }) => LoginSLoginStart(name: name ?? this.name, uuid: uuid ?? this.uuid, );
 }
 final class LoginSLoginPluginResponse {
   final int messageId;
   final i1.Option<List<int>> data;
   const LoginSLoginPluginResponse({required this.messageId, required this.data, });
+  LoginSLoginPluginResponse copyWith({int? messageId, i1.Option<List<int>>? data, }) => LoginSLoginPluginResponse(messageId: messageId ?? this.messageId, data: data ?? this.data, );
 }
 final class SAttack {
   final int entityId;
   const SAttack({required this.entityId, });
+  SAttack copyWith({int? entityId, }) => SAttack(entityId: entityId ?? this.entityId, );
 }
 final class SBlockEntityTagQuery {
   final int transactionId;
   final (int, int, int, ) location;
   const SBlockEntityTagQuery({required this.transactionId, required this.location, });
+  SBlockEntityTagQuery copyWith({int? transactionId, (int, int, int, )? location, }) => SBlockEntityTagQuery(transactionId: transactionId ?? this.transactionId, location: location ?? this.location, );
 }
 final class SBundleItemSelected {
   final int slotId;
   final int selectedItemIndex;
   const SBundleItemSelected({required this.slotId, required this.selectedItemIndex, });
+  SBundleItemSelected copyWith({int? slotId, int? selectedItemIndex, }) => SBundleItemSelected(slotId: slotId ?? this.slotId, selectedItemIndex: selectedItemIndex ?? this.selectedItemIndex, );
 }
 final class SChangeDifficulty {
   final String difficulty;
   const SChangeDifficulty({required this.difficulty, });
+  SChangeDifficulty copyWith({String? difficulty, }) => SChangeDifficulty(difficulty: difficulty ?? this.difficulty, );
 }
 final class SChangeGameMode {
   final String gameMode;
   const SChangeGameMode({required this.gameMode, });
+  SChangeGameMode copyWith({String? gameMode, }) => SChangeGameMode(gameMode: gameMode ?? this.gameMode, );
 }
 final class SChatAck {
   final int offset;
   const SChatAck({required this.offset, });
+  SChatAck copyWith({int? offset, }) => SChatAck(offset: offset ?? this.offset, );
 }
 final class SChatCommand {
   final String command;
   const SChatCommand({required this.command, });
+  SChatCommand copyWith({String? command, }) => SChatCommand(command: command ?? this.command, );
 }
 final class ArgumentSignature {
   final String name;
   final List<int> signature;
   const ArgumentSignature({required this.name, required this.signature, });
+  ArgumentSignature copyWith({String? name, List<int>? signature, }) => ArgumentSignature(name: name ?? this.name, signature: signature ?? this.signature, );
 }
 final class SChatCommandSigned {
   final String command;
@@ -32806,6 +33242,7 @@ final class SChatCommandSigned {
   final List<int> acknowledged;
   final int checksum;
   const SChatCommandSigned({required this.command, required this.timestamp, required this.salt, required this.argumentSignatures, required this.messageCount, required this.acknowledged, required this.checksum, });
+  SChatCommandSigned copyWith({String? command, int? timestamp, int? salt, List<ArgumentSignature>? argumentSignatures, int? messageCount, List<int>? acknowledged, int? checksum, }) => SChatCommandSigned(command: command ?? this.command, timestamp: timestamp ?? this.timestamp, salt: salt ?? this.salt, argumentSignatures: argumentSignatures ?? this.argumentSignatures, messageCount: messageCount ?? this.messageCount, acknowledged: acknowledged ?? this.acknowledged, checksum: checksum ?? this.checksum, );
 }
 final class SChatMessage {
   final String message;
@@ -32816,10 +33253,12 @@ final class SChatMessage {
   final List<int> acknowledged;
   final int checksum;
   const SChatMessage({required this.message, required this.timestamp, required this.salt, required this.signature, required this.messageCount, required this.acknowledged, required this.checksum, });
+  SChatMessage copyWith({String? message, int? timestamp, int? salt, i1.Option<List<int>>? signature, int? messageCount, List<int>? acknowledged, int? checksum, }) => SChatMessage(message: message ?? this.message, timestamp: timestamp ?? this.timestamp, salt: salt ?? this.salt, signature: signature ?? this.signature, messageCount: messageCount ?? this.messageCount, acknowledged: acknowledged ?? this.acknowledged, checksum: checksum ?? this.checksum, );
 }
 final class SChunkBatch {
   final double chunksPerTick;
   const SChunkBatch({required this.chunksPerTick, });
+  SChunkBatch copyWith({double? chunksPerTick, }) => SChunkBatch(chunksPerTick: chunksPerTick ?? this.chunksPerTick, );
 }
 enum SlotActionType {
   pickup,
@@ -32840,10 +33279,12 @@ final class SClickSlot {
   final List<(int, String, )> arrayOfChangedSlots;
   final String carriedItem;
   const SClickSlot({required this.syncId, required this.revision, required this.slot, required this.button, required this.mode, required this.lengthOfArray, required this.arrayOfChangedSlots, required this.carriedItem, });
+  SClickSlot copyWith({int? syncId, int? revision, int? slot, int? button, SlotActionType? mode, int? lengthOfArray, List<(int, String, )>? arrayOfChangedSlots, String? carriedItem, }) => SClickSlot(syncId: syncId ?? this.syncId, revision: revision ?? this.revision, slot: slot ?? this.slot, button: button ?? this.button, mode: mode ?? this.mode, lengthOfArray: lengthOfArray ?? this.lengthOfArray, arrayOfChangedSlots: arrayOfChangedSlots ?? this.arrayOfChangedSlots, carriedItem: carriedItem ?? this.carriedItem, );
 }
 final class SClientCommand {
   final int actionId;
   const SClientCommand({required this.actionId, });
+  SClientCommand copyWith({int? actionId, }) => SClientCommand(actionId: actionId ?? this.actionId, );
 }
 final class SClientInformationPlay {
   final String locale;
@@ -32855,60 +33296,72 @@ final class SClientInformationPlay {
   final bool textFiltering;
   final bool serverListing;
   const SClientInformationPlay({required this.locale, required this.viewDistance, required this.chatMode, required this.chatColors, required this.skinParts, required this.mainHand, required this.textFiltering, required this.serverListing, });
+  SClientInformationPlay copyWith({String? locale, int? viewDistance, int? chatMode, bool? chatColors, int? skinParts, int? mainHand, bool? textFiltering, bool? serverListing, }) => SClientInformationPlay(locale: locale ?? this.locale, viewDistance: viewDistance ?? this.viewDistance, chatMode: chatMode ?? this.chatMode, chatColors: chatColors ?? this.chatColors, skinParts: skinParts ?? this.skinParts, mainHand: mainHand ?? this.mainHand, textFiltering: textFiltering ?? this.textFiltering, serverListing: serverListing ?? this.serverListing, );
 }
 final class SCloseContainer {
   final int windowId;
   const SCloseContainer({required this.windowId, });
+  SCloseContainer copyWith({int? windowId, }) => SCloseContainer(windowId: windowId ?? this.windowId, );
 }
 final class SCommandSuggestion {
   final int id;
   final String command;
   const SCommandSuggestion({required this.id, required this.command, });
+  SCommandSuggestion copyWith({int? id, String? command, }) => SCommandSuggestion(id: id ?? this.id, command: command ?? this.command, );
 }
 final class SContainerButtonClick {
   final int windowId;
   final int buttonId;
   const SContainerButtonClick({required this.windowId, required this.buttonId, });
+  SContainerButtonClick copyWith({int? windowId, int? buttonId, }) => SContainerButtonClick(windowId: windowId ?? this.windowId, buttonId: buttonId ?? this.buttonId, );
 }
 final class SContainerSlotStateChanged {
   final int slotId;
   final int containerId;
   final bool newState;
   const SContainerSlotStateChanged({required this.slotId, required this.containerId, required this.newState, });
+  SContainerSlotStateChanged copyWith({int? slotId, int? containerId, bool? newState, }) => SContainerSlotStateChanged(slotId: slotId ?? this.slotId, containerId: containerId ?? this.containerId, newState: newState ?? this.newState, );
 }
 final class SCookieResponse {
   final String key;
   final i1.Option<List<int>> payload;
   const SCookieResponse({required this.key, required this.payload, });
+  SCookieResponse copyWith({String? key, i1.Option<List<int>>? payload, }) => SCookieResponse(key: key ?? this.key, payload: payload ?? this.payload, );
 }
 final class SCustomClickAction {
   final String actionId;
   final i1.Option<List<int>> payload;
   const SCustomClickAction({required this.actionId, required this.payload, });
+  SCustomClickAction copyWith({String? actionId, i1.Option<List<int>>? payload, }) => SCustomClickAction(actionId: actionId ?? this.actionId, payload: payload ?? this.payload, );
 }
 final class SCustomPayload {
   final String channel;
   final List<int> data;
   const SCustomPayload({required this.channel, required this.data, });
+  SCustomPayload copyWith({String? channel, List<int>? data, }) => SCustomPayload(channel: channel ?? this.channel, data: data ?? this.data, );
 }
 final class SDebugSampleSubscription {
   final int sampleType;
   const SDebugSampleSubscription({required this.sampleType, });
+  SDebugSampleSubscription copyWith({int? sampleType, }) => SDebugSampleSubscription(sampleType: sampleType ?? this.sampleType, );
 }
 final class SDebugSubscriptionRequest {
   final int sampleType;
   const SDebugSubscriptionRequest({required this.sampleType, });
+  SDebugSubscriptionRequest copyWith({int? sampleType, }) => SDebugSubscriptionRequest(sampleType: sampleType ?? this.sampleType, );
 }
 final class SEditBook {
   final int slot;
   final List<String> pages;
   final i1.Option<String> title;
   const SEditBook({required this.slot, required this.pages, required this.title, });
+  SEditBook copyWith({int? slot, List<String>? pages, i1.Option<String>? title, }) => SEditBook(slot: slot ?? this.slot, pages: pages ?? this.pages, title: title ?? this.title, );
 }
 final class SEntityTagQuery {
   final int transactionId;
   final int entityId;
   const SEntityTagQuery({required this.transactionId, required this.entityId, });
+  SEntityTagQuery copyWith({int? transactionId, int? entityId, }) => SEntityTagQuery(transactionId: transactionId ?? this.transactionId, entityId: entityId ?? this.entityId, );
 }
 final class JavaPacketsSInteract {
   final int entityId;
@@ -32917,20 +33370,24 @@ final class JavaPacketsSInteract {
   final i1.Option<int> hand;
   final bool sneaking;
   const JavaPacketsSInteract({required this.entityId, required this.rType, required this.targetPosition, required this.hand, required this.sneaking, });
+  JavaPacketsSInteract copyWith({int? entityId, int? rType, i1.Option<(double, double, double, )>? targetPosition, i1.Option<int>? hand, bool? sneaking, }) => JavaPacketsSInteract(entityId: entityId ?? this.entityId, rType: rType ?? this.rType, targetPosition: targetPosition ?? this.targetPosition, hand: hand ?? this.hand, sneaking: sneaking ?? this.sneaking, );
 }
 final class SJigsawGenerate {
   final (int, int, int, ) pos;
   final int levels;
   final bool keepJigsaws;
   const SJigsawGenerate({required this.pos, required this.levels, required this.keepJigsaws, });
+  SJigsawGenerate copyWith({(int, int, int, )? pos, int? levels, bool? keepJigsaws, }) => SJigsawGenerate(pos: pos ?? this.pos, levels: levels ?? this.levels, keepJigsaws: keepJigsaws ?? this.keepJigsaws, );
 }
 final class SKeepAlive {
   final int keepAliveId;
   const SKeepAlive({required this.keepAliveId, });
+  SKeepAlive copyWith({int? keepAliveId, }) => SKeepAlive(keepAliveId: keepAliveId ?? this.keepAliveId, );
 }
 final class SLockDifficulty {
   final bool locked;
   const SLockDifficulty({required this.locked, });
+  SLockDifficulty copyWith({bool? locked, }) => SLockDifficulty(locked: locked ?? this.locked, );
 }
 final class SMoveVehicle {
   final double x;
@@ -32940,37 +33397,44 @@ final class SMoveVehicle {
   final double pitch;
   final bool onGround;
   const SMoveVehicle({required this.x, required this.y, required this.z, required this.yaw, required this.pitch, required this.onGround, });
+  SMoveVehicle copyWith({double? x, double? y, double? z, double? yaw, double? pitch, bool? onGround, }) => SMoveVehicle(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, onGround: onGround ?? this.onGround, );
 }
 final class SPaddleBoat {
   final bool leftPaddle;
   final bool rightPaddle;
   const SPaddleBoat({required this.leftPaddle, required this.rightPaddle, });
+  SPaddleBoat copyWith({bool? leftPaddle, bool? rightPaddle, }) => SPaddleBoat(leftPaddle: leftPaddle ?? this.leftPaddle, rightPaddle: rightPaddle ?? this.rightPaddle, );
 }
 final class SPickItemFromBlock {
   final (int, int, int, ) pos;
   final bool includeData;
   const SPickItemFromBlock({required this.pos, required this.includeData, });
+  SPickItemFromBlock copyWith({(int, int, int, )? pos, bool? includeData, }) => SPickItemFromBlock(pos: pos ?? this.pos, includeData: includeData ?? this.includeData, );
 }
 final class SPickItemFromEntity {
   final int id;
   final bool includeData;
   const SPickItemFromEntity({required this.id, required this.includeData, });
+  SPickItemFromEntity copyWith({int? id, bool? includeData, }) => SPickItemFromEntity(id: id ?? this.id, includeData: includeData ?? this.includeData, );
 }
 final class SPlayPingRequest {
   final int payload;
   const SPlayPingRequest({required this.payload, });
+  SPlayPingRequest copyWith({int? payload, }) => SPlayPingRequest(payload: payload ?? this.payload, );
 }
 final class SPlaceRecipe {
   final int containerId;
   final int recipeDisplayId;
   final bool useMaxItems;
   const SPlaceRecipe({required this.containerId, required this.recipeDisplayId, required this.useMaxItems, });
+  SPlaceRecipe copyWith({int? containerId, int? recipeDisplayId, bool? useMaxItems, }) => SPlaceRecipe(containerId: containerId ?? this.containerId, recipeDisplayId: recipeDisplayId ?? this.recipeDisplayId, useMaxItems: useMaxItems ?? this.useMaxItems, );
 }
 final class SPlayerAbilities {
   final int flags;
   final i1.Option<double> flySpeed;
   final i1.Option<double> walkSpeed;
   const SPlayerAbilities({required this.flags, required this.flySpeed, required this.walkSpeed, });
+  SPlayerAbilities copyWith({int? flags, i1.Option<double>? flySpeed, i1.Option<double>? walkSpeed, }) => SPlayerAbilities(flags: flags ?? this.flags, flySpeed: flySpeed ?? this.flySpeed, walkSpeed: walkSpeed ?? this.walkSpeed, );
 }
 final class JavaPacketsSPlayerAction {
   final int status;
@@ -32978,6 +33442,7 @@ final class JavaPacketsSPlayerAction {
   final int face;
   final int sequence;
   const JavaPacketsSPlayerAction({required this.status, required this.position, required this.face, required this.sequence, });
+  JavaPacketsSPlayerAction copyWith({int? status, (int, int, int, )? position, int? face, int? sequence, }) => JavaPacketsSPlayerAction(status: status ?? this.status, position: position ?? this.position, face: face ?? this.face, sequence: sequence ?? this.sequence, );
 }
 enum JavaPacketsAction {
   startSneaking,
@@ -32995,19 +33460,23 @@ final class SPlayerCommand {
   final JavaPacketsAction action;
   final int jumpBoost;
   const SPlayerCommand({required this.entityId, required this.action, required this.jumpBoost, });
+  SPlayerCommand copyWith({int? entityId, JavaPacketsAction? action, int? jumpBoost, }) => SPlayerCommand(entityId: entityId ?? this.entityId, action: action ?? this.action, jumpBoost: jumpBoost ?? this.jumpBoost, );
 }
 final class SSetPlayerGround {
   final bool onGround;
   const SSetPlayerGround({required this.onGround, });
+  SSetPlayerGround copyWith({bool? onGround, }) => SSetPlayerGround(onGround: onGround ?? this.onGround, );
 }
 final class SPlayerInput {
   final int input;
   const SPlayerInput({required this.input, });
+  SPlayerInput copyWith({int? input, }) => SPlayerInput(input: input ?? this.input, );
 }
 final class SPlayerPosition {
   final (double, double, double, ) position;
   final int collision;
   const SPlayerPosition({required this.position, required this.collision, });
+  SPlayerPosition copyWith({(double, double, double, )? position, int? collision, }) => SPlayerPosition(position: position ?? this.position, collision: collision ?? this.collision, );
 }
 final class SPlayerPositionRotation {
   final (double, double, double, ) position;
@@ -33015,12 +33484,14 @@ final class SPlayerPositionRotation {
   final double pitch;
   final int collision;
   const SPlayerPositionRotation({required this.position, required this.yaw, required this.pitch, required this.collision, });
+  SPlayerPositionRotation copyWith({(double, double, double, )? position, double? yaw, double? pitch, int? collision, }) => SPlayerPositionRotation(position: position ?? this.position, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, collision: collision ?? this.collision, );
 }
 final class SPlayerRotation {
   final double yaw;
   final double pitch;
   final bool ground;
   const SPlayerRotation({required this.yaw, required this.pitch, required this.ground, });
+  SPlayerRotation copyWith({double? yaw, double? pitch, bool? ground, }) => SPlayerRotation(yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, ground: ground ?? this.ground, );
 }
 final class SPlayerSession {
   final Uuid sessionId;
@@ -33028,29 +33499,35 @@ final class SPlayerSession {
   final List<int> publicKey;
   final List<int> keySignature;
   const SPlayerSession({required this.sessionId, required this.expiresAt, required this.publicKey, required this.keySignature, });
+  SPlayerSession copyWith({Uuid? sessionId, int? expiresAt, List<int>? publicKey, List<int>? keySignature, }) => SPlayerSession(sessionId: sessionId ?? this.sessionId, expiresAt: expiresAt ?? this.expiresAt, publicKey: publicKey ?? this.publicKey, keySignature: keySignature ?? this.keySignature, );
 }
 final class SPlayPong {
   final int id;
   const SPlayPong({required this.id, });
+  SPlayPong copyWith({int? id, }) => SPlayPong(id: id ?? this.id, );
 }
 final class SRecipeBookChangeSettings {
   final int bookType;
   final bool isOpen;
   final bool isFiltering;
   const SRecipeBookChangeSettings({required this.bookType, required this.isOpen, required this.isFiltering, });
+  SRecipeBookChangeSettings copyWith({int? bookType, bool? isOpen, bool? isFiltering, }) => SRecipeBookChangeSettings(bookType: bookType ?? this.bookType, isOpen: isOpen ?? this.isOpen, isFiltering: isFiltering ?? this.isFiltering, );
 }
 final class SRecipeBookSeenRecipe {
   final int recipeDisplayId;
   const SRecipeBookSeenRecipe({required this.recipeDisplayId, });
+  SRecipeBookSeenRecipe copyWith({int? recipeDisplayId, }) => SRecipeBookSeenRecipe(recipeDisplayId: recipeDisplayId ?? this.recipeDisplayId, );
 }
 final class SRenameItem {
   final String itemName;
   const SRenameItem({required this.itemName, });
+  SRenameItem copyWith({String? itemName, }) => SRenameItem(itemName: itemName ?? this.itemName, );
 }
 final class SPlayResourcePack {
   final Uuid uuid;
   final int result;
   const SPlayResourcePack({required this.uuid, required this.result, });
+  SPlayResourcePack copyWith({Uuid? uuid, int? result, }) => SPlayResourcePack(uuid: uuid ?? this.uuid, result: result ?? this.result, );
 }
 sealed class SSeenAdvancement {
   const SSeenAdvancement();
@@ -33065,11 +33542,13 @@ final class SSeenAdvancementCloseTab extends SSeenAdvancement {
 final class SSelectTrade {
   final int selectedSlot;
   const SSelectTrade({required this.selectedSlot, });
+  SSelectTrade copyWith({int? selectedSlot, }) => SSelectTrade(selectedSlot: selectedSlot ?? this.selectedSlot, );
 }
 final class SSetBeacon {
   final i1.Option<int> primaryEffect;
   final i1.Option<int> secondaryEffect;
   const SSetBeacon({required this.primaryEffect, required this.secondaryEffect, });
+  SSetBeacon copyWith({i1.Option<int>? primaryEffect, i1.Option<int>? secondaryEffect, }) => SSetBeacon(primaryEffect: primaryEffect ?? this.primaryEffect, secondaryEffect: secondaryEffect ?? this.secondaryEffect, );
 }
 final class SSetCommandBlock {
   final (int, int, int, ) pos;
@@ -33077,30 +33556,36 @@ final class SSetCommandBlock {
   final int mode;
   final int flags;
   const SSetCommandBlock({required this.pos, required this.command, required this.mode, required this.flags, });
+  SSetCommandBlock copyWith({(int, int, int, )? pos, String? command, int? mode, int? flags, }) => SSetCommandBlock(pos: pos ?? this.pos, command: command ?? this.command, mode: mode ?? this.mode, flags: flags ?? this.flags, );
 }
 final class SSetCommandMinecart {
   final int entityId;
   final String command;
   final bool trackOutput;
   const SSetCommandMinecart({required this.entityId, required this.command, required this.trackOutput, });
+  SSetCommandMinecart copyWith({int? entityId, String? command, bool? trackOutput, }) => SSetCommandMinecart(entityId: entityId ?? this.entityId, command: command ?? this.command, trackOutput: trackOutput ?? this.trackOutput, );
 }
 final class SSetCreativeSlot {
   final int slot;
   final String clickedItem;
   const SSetCreativeSlot({required this.slot, required this.clickedItem, });
+  SSetCreativeSlot copyWith({int? slot, String? clickedItem, }) => SSetCreativeSlot(slot: slot ?? this.slot, clickedItem: clickedItem ?? this.clickedItem, );
 }
 final class GameRuleEntry {
   final String gameRuleKey;
   final String value;
   const GameRuleEntry({required this.gameRuleKey, required this.value, });
+  GameRuleEntry copyWith({String? gameRuleKey, String? value, }) => GameRuleEntry(gameRuleKey: gameRuleKey ?? this.gameRuleKey, value: value ?? this.value, );
 }
 final class SSetGameRule {
   final List<GameRuleEntry> entries;
   const SSetGameRule({required this.entries, });
+  SSetGameRule copyWith({List<GameRuleEntry>? entries, }) => SSetGameRule(entries: entries ?? this.entries, );
 }
 final class SSetHeldItem {
   final int slot;
   const SSetHeldItem({required this.slot, });
+  SSetHeldItem copyWith({int? slot, }) => SSetHeldItem(slot: slot ?? this.slot, );
 }
 final class SSetJigsawBlock {
   final (int, int, int, ) pos;
@@ -33112,6 +33597,7 @@ final class SSetJigsawBlock {
   final int selectionPriority;
   final int placementPriority;
   const SSetJigsawBlock({required this.pos, required this.name, required this.target, required this.pool, required this.finalState, required this.joint, required this.selectionPriority, required this.placementPriority, });
+  SSetJigsawBlock copyWith({(int, int, int, )? pos, String? name, String? target, String? pool, String? finalState, String? joint, int? selectionPriority, int? placementPriority, }) => SSetJigsawBlock(pos: pos ?? this.pos, name: name ?? this.name, target: target ?? this.target, pool: pool ?? this.pool, finalState: finalState ?? this.finalState, joint: joint ?? this.joint, selectionPriority: selectionPriority ?? this.selectionPriority, placementPriority: placementPriority ?? this.placementPriority, );
 }
 final class SSetStructureBlock {
   final (int, int, int, ) location;
@@ -33131,6 +33617,7 @@ final class SSetStructureBlock {
   final int seed;
   final int flags;
   const SSetStructureBlock({required this.location, required this.action, required this.mode, required this.name, required this.offsetX, required this.offsetY, required this.offsetZ, required this.sizeX, required this.sizeY, required this.sizeZ, required this.mirror, required this.rotation, required this.metadata, required this.integrity, required this.seed, required this.flags, });
+  SSetStructureBlock copyWith({(int, int, int, )? location, int? action, int? mode, String? name, int? offsetX, int? offsetY, int? offsetZ, int? sizeX, int? sizeY, int? sizeZ, int? mirror, int? rotation, String? metadata, double? integrity, int? seed, int? flags, }) => SSetStructureBlock(location: location ?? this.location, action: action ?? this.action, mode: mode ?? this.mode, name: name ?? this.name, offsetX: offsetX ?? this.offsetX, offsetY: offsetY ?? this.offsetY, offsetZ: offsetZ ?? this.offsetZ, sizeX: sizeX ?? this.sizeX, sizeY: sizeY ?? this.sizeY, sizeZ: sizeZ ?? this.sizeZ, mirror: mirror ?? this.mirror, rotation: rotation ?? this.rotation, metadata: metadata ?? this.metadata, integrity: integrity ?? this.integrity, seed: seed ?? this.seed, flags: flags ?? this.flags, );
 }
 enum TestBlockMode {
   start,
@@ -33143,14 +33630,17 @@ final class SSetTestBlock {
   final TestBlockMode mode;
   final String message;
   const SSetTestBlock({required this.position, required this.mode, required this.message, });
+  SSetTestBlock copyWith({(int, int, int, )? position, TestBlockMode? mode, String? message, }) => SSetTestBlock(position: position ?? this.position, mode: mode ?? this.mode, message: message ?? this.message, );
 }
 final class SSpectateEntity {
   final Uuid target;
   const SSpectateEntity({required this.target, });
+  SSpectateEntity copyWith({Uuid? target, }) => SSpectateEntity(target: target ?? this.target, );
 }
 final class STeleportToEntity {
   final Uuid target;
   const STeleportToEntity({required this.target, });
+  STeleportToEntity copyWith({Uuid? target, }) => STeleportToEntity(target: target ?? this.target, );
 }
 enum TestInstanceBlockAction {
   init,
@@ -33166,6 +33656,7 @@ final class VarIntVector3 {
   final int y;
   final int z;
   const VarIntVector3({required this.x, required this.y, required this.z, });
+  VarIntVector3 copyWith({int? x, int? y, int? z, }) => VarIntVector3(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, );
 }
 enum TestInstanceBlockStatus {
   cleared,
@@ -33181,12 +33672,14 @@ final class TestInstanceBlockData {
   final TestInstanceBlockStatus status;
   final i1.Option<String> errorMessage;
   const TestInstanceBlockData({required this.test, required this.size, required this.rotation, required this.ignoreEntities, required this.status, required this.errorMessage, });
+  TestInstanceBlockData copyWith({i1.Option<String>? test, VarIntVector3? size, String? rotation, bool? ignoreEntities, TestInstanceBlockStatus? status, i1.Option<String>? errorMessage, }) => TestInstanceBlockData(test: test ?? this.test, size: size ?? this.size, rotation: rotation ?? this.rotation, ignoreEntities: ignoreEntities ?? this.ignoreEntities, status: status ?? this.status, errorMessage: errorMessage ?? this.errorMessage, );
 }
 final class STestInstanceBlockAction {
   final (int, int, int, ) pos;
   final TestInstanceBlockAction action;
   final TestInstanceBlockData data;
   const STestInstanceBlockAction({required this.pos, required this.action, required this.data, });
+  STestInstanceBlockAction copyWith({(int, int, int, )? pos, TestInstanceBlockAction? action, TestInstanceBlockData? data, }) => STestInstanceBlockAction(pos: pos ?? this.pos, action: action ?? this.action, data: data ?? this.data, );
 }
 final class SUpdateSign {
   final (int, int, int, ) location;
@@ -33196,6 +33689,7 @@ final class SUpdateSign {
   final String line3;
   final String line4;
   const SUpdateSign({required this.location, required this.isFrontText, required this.line1, required this.line2, required this.line3, required this.line4, });
+  SUpdateSign copyWith({(int, int, int, )? location, bool? isFrontText, String? line1, String? line2, String? line3, String? line4, }) => SUpdateSign(location: location ?? this.location, isFrontText: isFrontText ?? this.isFrontText, line1: line1 ?? this.line1, line2: line2 ?? this.line2, line3: line3 ?? this.line3, line4: line4 ?? this.line4, );
 }
 final class SUseItem {
   final int hand;
@@ -33203,6 +33697,7 @@ final class SUseItem {
   final double yaw;
   final double pitch;
   const SUseItem({required this.hand, required this.sequence, required this.yaw, required this.pitch, });
+  SUseItem copyWith({int? hand, int? sequence, double? yaw, double? pitch, }) => SUseItem(hand: hand ?? this.hand, sequence: sequence ?? this.sequence, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, );
 }
 final class SUseItemOn {
   final int hand;
@@ -33213,10 +33708,12 @@ final class SUseItemOn {
   final bool isAgainstWorldBorder;
   final int sequence;
   const SUseItemOn({required this.hand, required this.position, required this.face, required this.cursorPos, required this.insideBlock, required this.isAgainstWorldBorder, required this.sequence, });
+  SUseItemOn copyWith({int? hand, (int, int, int, )? position, int? face, (double, double, double, )? cursorPos, bool? insideBlock, bool? isAgainstWorldBorder, int? sequence, }) => SUseItemOn(hand: hand ?? this.hand, position: position ?? this.position, face: face ?? this.face, cursorPos: cursorPos ?? this.cursorPos, insideBlock: insideBlock ?? this.insideBlock, isAgainstWorldBorder: isAgainstWorldBorder ?? this.isAgainstWorldBorder, sequence: sequence ?? this.sequence, );
 }
 final class StatusSStatusPingRequest {
   final int payload;
   const StatusSStatusPingRequest({required this.payload, });
+  StatusSStatusPingRequest copyWith({int? payload, }) => StatusSStatusPingRequest(payload: payload ?? this.payload, );
 }
 sealed class JavaPacketsServerboundPacket {
   const JavaPacketsServerboundPacket();
@@ -33622,6 +34119,7 @@ final class SActorEvent {
   final int data;
   final i1.Option<(double, double, double, )> fireAtPosition;
   const SActorEvent({required this.targetRuntimeId, required this.eventId, required this.data, required this.fireAtPosition, });
+  SActorEvent copyWith({int? targetRuntimeId, ActorEventId? eventId, int? data, i1.Option<(double, double, double, )>? fireAtPosition, }) => SActorEvent(targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, eventId: eventId ?? this.eventId, data: data ?? this.data, fireAtPosition: fireAtPosition ?? this.fireAtPosition, );
 }
 enum AnimateAction {
   noAction,
@@ -33647,21 +34145,25 @@ final class SAnimate {
   final double data;
   final i1.Option<ActorSwingSource> swingSource;
   const SAnimate({required this.action, required this.targetActorRuntimeId, required this.data, required this.swingSource, });
+  SAnimate copyWith({AnimateAction? action, int? targetActorRuntimeId, double? data, i1.Option<ActorSwingSource>? swingSource, }) => SAnimate(action: action ?? this.action, targetActorRuntimeId: targetActorRuntimeId ?? this.targetActorRuntimeId, data: data ?? this.data, swingSource: swingSource ?? this.swingSource, );
 }
 final class SBlockPickRequest {
   final (int, int, int, ) position;
   final bool withData;
   final int maxSlots;
   const SBlockPickRequest({required this.position, required this.withData, required this.maxSlots, });
+  SBlockPickRequest copyWith({(int, int, int, )? position, bool? withData, int? maxSlots, }) => SBlockPickRequest(position: position ?? this.position, withData: withData ?? this.withData, maxSlots: maxSlots ?? this.maxSlots, );
 }
 final class SClientCacheBlobStatus {
   final List<int> missHashes;
   final List<int> hitHashes;
   const SClientCacheBlobStatus({required this.missHashes, required this.hitHashes, });
+  SClientCacheBlobStatus copyWith({List<int>? missHashes, List<int>? hitHashes, }) => SClientCacheBlobStatus(missHashes: missHashes ?? this.missHashes, hitHashes: hitHashes ?? this.hitHashes, );
 }
 final class SClientCacheStatus {
   final bool isCacheSupported;
   const SClientCacheStatus({required this.isCacheSupported, });
+  SClientCacheStatus copyWith({bool? isCacheSupported, }) => SClientCacheStatus(isCacheSupported: isCacheSupported ?? this.isCacheSupported, );
 }
 final class CommandOriginData {
   final String rType;
@@ -33669,6 +34171,7 @@ final class CommandOriginData {
   final String requestId;
   final int playerId;
   const CommandOriginData({required this.rType, required this.uuid, required this.requestId, required this.playerId, });
+  CommandOriginData copyWith({String? rType, Uuid? uuid, String? requestId, int? playerId, }) => CommandOriginData(rType: rType ?? this.rType, uuid: uuid ?? this.uuid, requestId: requestId ?? this.requestId, playerId: playerId ?? this.playerId, );
 }
 final class SCommandRequest {
   final String command;
@@ -33676,12 +34179,14 @@ final class SCommandRequest {
   final bool isInternal;
   final String version;
   const SCommandRequest({required this.command, required this.origin, required this.isInternal, required this.version, });
+  SCommandRequest copyWith({String? command, CommandOriginData? origin, bool? isInternal, String? version, }) => SCommandRequest(command: command ?? this.command, origin: origin ?? this.origin, isInternal: isInternal ?? this.isInternal, version: version ?? this.version, );
 }
 final class SContainerClose {
   final int containerId;
   final int containerType;
   final bool serverInitiatedClose;
   const SContainerClose({required this.containerId, required this.containerType, required this.serverInitiatedClose, });
+  SContainerClose copyWith({int? containerId, int? containerType, bool? serverInitiatedClose, }) => SContainerClose(containerId: containerId ?? this.containerId, containerType: containerType ?? this.containerType, serverInitiatedClose: serverInitiatedClose ?? this.serverInitiatedClose, );
 }
 final class SEmote {
   final int actorRuntimeId;
@@ -33691,11 +34196,13 @@ final class SEmote {
   final String platformId;
   final int flags;
   const SEmote({required this.actorRuntimeId, required this.emoteId, required this.emoteLengthTicks, required this.xuid, required this.platformId, required this.flags, });
+  SEmote copyWith({int? actorRuntimeId, String? emoteId, int? emoteLengthTicks, String? xuid, String? platformId, int? flags, }) => SEmote(actorRuntimeId: actorRuntimeId ?? this.actorRuntimeId, emoteId: emoteId ?? this.emoteId, emoteLengthTicks: emoteLengthTicks ?? this.emoteLengthTicks, xuid: xuid ?? this.xuid, platformId: platformId ?? this.platformId, flags: flags ?? this.flags, );
 }
 final class SEmoteList {
   final int runtimeId;
   final List<Uuid> emotePieceIds;
   const SEmoteList({required this.runtimeId, required this.emotePieceIds, });
+  SEmoteList copyWith({int? runtimeId, List<Uuid>? emotePieceIds, }) => SEmoteList(runtimeId: runtimeId ?? this.runtimeId, emotePieceIds: emotePieceIds ?? this.emotePieceIds, );
 }
 enum BedrockPacketsAction {
   invalid,
@@ -33709,11 +34216,13 @@ final class SInteract {
   final int targetRuntimeId;
   final i1.Option<(double, double, double, )> position;
   const SInteract({required this.action, required this.targetRuntimeId, required this.position, });
+  SInteract copyWith({BedrockPacketsAction? action, int? targetRuntimeId, i1.Option<(double, double, double, )>? position, }) => SInteract(action: action ?? this.action, targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, position: position ?? this.position, );
 }
 final class LegacySetItemSlot {
   final int containerId;
   final List<int> slots;
   const LegacySetItemSlot({required this.containerId, required this.slots, });
+  LegacySetItemSlot copyWith({int? containerId, List<int>? slots, }) => LegacySetItemSlot(containerId: containerId ?? this.containerId, slots: slots ?? this.slots, );
 }
 final class InventoryAction {
   final int sourceType;
@@ -33723,6 +34232,7 @@ final class InventoryAction {
   final NetworkItemDescriptor oldItem;
   final NetworkItemDescriptor newItem;
   const InventoryAction({required this.sourceType, required this.windowId, required this.sourceFlags, required this.inventorySlot, required this.oldItem, required this.newItem, });
+  InventoryAction copyWith({int? sourceType, i1.Option<int>? windowId, i1.Option<int>? sourceFlags, int? inventorySlot, NetworkItemDescriptor? oldItem, NetworkItemDescriptor? newItem, }) => InventoryAction(sourceType: sourceType ?? this.sourceType, windowId: windowId ?? this.windowId, sourceFlags: sourceFlags ?? this.sourceFlags, inventorySlot: inventorySlot ?? this.inventorySlot, oldItem: oldItem ?? this.oldItem, newItem: newItem ?? this.newItem, );
 }
 enum HandSlot {
   mainhand,
@@ -33742,6 +34252,7 @@ final class UseItemTransactionData {
   final int clientPrediction;
   final int clientCooldownState;
   const UseItemTransactionData({required this.actionType, required this.triggerType, required this.blockPosition, required this.blockFace, required this.hotBarSlot, required this.hand, required this.itemInHand, required this.playerPosition, required this.clickPosition, required this.blockRuntimeId, required this.clientPrediction, required this.clientCooldownState, });
+  UseItemTransactionData copyWith({int? actionType, int? triggerType, (int, int, int, )? blockPosition, int? blockFace, int? hotBarSlot, HandSlot? hand, NetworkItemDescriptor? itemInHand, (double, double, double, )? playerPosition, (double, double, double, )? clickPosition, int? blockRuntimeId, int? clientPrediction, int? clientCooldownState, }) => UseItemTransactionData(actionType: actionType ?? this.actionType, triggerType: triggerType ?? this.triggerType, blockPosition: blockPosition ?? this.blockPosition, blockFace: blockFace ?? this.blockFace, hotBarSlot: hotBarSlot ?? this.hotBarSlot, hand: hand ?? this.hand, itemInHand: itemInHand ?? this.itemInHand, playerPosition: playerPosition ?? this.playerPosition, clickPosition: clickPosition ?? this.clickPosition, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, clientPrediction: clientPrediction ?? this.clientPrediction, clientCooldownState: clientCooldownState ?? this.clientCooldownState, );
 }
 final class UseItemOnEntityTransactionData {
   final int targetEntityRuntimeId;
@@ -33751,6 +34262,7 @@ final class UseItemOnEntityTransactionData {
   final (double, double, double, ) playerPosition;
   final (double, double, double, ) clickPosition;
   const UseItemOnEntityTransactionData({required this.targetEntityRuntimeId, required this.actionType, required this.hotBarSlot, required this.itemInHand, required this.playerPosition, required this.clickPosition, });
+  UseItemOnEntityTransactionData copyWith({int? targetEntityRuntimeId, int? actionType, int? hotBarSlot, NetworkItemDescriptor? itemInHand, (double, double, double, )? playerPosition, (double, double, double, )? clickPosition, }) => UseItemOnEntityTransactionData(targetEntityRuntimeId: targetEntityRuntimeId ?? this.targetEntityRuntimeId, actionType: actionType ?? this.actionType, hotBarSlot: hotBarSlot ?? this.hotBarSlot, itemInHand: itemInHand ?? this.itemInHand, playerPosition: playerPosition ?? this.playerPosition, clickPosition: clickPosition ?? this.clickPosition, );
 }
 final class ReleaseItemTransactionData {
   final int actionType;
@@ -33758,6 +34270,7 @@ final class ReleaseItemTransactionData {
   final NetworkItemDescriptor itemInHand;
   final (double, double, double, ) headPosition;
   const ReleaseItemTransactionData({required this.actionType, required this.hotBarSlot, required this.itemInHand, required this.headPosition, });
+  ReleaseItemTransactionData copyWith({int? actionType, int? hotBarSlot, NetworkItemDescriptor? itemInHand, (double, double, double, )? headPosition, }) => ReleaseItemTransactionData(actionType: actionType ?? this.actionType, hotBarSlot: hotBarSlot ?? this.hotBarSlot, itemInHand: itemInHand ?? this.itemInHand, headPosition: headPosition ?? this.headPosition, );
 }
 sealed class TransactionData {
   const TransactionData();
@@ -33790,91 +34303,108 @@ final class SInventoryTransaction {
   final int transactionType;
   final TransactionData transactionData;
   const SInventoryTransaction({required this.legacyRequestId, required this.legacySetItemSlots, required this.hasValue, required this.actions, required this.transactionType, required this.transactionData, });
+  SInventoryTransaction copyWith({int? legacyRequestId, List<LegacySetItemSlot>? legacySetItemSlots, bool? hasValue, List<InventoryAction>? actions, int? transactionType, TransactionData? transactionData, }) => SInventoryTransaction(legacyRequestId: legacyRequestId ?? this.legacyRequestId, legacySetItemSlots: legacySetItemSlots ?? this.legacySetItemSlots, hasValue: hasValue ?? this.hasValue, actions: actions ?? this.actions, transactionType: transactionType ?? this.transactionType, transactionData: transactionData ?? this.transactionData, );
 }
 final class ItemStackRequestSlotInfo {
   final FullContainerName containerName;
   final int slotId;
   final int stackId;
   const ItemStackRequestSlotInfo({required this.containerName, required this.slotId, required this.stackId, });
+  ItemStackRequestSlotInfo copyWith({FullContainerName? containerName, int? slotId, int? stackId, }) => ItemStackRequestSlotInfo(containerName: containerName ?? this.containerName, slotId: slotId ?? this.slotId, stackId: stackId ?? this.stackId, );
 }
 final class ItemStackRequestActionTake {
   final int count;
   final ItemStackRequestSlotInfo source;
   final ItemStackRequestSlotInfo destination;
   const ItemStackRequestActionTake({required this.count, required this.source, required this.destination, });
+  ItemStackRequestActionTake copyWith({int? count, ItemStackRequestSlotInfo? source, ItemStackRequestSlotInfo? destination, }) => ItemStackRequestActionTake(count: count ?? this.count, source: source ?? this.source, destination: destination ?? this.destination, );
 }
 final class ItemStackRequestActionPlace {
   final int count;
   final ItemStackRequestSlotInfo source;
   final ItemStackRequestSlotInfo destination;
   const ItemStackRequestActionPlace({required this.count, required this.source, required this.destination, });
+  ItemStackRequestActionPlace copyWith({int? count, ItemStackRequestSlotInfo? source, ItemStackRequestSlotInfo? destination, }) => ItemStackRequestActionPlace(count: count ?? this.count, source: source ?? this.source, destination: destination ?? this.destination, );
 }
 final class ItemStackRequestActionSwap {
   final ItemStackRequestSlotInfo slot1;
   final ItemStackRequestSlotInfo slot2;
   const ItemStackRequestActionSwap({required this.slot1, required this.slot2, });
+  ItemStackRequestActionSwap copyWith({ItemStackRequestSlotInfo? slot1, ItemStackRequestSlotInfo? slot2, }) => ItemStackRequestActionSwap(slot1: slot1 ?? this.slot1, slot2: slot2 ?? this.slot2, );
 }
 final class ItemStackRequestActionDrop {
   final int count;
   final ItemStackRequestSlotInfo source;
   final bool randomly;
   const ItemStackRequestActionDrop({required this.count, required this.source, required this.randomly, });
+  ItemStackRequestActionDrop copyWith({int? count, ItemStackRequestSlotInfo? source, bool? randomly, }) => ItemStackRequestActionDrop(count: count ?? this.count, source: source ?? this.source, randomly: randomly ?? this.randomly, );
 }
 final class ItemStackRequestActionDestroy {
   final int count;
   final ItemStackRequestSlotInfo source;
   const ItemStackRequestActionDestroy({required this.count, required this.source, });
+  ItemStackRequestActionDestroy copyWith({int? count, ItemStackRequestSlotInfo? source, }) => ItemStackRequestActionDestroy(count: count ?? this.count, source: source ?? this.source, );
 }
 final class ItemStackRequestActionConsume {
   final int count;
   final ItemStackRequestSlotInfo source;
   const ItemStackRequestActionConsume({required this.count, required this.source, });
+  ItemStackRequestActionConsume copyWith({int? count, ItemStackRequestSlotInfo? source, }) => ItemStackRequestActionConsume(count: count ?? this.count, source: source ?? this.source, );
 }
 final class ItemStackRequestActionCreate {
   final int resultIndex;
   const ItemStackRequestActionCreate({required this.resultIndex, });
+  ItemStackRequestActionCreate copyWith({int? resultIndex, }) => ItemStackRequestActionCreate(resultIndex: resultIndex ?? this.resultIndex, );
 }
 final class ItemStackRequestActionBeaconPayment {
   final int primaryEffectId;
   final int secondaryEffectId;
   const ItemStackRequestActionBeaconPayment({required this.primaryEffectId, required this.secondaryEffectId, });
+  ItemStackRequestActionBeaconPayment copyWith({int? primaryEffectId, int? secondaryEffectId, }) => ItemStackRequestActionBeaconPayment(primaryEffectId: primaryEffectId ?? this.primaryEffectId, secondaryEffectId: secondaryEffectId ?? this.secondaryEffectId, );
 }
 final class ItemStackRequestActionMineBlock {
   final int hotbarSlot;
   final int predictedDurability;
   final int stackId;
   const ItemStackRequestActionMineBlock({required this.hotbarSlot, required this.predictedDurability, required this.stackId, });
+  ItemStackRequestActionMineBlock copyWith({int? hotbarSlot, int? predictedDurability, int? stackId, }) => ItemStackRequestActionMineBlock(hotbarSlot: hotbarSlot ?? this.hotbarSlot, predictedDurability: predictedDurability ?? this.predictedDurability, stackId: stackId ?? this.stackId, );
 }
 final class ItemStackRequestActionCraftRecipe {
   final int recipeId;
   final int repetitions;
   const ItemStackRequestActionCraftRecipe({required this.recipeId, required this.repetitions, });
+  ItemStackRequestActionCraftRecipe copyWith({int? recipeId, int? repetitions, }) => ItemStackRequestActionCraftRecipe(recipeId: recipeId ?? this.recipeId, repetitions: repetitions ?? this.repetitions, );
 }
 final class ItemStackRequestActionCraftRecipeAuto {
   final int recipeId;
   final int repetitions;
   const ItemStackRequestActionCraftRecipeAuto({required this.recipeId, required this.repetitions, });
+  ItemStackRequestActionCraftRecipeAuto copyWith({int? recipeId, int? repetitions, }) => ItemStackRequestActionCraftRecipeAuto(recipeId: recipeId ?? this.recipeId, repetitions: repetitions ?? this.repetitions, );
 }
 final class ItemStackRequestActionCraftCreative {
   final int creativeItemId;
   final int repetitions;
   const ItemStackRequestActionCraftCreative({required this.creativeItemId, required this.repetitions, });
+  ItemStackRequestActionCraftCreative copyWith({int? creativeItemId, int? repetitions, }) => ItemStackRequestActionCraftCreative(creativeItemId: creativeItemId ?? this.creativeItemId, repetitions: repetitions ?? this.repetitions, );
 }
 final class ItemStackRequestActionOptional {
   final int recipeId;
   final int filterStringIndex;
   const ItemStackRequestActionOptional({required this.recipeId, required this.filterStringIndex, });
+  ItemStackRequestActionOptional copyWith({int? recipeId, int? filterStringIndex, }) => ItemStackRequestActionOptional(recipeId: recipeId ?? this.recipeId, filterStringIndex: filterStringIndex ?? this.filterStringIndex, );
 }
 final class ItemStackRequestActionGrindstone {
   final int recipeId;
   final int repairCost;
   final int repetitions;
   const ItemStackRequestActionGrindstone({required this.recipeId, required this.repairCost, required this.repetitions, });
+  ItemStackRequestActionGrindstone copyWith({int? recipeId, int? repairCost, int? repetitions, }) => ItemStackRequestActionGrindstone(recipeId: recipeId ?? this.recipeId, repairCost: repairCost ?? this.repairCost, repetitions: repetitions ?? this.repetitions, );
 }
 final class ItemStackRequestActionLoom {
   final String patternId;
   final int repetitions;
   const ItemStackRequestActionLoom({required this.patternId, required this.repetitions, });
+  ItemStackRequestActionLoom copyWith({String? patternId, int? repetitions, }) => ItemStackRequestActionLoom(patternId: patternId ?? this.patternId, repetitions: repetitions ?? this.repetitions, );
 }
 final class StackRequestItem {
   final i1.Option<String> identifier;
@@ -33883,11 +34413,13 @@ final class StackRequestItem {
   final int blockRuntimeId;
   final List<int> extraData;
   const StackRequestItem({required this.identifier, required this.metadataValue, required this.count, required this.blockRuntimeId, required this.extraData, });
+  StackRequestItem copyWith({i1.Option<String>? identifier, int? metadataValue, int? count, int? blockRuntimeId, List<int>? extraData, }) => StackRequestItem(identifier: identifier ?? this.identifier, metadataValue: metadataValue ?? this.metadataValue, count: count ?? this.count, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, extraData: extraData ?? this.extraData, );
 }
 final class ItemStackRequestActionCraftResultsDeprecated {
   final List<StackRequestItem> resultItems;
   final int timesCrafted;
   const ItemStackRequestActionCraftResultsDeprecated({required this.resultItems, required this.timesCrafted, });
+  ItemStackRequestActionCraftResultsDeprecated copyWith({List<StackRequestItem>? resultItems, int? timesCrafted, }) => ItemStackRequestActionCraftResultsDeprecated(resultItems: resultItems ?? this.resultItems, timesCrafted: timesCrafted ?? this.timesCrafted, );
 }
 sealed class ItemStackRequestAction {
   const ItemStackRequestAction();
@@ -33968,10 +34500,12 @@ final class ItemStackRequest {
   final List<String> filterStrings;
   final int filterCause;
   const ItemStackRequest({required this.requestId, required this.actions, required this.filterStrings, required this.filterCause, });
+  ItemStackRequest copyWith({int? requestId, List<ItemStackRequestAction>? actions, List<String>? filterStrings, int? filterCause, }) => ItemStackRequest(requestId: requestId ?? this.requestId, actions: actions ?? this.actions, filterStrings: filterStrings ?? this.filterStrings, filterCause: filterCause ?? this.filterCause, );
 }
 final class SItemStackRequest {
   final List<ItemStackRequest> requests;
   const SItemStackRequest({required this.requests, });
+  SItemStackRequest copyWith({List<ItemStackRequest>? requests, }) => SItemStackRequest(requests: requests ?? this.requests, );
 }
 enum LoadingScreenPacketType {
   startLoadingScreen,
@@ -33981,12 +34515,14 @@ final class SLoadingScreen {
   final LoadingScreenPacketType loadingScreenPacketType;
   final i1.Option<int> loadingScreenId;
   const SLoadingScreen({required this.loadingScreenPacketType, required this.loadingScreenId, });
+  SLoadingScreen copyWith({LoadingScreenPacketType? loadingScreenPacketType, i1.Option<int>? loadingScreenId, }) => SLoadingScreen(loadingScreenPacketType: loadingScreenPacketType ?? this.loadingScreenPacketType, loadingScreenId: loadingScreenId ?? this.loadingScreenId, );
 }
 final class SLogin {
   final int protocolVersion;
   final List<int> jwt;
   final List<int> rawToken;
   const SLogin({required this.protocolVersion, required this.jwt, required this.rawToken, });
+  SLogin copyWith({int? protocolVersion, List<int>? jwt, List<int>? rawToken, }) => SLogin(protocolVersion: protocolVersion ?? this.protocolVersion, jwt: jwt ?? this.jwt, rawToken: rawToken ?? this.rawToken, );
 }
 final class SMobEquipment {
   final int entityRuntimeId;
@@ -33995,12 +34531,14 @@ final class SMobEquipment {
   final int selectedSlot;
   final int containerId;
   const SMobEquipment({required this.entityRuntimeId, required this.item, required this.slot, required this.selectedSlot, required this.containerId, });
+  SMobEquipment copyWith({int? entityRuntimeId, NetworkItemStackDescriptor? item, int? slot, int? selectedSlot, int? containerId, }) => SMobEquipment(entityRuntimeId: entityRuntimeId ?? this.entityRuntimeId, item: item ?? this.item, slot: slot ?? this.slot, selectedSlot: selectedSlot ?? this.selectedSlot, containerId: containerId ?? this.containerId, );
 }
 final class SModalFormResponse {
   final int formId;
   final i1.Option<String> jsonResponse;
   final i1.Option<int> formCancelReason;
   const SModalFormResponse({required this.formId, required this.jsonResponse, required this.formCancelReason, });
+  SModalFormResponse copyWith({int? formId, i1.Option<String>? jsonResponse, i1.Option<int>? formCancelReason, }) => SModalFormResponse(formId: formId ?? this.formId, jsonResponse: jsonResponse ?? this.jsonResponse, formCancelReason: formCancelReason ?? this.formCancelReason, );
 }
 final class SPacketViolationWarning {
   final int violationType;
@@ -34008,6 +34546,7 @@ final class SPacketViolationWarning {
   final int violationPacketId;
   final String violationContext;
   const SPacketViolationWarning({required this.violationType, required this.violationSeverity, required this.violationPacketId, required this.violationContext, });
+  SPacketViolationWarning copyWith({int? violationType, int? violationSeverity, int? violationPacketId, String? violationContext, }) => SPacketViolationWarning(violationType: violationType ?? this.violationType, violationSeverity: violationSeverity ?? this.violationSeverity, violationPacketId: violationPacketId ?? this.violationPacketId, violationContext: violationContext ?? this.violationContext, );
 }
 enum PlayerActionType {
   unknown,
@@ -34059,12 +34598,14 @@ final class SPlayerAction {
   final (int, int, int, ) resultPos;
   final int face;
   const SPlayerAction({required this.playerRuntimeId, required this.action, required this.blockPosition, required this.resultPos, required this.face, });
+  SPlayerAction copyWith({int? playerRuntimeId, PlayerActionType? action, (int, int, int, )? blockPosition, (int, int, int, )? resultPos, int? face, }) => SPlayerAction(playerRuntimeId: playerRuntimeId ?? this.playerRuntimeId, action: action ?? this.action, blockPosition: blockPosition ?? this.blockPosition, resultPos: resultPos ?? this.resultPos, face: face ?? this.face, );
 }
 final class PlayerBlockAction {
   final PlayerActionType action;
   final (int, int, int, ) blockPos;
   final int face;
   const PlayerBlockAction({required this.action, required this.blockPos, required this.face, });
+  PlayerBlockAction copyWith({PlayerActionType? action, (int, int, int, )? blockPos, int? face, }) => PlayerBlockAction(action: action ?? this.action, blockPos: blockPos ?? this.blockPos, face: face ?? this.face, );
 }
 final class PlayerUseItemTransactionData {
   final int actionType;
@@ -34079,6 +34620,7 @@ final class PlayerUseItemTransactionData {
   final int clientPrediction;
   final int clientCooldownState;
   const PlayerUseItemTransactionData({required this.actionType, required this.triggerType, required this.blockPosition, required this.blockFace, required this.hotBarSlot, required this.itemInHand, required this.playerPosition, required this.clickPosition, required this.blockRuntimeId, required this.clientPrediction, required this.clientCooldownState, });
+  PlayerUseItemTransactionData copyWith({int? actionType, int? triggerType, (int, int, int, )? blockPosition, int? blockFace, int? hotBarSlot, NetworkItemDescriptor? itemInHand, (double, double, double, )? playerPosition, (double, double, double, )? clickPosition, int? blockRuntimeId, int? clientPrediction, int? clientCooldownState, }) => PlayerUseItemTransactionData(actionType: actionType ?? this.actionType, triggerType: triggerType ?? this.triggerType, blockPosition: blockPosition ?? this.blockPosition, blockFace: blockFace ?? this.blockFace, hotBarSlot: hotBarSlot ?? this.hotBarSlot, itemInHand: itemInHand ?? this.itemInHand, playerPosition: playerPosition ?? this.playerPosition, clickPosition: clickPosition ?? this.clickPosition, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, clientPrediction: clientPrediction ?? this.clientPrediction, clientCooldownState: clientCooldownState ?? this.clientCooldownState, );
 }
 final class PlayerInventoryAction {
   final int legacyRequestId;
@@ -34086,6 +34628,7 @@ final class PlayerInventoryAction {
   final List<InventoryAction> actions;
   final PlayerUseItemTransactionData transaction;
   const PlayerInventoryAction({required this.legacyRequestId, required this.legacySlots, required this.actions, required this.transaction, });
+  PlayerInventoryAction copyWith({int? legacyRequestId, List<LegacySetItemSlot>? legacySlots, List<InventoryAction>? actions, PlayerUseItemTransactionData? transaction, }) => PlayerInventoryAction(legacyRequestId: legacyRequestId ?? this.legacyRequestId, legacySlots: legacySlots ?? this.legacySlots, actions: actions ?? this.actions, transaction: transaction ?? this.transaction, );
 }
 final class SPlayerAuthInput {
   final double pitch;
@@ -34110,12 +34653,14 @@ final class SPlayerAuthInput {
   final (double, double, double, ) cameraOrientation;
   final (double, double, ) rawMove;
   const SPlayerAuthInput({required this.pitch, required this.yaw, required this.position, required this.moveVec, required this.headYaw, required this.inputData, required this.inputMode, required this.playMode, required this.interactionModel, required this.interactPitch, required this.interactYaw, required this.tick, required this.delta, required this.blockActions, required this.itemInteraction, required this.itemStackRequest, required this.vehicleRotation, required this.vehicleUniqueId, required this.analogMove, required this.cameraOrientation, required this.rawMove, });
+  SPlayerAuthInput copyWith({double? pitch, double? yaw, (double, double, double, )? position, (double, double, )? moveVec, double? headYaw, List<int>? inputData, int? inputMode, int? playMode, int? interactionModel, double? interactPitch, double? interactYaw, int? tick, (double, double, double, )? delta, i1.Option<List<PlayerBlockAction>>? blockActions, i1.Option<PlayerInventoryAction>? itemInteraction, i1.Option<ItemStackRequest>? itemStackRequest, i1.Option<(double, double, )>? vehicleRotation, i1.Option<int>? vehicleUniqueId, (double, double, )? analogMove, (double, double, double, )? cameraOrientation, (double, double, )? rawMove, }) => SPlayerAuthInput(pitch: pitch ?? this.pitch, yaw: yaw ?? this.yaw, position: position ?? this.position, moveVec: moveVec ?? this.moveVec, headYaw: headYaw ?? this.headYaw, inputData: inputData ?? this.inputData, inputMode: inputMode ?? this.inputMode, playMode: playMode ?? this.playMode, interactionModel: interactionModel ?? this.interactionModel, interactPitch: interactPitch ?? this.interactPitch, interactYaw: interactYaw ?? this.interactYaw, tick: tick ?? this.tick, delta: delta ?? this.delta, blockActions: blockActions ?? this.blockActions, itemInteraction: itemInteraction ?? this.itemInteraction, itemStackRequest: itemStackRequest ?? this.itemStackRequest, vehicleRotation: vehicleRotation ?? this.vehicleRotation, vehicleUniqueId: vehicleUniqueId ?? this.vehicleUniqueId, analogMove: analogMove ?? this.analogMove, cameraOrientation: cameraOrientation ?? this.cameraOrientation, rawMove: rawMove ?? this.rawMove, );
 }
 final class SPlayerHotbar {
   final int selectedSlot;
   final int containerId;
   final bool shouldSelectSlot;
   const SPlayerHotbar({required this.selectedSlot, required this.containerId, required this.shouldSelectSlot, });
+  SPlayerHotbar copyWith({int? selectedSlot, int? containerId, bool? shouldSelectSlot, }) => SPlayerHotbar(selectedSlot: selectedSlot ?? this.selectedSlot, containerId: containerId ?? this.containerId, shouldSelectSlot: shouldSelectSlot ?? this.shouldSelectSlot, );
 }
 sealed class AbilityValue {
   const AbilityValue();
@@ -34132,21 +34677,25 @@ final class SRequestAbility {
   final int ability;
   final AbilityValue value;
   const SRequestAbility({required this.ability, required this.value, });
+  SRequestAbility copyWith({int? ability, AbilityValue? value, }) => SRequestAbility(ability: ability ?? this.ability, value: value ?? this.value, );
 }
 final class SRequestChunkRadius {
   final int chunkRadius;
   final int maxChunkRadius;
   const SRequestChunkRadius({required this.chunkRadius, required this.maxChunkRadius, });
+  SRequestChunkRadius copyWith({int? chunkRadius, int? maxChunkRadius, }) => SRequestChunkRadius(chunkRadius: chunkRadius ?? this.chunkRadius, maxChunkRadius: maxChunkRadius ?? this.maxChunkRadius, );
 }
 final class SRequestNetworkSettings {
   final int clientNetworkVersion;
   const SRequestNetworkSettings({required this.clientNetworkVersion, });
+  SRequestNetworkSettings copyWith({int? clientNetworkVersion, }) => SRequestNetworkSettings(clientNetworkVersion: clientNetworkVersion ?? this.clientNetworkVersion, );
 }
 final class SResourcePackClientResponse {
   final int response;
   final int downloadSize;
   final List<String> packIds;
   const SResourcePackClientResponse({required this.response, required this.downloadSize, required this.packIds, });
+  SResourcePackClientResponse copyWith({int? response, int? downloadSize, List<String>? packIds, }) => SResourcePackClientResponse(response: response ?? this.response, downloadSize: downloadSize ?? this.downloadSize, packIds: packIds ?? this.packIds, );
 }
 enum RespawnState {
   searchingForSpawn,
@@ -34158,10 +34707,12 @@ final class SRespawn {
   final RespawnState state;
   final int playerRuntimeId;
   const SRespawn({required this.position, required this.state, required this.playerRuntimeId, });
+  SRespawn copyWith({(double, double, double, )? position, RespawnState? state, int? playerRuntimeId, }) => SRespawn(position: position ?? this.position, state: state ?? this.state, playerRuntimeId: playerRuntimeId ?? this.playerRuntimeId, );
 }
 final class SSetLocalPlayerAsInitialized {
   final int playerId;
   const SSetLocalPlayerAsInitialized({required this.playerId, });
+  SSetLocalPlayerAsInitialized copyWith({int? playerId, }) => SSetLocalPlayerAsInitialized(playerId: playerId ?? this.playerId, );
 }
 final class SSetPlayerInventoryOptions {
   final int leftInventoryTab;
@@ -34170,6 +34721,7 @@ final class SSetPlayerInventoryOptions {
   final int layoutInv;
   final int layoutCraft;
   const SSetPlayerInventoryOptions({required this.leftInventoryTab, required this.rightInventoryTab, required this.filtering, required this.layoutInv, required this.layoutCraft, });
+  SSetPlayerInventoryOptions copyWith({int? leftInventoryTab, int? rightInventoryTab, bool? filtering, int? layoutInv, int? layoutCraft, }) => SSetPlayerInventoryOptions(leftInventoryTab: leftInventoryTab ?? this.leftInventoryTab, rightInventoryTab: rightInventoryTab ?? this.rightInventoryTab, filtering: filtering ?? this.filtering, layoutInv: layoutInv ?? this.layoutInv, layoutCraft: layoutCraft ?? this.layoutCraft, );
 }
 enum TextPacketType {
   raw,
@@ -34195,6 +34747,7 @@ final class SText {
   final String platformChatId;
   final i1.Option<String> filteredMessage;
   const SText({required this.needsTranslation, required this.rType, required this.sourceName, required this.message, required this.parameters, required this.xuid, required this.platformChatId, required this.filteredMessage, });
+  SText copyWith({bool? needsTranslation, TextPacketType? rType, String? sourceName, String? message, List<String>? parameters, String? xuid, String? platformChatId, i1.Option<String>? filteredMessage, }) => SText(needsTranslation: needsTranslation ?? this.needsTranslation, rType: rType ?? this.rType, sourceName: sourceName ?? this.sourceName, message: message ?? this.message, parameters: parameters ?? this.parameters, xuid: xuid ?? this.xuid, platformChatId: platformChatId ?? this.platformChatId, filteredMessage: filteredMessage ?? this.filteredMessage, );
 }
 sealed class ServerboundPacket {
   const ServerboundPacket();
@@ -34335,6 +34888,7 @@ final class PacketReceivedEventData {
   final List<int> rawPayload;
   final bool cancelled;
   const PacketReceivedEventData({required this.player, required this.packet, required this.packetId, required this.rawPayload, required this.cancelled, });
+  PacketReceivedEventData copyWith({Player? player, EventServerboundPacket? packet, int? packetId, List<int>? rawPayload, bool? cancelled, }) => PacketReceivedEventData(player: player ?? this.player, packet: packet ?? this.packet, packetId: packetId ?? this.packetId, rawPayload: rawPayload ?? this.rawPayload, cancelled: cancelled ?? this.cancelled, );
 }
 sealed class EventClientboundPacket {
   const EventClientboundPacket();
@@ -34357,6 +34911,7 @@ final class PacketSentEventData {
   final List<int> rawPayload;
   final bool cancelled;
   const PacketSentEventData({required this.player, required this.packet, required this.packetId, required this.rawPayload, required this.cancelled, });
+  PacketSentEventData copyWith({Player? player, EventClientboundPacket? packet, int? packetId, List<int>? rawPayload, bool? cancelled, }) => PacketSentEventData(player: player ?? this.player, packet: packet ?? this.packet, packetId: packetId ?? this.packetId, rawPayload: rawPayload ?? this.rawPayload, cancelled: cancelled ?? this.cancelled, );
 }
 final class ChunkLoadEventData {
   final World targetWorld;
@@ -34364,6 +34919,7 @@ final class ChunkLoadEventData {
   final int chunkZ;
   final bool cancelled;
   const ChunkLoadEventData({required this.targetWorld, required this.chunkX, required this.chunkZ, required this.cancelled, });
+  ChunkLoadEventData copyWith({World? targetWorld, int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkLoadEventData(targetWorld: targetWorld ?? this.targetWorld, chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
 }
 final class ChunkSaveEventData {
   final World targetWorld;
@@ -34371,6 +34927,7 @@ final class ChunkSaveEventData {
   final int chunkZ;
   final bool cancelled;
   const ChunkSaveEventData({required this.targetWorld, required this.chunkX, required this.chunkZ, required this.cancelled, });
+  ChunkSaveEventData copyWith({World? targetWorld, int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkSaveEventData(targetWorld: targetWorld ?? this.targetWorld, chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
 }
 final class ChunkSendEventData {
   final World targetWorld;
@@ -34378,6 +34935,7 @@ final class ChunkSendEventData {
   final int chunkZ;
   final bool cancelled;
   const ChunkSendEventData({required this.targetWorld, required this.chunkX, required this.chunkZ, required this.cancelled, });
+  ChunkSendEventData copyWith({World? targetWorld, int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkSendEventData(targetWorld: targetWorld ?? this.targetWorld, chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityDamageEventData {
   final int entityId;
@@ -34385,11 +34943,13 @@ final class EntityDamageEventData {
   final DamageType damageType;
   final bool cancelled;
   const EntityDamageEventData({required this.entityId, required this.damage, required this.damageType, required this.cancelled, });
+  EntityDamageEventData copyWith({int? entityId, double? damage, DamageType? damageType, bool? cancelled, }) => EntityDamageEventData(entityId: entityId ?? this.entityId, damage: damage ?? this.damage, damageType: damageType ?? this.damageType, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityDeathEventData {
   final int entityId;
   final int droppedExp;
   const EntityDeathEventData({required this.entityId, required this.droppedExp, });
+  EntityDeathEventData copyWith({int? entityId, int? droppedExp, }) => EntityDeathEventData(entityId: entityId ?? this.entityId, droppedExp: droppedExp ?? this.droppedExp, );
 }
 final class PlayerDeathEventData {
   final Player player;
@@ -34398,6 +34958,7 @@ final class PlayerDeathEventData {
   final bool keepInventory;
   final bool cancelled;
   const PlayerDeathEventData({required this.player, required this.deathMessage, required this.droppedExp, required this.keepInventory, required this.cancelled, });
+  PlayerDeathEventData copyWith({Player? player, TextComponent? deathMessage, int? droppedExp, bool? keepInventory, bool? cancelled, }) => PlayerDeathEventData(player: player ?? this.player, deathMessage: deathMessage ?? this.deathMessage, droppedExp: droppedExp ?? this.droppedExp, keepInventory: keepInventory ?? this.keepInventory, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntitySpawnEventData {
   final int entityId;
@@ -34406,24 +34967,28 @@ final class EntitySpawnEventData {
   final World targetWorld;
   final bool cancelled;
   const EntitySpawnEventData({required this.entityId, required this.entityType, required this.position, required this.targetWorld, required this.cancelled, });
+  EntitySpawnEventData copyWith({int? entityId, String? entityType, (double, double, double, )? position, World? targetWorld, bool? cancelled, }) => EntitySpawnEventData(entityId: entityId ?? this.entityId, entityType: entityType ?? this.entityType, position: position ?? this.position, targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityCombustEventData {
   final int entityId;
   final double durationSecs;
   final bool cancelled;
   const EntityCombustEventData({required this.entityId, required this.durationSecs, required this.cancelled, });
+  EntityCombustEventData copyWith({int? entityId, double? durationSecs, bool? cancelled, }) => EntityCombustEventData(entityId: entityId ?? this.entityId, durationSecs: durationSecs ?? this.durationSecs, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityRegainHealthEventData {
   final int entityId;
   final double amount;
   final bool cancelled;
   const EntityRegainHealthEventData({required this.entityId, required this.amount, required this.cancelled, });
+  EntityRegainHealthEventData copyWith({int? entityId, double? amount, bool? cancelled, }) => EntityRegainHealthEventData(entityId: entityId ?? this.entityId, amount: amount ?? this.amount, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityAirChangeEventData {
   final int entityId;
   final int amount;
   final bool cancelled;
   const EntityAirChangeEventData({required this.entityId, required this.amount, required this.cancelled, });
+  EntityAirChangeEventData copyWith({int? entityId, int? amount, bool? cancelled, }) => EntityAirChangeEventData(entityId: entityId ?? this.entityId, amount: amount ?? this.amount, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityBreedEventData {
   final int fatherId;
@@ -34431,12 +34996,14 @@ final class EntityBreedEventData {
   final int childId;
   final bool cancelled;
   const EntityBreedEventData({required this.fatherId, required this.motherId, required this.childId, required this.cancelled, });
+  EntityBreedEventData copyWith({int? fatherId, int? motherId, int? childId, bool? cancelled, }) => EntityBreedEventData(fatherId: fatherId ?? this.fatherId, motherId: motherId ?? this.motherId, childId: childId ?? this.childId, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityDismountEventData {
   final int entityId;
   final int dismountedId;
   final bool cancelled;
   const EntityDismountEventData({required this.entityId, required this.dismountedId, required this.cancelled, });
+  EntityDismountEventData copyWith({int? entityId, int? dismountedId, bool? cancelled, }) => EntityDismountEventData(entityId: entityId ?? this.entityId, dismountedId: dismountedId ?? this.dismountedId, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityDyeEventData {
   final int entityId;
@@ -34444,6 +35011,7 @@ final class EntityDyeEventData {
   final i1.Option<Player> player;
   final bool cancelled;
   const EntityDyeEventData({required this.entityId, required this.color, required this.player, required this.cancelled, });
+  EntityDyeEventData copyWith({int? entityId, String? color, i1.Option<Player>? player, bool? cancelled, }) => EntityDyeEventData(entityId: entityId ?? this.entityId, color: color ?? this.color, player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityEnterLoveModeEventData {
   final int entityId;
@@ -34451,6 +35019,7 @@ final class EntityEnterLoveModeEventData {
   final int ticksInLove;
   final bool cancelled;
   const EntityEnterLoveModeEventData({required this.entityId, required this.humanEntityId, required this.ticksInLove, required this.cancelled, });
+  EntityEnterLoveModeEventData copyWith({int? entityId, i1.Option<int>? humanEntityId, int? ticksInLove, bool? cancelled, }) => EntityEnterLoveModeEventData(entityId: entityId ?? this.entityId, humanEntityId: humanEntityId ?? this.humanEntityId, ticksInLove: ticksInLove ?? this.ticksInLove, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityExplodeEventData {
   final int entityId;
@@ -34458,12 +35027,14 @@ final class EntityExplodeEventData {
   final double yieldRate;
   final bool cancelled;
   const EntityExplodeEventData({required this.entityId, required this.position, required this.yieldRate, required this.cancelled, });
+  EntityExplodeEventData copyWith({int? entityId, (double, double, double, )? position, double? yieldRate, bool? cancelled, }) => EntityExplodeEventData(entityId: entityId ?? this.entityId, position: position ?? this.position, yieldRate: yieldRate ?? this.yieldRate, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityMountEventData {
   final int entityId;
   final int mountedId;
   final bool cancelled;
   const EntityMountEventData({required this.entityId, required this.mountedId, required this.cancelled, });
+  EntityMountEventData copyWith({int? entityId, int? mountedId, bool? cancelled, }) => EntityMountEventData(entityId: entityId ?? this.entityId, mountedId: mountedId ?? this.mountedId, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityPickupItemEventData {
   final int entityId;
@@ -34471,17 +35042,20 @@ final class EntityPickupItemEventData {
   final int count;
   final bool cancelled;
   const EntityPickupItemEventData({required this.entityId, required this.itemName, required this.count, required this.cancelled, });
+  EntityPickupItemEventData copyWith({int? entityId, String? itemName, int? count, bool? cancelled, }) => EntityPickupItemEventData(entityId: entityId ?? this.entityId, itemName: itemName ?? this.itemName, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityPortalEventData {
   final int entityId;
   final BlockPos portalPos;
   final bool cancelled;
   const EntityPortalEventData({required this.entityId, required this.portalPos, required this.cancelled, });
+  EntityPortalEventData copyWith({int? entityId, BlockPos? portalPos, bool? cancelled, }) => EntityPortalEventData(entityId: entityId ?? this.entityId, portalPos: portalPos ?? this.portalPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityResurrectEventData {
   final int entityId;
   final bool cancelled;
   const EntityResurrectEventData({required this.entityId, required this.cancelled, });
+  EntityResurrectEventData copyWith({int? entityId, bool? cancelled, }) => EntityResurrectEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityShootBowEventData {
   final int entityId;
@@ -34489,18 +35063,21 @@ final class EntityShootBowEventData {
   final double force;
   final bool cancelled;
   const EntityShootBowEventData({required this.entityId, required this.weaponName, required this.force, required this.cancelled, });
+  EntityShootBowEventData copyWith({int? entityId, String? weaponName, double? force, bool? cancelled, }) => EntityShootBowEventData(entityId: entityId ?? this.entityId, weaponName: weaponName ?? this.weaponName, force: force ?? this.force, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityTameEventData {
   final int entityId;
   final Player owner;
   final bool cancelled;
   const EntityTameEventData({required this.entityId, required this.owner, required this.cancelled, });
+  EntityTameEventData copyWith({int? entityId, Player? owner, bool? cancelled, }) => EntityTameEventData(entityId: entityId ?? this.entityId, owner: owner ?? this.owner, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityTargetEventData {
   final int entityId;
   final i1.Option<int> targetId;
   final bool cancelled;
   const EntityTargetEventData({required this.entityId, required this.targetId, required this.cancelled, });
+  EntityTargetEventData copyWith({int? entityId, i1.Option<int>? targetId, bool? cancelled, }) => EntityTargetEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityTeleportEventData {
   final int entityId;
@@ -34508,12 +35085,14 @@ final class EntityTeleportEventData {
   final (double, double, double, ) toPosition;
   final bool cancelled;
   const EntityTeleportEventData({required this.entityId, required this.fromPosition, required this.toPosition, required this.cancelled, });
+  EntityTeleportEventData copyWith({int? entityId, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => EntityTeleportEventData(entityId: entityId ?? this.entityId, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityToggleGlideEventData {
   final int entityId;
   final bool isGliding;
   final bool cancelled;
   const EntityToggleGlideEventData({required this.entityId, required this.isGliding, required this.cancelled, });
+  EntityToggleGlideEventData copyWith({int? entityId, bool? isGliding, bool? cancelled, }) => EntityToggleGlideEventData(entityId: entityId ?? this.entityId, isGliding: isGliding ?? this.isGliding, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityTransformEventData {
   final int entityId;
@@ -34521,12 +35100,14 @@ final class EntityTransformEventData {
   final String transformReason;
   final bool cancelled;
   const EntityTransformEventData({required this.entityId, required this.newEntityId, required this.transformReason, required this.cancelled, });
+  EntityTransformEventData copyWith({int? entityId, int? newEntityId, String? transformReason, bool? cancelled, }) => EntityTransformEventData(entityId: entityId ?? this.entityId, newEntityId: newEntityId ?? this.newEntityId, transformReason: transformReason ?? this.transformReason, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerItemConsumeEventData {
   final Player player;
   final String itemName;
   final bool cancelled;
   const PlayerItemConsumeEventData({required this.player, required this.itemName, required this.cancelled, });
+  PlayerItemConsumeEventData copyWith({Player? player, String? itemName, bool? cancelled, }) => PlayerItemConsumeEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerItemDamageEventData {
   final Player player;
@@ -34534,6 +35115,7 @@ final class PlayerItemDamageEventData {
   final int damage;
   final bool cancelled;
   const PlayerItemDamageEventData({required this.player, required this.itemName, required this.damage, required this.cancelled, });
+  PlayerItemDamageEventData copyWith({Player? player, String? itemName, int? damage, bool? cancelled, }) => PlayerItemDamageEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, damage: damage ?? this.damage, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerDropItemEventData {
   final Player player;
@@ -34541,17 +35123,20 @@ final class PlayerDropItemEventData {
   final int count;
   final bool cancelled;
   const PlayerDropItemEventData({required this.player, required this.itemName, required this.count, required this.cancelled, });
+  PlayerDropItemEventData copyWith({Player? player, String? itemName, int? count, bool? cancelled, }) => PlayerDropItemEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerBedEnterEventData {
   final Player player;
   final BlockPos bedPos;
   final bool cancelled;
   const PlayerBedEnterEventData({required this.player, required this.bedPos, required this.cancelled, });
+  PlayerBedEnterEventData copyWith({Player? player, BlockPos? bedPos, bool? cancelled, }) => PlayerBedEnterEventData(player: player ?? this.player, bedPos: bedPos ?? this.bedPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerBedLeaveEventData {
   final Player player;
   final BlockPos bedPos;
   const PlayerBedLeaveEventData({required this.player, required this.bedPos, });
+  PlayerBedLeaveEventData copyWith({Player? player, BlockPos? bedPos, }) => PlayerBedLeaveEventData(player: player ?? this.player, bedPos: bedPos ?? this.bedPos, );
 }
 final class PlayerBucketEmptyEventData {
   final Player player;
@@ -34559,6 +35144,7 @@ final class PlayerBucketEmptyEventData {
   final String bucket;
   final bool cancelled;
   const PlayerBucketEmptyEventData({required this.player, required this.blockPos, required this.bucket, required this.cancelled, });
+  PlayerBucketEmptyEventData copyWith({Player? player, BlockPos? blockPos, String? bucket, bool? cancelled, }) => PlayerBucketEmptyEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, bucket: bucket ?? this.bucket, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerBucketFillEventData {
   final Player player;
@@ -34566,6 +35152,7 @@ final class PlayerBucketFillEventData {
   final String bucket;
   final bool cancelled;
   const PlayerBucketFillEventData({required this.player, required this.blockPos, required this.bucket, required this.cancelled, });
+  PlayerBucketFillEventData copyWith({Player? player, BlockPos? blockPos, String? bucket, bool? cancelled, }) => PlayerBucketFillEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, bucket: bucket ?? this.bucket, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockDamageEventData {
   final Player player;
@@ -34573,57 +35160,67 @@ final class BlockDamageEventData {
   final bool instaBreak;
   final bool cancelled;
   const BlockDamageEventData({required this.player, required this.blockPos, required this.instaBreak, required this.cancelled, });
+  BlockDamageEventData copyWith({Player? player, BlockPos? blockPos, bool? instaBreak, bool? cancelled, }) => BlockDamageEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, instaBreak: instaBreak ?? this.instaBreak, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockIgniteEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const BlockIgniteEventData({required this.blockPos, required this.cancelled, });
+  BlockIgniteEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => BlockIgniteEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockFromToEventData {
   final BlockPos fromPos;
   final BlockPos toPos;
   final bool cancelled;
   const BlockFromToEventData({required this.fromPos, required this.toPos, required this.cancelled, });
+  BlockFromToEventData copyWith({BlockPos? fromPos, BlockPos? toPos, bool? cancelled, }) => BlockFromToEventData(fromPos: fromPos ?? this.fromPos, toPos: toPos ?? this.toPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockFormEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const BlockFormEventData({required this.blockPos, required this.cancelled, });
+  BlockFormEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => BlockFormEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockFadeEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const BlockFadeEventData({required this.blockPos, required this.cancelled, });
+  BlockFadeEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => BlockFadeEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockDispenseEventData {
   final BlockPos blockPos;
   final String itemName;
   final bool cancelled;
   const BlockDispenseEventData({required this.blockPos, required this.itemName, required this.cancelled, });
+  BlockDispenseEventData copyWith({BlockPos? blockPos, String? itemName, bool? cancelled, }) => BlockDispenseEventData(blockPos: blockPos ?? this.blockPos, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockExplodeEventData {
   final BlockPos blockPos;
   final double yieldRate;
   final bool cancelled;
   const BlockExplodeEventData({required this.blockPos, required this.yieldRate, required this.cancelled, });
+  BlockExplodeEventData copyWith({BlockPos? blockPos, double? yieldRate, bool? cancelled, }) => BlockExplodeEventData(blockPos: blockPos ?? this.blockPos, yieldRate: yieldRate ?? this.yieldRate, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockPhysicsEventData {
   final BlockPos blockPos;
   final BlockPos changedPos;
   final bool cancelled;
   const BlockPhysicsEventData({required this.blockPos, required this.changedPos, required this.cancelled, });
+  BlockPhysicsEventData copyWith({BlockPos? blockPos, BlockPos? changedPos, bool? cancelled, }) => BlockPhysicsEventData(blockPos: blockPos ?? this.blockPos, changedPos: changedPos ?? this.changedPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockPistonExtendEventData {
   final BlockPos blockPos;
   final String direction;
   final bool cancelled;
   const BlockPistonExtendEventData({required this.blockPos, required this.direction, required this.cancelled, });
+  BlockPistonExtendEventData copyWith({BlockPos? blockPos, String? direction, bool? cancelled, }) => BlockPistonExtendEventData(blockPos: blockPos ?? this.blockPos, direction: direction ?? this.direction, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockPistonRetractEventData {
   final BlockPos blockPos;
   final String direction;
   final bool cancelled;
   const BlockPistonRetractEventData({required this.blockPos, required this.direction, required this.cancelled, });
+  BlockPistonRetractEventData copyWith({BlockPos? blockPos, String? direction, bool? cancelled, }) => BlockPistonRetractEventData(blockPos: blockPos ?? this.blockPos, direction: direction ?? this.direction, cancelled: cancelled ?? this.cancelled, );
 }
 final class NotePlayEventData {
   final BlockPos blockPos;
@@ -34631,6 +35228,7 @@ final class NotePlayEventData {
   final int note;
   final bool cancelled;
   const NotePlayEventData({required this.blockPos, required this.instrument, required this.note, required this.cancelled, });
+  NotePlayEventData copyWith({BlockPos? blockPos, String? instrument, int? note, bool? cancelled, }) => NotePlayEventData(blockPos: blockPos ?? this.blockPos, instrument: instrument ?? this.instrument, note: note ?? this.note, cancelled: cancelled ?? this.cancelled, );
 }
 final class SignChangeEventData {
   final Player player;
@@ -34638,38 +35236,45 @@ final class SignChangeEventData {
   final List<String> lines;
   final bool cancelled;
   const SignChangeEventData({required this.player, required this.blockPos, required this.lines, required this.cancelled, });
+  SignChangeEventData copyWith({Player? player, BlockPos? blockPos, List<String>? lines, bool? cancelled, }) => SignChangeEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, lines: lines ?? this.lines, cancelled: cancelled ?? this.cancelled, );
 }
 final class SpongeAbsorbEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const SpongeAbsorbEventData({required this.blockPos, required this.cancelled, });
+  SpongeAbsorbEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => SpongeAbsorbEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class TntPrimeEventData {
   final BlockPos blockPos;
   final String primeReason;
   final bool cancelled;
   const TntPrimeEventData({required this.blockPos, required this.primeReason, required this.cancelled, });
+  TntPrimeEventData copyWith({BlockPos? blockPos, String? primeReason, bool? cancelled, }) => TntPrimeEventData(blockPos: blockPos ?? this.blockPos, primeReason: primeReason ?? this.primeReason, cancelled: cancelled ?? this.cancelled, );
 }
 final class WeatherChangeEventData {
   final World targetWorld;
   final bool toWeatherState;
   final bool cancelled;
   const WeatherChangeEventData({required this.targetWorld, required this.toWeatherState, required this.cancelled, });
+  WeatherChangeEventData copyWith({World? targetWorld, bool? toWeatherState, bool? cancelled, }) => WeatherChangeEventData(targetWorld: targetWorld ?? this.targetWorld, toWeatherState: toWeatherState ?? this.toWeatherState, cancelled: cancelled ?? this.cancelled, );
 }
 final class ThunderChangeEventData {
   final World targetWorld;
   final bool toThunderState;
   final bool cancelled;
   const ThunderChangeEventData({required this.targetWorld, required this.toThunderState, required this.cancelled, });
+  ThunderChangeEventData copyWith({World? targetWorld, bool? toThunderState, bool? cancelled, }) => ThunderChangeEventData(targetWorld: targetWorld ?? this.targetWorld, toThunderState: toThunderState ?? this.toThunderState, cancelled: cancelled ?? this.cancelled, );
 }
 final class WorldLoadEventData {
   final World targetWorld;
   const WorldLoadEventData({required this.targetWorld, });
+  WorldLoadEventData copyWith({World? targetWorld, }) => WorldLoadEventData(targetWorld: targetWorld ?? this.targetWorld, );
 }
 final class WorldUnloadEventData {
   final World targetWorld;
   final bool cancelled;
   const WorldUnloadEventData({required this.targetWorld, required this.cancelled, });
+  WorldUnloadEventData copyWith({World? targetWorld, bool? cancelled, }) => WorldUnloadEventData(targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
 }
 final class AsyncStructureGenerateEventData {
   final String worldName;
@@ -34677,6 +35282,7 @@ final class AsyncStructureGenerateEventData {
   final BlockPos pos;
   final bool cancelled;
   const AsyncStructureGenerateEventData({required this.worldName, required this.structureName, required this.pos, required this.cancelled, });
+  AsyncStructureGenerateEventData copyWith({String? worldName, String? structureName, BlockPos? pos, bool? cancelled, }) => AsyncStructureGenerateEventData(worldName: worldName ?? this.worldName, structureName: structureName ?? this.structureName, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
 }
 final class AsyncStructureSpawnEventData {
   final String worldName;
@@ -34684,18 +35290,21 @@ final class AsyncStructureSpawnEventData {
   final BlockPos pos;
   final bool cancelled;
   const AsyncStructureSpawnEventData({required this.worldName, required this.structureName, required this.pos, required this.cancelled, });
+  AsyncStructureSpawnEventData copyWith({String? worldName, String? structureName, BlockPos? pos, bool? cancelled, }) => AsyncStructureSpawnEventData(worldName: worldName ?? this.worldName, structureName: structureName ?? this.structureName, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
 }
 final class ChunkPopulateEventData {
   final int chunkX;
   final int chunkZ;
   final bool cancelled;
   const ChunkPopulateEventData({required this.chunkX, required this.chunkZ, required this.cancelled, });
+  ChunkPopulateEventData copyWith({int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkPopulateEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
 }
 final class ChunkUnloadEventData {
   final int chunkX;
   final int chunkZ;
   final bool cancelled;
   const ChunkUnloadEventData({required this.chunkX, required this.chunkZ, required this.cancelled, });
+  ChunkUnloadEventData copyWith({int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkUnloadEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntitiesLoadEventData {
   final int chunkX;
@@ -34703,6 +35312,7 @@ final class EntitiesLoadEventData {
   final int entityCount;
   final bool cancelled;
   const EntitiesLoadEventData({required this.chunkX, required this.chunkZ, required this.entityCount, required this.cancelled, });
+  EntitiesLoadEventData copyWith({int? chunkX, int? chunkZ, int? entityCount, bool? cancelled, }) => EntitiesLoadEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, entityCount: entityCount ?? this.entityCount, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntitiesUnloadEventData {
   final int chunkX;
@@ -34710,23 +35320,27 @@ final class EntitiesUnloadEventData {
   final int entityCount;
   final bool cancelled;
   const EntitiesUnloadEventData({required this.chunkX, required this.chunkZ, required this.entityCount, required this.cancelled, });
+  EntitiesUnloadEventData copyWith({int? chunkX, int? chunkZ, int? entityCount, bool? cancelled, }) => EntitiesUnloadEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, entityCount: entityCount ?? this.entityCount, cancelled: cancelled ?? this.cancelled, );
 }
 final class GenericGameEventData {
   final String eventId;
   final (double, double, double, ) pos;
   final bool cancelled;
   const GenericGameEventData({required this.eventId, required this.pos, required this.cancelled, });
+  GenericGameEventData copyWith({String? eventId, (double, double, double, )? pos, bool? cancelled, }) => GenericGameEventData(eventId: eventId ?? this.eventId, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
 }
 final class LootGenerateEventData {
   final String lootTable;
   final bool cancelled;
   const LootGenerateEventData({required this.lootTable, required this.cancelled, });
+  LootGenerateEventData copyWith({String? lootTable, bool? cancelled, }) => LootGenerateEventData(lootTable: lootTable ?? this.lootTable, cancelled: cancelled ?? this.cancelled, );
 }
 final class PortalCreateEventData {
   final BlockPos pos;
   final String portalType;
   final bool cancelled;
   const PortalCreateEventData({required this.pos, required this.portalType, required this.cancelled, });
+  PortalCreateEventData copyWith({BlockPos? pos, String? portalType, bool? cancelled, }) => PortalCreateEventData(pos: pos ?? this.pos, portalType: portalType ?? this.portalType, cancelled: cancelled ?? this.cancelled, );
 }
 final class StructureGrowEventData {
   final BlockPos pos;
@@ -34734,36 +35348,43 @@ final class StructureGrowEventData {
   final bool boneMeal;
   final bool cancelled;
   const StructureGrowEventData({required this.pos, required this.species, required this.boneMeal, required this.cancelled, });
+  StructureGrowEventData copyWith({BlockPos? pos, String? species, bool? boneMeal, bool? cancelled, }) => StructureGrowEventData(pos: pos ?? this.pos, species: species ?? this.species, boneMeal: boneMeal ?? this.boneMeal, cancelled: cancelled ?? this.cancelled, );
 }
 final class TimeSkipEventData {
   final int skipAmount;
   final bool cancelled;
   const TimeSkipEventData({required this.skipAmount, required this.cancelled, });
+  TimeSkipEventData copyWith({int? skipAmount, bool? cancelled, }) => TimeSkipEventData(skipAmount: skipAmount ?? this.skipAmount, cancelled: cancelled ?? this.cancelled, );
 }
 final class WorldInitEventData {
   final World targetWorld;
   const WorldInitEventData({required this.targetWorld, });
+  WorldInitEventData copyWith({World? targetWorld, }) => WorldInitEventData(targetWorld: targetWorld ?? this.targetWorld, );
 }
 final class WorldSaveEventData {
   final String worldName;
   final bool cancelled;
   const WorldSaveEventData({required this.worldName, required this.cancelled, });
+  WorldSaveEventData copyWith({String? worldName, bool? cancelled, }) => WorldSaveEventData(worldName: worldName ?? this.worldName, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryOpenEventData {
   final Player player;
   final bool cancelled;
   const InventoryOpenEventData({required this.player, required this.cancelled, });
+  InventoryOpenEventData copyWith({Player? player, bool? cancelled, }) => InventoryOpenEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryDragEventData {
   final Player player;
   final bool cancelled;
   const InventoryDragEventData({required this.player, required this.cancelled, });
+  InventoryDragEventData copyWith({Player? player, bool? cancelled, }) => InventoryDragEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
 }
 final class CraftItemEventData {
   final Player player;
   final String recipeId;
   final bool cancelled;
   const CraftItemEventData({required this.player, required this.recipeId, required this.cancelled, });
+  CraftItemEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => CraftItemEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
 }
 final class FurnaceSmeltEventData {
   final BlockPos blockPos;
@@ -34771,18 +35392,21 @@ final class FurnaceSmeltEventData {
   final String resultItem;
   final bool cancelled;
   const FurnaceSmeltEventData({required this.blockPos, required this.sourceItem, required this.resultItem, required this.cancelled, });
+  FurnaceSmeltEventData copyWith({BlockPos? blockPos, String? sourceItem, String? resultItem, bool? cancelled, }) => FurnaceSmeltEventData(blockPos: blockPos ?? this.blockPos, sourceItem: sourceItem ?? this.sourceItem, resultItem: resultItem ?? this.resultItem, cancelled: cancelled ?? this.cancelled, );
 }
 final class BrewEventData {
   final BlockPos blockPos;
   final int fuelLevel;
   final bool cancelled;
   const BrewEventData({required this.blockPos, required this.fuelLevel, required this.cancelled, });
+  BrewEventData copyWith({BlockPos? blockPos, int? fuelLevel, bool? cancelled, }) => BrewEventData(blockPos: blockPos ?? this.blockPos, fuelLevel: fuelLevel ?? this.fuelLevel, cancelled: cancelled ?? this.cancelled, );
 }
 final class BrewingStandFuelEventData {
   final BlockPos blockPos;
   final int fuelPower;
   final bool cancelled;
   const BrewingStandFuelEventData({required this.blockPos, required this.fuelPower, required this.cancelled, });
+  BrewingStandFuelEventData copyWith({BlockPos? blockPos, int? fuelPower, bool? cancelled, }) => BrewingStandFuelEventData(blockPos: blockPos ?? this.blockPos, fuelPower: fuelPower ?? this.fuelPower, cancelled: cancelled ?? this.cancelled, );
 }
 final class FurnaceBurnEventData {
   final BlockPos blockPos;
@@ -34790,6 +35414,7 @@ final class FurnaceBurnEventData {
   final int burnTime;
   final bool cancelled;
   const FurnaceBurnEventData({required this.blockPos, required this.fuelItem, required this.burnTime, required this.cancelled, });
+  FurnaceBurnEventData copyWith({BlockPos? blockPos, String? fuelItem, int? burnTime, bool? cancelled, }) => FurnaceBurnEventData(blockPos: blockPos ?? this.blockPos, fuelItem: fuelItem ?? this.fuelItem, burnTime: burnTime ?? this.burnTime, cancelled: cancelled ?? this.cancelled, );
 }
 final class FurnaceExtractEventData {
   final Player player;
@@ -34798,6 +35423,7 @@ final class FurnaceExtractEventData {
   final int itemAmount;
   final double expGained;
   const FurnaceExtractEventData({required this.player, required this.blockPos, required this.itemId, required this.itemAmount, required this.expGained, });
+  FurnaceExtractEventData copyWith({Player? player, BlockPos? blockPos, String? itemId, int? itemAmount, double? expGained, }) => FurnaceExtractEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, itemId: itemId ?? this.itemId, itemAmount: itemAmount ?? this.itemAmount, expGained: expGained ?? this.expGained, );
 }
 final class FurnaceStartSmeltEventData {
   final BlockPos blockPos;
@@ -34805,12 +35431,14 @@ final class FurnaceStartSmeltEventData {
   final int cookingTime;
   final bool cancelled;
   const FurnaceStartSmeltEventData({required this.blockPos, required this.sourceItem, required this.cookingTime, required this.cancelled, });
+  FurnaceStartSmeltEventData copyWith({BlockPos? blockPos, String? sourceItem, int? cookingTime, bool? cancelled, }) => FurnaceStartSmeltEventData(blockPos: blockPos ?? this.blockPos, sourceItem: sourceItem ?? this.sourceItem, cookingTime: cookingTime ?? this.cookingTime, cancelled: cancelled ?? this.cancelled, );
 }
 final class HopperInventorySearchEventData {
   final BlockPos blockPos;
   final BlockPos searchPos;
   final bool cancelled;
   const HopperInventorySearchEventData({required this.blockPos, required this.searchPos, required this.cancelled, });
+  HopperInventorySearchEventData copyWith({BlockPos? blockPos, BlockPos? searchPos, bool? cancelled, }) => HopperInventorySearchEventData(blockPos: blockPos ?? this.blockPos, searchPos: searchPos ?? this.searchPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryCreativeEventData {
   final Player player;
@@ -34819,11 +35447,13 @@ final class InventoryCreativeEventData {
   final int itemCount;
   final bool cancelled;
   const InventoryCreativeEventData({required this.player, required this.slot, required this.itemId, required this.itemCount, required this.cancelled, });
+  InventoryCreativeEventData copyWith({Player? player, int? slot, String? itemId, int? itemCount, bool? cancelled, }) => InventoryCreativeEventData(player: player ?? this.player, slot: slot ?? this.slot, itemId: itemId ?? this.itemId, itemCount: itemCount ?? this.itemCount, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryInteractEventData {
   final Player player;
   final bool cancelled;
   const InventoryInteractEventData({required this.player, required this.cancelled, });
+  InventoryInteractEventData copyWith({Player? player, bool? cancelled, }) => InventoryInteractEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryMoveItemEventData {
   final BlockPos sourcePos;
@@ -34832,6 +35462,7 @@ final class InventoryMoveItemEventData {
   final int itemAmount;
   final bool cancelled;
   const InventoryMoveItemEventData({required this.sourcePos, required this.targetPos, required this.itemId, required this.itemAmount, required this.cancelled, });
+  InventoryMoveItemEventData copyWith({BlockPos? sourcePos, BlockPos? targetPos, String? itemId, int? itemAmount, bool? cancelled, }) => InventoryMoveItemEventData(sourcePos: sourcePos ?? this.sourcePos, targetPos: targetPos ?? this.targetPos, itemId: itemId ?? this.itemId, itemAmount: itemAmount ?? this.itemAmount, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryPickupItemEventData {
   final BlockPos blockPos;
@@ -34839,61 +35470,72 @@ final class InventoryPickupItemEventData {
   final String itemId;
   final bool cancelled;
   const InventoryPickupItemEventData({required this.blockPos, required this.itemEntityId, required this.itemId, required this.cancelled, });
+  InventoryPickupItemEventData copyWith({BlockPos? blockPos, int? itemEntityId, String? itemId, bool? cancelled, }) => InventoryPickupItemEventData(blockPos: blockPos ?? this.blockPos, itemEntityId: itemEntityId ?? this.itemEntityId, itemId: itemId ?? this.itemId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PrepareAnvilEventData {
   final Player player;
   final String renameText;
   final int repairCost;
   const PrepareAnvilEventData({required this.player, required this.renameText, required this.repairCost, });
+  PrepareAnvilEventData copyWith({Player? player, String? renameText, int? repairCost, }) => PrepareAnvilEventData(player: player ?? this.player, renameText: renameText ?? this.renameText, repairCost: repairCost ?? this.repairCost, );
 }
 final class PrepareGrindstoneEventData {
   final Player player;
   final i1.Option<String> resultItem;
   const PrepareGrindstoneEventData({required this.player, required this.resultItem, });
+  PrepareGrindstoneEventData copyWith({Player? player, i1.Option<String>? resultItem, }) => PrepareGrindstoneEventData(player: player ?? this.player, resultItem: resultItem ?? this.resultItem, );
 }
 final class PrepareInventoryResultEventData {
   final Player player;
   final i1.Option<String> resultItem;
   const PrepareInventoryResultEventData({required this.player, required this.resultItem, });
+  PrepareInventoryResultEventData copyWith({Player? player, i1.Option<String>? resultItem, }) => PrepareInventoryResultEventData(player: player ?? this.player, resultItem: resultItem ?? this.resultItem, );
 }
 final class PrepareItemCraftEventData {
   final Player player;
   final String recipeId;
   final bool cancelled;
   const PrepareItemCraftEventData({required this.player, required this.recipeId, required this.cancelled, });
+  PrepareItemCraftEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => PrepareItemCraftEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PrepareSmithingEventData {
   final Player player;
   final i1.Option<String> resultItem;
   const PrepareSmithingEventData({required this.player, required this.resultItem, });
+  PrepareSmithingEventData copyWith({Player? player, i1.Option<String>? resultItem, }) => PrepareSmithingEventData(player: player ?? this.player, resultItem: resultItem ?? this.resultItem, );
 }
 final class SmithItemEventData {
   final Player player;
   final String recipeId;
   final bool cancelled;
   const SmithItemEventData({required this.player, required this.recipeId, required this.cancelled, });
+  SmithItemEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => SmithItemEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
 }
 final class TradeSelectEventData {
   final Player player;
   final int slotIndex;
   final bool cancelled;
   const TradeSelectEventData({required this.player, required this.slotIndex, required this.cancelled, });
+  TradeSelectEventData copyWith({Player? player, int? slotIndex, bool? cancelled, }) => TradeSelectEventData(player: player ?? this.player, slotIndex: slotIndex ?? this.slotIndex, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleBlockCollisionEventData {
   final int vehicleId;
   final BlockPos blockPos;
   final bool cancelled;
   const VehicleBlockCollisionEventData({required this.vehicleId, required this.blockPos, required this.cancelled, });
+  VehicleBlockCollisionEventData copyWith({int? vehicleId, BlockPos? blockPos, bool? cancelled, }) => VehicleBlockCollisionEventData(vehicleId: vehicleId ?? this.vehicleId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleCollisionEventData {
   final int vehicleId;
   final bool cancelled;
   const VehicleCollisionEventData({required this.vehicleId, required this.cancelled, });
+  VehicleCollisionEventData copyWith({int? vehicleId, bool? cancelled, }) => VehicleCollisionEventData(vehicleId: vehicleId ?? this.vehicleId, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleCreateEventData {
   final int vehicleId;
   final bool cancelled;
   const VehicleCreateEventData({required this.vehicleId, required this.cancelled, });
+  VehicleCreateEventData copyWith({int? vehicleId, bool? cancelled, }) => VehicleCreateEventData(vehicleId: vehicleId ?? this.vehicleId, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleDamageEventData {
   final int vehicleId;
@@ -34901,30 +35543,35 @@ final class VehicleDamageEventData {
   final i1.Option<int> attackerId;
   final bool cancelled;
   const VehicleDamageEventData({required this.vehicleId, required this.damage, required this.attackerId, required this.cancelled, });
+  VehicleDamageEventData copyWith({int? vehicleId, double? damage, i1.Option<int>? attackerId, bool? cancelled, }) => VehicleDamageEventData(vehicleId: vehicleId ?? this.vehicleId, damage: damage ?? this.damage, attackerId: attackerId ?? this.attackerId, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleDestroyEventData {
   final int vehicleId;
   final i1.Option<int> attackerId;
   final bool cancelled;
   const VehicleDestroyEventData({required this.vehicleId, required this.attackerId, required this.cancelled, });
+  VehicleDestroyEventData copyWith({int? vehicleId, i1.Option<int>? attackerId, bool? cancelled, }) => VehicleDestroyEventData(vehicleId: vehicleId ?? this.vehicleId, attackerId: attackerId ?? this.attackerId, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleEnterEventData {
   final int vehicleId;
   final int enteredId;
   final bool cancelled;
   const VehicleEnterEventData({required this.vehicleId, required this.enteredId, required this.cancelled, });
+  VehicleEnterEventData copyWith({int? vehicleId, int? enteredId, bool? cancelled, }) => VehicleEnterEventData(vehicleId: vehicleId ?? this.vehicleId, enteredId: enteredId ?? this.enteredId, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleEntityCollisionEventData {
   final int vehicleId;
   final int collidedEntityId;
   final bool cancelled;
   const VehicleEntityCollisionEventData({required this.vehicleId, required this.collidedEntityId, required this.cancelled, });
+  VehicleEntityCollisionEventData copyWith({int? vehicleId, int? collidedEntityId, bool? cancelled, }) => VehicleEntityCollisionEventData(vehicleId: vehicleId ?? this.vehicleId, collidedEntityId: collidedEntityId ?? this.collidedEntityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleExitEventData {
   final int vehicleId;
   final int exitedId;
   final bool cancelled;
   const VehicleExitEventData({required this.vehicleId, required this.exitedId, required this.cancelled, });
+  VehicleExitEventData copyWith({int? vehicleId, int? exitedId, bool? cancelled, }) => VehicleExitEventData(vehicleId: vehicleId ?? this.vehicleId, exitedId: exitedId ?? this.exitedId, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleMoveEventData {
   final int vehicleId;
@@ -34932,17 +35579,20 @@ final class VehicleMoveEventData {
   final (double, double, double, ) toPosition;
   final bool cancelled;
   const VehicleMoveEventData({required this.vehicleId, required this.fromPosition, required this.toPosition, required this.cancelled, });
+  VehicleMoveEventData copyWith({int? vehicleId, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => VehicleMoveEventData(vehicleId: vehicleId ?? this.vehicleId, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
 }
 final class VehicleUpdateEventData {
   final int vehicleId;
   final bool cancelled;
   const VehicleUpdateEventData({required this.vehicleId, required this.cancelled, });
+  VehicleUpdateEventData copyWith({int? vehicleId, bool? cancelled, }) => VehicleUpdateEventData(vehicleId: vehicleId ?? this.vehicleId, cancelled: cancelled ?? this.cancelled, );
 }
 final class EnchantmentOffer {
   final int cost;
   final int enchantmentId;
   final int enchantmentLevel;
   const EnchantmentOffer({required this.cost, required this.enchantmentId, required this.enchantmentLevel, });
+  EnchantmentOffer copyWith({int? cost, int? enchantmentId, int? enchantmentLevel, }) => EnchantmentOffer(cost: cost ?? this.cost, enchantmentId: enchantmentId ?? this.enchantmentId, enchantmentLevel: enchantmentLevel ?? this.enchantmentLevel, );
 }
 final class PrepareItemEnchantEventData {
   final Player player;
@@ -34951,11 +35601,13 @@ final class PrepareItemEnchantEventData {
   final int bookshelfCount;
   final bool cancelled;
   const PrepareItemEnchantEventData({required this.player, required this.item, required this.offers, required this.bookshelfCount, required this.cancelled, });
+  PrepareItemEnchantEventData copyWith({Player? player, ItemStack? item, List<EnchantmentOffer>? offers, int? bookshelfCount, bool? cancelled, }) => PrepareItemEnchantEventData(player: player ?? this.player, item: item ?? this.item, offers: offers ?? this.offers, bookshelfCount: bookshelfCount ?? this.bookshelfCount, cancelled: cancelled ?? this.cancelled, );
 }
 final class EventEnchantmentValue {
   final Enchantment enchantment;
   final int level;
   const EventEnchantmentValue({required this.enchantment, required this.level, });
+  EventEnchantmentValue copyWith({Enchantment? enchantment, int? level, }) => EventEnchantmentValue(enchantment: enchantment ?? this.enchantment, level: level ?? this.level, );
 }
 final class EnchantItemEventData {
   final Player player;
@@ -34965,22 +35617,26 @@ final class EnchantItemEventData {
   final List<EventEnchantmentValue> enchantmentsToAdd;
   final bool cancelled;
   const EnchantItemEventData({required this.player, required this.item, required this.option, required this.cost, required this.enchantmentsToAdd, required this.cancelled, });
+  EnchantItemEventData copyWith({Player? player, ItemStack? item, int? option, int? cost, List<EventEnchantmentValue>? enchantmentsToAdd, bool? cancelled, }) => EnchantItemEventData(player: player ?? this.player, item: item ?? this.item, option: option ?? this.option, cost: cost ?? this.cost, enchantmentsToAdd: enchantmentsToAdd ?? this.enchantmentsToAdd, cancelled: cancelled ?? this.cancelled, );
 }
 final class MapInitializeEventData {
   final int mapId;
   const MapInitializeEventData({required this.mapId, });
+  MapInitializeEventData copyWith({int? mapId, }) => MapInitializeEventData(mapId: mapId ?? this.mapId, );
 }
 final class HangingBreakEventData {
   final int entityId;
   final i1.Option<int> removerEntityId;
   final bool cancelled;
   const HangingBreakEventData({required this.entityId, required this.removerEntityId, required this.cancelled, });
+  HangingBreakEventData copyWith({int? entityId, i1.Option<int>? removerEntityId, bool? cancelled, }) => HangingBreakEventData(entityId: entityId ?? this.entityId, removerEntityId: removerEntityId ?? this.removerEntityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class HangingBreakByEntityEventData {
   final int entityId;
   final int removerEntityId;
   final bool cancelled;
   const HangingBreakByEntityEventData({required this.entityId, required this.removerEntityId, required this.cancelled, });
+  HangingBreakByEntityEventData copyWith({int? entityId, int? removerEntityId, bool? cancelled, }) => HangingBreakByEntityEventData(entityId: entityId ?? this.entityId, removerEntityId: removerEntityId ?? this.removerEntityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class HangingPlaceEventData {
   final int entityId;
@@ -34989,12 +35645,14 @@ final class HangingPlaceEventData {
   final String blockFace;
   final bool cancelled;
   const HangingPlaceEventData({required this.entityId, required this.player, required this.blockPos, required this.blockFace, required this.cancelled, });
+  HangingPlaceEventData copyWith({int? entityId, i1.Option<Player>? player, BlockPos? blockPos, String? blockFace, bool? cancelled, }) => HangingPlaceEventData(entityId: entityId ?? this.entityId, player: player ?? this.player, blockPos: blockPos ?? this.blockPos, blockFace: blockFace ?? this.blockFace, cancelled: cancelled ?? this.cancelled, );
 }
 final class BellResonateEventData {
   final BlockPos blockPos;
   final World targetWorld;
   final bool cancelled;
   const BellResonateEventData({required this.blockPos, required this.targetWorld, required this.cancelled, });
+  BellResonateEventData copyWith({BlockPos? blockPos, World? targetWorld, bool? cancelled, }) => BellResonateEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
 }
 final class BellRingEventData {
   final BlockPos blockPos;
@@ -35003,6 +35661,7 @@ final class BellRingEventData {
   final i1.Option<String> direction;
   final bool cancelled;
   const BellRingEventData({required this.blockPos, required this.targetWorld, required this.entityId, required this.direction, required this.cancelled, });
+  BellRingEventData copyWith({BlockPos? blockPos, World? targetWorld, i1.Option<int>? entityId, i1.Option<String>? direction, bool? cancelled, }) => BellRingEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, entityId: entityId ?? this.entityId, direction: direction ?? this.direction, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockBrushEventData {
   final BlockPos blockPos;
@@ -35011,6 +35670,7 @@ final class BlockBrushEventData {
   final ItemStack item;
   final bool cancelled;
   const BlockBrushEventData({required this.blockPos, required this.targetWorld, required this.player, required this.item, required this.cancelled, });
+  BlockBrushEventData copyWith({BlockPos? blockPos, World? targetWorld, Player? player, ItemStack? item, bool? cancelled, }) => BlockBrushEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, player: player ?? this.player, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockCookEventData {
   final BlockPos blockPos;
@@ -35019,6 +35679,7 @@ final class BlockCookEventData {
   final ItemStack result;
   final bool cancelled;
   const BlockCookEventData({required this.blockPos, required this.targetWorld, required this.source, required this.result, required this.cancelled, });
+  BlockCookEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? source, ItemStack? result, bool? cancelled, }) => BlockCookEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, source: source ?? this.source, result: result ?? this.result, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockDamageAbortEventData {
   final Player player;
@@ -35026,6 +35687,7 @@ final class BlockDamageAbortEventData {
   final World targetWorld;
   final ItemStack itemInHand;
   const BlockDamageAbortEventData({required this.player, required this.blockPos, required this.targetWorld, required this.itemInHand, });
+  BlockDamageAbortEventData copyWith({Player? player, BlockPos? blockPos, World? targetWorld, ItemStack? itemInHand, }) => BlockDamageAbortEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, itemInHand: itemInHand ?? this.itemInHand, );
 }
 final class BlockDispenseArmorEventData {
   final BlockPos blockPos;
@@ -35034,6 +35696,7 @@ final class BlockDispenseArmorEventData {
   final ItemStack item;
   final bool cancelled;
   const BlockDispenseArmorEventData({required this.blockPos, required this.targetWorld, required this.targetEntityId, required this.item, required this.cancelled, });
+  BlockDispenseArmorEventData copyWith({BlockPos? blockPos, World? targetWorld, int? targetEntityId, ItemStack? item, bool? cancelled, }) => BlockDispenseArmorEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, targetEntityId: targetEntityId ?? this.targetEntityId, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockDispenseLootEventData {
   final BlockPos blockPos;
@@ -35041,6 +35704,7 @@ final class BlockDispenseLootEventData {
   final List<ItemStack> items;
   final bool cancelled;
   const BlockDispenseLootEventData({required this.blockPos, required this.targetWorld, required this.items, required this.cancelled, });
+  BlockDispenseLootEventData copyWith({BlockPos? blockPos, World? targetWorld, List<ItemStack>? items, bool? cancelled, }) => BlockDispenseLootEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, items: items ?? this.items, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockDropItemEventData {
   final BlockPos blockPos;
@@ -35049,12 +35713,14 @@ final class BlockDropItemEventData {
   final List<ItemStack> items;
   final bool cancelled;
   const BlockDropItemEventData({required this.blockPos, required this.targetWorld, required this.player, required this.items, required this.cancelled, });
+  BlockDropItemEventData copyWith({BlockPos? blockPos, World? targetWorld, i1.Option<Player>? player, List<ItemStack>? items, bool? cancelled, }) => BlockDropItemEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, player: player ?? this.player, items: items ?? this.items, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockExpEventData {
   final BlockPos blockPos;
   final World targetWorld;
   final int exp;
   const BlockExpEventData({required this.blockPos, required this.targetWorld, required this.exp, });
+  BlockExpEventData copyWith({BlockPos? blockPos, World? targetWorld, int? exp, }) => BlockExpEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, exp: exp ?? this.exp, );
 }
 final class BlockFertilizeEventData {
   final BlockPos blockPos;
@@ -35063,6 +35729,7 @@ final class BlockFertilizeEventData {
   final List<(BlockPos, int, )> changedBlocks;
   final bool cancelled;
   const BlockFertilizeEventData({required this.blockPos, required this.targetWorld, required this.player, required this.changedBlocks, required this.cancelled, });
+  BlockFertilizeEventData copyWith({BlockPos? blockPos, World? targetWorld, i1.Option<Player>? player, List<(BlockPos, int, )>? changedBlocks, bool? cancelled, }) => BlockFertilizeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, player: player ?? this.player, changedBlocks: changedBlocks ?? this.changedBlocks, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockMultiPlaceEventData {
   final Player player;
@@ -35070,6 +35737,7 @@ final class BlockMultiPlaceEventData {
   final List<(BlockPos, int, )> placedBlocks;
   final bool cancelled;
   const BlockMultiPlaceEventData({required this.player, required this.targetWorld, required this.placedBlocks, required this.cancelled, });
+  BlockMultiPlaceEventData copyWith({Player? player, World? targetWorld, List<(BlockPos, int, )>? placedBlocks, bool? cancelled, }) => BlockMultiPlaceEventData(player: player ?? this.player, targetWorld: targetWorld ?? this.targetWorld, placedBlocks: placedBlocks ?? this.placedBlocks, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockReceiveGameEventData {
   final BlockPos blockPos;
@@ -35078,6 +35746,7 @@ final class BlockReceiveGameEventData {
   final i1.Option<int> sourceEntityId;
   final bool cancelled;
   const BlockReceiveGameEventData({required this.blockPos, required this.targetWorld, required this.gameEvent, required this.sourceEntityId, required this.cancelled, });
+  BlockReceiveGameEventData copyWith({BlockPos? blockPos, World? targetWorld, String? gameEvent, i1.Option<int>? sourceEntityId, bool? cancelled, }) => BlockReceiveGameEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, gameEvent: gameEvent ?? this.gameEvent, sourceEntityId: sourceEntityId ?? this.sourceEntityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockShearEntityEventData {
   final BlockPos blockPos;
@@ -35086,6 +35755,7 @@ final class BlockShearEntityEventData {
   final ItemStack item;
   final bool cancelled;
   const BlockShearEntityEventData({required this.blockPos, required this.targetWorld, required this.targetEntityId, required this.item, required this.cancelled, });
+  BlockShearEntityEventData copyWith({BlockPos? blockPos, World? targetWorld, int? targetEntityId, ItemStack? item, bool? cancelled, }) => BlockShearEntityEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, targetEntityId: targetEntityId ?? this.targetEntityId, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
 }
 final class BlockSpreadEventData {
   final BlockPos sourcePos;
@@ -35094,6 +35764,7 @@ final class BlockSpreadEventData {
   final int newStateId;
   final bool cancelled;
   const BlockSpreadEventData({required this.sourcePos, required this.targetPos, required this.targetWorld, required this.newStateId, required this.cancelled, });
+  BlockSpreadEventData copyWith({BlockPos? sourcePos, BlockPos? targetPos, World? targetWorld, int? newStateId, bool? cancelled, }) => BlockSpreadEventData(sourcePos: sourcePos ?? this.sourcePos, targetPos: targetPos ?? this.targetPos, targetWorld: targetWorld ?? this.targetWorld, newStateId: newStateId ?? this.newStateId, cancelled: cancelled ?? this.cancelled, );
 }
 final class BrewingStartEventData {
   final BlockPos blockPos;
@@ -35101,6 +35772,7 @@ final class BrewingStartEventData {
   final int brewingTime;
   final bool cancelled;
   const BrewingStartEventData({required this.blockPos, required this.targetWorld, required this.brewingTime, required this.cancelled, });
+  BrewingStartEventData copyWith({BlockPos? blockPos, World? targetWorld, int? brewingTime, bool? cancelled, }) => BrewingStartEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, brewingTime: brewingTime ?? this.brewingTime, cancelled: cancelled ?? this.cancelled, );
 }
 final class CampfireStartEventData {
   final BlockPos blockPos;
@@ -35110,6 +35782,7 @@ final class CampfireStartEventData {
   final int cookingTime;
   final bool cancelled;
   const CampfireStartEventData({required this.blockPos, required this.targetWorld, required this.item, required this.slot, required this.cookingTime, required this.cancelled, });
+  CampfireStartEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? item, int? slot, int? cookingTime, bool? cancelled, }) => CampfireStartEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, item: item ?? this.item, slot: slot ?? this.slot, cookingTime: cookingTime ?? this.cookingTime, cancelled: cancelled ?? this.cancelled, );
 }
 final class CauldronLevelChangeEventData {
   final BlockPos blockPos;
@@ -35120,6 +35793,7 @@ final class CauldronLevelChangeEventData {
   final i1.Option<int> entityId;
   final bool cancelled;
   const CauldronLevelChangeEventData({required this.blockPos, required this.targetWorld, required this.oldLevel, required this.newLevel, required this.reason, required this.entityId, required this.cancelled, });
+  CauldronLevelChangeEventData copyWith({BlockPos? blockPos, World? targetWorld, int? oldLevel, int? newLevel, String? reason, i1.Option<int>? entityId, bool? cancelled, }) => CauldronLevelChangeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, oldLevel: oldLevel ?? this.oldLevel, newLevel: newLevel ?? this.newLevel, reason: reason ?? this.reason, entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class CrafterCraftEventData {
   final BlockPos blockPos;
@@ -35127,6 +35801,7 @@ final class CrafterCraftEventData {
   final ItemStack result;
   final bool cancelled;
   const CrafterCraftEventData({required this.blockPos, required this.targetWorld, required this.result, required this.cancelled, });
+  CrafterCraftEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? result, bool? cancelled, }) => CrafterCraftEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, result: result ?? this.result, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityBlockFormEventData {
   final int entityId;
@@ -35135,6 +35810,7 @@ final class EntityBlockFormEventData {
   final int newStateId;
   final bool cancelled;
   const EntityBlockFormEventData({required this.entityId, required this.blockPos, required this.targetWorld, required this.newStateId, required this.cancelled, });
+  EntityBlockFormEventData copyWith({int? entityId, BlockPos? blockPos, World? targetWorld, int? newStateId, bool? cancelled, }) => EntityBlockFormEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, newStateId: newStateId ?? this.newStateId, cancelled: cancelled ?? this.cancelled, );
 }
 final class FluidLevelChangeEventData {
   final BlockPos blockPos;
@@ -35142,17 +35818,20 @@ final class FluidLevelChangeEventData {
   final int newStateId;
   final bool cancelled;
   const FluidLevelChangeEventData({required this.blockPos, required this.targetWorld, required this.newStateId, required this.cancelled, });
+  FluidLevelChangeEventData copyWith({BlockPos? blockPos, World? targetWorld, int? newStateId, bool? cancelled, }) => FluidLevelChangeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, newStateId: newStateId ?? this.newStateId, cancelled: cancelled ?? this.cancelled, );
 }
 final class InventoryBlockStartEventData {
   final BlockPos blockPos;
   final World targetWorld;
   const InventoryBlockStartEventData({required this.blockPos, required this.targetWorld, });
+  InventoryBlockStartEventData copyWith({BlockPos? blockPos, World? targetWorld, }) => InventoryBlockStartEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, );
 }
 final class LeavesDecayEventData {
   final BlockPos blockPos;
   final World targetWorld;
   final bool cancelled;
   const LeavesDecayEventData({required this.blockPos, required this.targetWorld, required this.cancelled, });
+  LeavesDecayEventData copyWith({BlockPos? blockPos, World? targetWorld, bool? cancelled, }) => LeavesDecayEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
 }
 final class MoistureChangeEventData {
   final BlockPos blockPos;
@@ -35160,6 +35839,7 @@ final class MoistureChangeEventData {
   final int newMoisture;
   final bool cancelled;
   const MoistureChangeEventData({required this.blockPos, required this.targetWorld, required this.newMoisture, required this.cancelled, });
+  MoistureChangeEventData copyWith({BlockPos? blockPos, World? targetWorld, int? newMoisture, bool? cancelled, }) => MoistureChangeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, newMoisture: newMoisture ?? this.newMoisture, cancelled: cancelled ?? this.cancelled, );
 }
 final class SculkBloomEventData {
   final BlockPos blockPos;
@@ -35167,6 +35847,7 @@ final class SculkBloomEventData {
   final int charge;
   final bool cancelled;
   const SculkBloomEventData({required this.blockPos, required this.targetWorld, required this.charge, required this.cancelled, });
+  SculkBloomEventData copyWith({BlockPos? blockPos, World? targetWorld, int? charge, bool? cancelled, }) => SculkBloomEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, charge: charge ?? this.charge, cancelled: cancelled ?? this.cancelled, );
 }
 final class VaultDisplayItemEventData {
   final BlockPos blockPos;
@@ -35174,6 +35855,7 @@ final class VaultDisplayItemEventData {
   final ItemStack item;
   final bool cancelled;
   const VaultDisplayItemEventData({required this.blockPos, required this.targetWorld, required this.item, required this.cancelled, });
+  VaultDisplayItemEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? item, bool? cancelled, }) => VaultDisplayItemEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
 }
 final class CreatureSpawnEventData {
   final int entityId;
@@ -35184,6 +35866,7 @@ final class CreatureSpawnEventData {
   final i1.Option<Player> player;
   final bool cancelled;
   const CreatureSpawnEventData({required this.entityId, required this.entityType, required this.position, required this.targetWorld, required this.spawnReason, required this.player, required this.cancelled, });
+  CreatureSpawnEventData copyWith({int? entityId, String? entityType, (double, double, double, )? position, World? targetWorld, String? spawnReason, i1.Option<Player>? player, bool? cancelled, }) => CreatureSpawnEventData(entityId: entityId ?? this.entityId, entityType: entityType ?? this.entityType, position: position ?? this.position, targetWorld: targetWorld ?? this.targetWorld, spawnReason: spawnReason ?? this.spawnReason, player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
 }
 final class EnderDragonChangePhaseEventData {
   final int entityId;
@@ -35191,12 +35874,14 @@ final class EnderDragonChangePhaseEventData {
   final String newPhase;
   final bool cancelled;
   const EnderDragonChangePhaseEventData({required this.entityId, required this.currentPhase, required this.newPhase, required this.cancelled, });
+  EnderDragonChangePhaseEventData copyWith({int? entityId, String? currentPhase, String? newPhase, bool? cancelled, }) => EnderDragonChangePhaseEventData(entityId: entityId ?? this.entityId, currentPhase: currentPhase ?? this.currentPhase, newPhase: newPhase ?? this.newPhase, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityBreakDoorEventData {
   final int entityId;
   final BlockPos blockPos;
   final bool cancelled;
   const EntityBreakDoorEventData({required this.entityId, required this.blockPos, required this.cancelled, });
+  EntityBreakDoorEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityBreakDoorEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityChangeBlockEventData {
   final int entityId;
@@ -35204,6 +35889,7 @@ final class EntityChangeBlockEventData {
   final String newBlock;
   final bool cancelled;
   const EntityChangeBlockEventData({required this.entityId, required this.blockPos, required this.newBlock, required this.cancelled, });
+  EntityChangeBlockEventData copyWith({int? entityId, BlockPos? blockPos, String? newBlock, bool? cancelled, }) => EntityChangeBlockEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, newBlock: newBlock ?? this.newBlock, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityDamageByBlockEventData {
   final int entityId;
@@ -35212,6 +35898,7 @@ final class EntityDamageByBlockEventData {
   final String cause;
   final bool cancelled;
   const EntityDamageByBlockEventData({required this.entityId, required this.damagerPos, required this.damage, required this.cause, required this.cancelled, });
+  EntityDamageByBlockEventData copyWith({int? entityId, i1.Option<BlockPos>? damagerPos, double? damage, String? cause, bool? cancelled, }) => EntityDamageByBlockEventData(entityId: entityId ?? this.entityId, damagerPos: damagerPos ?? this.damagerPos, damage: damage ?? this.damage, cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityDamageByEntityEventData {
   final int entityId;
@@ -35220,6 +35907,7 @@ final class EntityDamageByEntityEventData {
   final String cause;
   final bool cancelled;
   const EntityDamageByEntityEventData({required this.entityId, required this.damagerId, required this.damage, required this.cause, required this.cancelled, });
+  EntityDamageByEntityEventData copyWith({int? entityId, int? damagerId, double? damage, String? cause, bool? cancelled, }) => EntityDamageByEntityEventData(entityId: entityId ?? this.entityId, damagerId: damagerId ?? this.damagerId, damage: damage ?? this.damage, cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityDropItemEventData {
   final int entityId;
@@ -35227,24 +35915,28 @@ final class EntityDropItemEventData {
   final int count;
   final bool cancelled;
   const EntityDropItemEventData({required this.entityId, required this.itemName, required this.count, required this.cancelled, });
+  EntityDropItemEventData copyWith({int? entityId, String? itemName, int? count, bool? cancelled, }) => EntityDropItemEventData(entityId: entityId ?? this.entityId, itemName: itemName ?? this.itemName, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityEnterBlockEventData {
   final int entityId;
   final BlockPos blockPos;
   final bool cancelled;
   const EntityEnterBlockEventData({required this.entityId, required this.blockPos, required this.cancelled, });
+  EntityEnterBlockEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityEnterBlockEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityExhaustionEventData {
   final int entityId;
   final double exhaustion;
   final bool cancelled;
   const EntityExhaustionEventData({required this.entityId, required this.exhaustion, required this.cancelled, });
+  EntityExhaustionEventData copyWith({int? entityId, double? exhaustion, bool? cancelled, }) => EntityExhaustionEventData(entityId: entityId ?? this.entityId, exhaustion: exhaustion ?? this.exhaustion, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityInteractEventData {
   final int entityId;
   final BlockPos blockPos;
   final bool cancelled;
   const EntityInteractEventData({required this.entityId, required this.blockPos, required this.cancelled, });
+  EntityInteractEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityInteractEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityKnockbackEventData {
   final int entityId;
@@ -35252,6 +35944,7 @@ final class EntityKnockbackEventData {
   final (double, double, double, ) knockback;
   final bool cancelled;
   const EntityKnockbackEventData({required this.entityId, required this.hitById, required this.knockback, required this.cancelled, });
+  EntityKnockbackEventData copyWith({int? entityId, i1.Option<int>? hitById, (double, double, double, )? knockback, bool? cancelled, }) => EntityKnockbackEventData(entityId: entityId ?? this.entityId, hitById: hitById ?? this.hitById, knockback: knockback ?? this.knockback, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityPlaceEventData {
   final int entityId;
@@ -35259,12 +35952,14 @@ final class EntityPlaceEventData {
   final String blockName;
   final bool cancelled;
   const EntityPlaceEventData({required this.entityId, required this.blockPos, required this.blockName, required this.cancelled, });
+  EntityPlaceEventData copyWith({int? entityId, BlockPos? blockPos, String? blockName, bool? cancelled, }) => EntityPlaceEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, blockName: blockName ?? this.blockName, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityPoseChangeEventData {
   final int entityId;
   final String pose;
   final bool cancelled;
   const EntityPoseChangeEventData({required this.entityId, required this.pose, required this.cancelled, });
+  EntityPoseChangeEventData copyWith({int? entityId, String? pose, bool? cancelled, }) => EntityPoseChangeEventData(entityId: entityId ?? this.entityId, pose: pose ?? this.pose, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityPotionEffectEventData {
   final int entityId;
@@ -35273,12 +35968,14 @@ final class EntityPotionEffectEventData {
   final int amplifier;
   final bool cancelled;
   const EntityPotionEffectEventData({required this.entityId, required this.effectName, required this.duration, required this.amplifier, required this.cancelled, });
+  EntityPotionEffectEventData copyWith({int? entityId, String? effectName, int? duration, int? amplifier, bool? cancelled, }) => EntityPotionEffectEventData(entityId: entityId ?? this.entityId, effectName: effectName ?? this.effectName, duration: duration ?? this.duration, amplifier: amplifier ?? this.amplifier, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntitySpellCastEventData {
   final int entityId;
   final String spell;
   final bool cancelled;
   const EntitySpellCastEventData({required this.entityId, required this.spell, required this.cancelled, });
+  EntitySpellCastEventData copyWith({int? entityId, String? spell, bool? cancelled, }) => EntitySpellCastEventData(entityId: entityId ?? this.entityId, spell: spell ?? this.spell, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityTargetLivingEntityEventData {
   final int entityId;
@@ -35286,12 +35983,14 @@ final class EntityTargetLivingEntityEventData {
   final String reason;
   final bool cancelled;
   const EntityTargetLivingEntityEventData({required this.entityId, required this.targetId, required this.reason, required this.cancelled, });
+  EntityTargetLivingEntityEventData copyWith({int? entityId, i1.Option<int>? targetId, String? reason, bool? cancelled, }) => EntityTargetLivingEntityEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityToggleSwimEventData {
   final int entityId;
   final bool isSwimming;
   final bool cancelled;
   const EntityToggleSwimEventData({required this.entityId, required this.isSwimming, required this.cancelled, });
+  EntityToggleSwimEventData copyWith({int? entityId, bool? isSwimming, bool? cancelled, }) => EntityToggleSwimEventData(entityId: entityId ?? this.entityId, isSwimming: isSwimming ?? this.isSwimming, cancelled: cancelled ?? this.cancelled, );
 }
 final class ExplosionPrimeEventData {
   final int entityId;
@@ -35299,28 +35998,33 @@ final class ExplosionPrimeEventData {
   final bool fire;
   final bool cancelled;
   const ExplosionPrimeEventData({required this.entityId, required this.radius, required this.fire, required this.cancelled, });
+  ExplosionPrimeEventData copyWith({int? entityId, double? radius, bool? fire, bool? cancelled, }) => ExplosionPrimeEventData(entityId: entityId ?? this.entityId, radius: radius ?? this.radius, fire: fire ?? this.fire, cancelled: cancelled ?? this.cancelled, );
 }
 final class FireworkExplodeEventData {
   final int entityId;
   final bool cancelled;
   const FireworkExplodeEventData({required this.entityId, required this.cancelled, });
+  FireworkExplodeEventData copyWith({int? entityId, bool? cancelled, }) => FireworkExplodeEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class FoodLevelChangeEventData {
   final int entityId;
   final int foodLevel;
   final bool cancelled;
   const FoodLevelChangeEventData({required this.entityId, required this.foodLevel, required this.cancelled, });
+  FoodLevelChangeEventData copyWith({int? entityId, int? foodLevel, bool? cancelled, }) => FoodLevelChangeEventData(entityId: entityId ?? this.entityId, foodLevel: foodLevel ?? this.foodLevel, cancelled: cancelled ?? this.cancelled, );
 }
 final class ItemDespawnEventData {
   final int entityId;
   final bool cancelled;
   const ItemDespawnEventData({required this.entityId, required this.cancelled, });
+  ItemDespawnEventData copyWith({int? entityId, bool? cancelled, }) => ItemDespawnEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class ItemMergeEventData {
   final int entityId;
   final int targetId;
   final bool cancelled;
   const ItemMergeEventData({required this.entityId, required this.targetId, required this.cancelled, });
+  ItemMergeEventData copyWith({int? entityId, int? targetId, bool? cancelled, }) => ItemMergeEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, cancelled: cancelled ?? this.cancelled, );
 }
 final class ItemSpawnEventData {
   final int entityId;
@@ -35328,6 +36032,7 @@ final class ItemSpawnEventData {
   final String itemName;
   final bool cancelled;
   const ItemSpawnEventData({required this.entityId, required this.position, required this.itemName, required this.cancelled, });
+  ItemSpawnEventData copyWith({int? entityId, (double, double, double, )? position, String? itemName, bool? cancelled, }) => ItemSpawnEventData(entityId: entityId ?? this.entityId, position: position ?? this.position, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
 }
 final class PiglinBarterEventData {
   final int entityId;
@@ -35335,6 +36040,7 @@ final class PiglinBarterEventData {
   final List<ItemStack> outcome;
   final bool cancelled;
   const PiglinBarterEventData({required this.entityId, required this.inputItem, required this.outcome, required this.cancelled, });
+  PiglinBarterEventData copyWith({int? entityId, ItemStack? inputItem, List<ItemStack>? outcome, bool? cancelled, }) => PiglinBarterEventData(entityId: entityId ?? this.entityId, inputItem: inputItem ?? this.inputItem, outcome: outcome ?? this.outcome, cancelled: cancelled ?? this.cancelled, );
 }
 final class ProjectileHitEventData {
   final int entityId;
@@ -35342,12 +36048,14 @@ final class ProjectileHitEventData {
   final i1.Option<int> hitEntityId;
   final bool cancelled;
   const ProjectileHitEventData({required this.entityId, required this.hitPosition, required this.hitEntityId, required this.cancelled, });
+  ProjectileHitEventData copyWith({int? entityId, (double, double, double, )? hitPosition, i1.Option<int>? hitEntityId, bool? cancelled, }) => ProjectileHitEventData(entityId: entityId ?? this.entityId, hitPosition: hitPosition ?? this.hitPosition, hitEntityId: hitEntityId ?? this.hitEntityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class ProjectileLaunchEventData {
   final int entityId;
   final i1.Option<int> shooterId;
   final bool cancelled;
   const ProjectileLaunchEventData({required this.entityId, required this.shooterId, required this.cancelled, });
+  ProjectileLaunchEventData copyWith({int? entityId, i1.Option<int>? shooterId, bool? cancelled, }) => ProjectileLaunchEventData(entityId: entityId ?? this.entityId, shooterId: shooterId ?? this.shooterId, cancelled: cancelled ?? this.cancelled, );
 }
 final class SheepDyeWoolEventData {
   final int entityId;
@@ -35355,29 +36063,34 @@ final class SheepDyeWoolEventData {
   final i1.Option<int> playerId;
   final bool cancelled;
   const SheepDyeWoolEventData({required this.entityId, required this.dyeColor, required this.playerId, required this.cancelled, });
+  SheepDyeWoolEventData copyWith({int? entityId, int? dyeColor, i1.Option<int>? playerId, bool? cancelled, }) => SheepDyeWoolEventData(entityId: entityId ?? this.entityId, dyeColor: dyeColor ?? this.dyeColor, playerId: playerId ?? this.playerId, cancelled: cancelled ?? this.cancelled, );
 }
 final class SheepRegrowWoolEventData {
   final int entityId;
   final bool cancelled;
   const SheepRegrowWoolEventData({required this.entityId, required this.cancelled, });
+  SheepRegrowWoolEventData copyWith({int? entityId, bool? cancelled, }) => SheepRegrowWoolEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class SlimeSplitEventData {
   final int entityId;
   final int count;
   final bool cancelled;
   const SlimeSplitEventData({required this.entityId, required this.count, required this.cancelled, });
+  SlimeSplitEventData copyWith({int? entityId, int? count, bool? cancelled, }) => SlimeSplitEventData(entityId: entityId ?? this.entityId, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
 }
 final class StriderTemperatureChangeEventData {
   final int entityId;
   final bool isShivering;
   final bool cancelled;
   const StriderTemperatureChangeEventData({required this.entityId, required this.isShivering, required this.cancelled, });
+  StriderTemperatureChangeEventData copyWith({int? entityId, bool? isShivering, bool? cancelled, }) => StriderTemperatureChangeEventData(entityId: entityId ?? this.entityId, isShivering: isShivering ?? this.isShivering, cancelled: cancelled ?? this.cancelled, );
 }
 final class VillagerAcquireTradeEventData {
   final int entityId;
   final int recipeIndex;
   final bool cancelled;
   const VillagerAcquireTradeEventData({required this.entityId, required this.recipeIndex, required this.cancelled, });
+  VillagerAcquireTradeEventData copyWith({int? entityId, int? recipeIndex, bool? cancelled, }) => VillagerAcquireTradeEventData(entityId: entityId ?? this.entityId, recipeIndex: recipeIndex ?? this.recipeIndex, cancelled: cancelled ?? this.cancelled, );
 }
 final class VillagerCareerChangeEventData {
   final int entityId;
@@ -35385,12 +36098,14 @@ final class VillagerCareerChangeEventData {
   final String reason;
   final bool cancelled;
   const VillagerCareerChangeEventData({required this.entityId, required this.profession, required this.reason, required this.cancelled, });
+  VillagerCareerChangeEventData copyWith({int? entityId, String? profession, String? reason, bool? cancelled, }) => VillagerCareerChangeEventData(entityId: entityId ?? this.entityId, profession: profession ?? this.profession, reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
 }
 final class VillagerReplenishTradeEventData {
   final int entityId;
   final int restockQuantity;
   final bool cancelled;
   const VillagerReplenishTradeEventData({required this.entityId, required this.restockQuantity, required this.cancelled, });
+  VillagerReplenishTradeEventData copyWith({int? entityId, int? restockQuantity, bool? cancelled, }) => VillagerReplenishTradeEventData(entityId: entityId ?? this.entityId, restockQuantity: restockQuantity ?? this.restockQuantity, cancelled: cancelled ?? this.cancelled, );
 }
 final class WardenAngerChangeEventData {
   final int entityId;
@@ -35399,12 +36114,14 @@ final class WardenAngerChangeEventData {
   final int newAnger;
   final bool cancelled;
   const WardenAngerChangeEventData({required this.entityId, required this.targetId, required this.oldAnger, required this.newAnger, required this.cancelled, });
+  WardenAngerChangeEventData copyWith({int? entityId, int? targetId, int? oldAnger, int? newAnger, bool? cancelled, }) => WardenAngerChangeEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, oldAnger: oldAnger ?? this.oldAnger, newAnger: newAnger ?? this.newAnger, cancelled: cancelled ?? this.cancelled, );
 }
 final class AreaEffectCloudApplyEventData {
   final int entityId;
   final List<int> affectedEntities;
   final bool cancelled;
   const AreaEffectCloudApplyEventData({required this.entityId, required this.affectedEntities, required this.cancelled, });
+  AreaEffectCloudApplyEventData copyWith({int? entityId, List<int>? affectedEntities, bool? cancelled, }) => AreaEffectCloudApplyEventData(entityId: entityId ?? this.entityId, affectedEntities: affectedEntities ?? this.affectedEntities, cancelled: cancelled ?? this.cancelled, );
 }
 final class ArrowBodyCountChangeEventData {
   final int entityId;
@@ -35412,12 +36129,14 @@ final class ArrowBodyCountChangeEventData {
   final int newAmount;
   final bool cancelled;
   const ArrowBodyCountChangeEventData({required this.entityId, required this.oldAmount, required this.newAmount, required this.cancelled, });
+  ArrowBodyCountChangeEventData copyWith({int? entityId, int? oldAmount, int? newAmount, bool? cancelled, }) => ArrowBodyCountChangeEventData(entityId: entityId ?? this.entityId, oldAmount: oldAmount ?? this.oldAmount, newAmount: newAmount ?? this.newAmount, cancelled: cancelled ?? this.cancelled, );
 }
 final class BatToggleSleepEventData {
   final int entityId;
   final bool isAwake;
   final bool cancelled;
   const BatToggleSleepEventData({required this.entityId, required this.isAwake, required this.cancelled, });
+  BatToggleSleepEventData copyWith({int? entityId, bool? isAwake, bool? cancelled, }) => BatToggleSleepEventData(entityId: entityId ?? this.entityId, isAwake: isAwake ?? this.isAwake, cancelled: cancelled ?? this.cancelled, );
 }
 final class CreeperPowerEventData {
   final int entityId;
@@ -35425,6 +36144,7 @@ final class CreeperPowerEventData {
   final String cause;
   final bool cancelled;
   const CreeperPowerEventData({required this.entityId, required this.lightningId, required this.cause, required this.cancelled, });
+  CreeperPowerEventData copyWith({int? entityId, i1.Option<int>? lightningId, String? cause, bool? cancelled, }) => CreeperPowerEventData(entityId: entityId ?? this.entityId, lightningId: lightningId ?? this.lightningId, cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityCombustByBlockEventData {
   final int entityId;
@@ -35432,6 +36152,7 @@ final class EntityCombustByBlockEventData {
   final double duration;
   final bool cancelled;
   const EntityCombustByBlockEventData({required this.entityId, required this.combuster, required this.duration, required this.cancelled, });
+  EntityCombustByBlockEventData copyWith({int? entityId, BlockPos? combuster, double? duration, bool? cancelled, }) => EntityCombustByBlockEventData(entityId: entityId ?? this.entityId, combuster: combuster ?? this.combuster, duration: duration ?? this.duration, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityCombustByEntityEventData {
   final int entityId;
@@ -35439,6 +36160,7 @@ final class EntityCombustByEntityEventData {
   final double duration;
   final bool cancelled;
   const EntityCombustByEntityEventData({required this.entityId, required this.combusterId, required this.duration, required this.cancelled, });
+  EntityCombustByEntityEventData copyWith({int? entityId, int? combusterId, double? duration, bool? cancelled, }) => EntityCombustByEntityEventData(entityId: entityId ?? this.entityId, combusterId: combusterId ?? this.combusterId, duration: duration ?? this.duration, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityKnockbackByEntityEventData {
   final int entityId;
@@ -35448,12 +36170,14 @@ final class EntityKnockbackByEntityEventData {
   final double z;
   final bool cancelled;
   const EntityKnockbackByEntityEventData({required this.entityId, required this.hitById, required this.force, required this.x, required this.z, required this.cancelled, });
+  EntityKnockbackByEntityEventData copyWith({int? entityId, int? hitById, double? force, double? x, double? z, bool? cancelled, }) => EntityKnockbackByEntityEventData(entityId: entityId ?? this.entityId, hitById: hitById ?? this.hitById, force: force ?? this.force, x: x ?? this.x, z: z ?? this.z, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityPortalEnterEventData {
   final int entityId;
   final BlockPos location;
   final bool cancelled;
   const EntityPortalEnterEventData({required this.entityId, required this.location, required this.cancelled, });
+  EntityPortalEnterEventData copyWith({int? entityId, BlockPos? location, bool? cancelled, }) => EntityPortalEnterEventData(entityId: entityId ?? this.entityId, location: location ?? this.location, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityPortalExitEventData {
   final int entityId;
@@ -35461,24 +36185,28 @@ final class EntityPortalExitEventData {
   final i1.Option<BlockPos> toPos;
   final bool cancelled;
   const EntityPortalExitEventData({required this.entityId, required this.fromPos, required this.toPos, required this.cancelled, });
+  EntityPortalExitEventData copyWith({int? entityId, BlockPos? fromPos, i1.Option<BlockPos>? toPos, bool? cancelled, }) => EntityPortalExitEventData(entityId: entityId ?? this.entityId, fromPos: fromPos ?? this.fromPos, toPos: toPos ?? this.toPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityRemoveEventData {
   final int entityId;
   final String cause;
   final bool cancelled;
   const EntityRemoveEventData({required this.entityId, required this.cause, required this.cancelled, });
+  EntityRemoveEventData copyWith({int? entityId, String? cause, bool? cancelled, }) => EntityRemoveEventData(entityId: entityId ?? this.entityId, cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityTargetBlockEventData {
   final int entityId;
   final BlockPos blockPos;
   final bool cancelled;
   const EntityTargetBlockEventData({required this.entityId, required this.blockPos, required this.cancelled, });
+  EntityTargetBlockEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityTargetBlockEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class EntityUnleashEventData {
   final int entityId;
   final String reason;
   final bool cancelled;
   const EntityUnleashEventData({required this.entityId, required this.reason, required this.cancelled, });
+  EntityUnleashEventData copyWith({int? entityId, String? reason, bool? cancelled, }) => EntityUnleashEventData(entityId: entityId ?? this.entityId, reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
 }
 final class ExpBottleEventData {
   final int entityId;
@@ -35487,12 +36215,14 @@ final class ExpBottleEventData {
   final bool showEffect;
   final bool cancelled;
   const ExpBottleEventData({required this.entityId, required this.experience, required this.location, required this.showEffect, required this.cancelled, });
+  ExpBottleEventData copyWith({int? entityId, int? experience, BlockPos? location, bool? showEffect, bool? cancelled, }) => ExpBottleEventData(entityId: entityId ?? this.entityId, experience: experience ?? this.experience, location: location ?? this.location, showEffect: showEffect ?? this.showEffect, cancelled: cancelled ?? this.cancelled, );
 }
 final class HorseJumpEventData {
   final int entityId;
   final double power;
   final bool cancelled;
   const HorseJumpEventData({required this.entityId, required this.power, required this.cancelled, });
+  HorseJumpEventData copyWith({int? entityId, double? power, bool? cancelled, }) => HorseJumpEventData(entityId: entityId ?? this.entityId, power: power ?? this.power, cancelled: cancelled ?? this.cancelled, );
 }
 final class LingeringPotionSplashEventData {
   final int entityId;
@@ -35500,6 +36230,7 @@ final class LingeringPotionSplashEventData {
   final String potionItem;
   final bool cancelled;
   const LingeringPotionSplashEventData({required this.entityId, required this.location, required this.potionItem, required this.cancelled, });
+  LingeringPotionSplashEventData copyWith({int? entityId, BlockPos? location, String? potionItem, bool? cancelled, }) => LingeringPotionSplashEventData(entityId: entityId ?? this.entityId, location: location ?? this.location, potionItem: potionItem ?? this.potionItem, cancelled: cancelled ?? this.cancelled, );
 }
 final class PigZapEventData {
   final int entityId;
@@ -35507,6 +36238,7 @@ final class PigZapEventData {
   final int pigZombieId;
   final bool cancelled;
   const PigZapEventData({required this.entityId, required this.lightningId, required this.pigZombieId, required this.cancelled, });
+  PigZapEventData copyWith({int? entityId, int? lightningId, int? pigZombieId, bool? cancelled, }) => PigZapEventData(entityId: entityId ?? this.entityId, lightningId: lightningId ?? this.lightningId, pigZombieId: pigZombieId ?? this.pigZombieId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PigZombieAngerEventData {
   final int entityId;
@@ -35514,6 +36246,7 @@ final class PigZombieAngerEventData {
   final int newAnger;
   final bool cancelled;
   const PigZombieAngerEventData({required this.entityId, required this.targetId, required this.newAnger, required this.cancelled, });
+  PigZombieAngerEventData copyWith({int? entityId, i1.Option<int>? targetId, int? newAnger, bool? cancelled, }) => PigZombieAngerEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, newAnger: newAnger ?? this.newAnger, cancelled: cancelled ?? this.cancelled, );
 }
 final class PotionSplashEventData {
   final int entityId;
@@ -35522,18 +36255,21 @@ final class PotionSplashEventData {
   final List<int> affectedEntities;
   final bool cancelled;
   const PotionSplashEventData({required this.entityId, required this.location, required this.potionItem, required this.affectedEntities, required this.cancelled, });
+  PotionSplashEventData copyWith({int? entityId, BlockPos? location, String? potionItem, List<int>? affectedEntities, bool? cancelled, }) => PotionSplashEventData(entityId: entityId ?? this.entityId, location: location ?? this.location, potionItem: potionItem ?? this.potionItem, affectedEntities: affectedEntities ?? this.affectedEntities, cancelled: cancelled ?? this.cancelled, );
 }
 final class SpawnerSpawnEventData {
   final int entityId;
   final BlockPos spawnerPos;
   final bool cancelled;
   const SpawnerSpawnEventData({required this.entityId, required this.spawnerPos, required this.cancelled, });
+  SpawnerSpawnEventData copyWith({int? entityId, BlockPos? spawnerPos, bool? cancelled, }) => SpawnerSpawnEventData(entityId: entityId ?? this.entityId, spawnerPos: spawnerPos ?? this.spawnerPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class TrialSpawnerSpawnEventData {
   final int entityId;
   final BlockPos spawnerPos;
   final bool cancelled;
   const TrialSpawnerSpawnEventData({required this.entityId, required this.spawnerPos, required this.cancelled, });
+  TrialSpawnerSpawnEventData copyWith({int? entityId, BlockPos? spawnerPos, bool? cancelled, }) => TrialSpawnerSpawnEventData(entityId: entityId ?? this.entityId, spawnerPos: spawnerPos ?? this.spawnerPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class VillagerReputationChangeEventData {
   final int entityId;
@@ -35541,6 +36277,7 @@ final class VillagerReputationChangeEventData {
   final int reputationChange;
   final bool cancelled;
   const VillagerReputationChangeEventData({required this.entityId, required this.targetId, required this.reputationChange, required this.cancelled, });
+  VillagerReputationChangeEventData copyWith({int? entityId, int? targetId, int? reputationChange, bool? cancelled, }) => VillagerReputationChangeEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, reputationChange: reputationChange ?? this.reputationChange, cancelled: cancelled ?? this.cancelled, );
 }
 final class AsyncPlayerChatEventData {
   final Player player;
@@ -35548,6 +36285,7 @@ final class AsyncPlayerChatEventData {
   final TextComponent format;
   final bool cancelled;
   const AsyncPlayerChatEventData({required this.player, required this.message, required this.format, required this.cancelled, });
+  AsyncPlayerChatEventData copyWith({Player? player, String? message, TextComponent? format, bool? cancelled, }) => AsyncPlayerChatEventData(player: player ?? this.player, message: message ?? this.message, format: format ?? this.format, cancelled: cancelled ?? this.cancelled, );
 }
 final class AsyncPlayerPreLoginEventData {
   final String playerName;
@@ -35556,18 +36294,21 @@ final class AsyncPlayerPreLoginEventData {
   final TextComponent kickMessage;
   final bool cancelled;
   const AsyncPlayerPreLoginEventData({required this.playerName, required this.playerUuid, required this.ipAddress, required this.kickMessage, required this.cancelled, });
+  AsyncPlayerPreLoginEventData copyWith({String? playerName, String? playerUuid, String? ipAddress, TextComponent? kickMessage, bool? cancelled, }) => AsyncPlayerPreLoginEventData(playerName: playerName ?? this.playerName, playerUuid: playerUuid ?? this.playerUuid, ipAddress: ipAddress ?? this.ipAddress, kickMessage: kickMessage ?? this.kickMessage, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerAdvancementDoneEventData {
   final Player player;
   final String advancementId;
   final bool cancelled;
   const PlayerAdvancementDoneEventData({required this.player, required this.advancementId, required this.cancelled, });
+  PlayerAdvancementDoneEventData copyWith({Player? player, String? advancementId, bool? cancelled, }) => PlayerAdvancementDoneEventData(player: player ?? this.player, advancementId: advancementId ?? this.advancementId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerAnimationEventData {
   final Player player;
   final String animationType;
   final bool cancelled;
   const PlayerAnimationEventData({required this.player, required this.animationType, required this.cancelled, });
+  PlayerAnimationEventData copyWith({Player? player, String? animationType, bool? cancelled, }) => PlayerAnimationEventData(player: player ?? this.player, animationType: animationType ?? this.animationType, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerArmorStandManipulateEventData {
   final Player player;
@@ -35575,6 +36316,7 @@ final class PlayerArmorStandManipulateEventData {
   final int slot;
   final bool cancelled;
   const PlayerArmorStandManipulateEventData({required this.player, required this.armorStandId, required this.slot, required this.cancelled, });
+  PlayerArmorStandManipulateEventData copyWith({Player? player, int? armorStandId, int? slot, bool? cancelled, }) => PlayerArmorStandManipulateEventData(player: player ?? this.player, armorStandId: armorStandId ?? this.armorStandId, slot: slot ?? this.slot, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerBucketEntityEventData {
   final Player player;
@@ -35582,6 +36324,7 @@ final class PlayerBucketEntityEventData {
   final String bucketItem;
   final bool cancelled;
   const PlayerBucketEntityEventData({required this.player, required this.entityId, required this.bucketItem, required this.cancelled, });
+  PlayerBucketEntityEventData copyWith({Player? player, int? entityId, String? bucketItem, bool? cancelled, }) => PlayerBucketEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, bucketItem: bucketItem ?? this.bucketItem, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerChangedWorldEventData {
   final Player player;
@@ -35589,18 +36332,21 @@ final class PlayerChangedWorldEventData {
   final World toWorld;
   final bool cancelled;
   const PlayerChangedWorldEventData({required this.player, required this.fromWorld, required this.toWorld, required this.cancelled, });
+  PlayerChangedWorldEventData copyWith({Player? player, World? fromWorld, World? toWorld, bool? cancelled, }) => PlayerChangedWorldEventData(player: player ?? this.player, fromWorld: fromWorld ?? this.fromWorld, toWorld: toWorld ?? this.toWorld, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerChannelEventData {
   final Player player;
   final String channel;
   final bool cancelled;
   const PlayerChannelEventData({required this.player, required this.channel, required this.cancelled, });
+  PlayerChannelEventData copyWith({Player? player, String? channel, bool? cancelled, }) => PlayerChannelEventData(player: player ?? this.player, channel: channel ?? this.channel, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerCommandPreprocessEventData {
   final Player player;
   final String command;
   final bool cancelled;
   const PlayerCommandPreprocessEventData({required this.player, required this.command, required this.cancelled, });
+  PlayerCommandPreprocessEventData copyWith({Player? player, String? command, bool? cancelled, }) => PlayerCommandPreprocessEventData(player: player ?? this.player, command: command ?? this.command, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerEditBookEventData {
   final Player player;
@@ -35610,18 +36356,21 @@ final class PlayerEditBookEventData {
   final bool signing;
   final bool cancelled;
   const PlayerEditBookEventData({required this.player, required this.slot, required this.pages, required this.title, required this.signing, required this.cancelled, });
+  PlayerEditBookEventData copyWith({Player? player, int? slot, List<String>? pages, i1.Option<String>? title, bool? signing, bool? cancelled, }) => PlayerEditBookEventData(player: player ?? this.player, slot: slot ?? this.slot, pages: pages ?? this.pages, title: title ?? this.title, signing: signing ?? this.signing, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerElytraBoostEventData {
   final Player player;
   final int fireworkId;
   final bool cancelled;
   const PlayerElytraBoostEventData({required this.player, required this.fireworkId, required this.cancelled, });
+  PlayerElytraBoostEventData copyWith({Player? player, int? fireworkId, bool? cancelled, }) => PlayerElytraBoostEventData(player: player ?? this.player, fireworkId: fireworkId ?? this.fireworkId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerExpCooldownChangeEventData {
   final Player player;
   final int newCooldown;
   final bool cancelled;
   const PlayerExpCooldownChangeEventData({required this.player, required this.newCooldown, required this.cancelled, });
+  PlayerExpCooldownChangeEventData copyWith({Player? player, int? newCooldown, bool? cancelled, }) => PlayerExpCooldownChangeEventData(player: player ?? this.player, newCooldown: newCooldown ?? this.newCooldown, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerHarvestBlockEventData {
   final Player player;
@@ -35629,17 +36378,20 @@ final class PlayerHarvestBlockEventData {
   final List<ItemStack> harvestedItems;
   final bool cancelled;
   const PlayerHarvestBlockEventData({required this.player, required this.blockPos, required this.harvestedItems, required this.cancelled, });
+  PlayerHarvestBlockEventData copyWith({Player? player, BlockPos? blockPos, List<ItemStack>? harvestedItems, bool? cancelled, }) => PlayerHarvestBlockEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, harvestedItems: harvestedItems ?? this.harvestedItems, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerHideEntityEventData {
   final Player player;
   final int entityId;
   final bool cancelled;
   const PlayerHideEntityEventData({required this.player, required this.entityId, required this.cancelled, });
+  PlayerHideEntityEventData copyWith({Player? player, int? entityId, bool? cancelled, }) => PlayerHideEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerItemBreakEventData {
   final Player player;
   final String itemName;
   const PlayerItemBreakEventData({required this.player, required this.itemName, });
+  PlayerItemBreakEventData copyWith({Player? player, String? itemName, }) => PlayerItemBreakEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, );
 }
 final class PlayerItemMendEventData {
   final Player player;
@@ -35648,12 +36400,14 @@ final class PlayerItemMendEventData {
   final int expConsumed;
   final bool cancelled;
   const PlayerItemMendEventData({required this.player, required this.itemName, required this.repairAmount, required this.expConsumed, required this.cancelled, });
+  PlayerItemMendEventData copyWith({Player? player, String? itemName, int? repairAmount, int? expConsumed, bool? cancelled, }) => PlayerItemMendEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, repairAmount: repairAmount ?? this.repairAmount, expConsumed: expConsumed ?? this.expConsumed, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerKickEventData {
   final Player player;
   final String reason;
   final bool cancelled;
   const PlayerKickEventData({required this.player, required this.reason, required this.cancelled, });
+  PlayerKickEventData copyWith({Player? player, String? reason, bool? cancelled, }) => PlayerKickEventData(player: player ?? this.player, reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerLeashEntityEventData {
   final Player player;
@@ -35661,18 +36415,21 @@ final class PlayerLeashEntityEventData {
   final int holderId;
   final bool cancelled;
   const PlayerLeashEntityEventData({required this.player, required this.entityId, required this.holderId, required this.cancelled, });
+  PlayerLeashEntityEventData copyWith({Player? player, int? entityId, int? holderId, bool? cancelled, }) => PlayerLeashEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, holderId: holderId ?? this.holderId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerLevelChangeEventData {
   final Player player;
   final int oldLevel;
   final int newLevel;
   const PlayerLevelChangeEventData({required this.player, required this.oldLevel, required this.newLevel, });
+  PlayerLevelChangeEventData copyWith({Player? player, int? oldLevel, int? newLevel, }) => PlayerLevelChangeEventData(player: player ?? this.player, oldLevel: oldLevel ?? this.oldLevel, newLevel: newLevel ?? this.newLevel, );
 }
 final class PlayerLocaleChangeEventData {
   final Player player;
   final String newLocale;
   final bool cancelled;
   const PlayerLocaleChangeEventData({required this.player, required this.newLocale, required this.cancelled, });
+  PlayerLocaleChangeEventData copyWith({Player? player, String? newLocale, bool? cancelled, }) => PlayerLocaleChangeEventData(player: player ?? this.player, newLocale: newLocale ?? this.newLocale, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerNameEntityEventData {
   final Player player;
@@ -35680,6 +36437,7 @@ final class PlayerNameEntityEventData {
   final TextComponent name;
   final bool cancelled;
   const PlayerNameEntityEventData({required this.player, required this.entityId, required this.name, required this.cancelled, });
+  PlayerNameEntityEventData copyWith({Player? player, int? entityId, TextComponent? name, bool? cancelled, }) => PlayerNameEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, name: name ?? this.name, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerOpenSignEventData {
   final Player player;
@@ -35687,6 +36445,7 @@ final class PlayerOpenSignEventData {
   final bool isFront;
   final bool cancelled;
   const PlayerOpenSignEventData({required this.player, required this.blockPos, required this.isFront, required this.cancelled, });
+  PlayerOpenSignEventData copyWith({Player? player, BlockPos? blockPos, bool? isFront, bool? cancelled, }) => PlayerOpenSignEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, isFront: isFront ?? this.isFront, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerPortalEventData {
   final Player player;
@@ -35694,6 +36453,7 @@ final class PlayerPortalEventData {
   final i1.Option<BlockPos> toPos;
   final bool cancelled;
   const PlayerPortalEventData({required this.player, required this.fromPos, required this.toPos, required this.cancelled, });
+  PlayerPortalEventData copyWith({Player? player, BlockPos? fromPos, i1.Option<BlockPos>? toPos, bool? cancelled, }) => PlayerPortalEventData(player: player ?? this.player, fromPos: fromPos ?? this.fromPos, toPos: toPos ?? this.toPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerPreLoginEventData {
   final String playerName;
@@ -35702,12 +36462,14 @@ final class PlayerPreLoginEventData {
   final TextComponent kickMessage;
   final bool cancelled;
   const PlayerPreLoginEventData({required this.playerName, required this.playerUuid, required this.ipAddress, required this.kickMessage, required this.cancelled, });
+  PlayerPreLoginEventData copyWith({String? playerName, String? playerUuid, String? ipAddress, TextComponent? kickMessage, bool? cancelled, }) => PlayerPreLoginEventData(playerName: playerName ?? this.playerName, playerUuid: playerUuid ?? this.playerUuid, ipAddress: ipAddress ?? this.ipAddress, kickMessage: kickMessage ?? this.kickMessage, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerRiptideEventData {
   final Player player;
   final String itemName;
   final bool cancelled;
   const PlayerRiptideEventData({required this.player, required this.itemName, required this.cancelled, });
+  PlayerRiptideEventData copyWith({Player? player, String? itemName, bool? cancelled, }) => PlayerRiptideEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerShearEntityEventData {
   final Player player;
@@ -35715,12 +36477,14 @@ final class PlayerShearEntityEventData {
   final int hand;
   final bool cancelled;
   const PlayerShearEntityEventData({required this.player, required this.entityId, required this.hand, required this.cancelled, });
+  PlayerShearEntityEventData copyWith({Player? player, int? entityId, int? hand, bool? cancelled, }) => PlayerShearEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, hand: hand ?? this.hand, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerShowEntityEventData {
   final Player player;
   final int entityId;
   final bool cancelled;
   const PlayerShowEntityEventData({required this.player, required this.entityId, required this.cancelled, });
+  PlayerShowEntityEventData copyWith({Player? player, int? entityId, bool? cancelled, }) => PlayerShowEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerSpawnChangeEventData {
   final Player player;
@@ -35728,6 +36492,7 @@ final class PlayerSpawnChangeEventData {
   final bool forced;
   final bool cancelled;
   const PlayerSpawnChangeEventData({required this.player, required this.newSpawn, required this.forced, required this.cancelled, });
+  PlayerSpawnChangeEventData copyWith({Player? player, i1.Option<BlockPos>? newSpawn, bool? forced, bool? cancelled, }) => PlayerSpawnChangeEventData(player: player ?? this.player, newSpawn: newSpawn ?? this.newSpawn, forced: forced ?? this.forced, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerStatisticIncrementEventData {
   final Player player;
@@ -35735,11 +36500,13 @@ final class PlayerStatisticIncrementEventData {
   final int amount;
   final bool cancelled;
   const PlayerStatisticIncrementEventData({required this.player, required this.statisticId, required this.amount, required this.cancelled, });
+  PlayerStatisticIncrementEventData copyWith({Player? player, String? statisticId, int? amount, bool? cancelled, }) => PlayerStatisticIncrementEventData(player: player ?? this.player, statisticId: statisticId ?? this.statisticId, amount: amount ?? this.amount, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerSwapHandsEventData {
   final Player player;
   final bool cancelled;
   const PlayerSwapHandsEventData({required this.player, required this.cancelled, });
+  PlayerSwapHandsEventData copyWith({Player? player, bool? cancelled, }) => PlayerSwapHandsEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerTakeLecternBookEventData {
   final Player player;
@@ -35747,24 +36514,28 @@ final class PlayerTakeLecternBookEventData {
   final ItemStack book;
   final bool cancelled;
   const PlayerTakeLecternBookEventData({required this.player, required this.blockPos, required this.book, required this.cancelled, });
+  PlayerTakeLecternBookEventData copyWith({Player? player, BlockPos? blockPos, ItemStack? book, bool? cancelled, }) => PlayerTakeLecternBookEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, book: book ?? this.book, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerUnleashEntityEventData {
   final Player player;
   final int entityId;
   final bool cancelled;
   const PlayerUnleashEntityEventData({required this.player, required this.entityId, required this.cancelled, });
+  PlayerUnleashEntityEventData copyWith({Player? player, int? entityId, bool? cancelled, }) => PlayerUnleashEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerVelocityEventData {
   final Player player;
   final (double, double, double, ) velocity;
   final bool cancelled;
   const PlayerVelocityEventData({required this.player, required this.velocity, required this.cancelled, });
+  PlayerVelocityEventData copyWith({Player? player, (double, double, double, )? velocity, bool? cancelled, }) => PlayerVelocityEventData(player: player ?? this.player, velocity: velocity ?? this.velocity, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerInputEventData {
   final Player player;
   final String input;
   final bool cancelled;
   const PlayerInputEventData({required this.player, required this.input, required this.cancelled, });
+  PlayerInputEventData copyWith({Player? player, String? input, bool? cancelled, }) => PlayerInputEventData(player: player ?? this.player, input: input ?? this.input, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerInteractAtEntityEventData {
   final Player player;
@@ -35775,18 +36546,21 @@ final class PlayerInteractAtEntityEventData {
   final int hand;
   final bool cancelled;
   const PlayerInteractAtEntityEventData({required this.player, required this.entityId, required this.clickedX, required this.clickedY, required this.clickedZ, required this.hand, required this.cancelled, });
+  PlayerInteractAtEntityEventData copyWith({Player? player, int? entityId, double? clickedX, double? clickedY, double? clickedZ, int? hand, bool? cancelled, }) => PlayerInteractAtEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, clickedX: clickedX ?? this.clickedX, clickedY: clickedY ?? this.clickedY, clickedZ: clickedZ ?? this.clickedZ, hand: hand ?? this.hand, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerLinksSendEventData {
   final Player player;
   final List<String> links;
   final bool cancelled;
   const PlayerLinksSendEventData({required this.player, required this.links, required this.cancelled, });
+  PlayerLinksSendEventData copyWith({Player? player, List<String>? links, bool? cancelled, }) => PlayerLinksSendEventData(player: player ?? this.player, links: links ?? this.links, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerPickupArrowEventData {
   final Player player;
   final int arrowId;
   final bool cancelled;
   const PlayerPickupArrowEventData({required this.player, required this.arrowId, required this.cancelled, });
+  PlayerPickupArrowEventData copyWith({Player? player, int? arrowId, bool? cancelled, }) => PlayerPickupArrowEventData(player: player ?? this.player, arrowId: arrowId ?? this.arrowId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerRecipeBookClickEventData {
   final Player player;
@@ -35794,6 +36568,7 @@ final class PlayerRecipeBookClickEventData {
   final bool makeAll;
   final bool cancelled;
   const PlayerRecipeBookClickEventData({required this.player, required this.recipeId, required this.makeAll, required this.cancelled, });
+  PlayerRecipeBookClickEventData copyWith({Player? player, String? recipeId, bool? makeAll, bool? cancelled, }) => PlayerRecipeBookClickEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, makeAll: makeAll ?? this.makeAll, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerRecipeBookSettingsChangeEventData {
   final Player player;
@@ -35802,18 +36577,21 @@ final class PlayerRecipeBookSettingsChangeEventData {
   final bool isFiltering;
   final bool cancelled;
   const PlayerRecipeBookSettingsChangeEventData({required this.player, required this.bookType, required this.isOpen, required this.isFiltering, required this.cancelled, });
+  PlayerRecipeBookSettingsChangeEventData copyWith({Player? player, String? bookType, bool? isOpen, bool? isFiltering, bool? cancelled, }) => PlayerRecipeBookSettingsChangeEventData(player: player ?? this.player, bookType: bookType ?? this.bookType, isOpen: isOpen ?? this.isOpen, isFiltering: isFiltering ?? this.isFiltering, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerRecipeDiscoverEventData {
   final Player player;
   final String recipeId;
   final bool cancelled;
   const PlayerRecipeDiscoverEventData({required this.player, required this.recipeId, required this.cancelled, });
+  PlayerRecipeDiscoverEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => PlayerRecipeDiscoverEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerRegisterChannelEventData {
   final Player player;
   final String channel;
   final bool cancelled;
   const PlayerRegisterChannelEventData({required this.player, required this.channel, required this.cancelled, });
+  PlayerRegisterChannelEventData copyWith({Player? player, String? channel, bool? cancelled, }) => PlayerRegisterChannelEventData(player: player ?? this.player, channel: channel ?? this.channel, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerResourcePackStatusEventData {
   final Player player;
@@ -35821,45 +36599,53 @@ final class PlayerResourcePackStatusEventData {
   final String status;
   final bool cancelled;
   const PlayerResourcePackStatusEventData({required this.player, required this.packId, required this.status, required this.cancelled, });
+  PlayerResourcePackStatusEventData copyWith({Player? player, String? packId, String? status, bool? cancelled, }) => PlayerResourcePackStatusEventData(player: player ?? this.player, packId: packId ?? this.packId, status: status ?? this.status, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerSpawnLocationEventData {
   final Player player;
   final (double, double, double, ) spawnPos;
   final bool cancelled;
   const PlayerSpawnLocationEventData({required this.player, required this.spawnPos, required this.cancelled, });
+  PlayerSpawnLocationEventData copyWith({Player? player, (double, double, double, )? spawnPos, bool? cancelled, }) => PlayerSpawnLocationEventData(player: player ?? this.player, spawnPos: spawnPos ?? this.spawnPos, cancelled: cancelled ?? this.cancelled, );
 }
 final class PlayerUnregisterChannelEventData {
   final Player player;
   final String channel;
   final bool cancelled;
   const PlayerUnregisterChannelEventData({required this.player, required this.channel, required this.cancelled, });
+  PlayerUnregisterChannelEventData copyWith({Player? player, String? channel, bool? cancelled, }) => PlayerUnregisterChannelEventData(player: player ?? this.player, channel: channel ?? this.channel, cancelled: cancelled ?? this.cancelled, );
 }
 final class RaidFinishEventData {
   final bool victory;
   final bool cancelled;
   const RaidFinishEventData({required this.victory, required this.cancelled, });
+  RaidFinishEventData copyWith({bool? victory, bool? cancelled, }) => RaidFinishEventData(victory: victory ?? this.victory, cancelled: cancelled ?? this.cancelled, );
 }
 final class RaidSpawnWaveEventData {
   final int wave;
   final BlockPos pos;
   final bool cancelled;
   const RaidSpawnWaveEventData({required this.wave, required this.pos, required this.cancelled, });
+  RaidSpawnWaveEventData copyWith({int? wave, BlockPos? pos, bool? cancelled, }) => RaidSpawnWaveEventData(wave: wave ?? this.wave, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
 }
 final class RaidStopEventData {
   final String reason;
   final bool cancelled;
   const RaidStopEventData({required this.reason, required this.cancelled, });
+  RaidStopEventData copyWith({String? reason, bool? cancelled, }) => RaidStopEventData(reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
 }
 final class RaidTriggerEventData {
   final BlockPos pos;
   final bool cancelled;
   const RaidTriggerEventData({required this.pos, required this.cancelled, });
+  RaidTriggerEventData copyWith({BlockPos? pos, bool? cancelled, }) => RaidTriggerEventData(pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
 }
 final class LightningStrikeEventData {
   final (double, double, double, ) position;
   final bool isEffect;
   final bool cancelled;
   const LightningStrikeEventData({required this.position, required this.isEffect, required this.cancelled, });
+  LightningStrikeEventData copyWith({(double, double, double, )? position, bool? isEffect, bool? cancelled, }) => LightningStrikeEventData(position: position ?? this.position, isEffect: isEffect ?? this.isEffect, cancelled: cancelled ?? this.cancelled, );
 }
 sealed class Event {
   const Event();
@@ -36977,12 +37763,14 @@ final class CommandCommandSuggestion {
   final String value;
   final i1.Option<TextComponent> tooltip;
   const CommandCommandSuggestion({required this.value, required this.tooltip, });
+  CommandCommandSuggestion copyWith({String? value, i1.Option<TextComponent>? tooltip, }) => CommandCommandSuggestion(value: value ?? this.value, tooltip: tooltip ?? this.tooltip, );
 }
 final class CommandSuggestions {
   final int start;
   final int length;
   final List<CommandCommandSuggestion> values;
   const CommandSuggestions({required this.start, required this.length, required this.values, });
+  CommandSuggestions copyWith({int? start, int? length, List<CommandCommandSuggestion>? values, }) => CommandSuggestions(start: start ?? this.start, length: length ?? this.length, values: values ?? this.values, );
 }
 final class SuggestionRequest {
   final String input;
@@ -36990,6 +37778,7 @@ final class SuggestionRequest {
   final int start;
   final String remaining;
   const SuggestionRequest({required this.input, required this.cursor, required this.start, required this.remaining, });
+  SuggestionRequest copyWith({String? input, int? cursor, int? start, String? remaining, }) => SuggestionRequest(input: input ?? this.input, cursor: cursor ?? this.cursor, start: start ?? this.start, remaining: remaining ?? this.remaining, );
 }
 /// Generation phase for custom chunk generation.
 enum GenerationPhase {
@@ -37044,6 +37833,7 @@ final class PluginMetadata {
 /// Permissions requested by the plugin.
   final List<String> permissions;
   const PluginMetadata({required this.name, required this.version, required this.authors, required this.description, required this.dependencies, required this.permissions, });
+  PluginMetadata copyWith({String? name, String? version, List<String>? authors, String? description, List<String>? dependencies, List<String>? permissions, }) => PluginMetadata(name: name ?? this.name, version: version ?? this.version, authors: authors ?? this.authors, description: description ?? this.description, dependencies: dependencies ?? this.dependencies, permissions: permissions ?? this.permissions, );
 }
 /// Plugin metadata describing the plugin and its compatibility.
 abstract interface class Metadata {

@@ -503,6 +503,20 @@ impl DartSource {
                 let _ = write!(&mut definition, "required this.{}, ", dart_ident(&field.name));
             }
             let _ = writeln!(&mut definition, "}});");
+
+            // Records are immutable, so offer `copyWith` for the common
+            // "return the event with one field changed" pattern.
+            let _ = write!(&mut definition, "  {} copyWith({{", name);
+            for field in &record.fields {
+                definition.write_dart_type(self, resolve, &field.ty);
+                let _ = write!(&mut definition, "? {}, ", dart_ident(&field.name));
+            }
+            let _ = write!(&mut definition, "}}) => {}(", name);
+            for field in &record.fields {
+                let ident = dart_ident(&field.name);
+                let _ = write!(&mut definition, "{ident}: {ident} ?? this.{ident}, ");
+            }
+            let _ = writeln!(&mut definition, ");");
         }
         let _ = writeln!(&mut definition, "}}");
         self.consume_definition(definition);

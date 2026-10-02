@@ -1,111 +1,75 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-const _permissionNode = 'hello_plugin:command.hello';
-
-/// Handler ids routed back to us through `handleCommand` / `handleTask`.
-const _handlerBare = 0;
-const _handlerWithMessage = 1;
-const _taskStartup = 100;
-
-void _log(String message) {
-  logging.log(level: Level.info, message: message);
-}
+const _permission = 'hello_plugin:command.hello';
 
 void main() => runPlugin(HelloPlugin());
 
 final class HelloPlugin extends Plugin {
   @override
-  PluginMetadata get metadata => const PluginMetadata(
+  PluginInfo get info => const PluginInfo(
     name: 'hello_plugin',
     version: '0.1.0',
     authors: ['Eric'],
-    description: 'Example plugin: a /hello command, a permission and a task.',
-    dependencies: [],
-    permissions: [],
+    description: 'Example plugin: a /hello command, events and a task.',
   );
 
   @override
-  Result<void, String> onLoad(Context context) {
-    _log('Hello plugin loading...');
+  void onLoad(Context context) {
+    logger.info('Hello plugin loading...');
 
     final registered = context.registerPermission(
       permission: const Permission(
-        node: _permissionNode,
+        node: _permission,
         description: 'Allows running /hello',
         default_: PermissionDefaultAllow(),
         children: [],
       ),
     );
     if (registered case ErrorResult(:final value)) {
-      return Result.error('failed to register permission: $value');
+      throw StateError('failed to register permission: $value');
     }
 
-    // /hello [message...]
-    final message = CommandNode.argument(
-      name: 'message',
-      type: const CommandArgumentTypeString(StringType.greedy),
-    );
-    message.executeWithHandlerId(handlerId: _handlerWithMessage);
-
+    // /hello             -> greets the sender
+    // /hello <message>   -> echoes the message
     final command = Command.create(
       names: ['hello'],
       description: 'Says hello from the Dart plugin',
-    );
-    command.executeWithHandlerId(handlerId: _handlerBare);
+    )..execute(_greet);
+
+    final message = CommandNode.argument(
+      name: 'message',
+      type: ArgumentTypes.greedyString,
+    )..execute(_echo);
     command.then(node: message);
-    context.registerCommand(command: command, permission: _permissionNode);
 
-    final taskId = scheduler.scheduleDelayedTask(
-      handlerId: _taskStartup,
-      delayTicks: 100, // ~5 seconds
+    context.registerCommand(command: command, permission: _permission);
+
+    // Greet players as they join.
+    context.listen(Events.playerJoin, (server, event) {
+      logger.info('${event.player.getName()} joined the server');
+    });
+
+    // Runs once, five seconds (100 ticks) after the plugin loads.
+    context.runLater(100, (server) {
+      logger.info('${server.getPlayerCount()} player(s) online.');
+    });
+  }
+
+  int _greet(CommandSender sender, Server server, ConsumedArgs args) {
+    sender.reply(
+      'Hello ${sender.getName()} from Dart! '
+      '${server.getPlayerCount()} player(s) online. Try /hello <message>.',
     );
+    return 1;
+  }
 
-    _log('Registered /hello; scheduled startup task #$taskId');
-    return const Result.ok(null);
+  int _echo(CommandSender sender, Server server, ConsumedArgs args) {
+    final message = args.string('message');
+    if (message.trim().isEmpty) throw CommandException('Say something!');
+    sender.reply('Dart echoes: $message');
+    return 1;
   }
 
   @override
-  Result<void, String> onUnload(Context context) {
-    _log('Hello plugin unloading.');
-    return const Result.ok(null);
-  }
-
-  @override
-  Result<int, CommandError> handleCommand(
-    int commandId,
-    CommandSender sender,
-    Server server,
-    ConsumedArgs args,
-  ) {
-    switch (commandId) {
-      case _handlerBare:
-        sender.sendMessage(
-          text: TextComponent.text(
-            plain:
-                'Hello ${sender.getName()} from Dart! '
-                '${server.getPlayerCount()} player(s) online. '
-                'Try /hello <message>.',
-          ),
-        );
-        return const Result.ok(1);
-      case _handlerWithMessage:
-        final value = switch (args.getValue(key: 'message')) {
-          ArgSimple(:final value) => value,
-          ArgMsg(:final value) => value,
-          final other => '<unexpected argument: $other>',
-        };
-        sender.sendMessage(
-          text: TextComponent.text(plain: 'Dart echoes: $value'),
-        );
-        return const Result.ok(1);
-    }
-    return const Result.error(CommandErrorInvalidRequirement());
-  }
-
-  @override
-  void handleTask(int handlerId, Server server) {
-    if (handlerId == _taskStartup) {
-      _log('Scheduled task fired ~5s after load.');
-    }
-  }
+  void onUnload(Context context) => logger.info('Hello plugin unloading.');
 }

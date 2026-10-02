@@ -93,19 +93,19 @@ void main() => runPlugin(MyPlugin());
 
 final class MyPlugin extends Plugin {
   @override
-  PluginMetadata get metadata => const PluginMetadata(
+  PluginInfo get info => const PluginInfo(
     name: '$name',
     version: '0.1.0',
-    authors: [],
     description: 'A Pumpkin plugin written in Dart.',
-    dependencies: [],
-    permissions: [],
   );
 
   @override
-  Result<void, String> onLoad(Context context) {
-    logging.log(level: Level.info, message: '$name loaded!');
-    return const Result.ok(null);
+  void onLoad(Context context) {
+    logger.info('$name loaded!');
+
+    context.listen(Events.playerJoin, (server, event) {
+      logger.info('\${event.player.getName()} joined the server');
+    });
   }
 }
 ''';

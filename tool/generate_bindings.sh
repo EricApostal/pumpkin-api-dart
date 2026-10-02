@@ -11,3 +11,5 @@ cargo run --release -p wit_bindgen_dart --bin witgen_cli -- \
   --world plugin \
   --output packages/pumpkin_api/lib/src/bindings.g.dart \
   --abi-output packages/pumpkin_api/hook/wasm_abi.json
+
+dart run tool/generate_events.dart

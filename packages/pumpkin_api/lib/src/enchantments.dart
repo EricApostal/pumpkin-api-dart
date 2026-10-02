@@ -109,7 +109,7 @@ extension EnchantmentManagerApi on EnchantmentManager {
   /// The definition of the enchantment [id], or `null` if it isn't registered.
   CustomEnchantment? find(String id) {
     final found = getEnchantment(id: id);
-    return found.hasValue ? found.requireValue() : null;
+    return found;
   }
 
   /// Whether an enchantment with this [id] is registered.
@@ -135,7 +135,7 @@ extension CustomEnchantmentItems on ItemStack {
   /// The level of the custom enchantment [id], or `null` if the stack lacks it.
   int? customEnchantmentLevel(String id) {
     final level = getCustomEnchantmentLevel(enchantmentId: id);
-    return level.hasValue ? level.requireValue() : null;
+    return level;
   }
 }
 

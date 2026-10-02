@@ -262,6 +262,15 @@ impl DartSource {
         }
     }
 
+    /// Reserves a top-level name for a generated convenience type, preferring
+    /// `base_name` and falling back to `{base_name}{suffix}` when it is taken.
+    pub fn reserve_extra_name(&mut self, base_name: String, suffix: &str) -> String {
+        if self.used_names.insert(base_name.clone()) {
+            return base_name;
+        }
+        Self::unique_name_impl(&mut self.used_names, None, format!("{base_name}{suffix}"))
+    }
+
     /// Ensures `base_name` is a unique top-level Dart identifier and marks it
     /// used. For names that aren't tied to a `TypeId` (like the generated
     /// world-exports class).
@@ -326,7 +335,7 @@ impl DartSource {
     /// pointing at the original resource's `TypeId`; only the original ever
     /// gets a name reserved by `generate_resources`, so lookups from a
     /// handle referencing the alias need to follow the chain first.
-    fn resolve_alias_chain(resolve: &Resolve, mut id: TypeId) -> TypeId {
+    pub fn resolve_alias_chain(resolve: &Resolve, mut id: TypeId) -> TypeId {
         while let TypeDefKind::Type(Type::Id(inner)) = &resolve.types[id].kind {
             id = *inner;
         }
@@ -506,15 +515,40 @@ impl DartSource {
 
             // Records are immutable, so offer `copyWith` for the common
             // "return the event with one field changed" pattern.
+            // Optional fields are nullable, so `null` can't also mean "keep the
+            // current value": they get a `clear<Field>` flag to reset them.
+            let nullable = |ty: &Type| match ty {
+                Type::Id(id) => match &resolve.types[*id].kind {
+                    TypeDefKind::Option(inner) => option_is_nullable(resolve, inner),
+                    _ => false,
+                },
+                _ => false,
+            };
             let _ = write!(&mut definition, "  {} copyWith({{", name);
             for field in &record.fields {
-                definition.write_dart_type(self, resolve, &field.ty);
-                let _ = write!(&mut definition, "? {}, ", dart_ident(&field.name));
+                if nullable(&field.ty) {
+                    // The type already ends in `?`.
+                    definition.write_dart_type(self, resolve, &field.ty);
+                    let ident = dart_ident(&field.name);
+                    let clear = clear_flag_name(&field.name);
+                    let _ = write!(&mut definition, " {ident}, bool {clear} = false, ");
+                } else {
+                    definition.write_dart_type(self, resolve, &field.ty);
+                    let _ = write!(&mut definition, "? {}, ", dart_ident(&field.name));
+                }
             }
             let _ = write!(&mut definition, "}}) => {}(", name);
             for field in &record.fields {
                 let ident = dart_ident(&field.name);
-                let _ = write!(&mut definition, "{ident}: {ident} ?? this.{ident}, ");
+                if nullable(&field.ty) {
+                    let clear = clear_flag_name(&field.name);
+                    let _ = write!(
+                        &mut definition,
+                        "{ident}: {clear} ? null : ({ident} ?? this.{ident}), "
+                    );
+                } else {
+                    let _ = write!(&mut definition, "{ident}: {ident} ?? this.{ident}, ");
+                }
             }
             let _ = writeln!(&mut definition, ");");
         }
@@ -523,6 +557,28 @@ impl DartSource {
 
         name
     }
+}
+
+/// Whether `option<inner>` is represented as a nullable Dart type. Options of
+/// options can't be, since `T??` collapses, so those keep the `Option` wrapper
+/// of `package:wasm_components`.
+pub fn option_is_nullable(resolve: &Resolve, inner: &Type) -> bool {
+    let mut current = *inner;
+    loop {
+        match current {
+            Type::Id(id) => match &resolve.types[id].kind {
+                TypeDefKind::Option(_) => return false,
+                TypeDefKind::Type(next) => current = *next,
+                _ => return true,
+            },
+            _ => return true,
+        }
+    }
+}
+
+/// The name of the `copyWith` flag that resets the optional field [wit_name].
+pub fn clear_flag_name(wit_name: &str) -> String {
+    format!("clear{}", wit_name.to_upper_camel_case())
 }
 
 impl Display for DartSource {
@@ -669,10 +725,15 @@ impl DartDefinition {
                 self.0.push_str(&name);
             }
             TypeDefKind::Option(inner) => {
-                self.imported_identifier(dart, KnownDartUri::PkgWasmComponents, "Option");
-                self.0.push_str("<");
-                self.write_dart_type(dart, resolve, inner);
-                self.0.push_str(">");
+                if option_is_nullable(resolve, inner) {
+                    self.write_dart_type(dart, resolve, inner);
+                    self.0.push_str("?");
+                } else {
+                    self.imported_identifier(dart, KnownDartUri::PkgWasmComponents, "Option");
+                    self.0.push_str("<");
+                    self.write_dart_type(dart, resolve, inner);
+                    self.0.push_str(">");
+                }
             }
             TypeDefKind::Result(result) => {
                 self.imported_identifier(dart, KnownDartUri::PkgWasmComponents, "Result");

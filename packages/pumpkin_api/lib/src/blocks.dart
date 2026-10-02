@@ -1,4 +1,3 @@
-import 'package:wasm_components/wasm_components.dart' show Option;
 
 import 'bindings.g.dart';
 
@@ -13,7 +12,6 @@ String normalizeRegistryKey(String key) =>
 bool registryKeysMatch(String a, String b) =>
     normalizeRegistryKey(a) == normalizeRegistryKey(b);
 
-T? _orNull<T>(Option<T> option) => option.hasValue ? option.requireValue() : null;
 
 /// Lookups in the server's block registry.
 ///
@@ -27,26 +25,26 @@ abstract final class BlockRegistry {
   /// The block registered under [key] (`stone` or `minecraft:stone`), or
   /// `null` if there is none.
   static Block? of(String key) =>
-      _orNull(world.getBlockByName(name: normalizeRegistryKey(key)));
+      world.getBlockByName(name: normalizeRegistryKey(key));
 
   /// Like [of], but throws an [ArgumentError] for unknown keys.
   static Block require(String key) =>
       of(key) ?? (throw ArgumentError.value(key, 'key', 'Unknown block'));
 
   /// The block with the numeric [id], or `null`.
-  static Block? fromId(int id) => _orNull(world.getBlockById(id: id));
+  static Block? fromId(int id) => world.getBlockById(id: id);
 
   /// The block that owns the block state [stateId], or `null`.
   static Block? fromStateId(int stateId) =>
-      _orNull(world.getBlockFromStateId(stateId: stateId));
+      world.getBlockFromStateId(stateId: stateId);
 
   /// The block state with the numeric [stateId], or `null`.
   static BlockState? stateFromId(int stateId) =>
-      _orNull(world.getBlockStateById(stateId: stateId));
+      world.getBlockStateById(stateId: stateId);
 
   /// The default state of the block with the numeric [blockId], or `null`.
   static BlockState? defaultStateOfId(int blockId) =>
-      _orNull(world.getDefaultStateFromBlockId(blockId: blockId));
+      world.getDefaultStateFromBlockId(blockId: blockId);
 
   /// Every state of the block with the numeric [blockId].
   static List<BlockState> statesOfId(int blockId) =>
@@ -71,17 +69,15 @@ abstract final class BlockRegistry {
     String key, [
     Map<String, String> properties = const {},
   ]) {
-    return _orNull(
-      world.resolveBlockState(
-        name: normalizeRegistryKey(key),
-        properties: [for (final e in properties.entries) (e.key, e.value)],
-      ),
+    return world.resolveBlockState(
+      name: normalizeRegistryKey(key),
+      properties: [for (final e in properties.entries) (e.key, e.value)],
     );
   }
 
   /// The block name and properties of the state [stateId], or `null`.
   static BlockStateInfo? stateInfo(int stateId) =>
-      _orNull(world.blockStateToInfo(stateId: stateId));
+      world.blockStateToInfo(stateId: stateId);
 }
 
 /// Conveniences for [Block].

@@ -86,6 +86,7 @@ Objects from the server (`Player`, `World`, ...) are only valid until the
 callback that received them returns; call `keep()` to hold on to one. Callbacks
 can be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
 [docs/lifetimes.md](docs/lifetimes.md) and [docs/async.md](docs/async.md).
+[docs/generated-api.md](docs/generated-api.md) explains how WIT maps to Dart (`T?`, properties, mob views).
 [docs/runtime.md](docs/runtime.md) lists what the Dart core libraries support
 (`RegExp`, `double` formatting, `jsonDecode`, ...), and
 [docs/architecture.md](docs/architecture.md) shows how everything fits together.

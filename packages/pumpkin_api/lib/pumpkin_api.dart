@@ -30,7 +30,6 @@ export 'src/persistent_data.dart';
 export 'src/advancements.dart';
 export 'src/attributes.dart';
 export 'src/display.dart';
-export 'src/mobs.dart';
 export 'src/player_ext.dart';
 export 'src/server_list_ping.dart';
 export 'src/uuid_ext.dart';

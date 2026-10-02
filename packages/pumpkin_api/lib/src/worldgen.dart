@@ -34,19 +34,9 @@ extension WorldGeneration on World {
   }
 }
 
+/// Shortcuts for [ChunkBuffer]. Its position and size (`x`, `z`, `minY`,
+/// `height`) are properties of the buffer itself.
 extension ChunkBufferApi on ChunkBuffer {
-  /// The chunk's x coordinate, in chunks.
-  int get x => getX();
-
-  /// The chunk's z coordinate, in chunks.
-  int get z => getZ();
-
-  /// The lowest block y coordinate of the world.
-  int get minY => getMinY();
-
-  /// The height of the chunk in blocks.
-  int get height => getHeight();
-
   /// Sets the block state at chunk-local `(x, y, z)`.
   void setBlock(int x, int y, int z, int stateId) =>
       setBlockStateId(x: x, y: y, z: z, stateId: stateId);

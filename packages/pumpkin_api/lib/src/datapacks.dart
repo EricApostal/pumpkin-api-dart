@@ -39,7 +39,7 @@ extension DatapackManagerHelpers on DatapackManager {
   /// The datapack called [name] (name or id), or `null`.
   DatapackInfo? operator [](String name) {
     final pack = getPack(name: name);
-    return pack.hasValue ? pack.requireValue() : null;
+    return pack;
   }
 
   /// Whether the datapack [name] is enabled.

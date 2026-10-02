@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::{fmt::Write, mem};
 
-use crate::dart_source::dart_ident;
+use crate::dart_source::{dart_ident, option_is_nullable};
 use wit_bindgen_core::abi::{Bitcast, WasmType};
 use wit_bindgen_core::wit_parser::{Alignment, ArchitectureSize, Handle};
 use wit_bindgen_core::{
@@ -446,12 +446,27 @@ impl<'a> Bindgen for DartFunctionGenerator<'a> {
                 let (none, _, _) = self.blocks.pop().unwrap();
 
                 let has_value = operands.pop().unwrap();
-                let components = self.dart.import(KnownDartUri::PkgWasmComponents);
-                uwrite!(self.definition, "final {components}.Option<");
-                self.definition.write_dart_type(self.dart, resolve, payload);
-                uwriteln!(
-                    self.definition,
-                    "> {tmp};
+                if option_is_nullable(resolve, payload) {
+                    self.definition.write_dart_type(self.dart, resolve, payload);
+                    uwriteln!(
+                        self.definition,
+                        "? {tmp};
+if ({has_value}.toBool()) {{
+  {some}
+  {tmp} = {};
+}} else {{
+  {none}
+  {tmp} = null;
+}}",
+                        some_results[0]
+                    );
+                } else {
+                    let components = self.dart.import(KnownDartUri::PkgWasmComponents);
+                    uwrite!(self.definition, "final {components}.Option<");
+                    self.definition.write_dart_type(self.dart, resolve, payload);
+                    uwriteln!(
+                        self.definition,
+                        "> {tmp};
 if ({has_value}.toBool()) {{
   {some}
   {tmp} = {components}.Option.some({});
@@ -459,8 +474,9 @@ if ({has_value}.toBool()) {{
   {none}
   {tmp} = {components}.Option.none;
 }}",
-                    some_results[0]
-                );
+                        some_results[0]
+                    );
+                }
 
                 results.push(tmp);
             }
@@ -483,10 +499,17 @@ if ({has_value}.toBool()) {{
 
                 let payload_var = some_payload_name
                     .expect("OptionLower's some-block should have a payload name");
-                uwriteln!(self.definition, "if ({value}.hasValue) {{");
-                uwrite!(self.definition, "final {payload_var} = ");
-                let _ = payload; // payload type only needed for documentation here
-                uwriteln!(self.definition, "{value}.requireValue();");
+                if option_is_nullable(resolve, payload) {
+                    // Read the value once, so promotion to non-null works.
+                    let checked = self.temporary_variable();
+                    uwriteln!(self.definition, "final {checked} = {value};");
+                    uwriteln!(self.definition, "if ({checked} != null) {{");
+                    uwriteln!(self.definition, "final {payload_var} = {checked};");
+                } else {
+                    uwriteln!(self.definition, "if ({value}.hasValue) {{");
+                    uwrite!(self.definition, "final {payload_var} = ");
+                    uwriteln!(self.definition, "{value}.requireValue();");
+                }
                 uwriteln!(self.definition, "{some}");
                 for (v, name) in some_results.iter().zip(&result_names) {
                     uwriteln!(self.definition, "{name} = {v};");

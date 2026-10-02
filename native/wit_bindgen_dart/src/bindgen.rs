@@ -1,6 +1,6 @@
 use anyhow::Result;
 use heck::ToUpperCamelCase;
-use crate::dart_source::dart_ident;
+use crate::dart_source::{dart_ident, option_is_nullable};
 use serde::Serialize;
 use std::{borrow::Cow, fmt::Write, rc::Rc};
 use wit_bindgen_core::{
@@ -240,6 +240,7 @@ impl DartWorldGenerator {
         self.write_resource_header(&mut body, id, &class_name, &def.docs);
 
         let interface = &resolve.interfaces[owner_iface];
+        let mut accessors = ResourceAccessors::default();
         for (name, function) in &interface.functions {
             let resource_id = match function.kind {
                 FunctionKind::Method(rid) | FunctionKind::AsyncMethod(rid) => Some((rid, true)),
@@ -348,11 +349,291 @@ impl DartWorldGenerator {
                     options,
                 });
             }
+
+            accessors.method_idents.push(dart_ident(short_name));
+            if is_method && !is_async && !is_constructor {
+                self.collect_accessor(&mut accessors, resolve, short_name, function);
+            }
         }
 
+        self.write_property_accessors(&mut body, &accessors);
         let _ = writeln!(body, "}}");
         self.main.consume_definition(body);
+
+        self.generate_views(resolve, id, &class_name, &accessors);
     }
+
+    fn type_string(&mut self, resolve: &Resolve, ty: &Type) -> String {
+        let mut scratch = DartDefinition::default();
+        scratch.write_dart_type(&mut self.main, resolve, ty);
+        scratch.take_code()
+    }
+
+    /// Records `get-x` / `set-x` methods so they can be exposed as properties.
+    fn collect_accessor(
+        &mut self,
+        accessors: &mut ResourceAccessors,
+        resolve: &Resolve,
+        short_name: &str,
+        function: &Function,
+    ) {
+        if let Some(rest) = short_name.strip_prefix("get-") {
+            if function.params.len() == 1 {
+                if let Some(result) = &function.result {
+                    let ty = self.type_string(resolve, result);
+                    accessors.getters.push(GetterInfo {
+                        property: dart_ident(rest),
+                        method: dart_ident(short_name),
+                        ty,
+                        result: *result,
+                        docs: function.docs.clone(),
+                    });
+                }
+            }
+        } else if let Some(rest) = short_name.strip_prefix("set-") {
+            if function.params.len() == 2 {
+                let returns_bool = match &function.result {
+                    None => false,
+                    Some(Type::Bool) => true,
+                    // Setters that report errors can't be property setters.
+                    Some(_) => return,
+                };
+                let ty = self.type_string(resolve, &function.params[1].ty);
+                accessors.setters.push(SetterInfo {
+                    property: dart_ident(rest),
+                    method: dart_ident(short_name),
+                    parameter: dart_ident(&function.params[1].name),
+                    ty,
+                    returns_bool,
+                });
+            }
+        }
+    }
+
+    /// Emits `T get foo => getFoo();` (and the setter, when there's a matching
+    /// `set-foo`) for every getter that doesn't collide with another member.
+    fn write_property_accessors(&self, body: &mut DartDefinition, accessors: &ResourceAccessors) {
+        const RESERVED: &[&str] = &[
+            "isValid",
+            "isOwned",
+            "dispose",
+            "hashCode",
+            "runtimeType",
+            "toString",
+            "resourceHandle",
+            "takeHandle",
+            "keep",
+        ];
+        for getter in &accessors.getters {
+            if accessors.method_idents.contains(&getter.property)
+                || RESERVED.contains(&getter.property.as_str())
+            {
+                continue;
+            }
+            body.write_docs(&getter.docs);
+            let _ = writeln!(body, "{} get {} => {}();", getter.ty, getter.property, getter.method);
+            let setter = accessors
+                .setters
+                .iter()
+                .find(|s| s.property == getter.property && s.ty == getter.ty && !s.returns_bool);
+            if let Some(setter) = setter {
+                let _ = writeln!(
+                    body,
+                    "set {}({} value) {{ {}({}: value); }}",
+                    getter.property, setter.ty, setter.method, setter.parameter
+                );
+            }
+        }
+    }
+
+    /// For a `get-x-data`/`set-x-data` pair over a variant whose cases hold
+    /// records, generates one view type per case: the resource, known to be of
+    /// that case, with the record's fields as properties.
+    fn generate_views(
+        &mut self,
+        resolve: &Resolve,
+        owner_id: TypeId,
+        class_name: &str,
+        accessors: &ResourceAccessors,
+    ) {
+        for getter in &accessors.getters {
+            if !getter.property.ends_with("Data") {
+                continue;
+            }
+            let Type::Id(result_id) = getter.result else { continue };
+            let variant_id = DartSource::resolve_alias_chain(resolve, result_id);
+            let TypeDefKind::Variant(variant) = &resolve.types[variant_id].kind else {
+                continue;
+            };
+            let Some(setter) = accessors
+                .setters
+                .iter()
+                .find(|s| s.property == getter.property && s.ty == getter.ty)
+            else {
+                continue;
+            };
+
+            let mut cast_methods = Vec::new();
+            for case in &variant.cases {
+                let Some(Type::Id(payload)) = case.ty else { continue };
+                let record_id = DartSource::resolve_alias_chain(resolve, payload);
+                let TypeDefKind::Record(record) = &resolve.types[record_id].kind else {
+                    continue;
+                };
+
+                let case_class = self.main.variant_case_name(resolve, variant_id, &case.name);
+                let record_class = self.main.named_type(resolve, record_id);
+                let view = self
+                    .main
+                    .reserve_extra_name(heck::ToUpperCamelCase::to_upper_camel_case(case.name.as_str()), "View");
+
+                let mut def = DartDefinition::default();
+                let _ = writeln!(
+                    def,
+                    "/// A [{class_name}] known to be of kind `{}`: its `{}` fields as properties.\n\
+                     /// Get one with `as{view}()` or [{view}.tryFrom].",
+                    case.name, case.name
+                );
+                let _ = writeln!(
+                    def,
+                    "extension type {view}._({class_name} {owner}) implements {class_name} {{",
+                    owner = "base"
+                );
+                let _ = writeln!(
+                    def,
+                    "  /// Views [base] as `{}`, or returns null if it is another kind.\n  static {view}? tryFrom({class_name} base) => base.{}() is {case_class} ? {view}._(base) : null;",
+                    case.name, getter.method
+                );
+                let _ = writeln!(
+                    def,
+                    "  /// All data of this kind.\n  {record_class} get data => (base.{}() as {case_class}).value;",
+                    getter.method
+                );
+                if setter.returns_bool {
+                    let _ = writeln!(
+                        def,
+                        "  set data({record_class} value) {{\n    if (!base.{}({}: {case_class}(value))) {{\n      throw StateError('The host rejected the update of {view} data.');\n    }}\n  }}",
+                        setter.method, setter.parameter
+                    );
+                } else {
+                    let _ = writeln!(
+                        def,
+                        "  set data({record_class} value) {{ base.{}({}: {case_class}(value)); }}",
+                        setter.method, setter.parameter
+                    );
+                }
+                for field in &record.fields {
+                    let ident = dart_ident(&field.name);
+                    let ty = self.type_string(resolve, &field.ty);
+                    let is_option = matches!(field.ty, Type::Id(id) if matches!(&resolve.types[id].kind, TypeDefKind::Option(inner) if option_is_nullable(resolve, inner)));
+                    def.write_docs(&field.docs);
+                    let _ = writeln!(def, "  {ty} get {ident} => data.{ident};");
+                    if is_option {
+                        let clear = crate::dart_source::clear_flag_name(&field.name);
+                        let _ = writeln!(
+                            def,
+                            "  set {ident}({ty} value) => data = data.copyWith({ident}: value, {clear}: value == null);"
+                        );
+                    } else {
+                        let _ = writeln!(
+                            def,
+                            "  set {ident}({ty} value) => data = data.copyWith({ident}: value);"
+                        );
+                    }
+                }
+                let _ = writeln!(def, "}}");
+                self.main.consume_definition(def);
+                cast_methods.push((view, case.name.clone()));
+            }
+
+            if cast_methods.is_empty() {
+                continue;
+            }
+
+            // `asZombie()` on the resource itself...
+            let extension = self.main.reserve_extra_name(format!("{class_name}Views"), "Ext");
+            let mut def = DartDefinition::default();
+            let _ = writeln!(def, "extension {extension} on {class_name} {{");
+            for (view, _) in &cast_methods {
+                if accessors.method_idents.contains(&format!("as{view}")) {
+                    continue;
+                }
+                let _ = writeln!(
+                    def,
+                    "  /// This as a [{view}], or null if it is another kind.\n  {view}? as{view}() => {view}.tryFrom(this);"
+                );
+            }
+            let _ = writeln!(def, "}}");
+            self.main.consume_definition(def);
+
+            // ... and on resources that can be turned into it with `as-<resource>`.
+            let owner_wit_name = resolve.types[owner_id].name.clone().unwrap_or_default();
+            let converter = format!("as-{owner_wit_name}");
+            let mut others: Vec<(TypeId, String)> = Vec::new();
+            for (_, iface) in &resolve.interfaces {
+                for (fname, function) in &iface.functions {
+                    let FunctionKind::Method(rid) = function.kind else { continue };
+                    if rid == owner_id || resource_function_short_name(fname) != converter {
+                        continue;
+                    }
+                    let Some(Type::Id(result)) = function.result else { continue };
+                    let TypeDefKind::Option(Type::Id(inner)) = &resolve.types[result].kind else {
+                        continue;
+                    };
+                    // An `option<resource>` holds a handle type, not the resource.
+                    let mut target = DartSource::resolve_alias_chain(resolve, *inner);
+                    if let TypeDefKind::Handle(handle) = &resolve.types[target].kind {
+                        let (wit_bindgen_core::wit_parser::Handle::Own(h)
+                        | wit_bindgen_core::wit_parser::Handle::Borrow(h)) = handle;
+                        target = DartSource::resolve_alias_chain(resolve, *h);
+                    }
+                    if target == owner_id {
+                        others.push((rid, dart_ident(&converter)));
+                    }
+                }
+            }
+            for (other_id, converter_ident) in others {
+                let other_class = self.main.named_type(resolve, other_id);
+                let extension = self
+                    .main
+                    .reserve_extra_name(format!("{other_class}{class_name}Views"), "Ext");
+                let mut def = DartDefinition::default();
+                let _ = writeln!(def, "extension {extension} on {other_class} {{");
+                for (view, _) in &cast_methods {
+                    let _ = writeln!(
+                        def,
+                        "  /// This as a [{view}], or null if it is not a {class_name} of that kind.\n  {view}? as{view}() => {converter_ident}()?.as{view}();"
+                    );
+                }
+                let _ = writeln!(def, "}}");
+                self.main.consume_definition(def);
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+struct ResourceAccessors {
+    /// The Dart names of every method of the resource.
+    method_idents: Vec<String>,
+    getters: Vec<GetterInfo>,
+    setters: Vec<SetterInfo>,
+}
+
+struct GetterInfo {
+    property: String,
+    method: String,
+    ty: String,
+    result: Type,
+    docs: wit_bindgen_core::wit_parser::Docs,
+}
+
+struct SetterInfo {
+    property: String,
+    method: String,
+    parameter: String,
+    ty: String,
+    returns_bool: bool,
 }
 
 impl WorldGenerator for DartWorldGenerator {

@@ -1,9 +1,4 @@
-import 'package:wasm_components/wasm_components.dart' as wc;
-
 import 'bindings.g.dart';
-
-T? _orNull<T>(wc.Option<T> option) =>
-    option.hasValue ? option.requireValue() : null;
 
 /// Builds a [DisplayTransformation] starting from the identity.
 ///
@@ -62,33 +57,29 @@ final class TransformationBuilder {
 /// handle that is released at the end of the current host callback.
 extension EntityDisplayViews on Entity {
   /// This entity as a display entity, or null.
-  DisplayEntity? asDisplay() => _orNull(DisplayEntity.fromEntity(entity: this));
+  DisplayEntity? asDisplay() => DisplayEntity.fromEntity(entity: this);
 
   /// This entity as a block display, or null.
   BlockDisplayEntity? asBlockDisplay() =>
-      _orNull(BlockDisplayEntity.fromEntity(entity: this));
+      BlockDisplayEntity.fromEntity(entity: this);
 
   /// This entity as an item display, or null.
   ItemDisplayEntity? asItemDisplay() =>
-      _orNull(ItemDisplayEntity.fromEntity(entity: this));
+      ItemDisplayEntity.fromEntity(entity: this);
 
   /// This entity as a text display, or null.
   TextDisplayEntity? asTextDisplay() =>
-      _orNull(TextDisplayEntity.fromEntity(entity: this));
+      TextDisplayEntity.fromEntity(entity: this);
 
   /// This entity as an interaction entity, or null.
   InteractionEntity? asInteraction() =>
-      _orNull(InteractionEntity.fromEntity(entity: this));
+      InteractionEntity.fromEntity(entity: this);
 }
 
-/// Properties shared by all display entities.
-extension DisplayEntityProps on DisplayEntity {
-  /// The transformation applied to the displayed content.
-  DisplayTransformation get transformation => getTransformation();
-
-  set transformation(DisplayTransformation value) =>
-      setTransformation(transformation: value);
-
+/// Shortcuts for the transformation of a display entity. The entity's other
+/// settings (`billboard`, `viewRange`, `shadowRadius`, ...) are properties of
+/// [DisplayEntity] itself.
+extension DisplayEntityTransformation on DisplayEntity {
   /// Sets only the translation, keeping the rest of the transformation.
   void setTranslation(double x, double y, double z) =>
       transformation = transformation.copyWith(
@@ -100,125 +91,9 @@ extension DisplayEntityProps on DisplayEntity {
       transformation = transformation.copyWith(
         scale: Vector3f(x: x, y: y, z: z),
       );
-
-  /// Ticks over which transformation changes are interpolated.
-  int get interpolationDuration => getInterpolationDuration();
-  set interpolationDuration(int value) =>
-      setInterpolationDuration(duration: value);
-
-  /// Ticks of delay before interpolation starts.
-  int get interpolationStart => getInterpolationStart();
-  set interpolationStart(int value) => setInterpolationStart(deltaTicks: value);
-
-  /// Ticks over which teleports are interpolated.
-  int get teleportDuration => getTeleportDuration();
-  set teleportDuration(int value) => setTeleportDuration(duration: value);
-
-  /// How the display rotates to face the viewer.
-  BillboardMode get billboard => getBillboard();
-  set billboard(BillboardMode value) => setBillboard(mode: value);
-
-  /// Distance multiplier at which the display is visible.
-  double get viewRange => getViewRange();
-  set viewRange(double value) => setViewRange(range: value);
-
-  /// Radius of the shadow.
-  double get shadowRadius => getShadowRadius();
-  set shadowRadius(double value) => setShadowRadius(radius: value);
-
-  /// Strength (opacity) of the shadow.
-  double get shadowStrength => getShadowStrength();
-  set shadowStrength(double value) => setShadowStrength(strength: value);
-
-  /// Width of the culling bounding box.
-  double get displayWidth => getDisplayWidth();
-  set displayWidth(double value) => setDisplayWidth(width: value);
-
-  /// Height of the culling bounding box.
-  double get displayHeight => getDisplayHeight();
-  set displayHeight(double value) => setDisplayHeight(height: value);
-
-  /// Glow outline color override as an RGB int (-1 for none).
-  int get glowColorOverride => getGlowColorOverride();
-  set glowColorOverride(int value) => setGlowColorOverride(color: value);
-
-  /// Packed brightness override (-1 for none).
-  int get brightness => getBrightness();
-  set brightness(int value) => setBrightness(brightness: value);
 }
 
-/// Properties of block displays.
-extension BlockDisplayProps on BlockDisplayEntity {
-  /// The displayed block state id.
-  int get blockStateId => getBlockStateId();
-  set blockStateId(int value) => setBlockStateId(stateId: value);
-}
-
-/// Properties of item displays.
-extension ItemDisplayProps on ItemDisplayEntity {
-  /// The displayed item, or null. Setting consumes the given [ItemStack]
-  /// (do not use it afterwards); set null to clear.
-  ItemStack? get item => _orNull(getItem());
-  set item(ItemStack? value) =>
-      setItem(item: value == null ? wc.Option.none : wc.Option.some(value));
-
-  /// How the item is rendered.
-  ItemDisplayMode get displayMode => getItemDisplayMode();
-  set displayMode(ItemDisplayMode value) => setItemDisplayMode(mode: value);
-}
-
-/// Properties of text displays.
-extension TextDisplayProps on TextDisplayEntity {
+extension TextDisplayText on TextDisplayEntity {
   /// Sets the text from a plain string.
   set plainText(String text) => setText(text: TextComponent.text(plain: text));
-
-  /// Maximum line width before wrapping.
-  int get lineWidth => getLineWidth();
-  set lineWidth(int value) => setLineWidth(width: value);
-
-  /// Background color as ARGB.
-  int get background => getBackground();
-  set background(int value) => setBackground(color: value);
-
-  /// Text opacity (0 to 255; values above 127 are signed bytes).
-  int get textOpacity => getTextOpacity();
-  set textOpacity(int value) => setTextOpacity(opacity: value);
-
-  /// Whether the text casts a shadow.
-  bool get shadow => getShadow();
-  set shadow(bool value) => setShadow(shadow: value);
-
-  /// Whether the text can be seen through blocks.
-  bool get seeThrough => getSeeThrough();
-  set seeThrough(bool value) => setSeeThrough(seeThrough: value);
-
-  /// Whether the default background is used.
-  bool get defaultBackground => getDefaultBackground();
-  set defaultBackground(bool value) =>
-      setDefaultBackground(defaultBackground: value);
-
-  /// Text alignment.
-  TextAlignment get alignment => getAlignment();
-  set alignment(TextAlignment value) => setAlignment(alignment: value);
-}
-
-/// Properties of interaction entities.
-extension InteractionProps on InteractionEntity {
-  /// Width of the hitbox.
-  double get width => getWidth();
-  set width(double value) => setWidth(width: value);
-
-  /// Height of the hitbox.
-  double get height => getHeight();
-  set height(double value) => setHeight(height: value);
-
-  /// Whether interactions play the client swing animation.
-  bool get response => getResponse();
-  set response(bool value) => setResponse(response: value);
-
-  /// UUID of the last attacker, if any.
-  Uuid? get lastAttacker => _orNull(getLastAttacker());
-
-  /// UUID of the last interacting entity, if any.
-  Uuid? get lastInteraction => _orNull(getLastInteraction());
 }

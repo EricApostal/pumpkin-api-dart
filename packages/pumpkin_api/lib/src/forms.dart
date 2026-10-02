@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:wasm_components/wasm_components.dart' show Option;
 
 import 'bindings.g.dart';
 import 'events.dart';
@@ -53,7 +52,7 @@ final class SimpleFormBuilder {
         for (final (text, image) in _buttons)
           SimpleFormButton(
             text: _formText(text),
-            image: image == null ? Option.none : Option.some(image),
+            image: image,
           ),
       ],
     ),
@@ -242,7 +241,7 @@ extension FormContextApi on Context {
       if (index < 0) return;
       final pending = _pendingForms.removeAt(index);
       pending.handler(
-        FormResponse.parse(event.responseData.hasValue ? event.responseData.requireValue() : null),
+        FormResponse.parse(event.responseData),
       );
     });
   }
@@ -252,8 +251,8 @@ extension FormPlayerApi on Player {
   /// Whether this player is connected through Bedrock Edition and can see forms.
   bool get isBedrock {
     final bedrock = asBedrock();
-    if (!bedrock.hasValue) return false;
-    bedrock.requireValue().dispose();
+    if (bedrock == null) return false;
+    bedrock.dispose();
     return true;
   }
 
@@ -276,15 +275,14 @@ extension FormPlayerApi on Player {
       throw StateError('Call Context.handleFormResponses() in onLoad before showing forms.');
     }
     final bedrock = asBedrock();
-    if (!bedrock.hasValue) {
+    if (bedrock == null) {
       throw StateError('Forms can only be shown to Bedrock players.');
     }
-    final handle = bedrock.requireValue();
     final int id;
     try {
-      id = handle.openForm(form: form);
+      id = bedrock.openForm(form: form);
     } finally {
-      handle.dispose();
+      bedrock.dispose();
     }
     _pendingForms.add(_PendingForm(id, getName(), onResponse));
   }

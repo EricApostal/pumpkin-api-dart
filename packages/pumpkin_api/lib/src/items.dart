@@ -1,9 +1,7 @@
-import 'package:wasm_components/wasm_components.dart' show Option;
 
 import 'bindings.g.dart';
 import 'blocks.dart';
 
-T? _orNull<T>(Option<T> option) => option.hasValue ? option.requireValue() : null;
 
 TextComponent _text(Object text) => switch (text) {
   final String s => TextComponent.text(plain: s),
@@ -39,7 +37,7 @@ abstract final class ItemStacks {
       registryKey: normalizeRegistryKey(key),
       count: count,
     );
-    if (name != null) stack.setCustomName(name: Option.some(_text(name)));
+    if (name != null) stack.setCustomName(name: _text(name));
     for (final line in lore) {
       stack.addLore(line: _text(line));
     }
@@ -61,24 +59,10 @@ extension ItemStackHelpers on ItemStack {
   /// `minecraft:diamond`).
   bool matches(String key) => registryKeysMatch(getRegistryKey(), key);
 
-  /// The number of items in the stack.
-  int get count => getCount();
-
-  set count(int value) => setCount(count: value);
-
-  /// How many items fit in this stack.
-  int get maxCount => getMaxCount();
-
-  /// Whether the stack holds [maxCount] items.
+  /// Whether the stack holds [maxCount] items. (`count`, `maxCount` and
+  /// `customName` are properties of [ItemStack] itself; setting a custom name
+  /// consumes the component.)
   bool get isFull => getCount() >= getMaxCount();
-
-  /// The custom name, or `null` if there is none.
-  TextComponent? get customName => _orNull(getCustomName());
-
-  /// Sets the custom name, or removes it when `null`. The component is
-  /// consumed.
-  set customName(TextComponent? value) =>
-      setCustomName(name: value == null ? Option.none : Option.some(value));
 
   /// Sets the custom name to the plain [text].
   void setName(String text) => customName = TextComponent.text(plain: text);
@@ -112,6 +96,6 @@ extension ItemStackHelpers on ItemStack {
   /// The level of the custom enchantment [id], or 0 if it is missing.
   int customEnchantmentLevel(String id) {
     final level = getCustomEnchantmentLevel(enchantmentId: id);
-    return level.hasValue ? level.requireValue() : 0;
+    return level ?? 0;
   }
 }

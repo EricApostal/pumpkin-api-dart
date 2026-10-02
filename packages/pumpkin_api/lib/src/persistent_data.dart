@@ -1,4 +1,3 @@
-import 'package:wasm_components/wasm_components.dart' show Option;
 
 import 'bindings.g.dart';
 
@@ -188,14 +187,13 @@ final class PersistentData {
   };
 }
 
-NbtTree? _unwrap(Option<NbtTree> option) => option.hasValue ? option.requireValue() : null;
 
 extension ItemStackPersistentData on ItemStack {
   /// Persistent data of this item in [namespace].
   PersistentData persistentData(String namespace) => PersistentData._(
     namespace,
     (ns, key, value) => setCustomData(namespace: ns, key: key, value: value),
-    (ns, key) => _unwrap(getCustomData(namespace: ns, key: key)),
+    (ns, key) => getCustomData(namespace: ns, key: key),
     (ns, key) => removeCustomData(namespace: ns, key: key),
     (ns, key) => hasCustomData(namespace: ns, key: key),
   );
@@ -206,7 +204,7 @@ extension EntityPersistentData on Entity {
   PersistentData persistentData(String namespace) => PersistentData._(
     namespace,
     (ns, key, value) => setCustomData(namespace: ns, key: key, value: value),
-    (ns, key) => _unwrap(getCustomData(namespace: ns, key: key)),
+    (ns, key) => getCustomData(namespace: ns, key: key),
     (ns, key) => removeCustomData(namespace: ns, key: key),
     (ns, key) => hasCustomData(namespace: ns, key: key),
   );
@@ -222,7 +220,7 @@ extension BlockEntityPersistentData on BlockEntity {
   PersistentData persistentData(String namespace) => PersistentData._(
     namespace,
     (ns, key, value) => setCustomData(namespace: ns, key: key, value: value),
-    (ns, key) => _unwrap(getCustomData(namespace: ns, key: key)),
+    (ns, key) => getCustomData(namespace: ns, key: key),
     (ns, key) => removeCustomData(namespace: ns, key: key),
     (ns, key) => hasCustomData(namespace: ns, key: key),
   );
@@ -233,7 +231,7 @@ extension ChunkPersistentData on Chunk {
   PersistentData persistentData(String namespace) => PersistentData._(
     namespace,
     (ns, key, value) => setCustomData(namespace: ns, key: key, value: value),
-    (ns, key) => _unwrap(getCustomData(namespace: ns, key: key)),
+    (ns, key) => getCustomData(namespace: ns, key: key),
     (ns, key) => removeCustomData(namespace: ns, key: key),
     (ns, key) => hasCustomData(namespace: ns, key: key),
   );
@@ -244,7 +242,7 @@ extension WorldPersistentData on World {
   PersistentData persistentData(String namespace) => PersistentData._(
     namespace,
     (ns, key, value) => setCustomData(namespace: ns, key: key, value: value),
-    (ns, key) => _unwrap(getCustomData(namespace: ns, key: key)),
+    (ns, key) => getCustomData(namespace: ns, key: key),
     (ns, key) => removeCustomData(namespace: ns, key: key),
     (ns, key) => hasCustomData(namespace: ns, key: key),
   );

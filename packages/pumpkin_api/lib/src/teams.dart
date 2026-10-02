@@ -71,8 +71,7 @@ final class ScoreboardTeam {
 
   /// The current settings, or `null` if the team doesn't exist.
   TeamSettings? get settings {
-    final value = scoreboard.getTeam(name: name);
-    return value.hasValue ? value.requireValue() : null;
+    return scoreboard.getTeam(name: name);
   }
 
   /// Replaces the team's settings. The [settings] are consumed.
@@ -84,7 +83,7 @@ final class ScoreboardTeam {
   }
 
   /// Whether the team exists on the scoreboard.
-  bool get exists => scoreboard.getTeam(name: name).hasValue;
+  bool get exists => scoreboard.getTeam(name: name) != null;
 
   /// The display name, or `null` if the team doesn't exist.
   TextComponent? get displayName => settings?.displayName;
@@ -162,7 +161,7 @@ extension ScoreboardTeams on Scoreboard {
 
   /// The team [name], or `null` if there is none.
   ScoreboardTeam? findTeam(String name) =>
-      getTeam(name: name).hasValue ? ScoreboardTeam(this, name) : null;
+      getTeam(name: name) != null ? ScoreboardTeam(this, name) : null;
 
   /// All teams of the scoreboard.
   List<ScoreboardTeam> get allTeams => [
@@ -172,14 +171,11 @@ extension ScoreboardTeams on Scoreboard {
   /// The team that the player or entity [member] belongs to, if any.
   ScoreboardTeam? teamOf(String member) {
     final name = getPlayerTeam(playerName: member);
-    return name.hasValue ? ScoreboardTeam(this, name.requireValue()) : null;
+    return name == null ? null : ScoreboardTeam(this, name);
   }
 }
 
 extension PlayerTeams on Player {
   /// The name of the team this player is on, or `null`.
-  String? get teamName {
-    final name = getTeam();
-    return name.hasValue ? name.requireValue() : null;
-  }
+  String? get teamName => getTeam();
 }

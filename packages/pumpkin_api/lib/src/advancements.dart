@@ -21,10 +21,6 @@ extension AdvancementProgressExt on AdvancementProgress {
 extension PlayerAdvancements on Player {
   /// The progress of [advancementId] (like `minecraft:story/mine_stone`), or
   /// null if the advancement does not exist.
-  AdvancementProgress? advancementProgress(String advancementId) {
-    final wc.Option<AdvancementProgress> progress = getAdvancementProgress(
-      advancementId: advancementId,
-    );
-    return progress.hasValue ? progress.requireValue() : null;
-  }
+  AdvancementProgress? advancementProgress(String advancementId) =>
+      getAdvancementProgress(advancementId: advancementId);
 }

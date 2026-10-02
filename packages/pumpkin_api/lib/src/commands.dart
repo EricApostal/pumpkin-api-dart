@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:wasm_components/wasm_components.dart' show Option, OkResult;
+import 'package:wasm_components/wasm_components.dart' show OkResult;
 
 import 'bindings.g.dart';
 import 'registry.dart';
@@ -62,14 +62,12 @@ abstract final class ArgumentTypes {
 
   /// A whole number, optionally limited to `[min, max]`.
   static CommandArgumentType integer({int? min, int? max}) =>
-      CommandArgumentTypeInteger((_option(min), _option(max)));
+      CommandArgumentTypeInteger((min, max));
 
   /// A decimal number, optionally limited to `[min, max]`.
   static CommandArgumentType number({double? min, double? max}) =>
-      CommandArgumentTypeDouble((_option(min), _option(max)));
+      CommandArgumentTypeDouble((min, max));
 
-  static Option<T> _option<T>(T? value) =>
-      value == null ? Option.none : Option.some(value);
 }
 
 extension CommandExecute on Command {

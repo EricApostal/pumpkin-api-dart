@@ -1,4 +1,3 @@
-import 'package:wasm_components/wasm_components.dart' show Option;
 
 import 'bindings.g.dart';
 
@@ -46,7 +45,6 @@ abstract final class Ingredients {
 ItemStack _outputStack(String item, int count) =>
     ItemStack.create(registryKey: _namespaced(item), count: count);
 
-Option<T> _option<T>(T? value) => value == null ? Option.none : Option.some(value);
 
 /// Builds a shaped crafting recipe. Ingredients are given as in
 /// [Ingredients.from]:
@@ -132,9 +130,9 @@ final class ShapedRecipeBuilder {
       pattern: List.of(_pattern),
       key: List.of(_keys),
       output: _outputStack(output, count),
-      group: _option(group),
-      category: _option(category),
-      showNotification: _option(showNotification),
+      group: group,
+      category: category,
+      showNotification: showNotification,
     );
   }
 
@@ -191,8 +189,8 @@ final class ShapelessRecipeBuilder {
     return ShapelessRecipe(
       ingredients: List.of(_ingredients),
       output: _outputStack(output, count),
-      group: _option(group),
-      category: _option(category),
+      group: group,
+      category: category,
     );
   }
 
@@ -272,8 +270,8 @@ final class CookingRecipeBuilder {
       output: _outputStack(output, count),
       experience: experience,
       cookingTime: cookingTime,
-      group: _option(group),
-      category: _option(category),
+      group: group,
+      category: category,
     );
   }
 

@@ -1,13 +1,8 @@
-import 'package:wasm_components/wasm_components.dart' as wc;
-
 import 'bindings.g.dart';
 
 /// Normalizes an item id: `diamond` becomes `minecraft:diamond`, ids that
 /// already have a namespace are kept.
 String _itemKey(String item) => item.contains(':') ? item : 'minecraft:$item';
-
-wc.Option<String> _someOrNone(String? value) =>
-    value == null ? wc.Option.none : wc.Option.some(value);
 
 /// Number of slots in an ender chest.
 const int enderChestSize = 27;
@@ -55,12 +50,10 @@ abstract final class BanOptions {
     bool kickIfOnline = true,
     bool logToConsole = true,
   }) => BanPlayerOptions(
-    reason: reason == null ? wc.Option.none : wc.Option.some(reason),
-    source: _someOrNone(source),
-    expiresAtUtc: _someOrNone(expiresAtUtc),
-    durationSeconds: duration == null
-        ? wc.Option.none
-        : wc.Option.some(duration.inSeconds),
+    reason: reason,
+    source: source,
+    expiresAtUtc: expiresAtUtc,
+    durationSeconds: duration?.inSeconds,
     kickIfOnline: kickIfOnline,
     logToConsole: logToConsole,
   );
@@ -74,12 +67,10 @@ abstract final class BanOptions {
     bool kickMatchingPlayers = true,
     bool logToConsole = true,
   }) => BanIpOptions(
-    reason: reason == null ? wc.Option.none : wc.Option.some(reason),
-    source: _someOrNone(source),
-    expiresAtUtc: _someOrNone(expiresAtUtc),
-    durationSeconds: duration == null
-        ? wc.Option.none
-        : wc.Option.some(duration.inSeconds),
+    reason: reason,
+    source: source,
+    expiresAtUtc: expiresAtUtc,
+    durationSeconds: duration?.inSeconds,
     kickMatchingPlayers: kickMatchingPlayers,
     logToConsole: logToConsole,
   );
@@ -90,10 +81,7 @@ extension PlayerEnderChest on Player {
   /// All [enderChestSize] slots of the ender chest; empty slots are null.
   List<ItemStack?> get enderChestItems => [
     for (var slot = 0; slot < enderChestSize; slot++)
-      () {
-        final item = getEnderChestItem(slot: slot);
-        return item.hasValue ? item.requireValue() : null;
-      }(),
+      getEnderChestItem(slot: slot),
   ];
 
   /// Fills the ender chest from [items] (null clears a slot; extra items are
@@ -103,10 +91,7 @@ extension PlayerEnderChest on Player {
     var slot = 0;
     for (final item in items) {
       if (slot >= enderChestSize) break;
-      setEnderChestItem(
-        slot: slot++,
-        stack: item == null ? wc.Option.none : wc.Option.some(item),
-      );
+      setEnderChestItem(slot: slot++, stack: item);
     }
   }
 }
@@ -120,10 +105,7 @@ extension PlayerCooldowns on Player {
 
   /// The remaining cooldown ticks for [item], or null if it is not cooling
   /// down.
-  int? getCooldown(String item) {
-    final ticks = getItemCooldown(itemId: _itemKey(item));
-    return ticks.hasValue ? ticks.requireValue() : null;
-  }
+  int? getCooldown(String item) => getItemCooldown(itemId: _itemKey(item));
 
   /// Whether [item] is currently cooling down.
   bool hasCooldown(String item) => hasItemCooldown(itemId: _itemKey(item));

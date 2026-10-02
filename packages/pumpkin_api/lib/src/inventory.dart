@@ -1,42 +1,30 @@
-import 'package:wasm_components/wasm_components.dart' show Option;
-
 import 'bindings.g.dart';
 import 'blocks.dart';
-
-T? _orNull<T>(Option<T> option) => option.hasValue ? option.requireValue() : null;
-
-Option<T> _opt<T>(T? value) => value == null ? Option.none : Option.some(value);
 
 /// Conveniences for [Inventory].
 ///
 /// Items put into an inventory are consumed: don't use an [ItemStack] again
 /// after passing it to `[]=`, [give], [items] or `setItem`.
 extension InventoryHelpers on Inventory {
-  /// The number of slots.
-  int get size => getSize();
-
   /// Whether at least one slot has an item.
   bool get isNotEmpty => !isEmpty();
 
   /// The item in [slot], or `null` if it is empty.
-  ItemStack? operator [](int slot) => _orNull(getItem(slot: slot));
+  ItemStack? operator [](int slot) => getItem(slot: slot);
 
   /// Puts [item] in [slot], or empties the slot when `null`. [item] is
   /// consumed.
   void operator []=(int slot, ItemStack? item) =>
-      setItem(slot: slot, item: _opt(item));
+      setItem(slot: slot, item: item);
 
   /// All slots, with `null` for the empty ones.
-  List<ItemStack?> get items => [
-    for (final item in getAllItems()) _orNull(item),
-  ];
+  List<ItemStack?> get items => getAllItems();
 
   /// Replaces every slot. Items are consumed.
-  set items(List<ItemStack?> value) =>
-      setAllItems(items: [for (final item in value) _opt(item)]);
+  set items(List<ItemStack?> value) => setAllItems(items: value);
 
   /// Removes and returns the item in [slot], or `null` if it was empty.
-  ItemStack? take(int slot) => _orNull(removeItem(slot: slot));
+  ItemStack? take(int slot) => removeItem(slot: slot);
 
   /// The number of items of the kind [key] (`diamond` or `minecraft:diamond`)
   /// in this inventory, counted over all stacks.
@@ -49,7 +37,7 @@ extension InventoryHelpers on Inventory {
   int get firstEmptySlot {
     final all = getAllItems();
     for (var i = 0; i < all.length; i++) {
-      if (!all[i].hasValue) return i;
+      if (all[i] == null) return i;
     }
     return -1;
   }
@@ -65,48 +53,20 @@ extension InventoryHelpers on Inventory {
   }
 }
 
-/// Conveniences for [PlayerInventory].
+/// Conveniences for [PlayerInventory]. The slots (`helmet`, `chestplate`,
+/// `leggings`, `boots`, `offHand`, `selectedSlot`) are properties of the
+/// inventory itself.
 ///
 /// Items assigned to a setter are consumed.
 extension PlayerInventoryHelpers on PlayerInventory {
   /// The 36 hotbar and storage slots.
   Inventory get storage => asInventory();
 
-  /// The selected hotbar slot, 0 to 8.
-  int get selectedSlot => getSelectedSlot();
-
-  set selectedSlot(int slot) => setSelectedSlot(slot: slot);
-
   /// The item in the selected hotbar slot, or `null`.
   ItemStack? get heldItem => storage[selectedSlot];
 
   set heldItem(ItemStack? item) => storage[selectedSlot] = item;
 
-  /// The worn helmet, or `null`.
-  ItemStack? get helmet => _orNull(getHelmet());
-
-  set helmet(ItemStack? item) => setHelmet(item: _opt(item));
-
-  /// The worn chestplate, or `null`.
-  ItemStack? get chestplate => _orNull(getChestplate());
-
-  set chestplate(ItemStack? item) => setChestplate(item: _opt(item));
-
-  /// The worn leggings, or `null`.
-  ItemStack? get leggings => _orNull(getLeggings());
-
-  set leggings(ItemStack? item) => setLeggings(item: _opt(item));
-
-  /// The worn boots, or `null`.
-  ItemStack? get boots => _orNull(getBoots());
-
-  set boots(ItemStack? item) => setBoots(item: _opt(item));
-
-  /// The item in the off hand, or `null`.
-  ItemStack? get offHand => _orNull(getOffHand());
-
-  set offHand(ItemStack? item) => setOffHand(item: _opt(item));
-
   /// The item in [hand], or `null`.
-  ItemStack? itemIn(Hand hand) => _orNull(getItemInHand(hand: hand));
+  ItemStack? itemIn(Hand hand) => getItemInHand(hand: hand);
 }

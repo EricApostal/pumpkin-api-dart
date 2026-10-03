@@ -411,10 +411,32 @@ impl DartSource {
         let mut definition = DartDefinition::default();
         definition.write_docs(&def.docs);
         let _ = writeln!(&mut definition, "enum {} {{", name);
-        for case in &enum_.cases {
+        let last = enum_.cases.len().saturating_sub(1);
+        for (i, case) in enum_.cases.iter().enumerate() {
             definition.write_docs(&case.docs);
-            let _ = writeln!(&mut definition, "  {},", dart_ident(&case.name));
+            let terminator = if i == last { ";" } else { "," };
+            let _ = writeln!(
+                &mut definition,
+                "  {}('{}'){terminator}",
+                dart_ident(&case.name),
+                case.name
+            );
         }
+        // Every enum can be converted to and from its name in the WIT, which
+        // is the form used by registries and config files.
+        let _ = writeln!(&mut definition, "  const {name}(this.wireName);");
+        let _ = writeln!(
+            &mut definition,
+            "  /// The name of this case in the WIT (kebab-case).\n  final String wireName;"
+        );
+        let _ = writeln!(
+            &mut definition,
+            "  /// The case called [wireName] in the WIT, or `null` if there is none.\n  static {name}? fromWireName(String wireName) => _byWireName[wireName];"
+        );
+        let _ = writeln!(
+            &mut definition,
+            "  static final Map<String, {name}> _byWireName = {{for (final value in values) value.wireName: value}};"
+        );
         let _ = writeln!(&mut definition, "}}");
         self.consume_definition(definition);
 
@@ -551,6 +573,19 @@ impl DartSource {
                 }
             }
             let _ = writeln!(&mut definition, ");");
+
+            // Events carry a `cancelled` flag: `event.cancel()` reads better
+            // than `event.copyWith(cancelled: true)`.
+            if record
+                .fields
+                .iter()
+                .any(|f| f.name == "cancelled" && matches!(f.ty, Type::Bool))
+            {
+                let _ = writeln!(
+                    &mut definition,
+                    "  /// This event, cancelled.\n  {name} cancel() => copyWith(cancelled: true);"
+                );
+            }
         }
         let _ = writeln!(&mut definition, "}}");
         self.consume_definition(definition);

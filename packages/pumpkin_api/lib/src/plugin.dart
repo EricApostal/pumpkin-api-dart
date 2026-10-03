@@ -1,6 +1,8 @@
+import 'command_builder.dart' show commandNamespace;
 import 'dart:async';
 
-import 'package:wasm_components/wasm_components.dart' show Result, printHandler;
+import 'package:wasm_components/wasm_components.dart'
+    show ResourceKeep, Result, printHandler;
 
 import 'src_exports.dart';
 
@@ -55,6 +57,15 @@ abstract class Plugin {
 
   PluginInfo get info;
 
+  Context? _context;
+
+  /// The context the server gave to [onLoad], valid for as long as the plugin
+  /// is loaded. Unlike the `context` parameter of [onLoad] it can be used from
+  /// later callbacks, to register events or commands at runtime and to wait for
+  /// events with `context.next(...)`.
+  Context get context =>
+      _context ?? (throw StateError('The plugin has not been loaded yet.'));
+
   /// Called when the server loads the plugin. Register commands, event
   /// handlers and tasks here. Throwing aborts loading the plugin.
   ///
@@ -67,15 +78,17 @@ abstract class Plugin {
 
   /// Called when another plugin sends this plugin a message. Return the reply,
   /// or throw to report an error to the sender.
-  List<int> onMessage(String sender, List<int> message) {
-    throw UnsupportedError('This plugin does not accept messages.');
-  }
+  ///
+  /// By default, messages go to the handlers registered with `IpcChannel.handle`.
+  List<int> onMessage(String sender, List<int> message) =>
+      handleIpc(sender, message);
 }
 
 /// Registers [plugin] with the server. Call this from `main`.
 void runPlugin(Plugin plugin) {
   // `print` writes to the server log.
   printHandler = logger.info;
+  commandNamespace = plugin.info.name;
   definePlugin(exports: _Exports(plugin), metadata: _Metadata(plugin));
 }
 
@@ -109,12 +122,23 @@ final class _Exports implements PluginExports {
   void initPlugin() {}
 
   @override
-  Result<void, String> onLoad(Context context) =>
-      _guard('onLoad', () => _plugin.onLoad(context));
+  Result<void, String> onLoad(Context context) => _guard('onLoad', () {
+    // The load context is owned: keep it for `Plugin.context`.
+    _plugin._context = context.keep();
+    return _plugin.onLoad(context);
+  });
 
   @override
-  Result<void, String> onUnload(Context context) =>
-      _guard('onUnload', () => _plugin.onUnload(context));
+  Result<void, String> onUnload(Context context) => _guard('onUnload', () async {
+    try {
+      await _plugin.onUnload(context);
+      await runUnloadHooks();
+    } finally {
+      final loadContext = _plugin._context;
+      _plugin._context = null;
+      loadContext?.dispose();
+    }
+  });
 
   @override
   Event handleEvent(int eventId, Server server, Event event) {

@@ -1,5 +1,6 @@
 import 'package:dart_mappable/dart_mappable.dart' show MapperException;
-import 'package:pumpkin_api/pumpkin_api.dart';
+// The plugin stores its own serializable Location (see model.dart).
+import 'package:pumpkin_api/pumpkin_api.dart' hide Location;
 
 import 'package:teleport/src/model.dart';
 

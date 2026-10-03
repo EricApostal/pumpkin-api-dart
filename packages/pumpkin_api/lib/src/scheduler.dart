@@ -58,3 +58,81 @@ extension ContextSchedulerApi on Context {
     int delayTicks = 0,
   }) => ScheduledTask._(scheduleTicks(delayTicks, periodTicks, task));
 }
+
+/// Scheduling with [Duration]s instead of ticks. Durations are rounded up to
+/// whole ticks (50ms), and a zero duration runs on the next tick.
+extension DurationScheduling on Server {
+  /// Runs [task] once, after [delay].
+  ScheduledTask after(Duration delay, TickCallback task) =>
+      runLater(delay.inTicks, task);
+
+  /// Runs [task] every [period] (at least one tick), starting after
+  /// [initialDelay], or after one [period] by default.
+  ScheduledTask every(
+    Duration period,
+    TickCallback task, {
+    Duration? initialDelay,
+  }) => runRepeating(
+    _atLeastOneTick(period),
+    task,
+    delayTicks: (initialDelay ?? period).inTicks,
+  );
+}
+
+/// Same as [DurationScheduling], available while the plugin is loading.
+extension ContextDurationScheduling on Context {
+  ScheduledTask after(Duration delay, TickCallback task) =>
+      runLater(delay.inTicks, task);
+
+  ScheduledTask every(
+    Duration period,
+    TickCallback task, {
+    Duration? initialDelay,
+  }) => runRepeating(
+    _atLeastOneTick(period),
+    task,
+    delayTicks: (initialDelay ?? period).inTicks,
+  );
+}
+
+int _atLeastOneTick(Duration period) {
+  final ticks = period.inTicks;
+  return ticks < 1 ? 1 : ticks;
+}
+
+/// Collapses a burst of calls into one: [call] (re)starts a timer, and
+/// [action] runs when [delay] passes without another call.
+final class Debouncer {
+  final Duration delay;
+  final void Function() action;
+  Timer? _timer;
+
+  Debouncer(this.delay, this.action);
+
+  void call() {
+    _timer?.cancel();
+    _timer = Timer(delay, action);
+  }
+
+  /// Drops the pending call, if any.
+  void cancel() => _timer?.cancel();
+}
+
+/// Lets [action] run at most once per [interval]: [call] runs it right away
+/// unless it ran less than [interval] ago, and returns whether it did.
+final class Throttle {
+  final Duration interval;
+  final void Function() action;
+  DateTime? _last;
+
+  Throttle(this.interval, this.action);
+
+  bool call() {
+    final now = DateTime.now();
+    final last = _last;
+    if (last != null && now.difference(last) < interval) return false;
+    _last = now;
+    action();
+    return true;
+  }
+}

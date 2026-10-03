@@ -344,22 +344,28 @@ external i0.WasmVoid _import22(i0.WasmI32 p0, i0.WasmI32 p1);
 external i0.WasmVoid _import23(i0.WasmI32 p0, i0.WasmI32 p1);
 /// The 16 base Minecraft colors.
 enum NamedColor {
-  black,
-  darkBlue,
-  darkGreen,
-  darkAqua,
-  darkRed,
-  darkPurple,
-  gold,
-  gray,
-  darkGray,
-  blue,
-  green,
-  aqua,
-  red,
-  lightPurple,
-  yellow,
-  white,
+  black('black'),
+  darkBlue('dark-blue'),
+  darkGreen('dark-green'),
+  darkAqua('dark-aqua'),
+  darkRed('dark-red'),
+  darkPurple('dark-purple'),
+  gold('gold'),
+  gray('gray'),
+  darkGray('dark-gray'),
+  blue('blue'),
+  green('green'),
+  aqua('aqua'),
+  red('red'),
+  lightPurple('light-purple'),
+  yellow('yellow'),
+  white('white');
+  const NamedColor(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static NamedColor? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, NamedColor> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import24")
 external i0.WasmVoid _import24(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -843,17 +849,23 @@ for (final cleanup in _cleanups) { cleanup(); }
 }
 /// Equipment slot where an enchantment is active.
 enum AttributeModifierSlot {
-  any,
-  mainHand,
-  offHand,
-  hand,
-  feet,
-  legs,
-  chest,
-  head,
-  armor,
-  body,
-  saddle,
+  any('any'),
+  mainHand('main-hand'),
+  offHand('off-hand'),
+  hand('hand'),
+  feet('feet'),
+  legs('legs'),
+  chest('chest'),
+  head('head'),
+  armor('armor'),
+  body('body'),
+  saddle('saddle');
+  const AttributeModifierSlot(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static AttributeModifierSlot? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, AttributeModifierSlot> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents a custom enchantment definition.
 final class CustomEnchantment {
@@ -1035,49 +1047,55 @@ external i0.WasmVoid _import53(i0.WasmI32 p0, i0.WasmI32 p1);
 external i0.WasmI32 _import54(i0.WasmI32 p0);
 /// Vanilla enchantments enum.
 enum Enchantment {
-  aquaAffinity,
-  baneOfArthropods,
-  bindingCurse,
-  blastProtection,
-  breach,
-  channeling,
-  density,
-  depthStrider,
-  efficiency,
-  featherFalling,
-  fireAspect,
-  fireProtection,
-  flame,
-  fortune,
-  frostWalker,
-  impaling,
-  infinity,
-  knockback,
-  looting,
-  loyalty,
-  luckOfTheSea,
-  lunge,
-  lure,
-  mending,
-  multishot,
-  piercing,
-  power,
-  projectileProtection,
-  protection,
-  punch,
-  quickCharge,
-  respiration,
-  riptide,
-  sharpness,
-  silkTouch,
-  smite,
-  soulSpeed,
-  sweepingEdge,
-  swiftSneak,
-  thorns,
-  unbreaking,
-  vanishingCurse,
-  windBurst,
+  aquaAffinity('aqua-affinity'),
+  baneOfArthropods('bane-of-arthropods'),
+  bindingCurse('binding-curse'),
+  blastProtection('blast-protection'),
+  breach('breach'),
+  channeling('channeling'),
+  density('density'),
+  depthStrider('depth-strider'),
+  efficiency('efficiency'),
+  featherFalling('feather-falling'),
+  fireAspect('fire-aspect'),
+  fireProtection('fire-protection'),
+  flame('flame'),
+  fortune('fortune'),
+  frostWalker('frost-walker'),
+  impaling('impaling'),
+  infinity('infinity'),
+  knockback('knockback'),
+  looting('looting'),
+  loyalty('loyalty'),
+  luckOfTheSea('luck-of-the-sea'),
+  lunge('lunge'),
+  lure('lure'),
+  mending('mending'),
+  multishot('multishot'),
+  piercing('piercing'),
+  power('power'),
+  projectileProtection('projectile-protection'),
+  protection('protection'),
+  punch('punch'),
+  quickCharge('quick-charge'),
+  respiration('respiration'),
+  riptide('riptide'),
+  sharpness('sharpness'),
+  silkTouch('silk-touch'),
+  smite('smite'),
+  soulSpeed('soul-speed'),
+  sweepingEdge('sweeping-edge'),
+  swiftSneak('swift-sneak'),
+  thorns('thorns'),
+  unbreaking('unbreaking'),
+  vanishingCurse('vanishing-curse'),
+  windBurst('wind-burst');
+  const Enchantment(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Enchantment? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Enchantment> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents an enchantment and its level.
 final class EnchantmentValue {
@@ -1110,51 +1128,63 @@ external i0.WasmVoid _import61(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.W
 @pragma("wasm:import", r"component._import62")
 external i0.WasmI32 _import62(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 enum Attribute {
-  airDragModifier,
-  armor,
-  armorToughness,
-  attackDamage,
-  attackKnockback,
-  attackSpeed,
-  belowNameDistance,
-  blockBreakSpeed,
-  blockInteractionRange,
-  bounciness,
-  burningTime,
-  cameraDistance,
-  explosionKnockbackResistance,
-  entityInteractionRange,
-  fallDamageMultiplier,
-  flyingSpeed,
-  followRange,
-  frictionModifier,
-  gravity,
-  jumpStrength,
-  knockbackResistance,
-  luck,
-  maxAbsorption,
-  maxHealth,
-  miningEfficiency,
-  movementEfficiency,
-  movementSpeed,
-  nameTagDistance,
-  oxygenBonus,
-  safeFallDistance,
-  scale,
-  sneakingSpeed,
-  spawnReinforcements,
-  stepHeight,
-  submergedMiningSpeed,
-  sweepingDamageRatio,
-  temptRange,
-  waterMovementEfficiency,
-  waypointTransmitRange,
-  waypointReceiveRange,
+  airDragModifier('air-drag-modifier'),
+  armor('armor'),
+  armorToughness('armor-toughness'),
+  attackDamage('attack-damage'),
+  attackKnockback('attack-knockback'),
+  attackSpeed('attack-speed'),
+  belowNameDistance('below-name-distance'),
+  blockBreakSpeed('block-break-speed'),
+  blockInteractionRange('block-interaction-range'),
+  bounciness('bounciness'),
+  burningTime('burning-time'),
+  cameraDistance('camera-distance'),
+  explosionKnockbackResistance('explosion-knockback-resistance'),
+  entityInteractionRange('entity-interaction-range'),
+  fallDamageMultiplier('fall-damage-multiplier'),
+  flyingSpeed('flying-speed'),
+  followRange('follow-range'),
+  frictionModifier('friction-modifier'),
+  gravity('gravity'),
+  jumpStrength('jump-strength'),
+  knockbackResistance('knockback-resistance'),
+  luck('luck'),
+  maxAbsorption('max-absorption'),
+  maxHealth('max-health'),
+  miningEfficiency('mining-efficiency'),
+  movementEfficiency('movement-efficiency'),
+  movementSpeed('movement-speed'),
+  nameTagDistance('name-tag-distance'),
+  oxygenBonus('oxygen-bonus'),
+  safeFallDistance('safe-fall-distance'),
+  scale('scale'),
+  sneakingSpeed('sneaking-speed'),
+  spawnReinforcements('spawn-reinforcements'),
+  stepHeight('step-height'),
+  submergedMiningSpeed('submerged-mining-speed'),
+  sweepingDamageRatio('sweeping-damage-ratio'),
+  temptRange('tempt-range'),
+  waterMovementEfficiency('water-movement-efficiency'),
+  waypointTransmitRange('waypoint-transmit-range'),
+  waypointReceiveRange('waypoint-receive-range');
+  const Attribute(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Attribute? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Attribute> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum ModifierOperation {
-  add,
-  multiplyBase,
-  multiplyTotal,
+  add('add'),
+  multiplyBase('multiply-base'),
+  multiplyTotal('multiply-total');
+  const ModifierOperation(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ModifierOperation? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ModifierOperation> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class AttributeModifier {
   final String id;
@@ -1264,128 +1294,134 @@ external i0.WasmVoid _import74(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.W
 @pragma("wasm:import", r"component._import75")
 external i0.WasmI32 _import75(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 enum DataComponent {
-  customData,
-  maxStackSize,
-  maxDamage,
-  damage,
-  unbreakable,
-  useEffects,
-  customName,
-  minimumAttackCharge,
-  damageType,
-  itemName,
-  itemModel,
-  lore,
-  rarity,
-  enchantments,
-  canPlaceOn,
-  canBreak,
-  attributeModifiers,
-  customModelData,
-  tooltipDisplay,
-  repairCost,
-  creativeSlotLock,
-  enchantmentGlintOverride,
-  intangibleProjectile,
-  food,
-  consumable,
-  useRemainder,
-  useCooldown,
-  damageResistant,
-  tool,
-  weapon,
-  attackRange,
-  enchantable,
-  equippable,
-  repairable,
-  glider,
-  tooltipStyle,
-  deathProtection,
-  blocksAttacks,
-  piercingWeapon,
-  kineticWeapon,
-  attackAnimation,
-  interactAnimation,
-  additionalTradeCost,
-  blockTransformer,
-  villagerFood,
-  storedEnchantments,
-  dye,
-  dyedColor,
-  mapId,
-  mapDecorations,
-  mapPostProcessing,
-  chargedProjectiles,
-  bundleContents,
-  potionContents,
-  potionDurationScale,
-  suspiciousStewEffects,
-  writableBookContent,
-  writtenBookContent,
-  trim,
-  debugStickState,
-  entityData,
-  bucketEntityData,
-  blockEntityData,
-  instrument,
-  providesTrimMaterial,
-  ominousBottleAmplifier,
-  jukeboxPlayable,
-  providesBannerPatterns,
-  recipes,
-  lodestoneTracker,
-  fireworkExplosion,
-  fireworks,
-  profile,
-  noteBlockSound,
-  bannerPatterns,
-  baseColor,
-  potDecorations,
-  container,
-  blockState,
-  bees,
-  sulfurCubeContent,
-  lock,
-  containerLoot,
-  breakSound,
-  compostable,
-  cookingFuel,
-  brewingFuel,
-  mobVisibility,
-  villagerVariant,
-  wolfVariant,
-  wolfSoundVariant,
-  wolfCollar,
-  foxVariant,
-  salmonSize,
-  parrotVariant,
-  tropicalFishPattern,
-  tropicalFishBaseColor,
-  tropicalFishPatternColor,
-  mooshroomVariant,
-  rabbitVariant,
-  pigVariant,
-  pigSoundVariant,
-  cowVariant,
-  cowSoundVariant,
-  chickenVariant,
-  chickenSoundVariant,
-  zombieNautilusVariant,
-  frogVariant,
-  horseVariant,
-  paintingVariant,
-  llamaVariant,
-  axolotlVariant,
-  catVariant,
-  catSoundVariant,
-  catCollar,
-  sheepColor,
-  shulkerColor,
-  providesPotteryPattern,
-  signTextFront,
-  signTextBack,
-  waxed,
-  cushionColor,
+  customData('custom-data'),
+  maxStackSize('max-stack-size'),
+  maxDamage('max-damage'),
+  damage('damage'),
+  unbreakable('unbreakable'),
+  useEffects('use-effects'),
+  customName('custom-name'),
+  minimumAttackCharge('minimum-attack-charge'),
+  damageType('damage-type'),
+  itemName('item-name'),
+  itemModel('item-model'),
+  lore('lore'),
+  rarity('rarity'),
+  enchantments('enchantments'),
+  canPlaceOn('can-place-on'),
+  canBreak('can-break'),
+  attributeModifiers('attribute-modifiers'),
+  customModelData('custom-model-data'),
+  tooltipDisplay('tooltip-display'),
+  repairCost('repair-cost'),
+  creativeSlotLock('creative-slot-lock'),
+  enchantmentGlintOverride('enchantment-glint-override'),
+  intangibleProjectile('intangible-projectile'),
+  food('food'),
+  consumable('consumable'),
+  useRemainder('use-remainder'),
+  useCooldown('use-cooldown'),
+  damageResistant('damage-resistant'),
+  tool('tool'),
+  weapon('weapon'),
+  attackRange('attack-range'),
+  enchantable('enchantable'),
+  equippable('equippable'),
+  repairable('repairable'),
+  glider('glider'),
+  tooltipStyle('tooltip-style'),
+  deathProtection('death-protection'),
+  blocksAttacks('blocks-attacks'),
+  piercingWeapon('piercing-weapon'),
+  kineticWeapon('kinetic-weapon'),
+  attackAnimation('attack-animation'),
+  interactAnimation('interact-animation'),
+  additionalTradeCost('additional-trade-cost'),
+  blockTransformer('block-transformer'),
+  villagerFood('villager-food'),
+  storedEnchantments('stored-enchantments'),
+  dye('dye'),
+  dyedColor('dyed-color'),
+  mapId('map-id'),
+  mapDecorations('map-decorations'),
+  mapPostProcessing('map-post-processing'),
+  chargedProjectiles('charged-projectiles'),
+  bundleContents('bundle-contents'),
+  potionContents('potion-contents'),
+  potionDurationScale('potion-duration-scale'),
+  suspiciousStewEffects('suspicious-stew-effects'),
+  writableBookContent('writable-book-content'),
+  writtenBookContent('written-book-content'),
+  trim('trim'),
+  debugStickState('debug-stick-state'),
+  entityData('entity-data'),
+  bucketEntityData('bucket-entity-data'),
+  blockEntityData('block-entity-data'),
+  instrument('instrument'),
+  providesTrimMaterial('provides-trim-material'),
+  ominousBottleAmplifier('ominous-bottle-amplifier'),
+  jukeboxPlayable('jukebox-playable'),
+  providesBannerPatterns('provides-banner-patterns'),
+  recipes('recipes'),
+  lodestoneTracker('lodestone-tracker'),
+  fireworkExplosion('firework-explosion'),
+  fireworks('fireworks'),
+  profile('profile'),
+  noteBlockSound('note-block-sound'),
+  bannerPatterns('banner-patterns'),
+  baseColor('base-color'),
+  potDecorations('pot-decorations'),
+  container('container'),
+  blockState('block-state'),
+  bees('bees'),
+  sulfurCubeContent('sulfur-cube-content'),
+  lock('lock'),
+  containerLoot('container-loot'),
+  breakSound('break-sound'),
+  compostable('compostable'),
+  cookingFuel('cooking-fuel'),
+  brewingFuel('brewing-fuel'),
+  mobVisibility('mob-visibility'),
+  villagerVariant('villager-variant'),
+  wolfVariant('wolf-variant'),
+  wolfSoundVariant('wolf-sound-variant'),
+  wolfCollar('wolf-collar'),
+  foxVariant('fox-variant'),
+  salmonSize('salmon-size'),
+  parrotVariant('parrot-variant'),
+  tropicalFishPattern('tropical-fish-pattern'),
+  tropicalFishBaseColor('tropical-fish-base-color'),
+  tropicalFishPatternColor('tropical-fish-pattern-color'),
+  mooshroomVariant('mooshroom-variant'),
+  rabbitVariant('rabbit-variant'),
+  pigVariant('pig-variant'),
+  pigSoundVariant('pig-sound-variant'),
+  cowVariant('cow-variant'),
+  cowSoundVariant('cow-sound-variant'),
+  chickenVariant('chicken-variant'),
+  chickenSoundVariant('chicken-sound-variant'),
+  zombieNautilusVariant('zombie-nautilus-variant'),
+  frogVariant('frog-variant'),
+  horseVariant('horse-variant'),
+  paintingVariant('painting-variant'),
+  llamaVariant('llama-variant'),
+  axolotlVariant('axolotl-variant'),
+  catVariant('cat-variant'),
+  catSoundVariant('cat-sound-variant'),
+  catCollar('cat-collar'),
+  sheepColor('sheep-color'),
+  shulkerColor('shulker-color'),
+  providesPotteryPattern('provides-pottery-pattern'),
+  signTextFront('sign-text-front'),
+  signTextBack('sign-text-back'),
+  waxed('waxed'),
+  cushionColor('cushion-color');
+  const DataComponent(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static DataComponent? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, DataComponent> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents a data component and its serialized value.
 final class DataComponentValue {
@@ -2246,8 +2282,14 @@ set allItems(List<ItemStack?> value) { setAllItems(items: value); }
 external i0.WasmI32 _import89(i0.WasmI32 p0);
 /// Represents the hands of a player.
 enum Hand {
-  left,
-  right,
+  left('left'),
+  right('right');
+  const Hand(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Hand? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Hand> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import90")
 external i0.WasmVoid _import90(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -3131,22 +3173,28 @@ BlockEntity get blockEntity => getBlockEntity();
 @pragma("wasm:import", r"component._import132")
 external i0.WasmI32 _import132(i0.WasmI32 p0);
 enum DyeColor {
-  white,
-  orange,
-  magenta,
-  lightBlue,
-  yellow,
-  lime,
-  pink,
-  gray,
-  lightGray,
-  cyan,
-  purple,
-  blue,
-  brown,
-  green,
-  red,
-  black,
+  white('white'),
+  orange('orange'),
+  magenta('magenta'),
+  lightBlue('light-blue'),
+  yellow('yellow'),
+  lime('lime'),
+  pink('pink'),
+  gray('gray'),
+  lightGray('light-gray'),
+  cyan('cyan'),
+  purple('purple'),
+  blue('blue'),
+  brown('brown'),
+  green('green'),
+  red('red'),
+  black('black');
+  const DyeColor(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static DyeColor? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, DyeColor> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SignText {
   final List<String> messages;
@@ -5021,31 +5069,37 @@ return BlockEntity._own(tmp0.toIntUnsigned());
 BlockEntity get blockEntity => getBlockEntity();
 }
 enum Screen {
-  generic9x1,
-  generic9x2,
-  generic9x3,
-  generic9x4,
-  generic9x5,
-  generic9x6,
-  generic3x3,
-  crafter3x3,
-  anvil,
-  beacon,
-  blastFurnace,
-  brewingStand,
-  crafting,
-  enchantment,
-  furnace,
-  grindstone,
-  hopper,
-  lectern,
-  loom,
-  merchant,
-  shulkerBox,
-  smithing,
-  smoker,
-  cartographyTable,
-  stonecutter,
+  generic9x1('generic-9x1'),
+  generic9x2('generic-9x2'),
+  generic9x3('generic-9x3'),
+  generic9x4('generic-9x4'),
+  generic9x5('generic-9x5'),
+  generic9x6('generic-9x6'),
+  generic3x3('generic-3x3'),
+  crafter3x3('crafter-3x3'),
+  anvil('anvil'),
+  beacon('beacon'),
+  blastFurnace('blast-furnace'),
+  brewingStand('brewing-stand'),
+  crafting('crafting'),
+  enchantment('enchantment'),
+  furnace('furnace'),
+  grindstone('grindstone'),
+  hopper('hopper'),
+  lectern('lectern'),
+  loom('loom'),
+  merchant('merchant'),
+  shulkerBox('shulker-box'),
+  smithing('smithing'),
+  smoker('smoker'),
+  cartographyTable('cartography-table'),
+  stonecutter('stonecutter');
+  const Screen(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Screen? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Screen> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import280")
 external i0.WasmI32 _import280(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -5201,12 +5255,18 @@ final class IngredientOneOf extends Ingredient {
 }
 /// Recipe category for the recipe book.
 enum RecipeCategory {
-  building,
-  redstone,
-  equipment,
-  misc,
-  food,
-  blocks,
+  building('building'),
+  redstone('redstone'),
+  equipment('equipment'),
+  misc('misc'),
+  food('food'),
+  blocks('blocks');
+  const RecipeCategory(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static RecipeCategory? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, RecipeCategory> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents a shaped crafting recipe.
 final class ShapedRecipe {
@@ -5244,10 +5304,16 @@ final class ShapelessRecipe {
 external i0.WasmVoid _import293(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10);
 /// Types of cooking stations.
 enum CookingType {
-  smelting,
-  blasting,
-  smoking,
-  campfire,
+  smelting('smelting'),
+  blasting('blasting'),
+  smoking('smoking'),
+  campfire('campfire');
+  const CookingType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static CookingType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, CookingType> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents a cooking recipe (Smelting, Blasting, Smoking, Campfire).
 final class CookingRecipe {
@@ -5553,8 +5619,14 @@ for (final cleanup in _cleanups) { cleanup(); }
 }
 }
 enum RenderType {
-  integer,
-  hearts,
+  integer('integer'),
+  hearts('hearts');
+  const RenderType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static RenderType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, RenderType> _byWireName = {for (final value in values) value.wireName: value};
 }
 sealed class NumberFormat {
   const NumberFormat();
@@ -5573,25 +5645,31 @@ external i0.WasmVoid _import296(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.
 @pragma("wasm:import", r"component._import297")
 external i0.WasmVoid _import297(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 enum DisplaySlot {
-  playerList,
-  sidebar,
-  belowName,
-  sidebarTeamBlack,
-  sidebarTeamDarkBlue,
-  sidebarTeamDarkGreen,
-  sidebarTeamDarkAqua,
-  sidebarTeamDarkRed,
-  sidebarTeamDarkPurple,
-  sidebarTeamGold,
-  sidebarTeamGray,
-  sidebarTeamDarkGray,
-  sidebarTeamBlue,
-  sidebarTeamGreen,
-  sidebarTeamAqua,
-  sidebarTeamRed,
-  sidebarTeamLightPurple,
-  sidebarTeamYellow,
-  sidebarTeamWhite,
+  playerList('player-list'),
+  sidebar('sidebar'),
+  belowName('below-name'),
+  sidebarTeamBlack('sidebar-team-black'),
+  sidebarTeamDarkBlue('sidebar-team-dark-blue'),
+  sidebarTeamDarkGreen('sidebar-team-dark-green'),
+  sidebarTeamDarkAqua('sidebar-team-dark-aqua'),
+  sidebarTeamDarkRed('sidebar-team-dark-red'),
+  sidebarTeamDarkPurple('sidebar-team-dark-purple'),
+  sidebarTeamGold('sidebar-team-gold'),
+  sidebarTeamGray('sidebar-team-gray'),
+  sidebarTeamDarkGray('sidebar-team-dark-gray'),
+  sidebarTeamBlue('sidebar-team-blue'),
+  sidebarTeamGreen('sidebar-team-green'),
+  sidebarTeamAqua('sidebar-team-aqua'),
+  sidebarTeamRed('sidebar-team-red'),
+  sidebarTeamLightPurple('sidebar-team-light-purple'),
+  sidebarTeamYellow('sidebar-team-yellow'),
+  sidebarTeamWhite('sidebar-team-white');
+  const DisplaySlot(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static DisplaySlot? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, DisplaySlot> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import298")
 external i0.WasmVoid _import298(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -5606,16 +5684,28 @@ external i0.WasmVoid _import302(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.
 @pragma("wasm:import", r"component._import303")
 external i0.WasmVoid _import303(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 enum NametagVisibility {
-  always,
-  never,
-  hideForOtherTeams,
-  hideForOwnTeam,
+  always('always'),
+  never('never'),
+  hideForOtherTeams('hide-for-other-teams'),
+  hideForOwnTeam('hide-for-own-team');
+  const NametagVisibility(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static NametagVisibility? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, NametagVisibility> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum CollisionRule {
-  always,
-  never,
-  pushOtherTeams,
-  pushOwnTeam,
+  always('always'),
+  never('never'),
+  pushOtherTeams('push-other-teams'),
+  pushOwnTeam('push-own-team');
+  const CollisionRule(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static CollisionRule? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, CollisionRule> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class TeamSettings {
   final TextComponent displayName;
@@ -5977,8 +6067,14 @@ return tmp5;
 List<String> get teams => getTeams();
 }
 enum BedrockSortOrder {
-  ascending,
-  descending,
+  ascending('ascending'),
+  descending('descending');
+  const BedrockSortOrder(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockSortOrder? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockSortOrder> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import314")
 external i0.WasmVoid _import314(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
@@ -5987,9 +6083,15 @@ external i0.WasmVoid _import315(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.
 @pragma("wasm:import", r"component._import316")
 external i0.WasmVoid _import316(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 enum BedrockDisplaySlot {
-  playerList,
-  sidebar,
-  belowName,
+  playerList('player-list'),
+  sidebar('sidebar'),
+  belowName('below-name');
+  const BedrockDisplaySlot(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockDisplaySlot? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockDisplaySlot> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import317")
 external i0.WasmVoid _import317(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -6110,167 +6212,173 @@ final class Uuid {
 @pragma("wasm:import", r"component._import324")
 external i0.WasmVoid _import324(i0.WasmI32 p0, i0.WasmI32 p1);
 enum EntityType {
-  acaciaBoat,
-  acaciaChestBoat,
-  allay,
-  areaEffectCloud,
-  armadillo,
-  armorStand,
-  arrow,
-  axolotl,
-  bambooChestRaft,
-  bambooRaft,
-  bat,
-  bee,
-  birchBoat,
-  birchChestBoat,
-  blaze,
-  blockDisplay,
-  bogged,
-  breeze,
-  breezeWindCharge,
-  camel,
-  camelHusk,
-  cat,
-  caveSpider,
-  cherryBoat,
-  cherryChestBoat,
-  chestMinecart,
-  chicken,
-  cod,
-  commandBlockMinecart,
-  copperGolem,
-  cow,
-  creaking,
-  creeper,
-  cushion,
-  darkOakBoat,
-  darkOakChestBoat,
-  dolphin,
-  donkey,
-  dragonFireball,
-  drowned,
-  egg,
-  elderGuardian,
-  endCrystal,
-  enderDragon,
-  enderPearl,
-  enderman,
-  endermite,
-  evoker,
-  evokerFangs,
-  experienceBottle,
-  experienceOrb,
-  eyeOfEnder,
-  fallingBlock,
-  fireball,
-  fireworkRocket,
-  fishingBobber,
-  fox,
-  frog,
-  furnaceMinecart,
-  ghast,
-  giant,
-  glowItemFrame,
-  glowSquid,
-  goat,
-  guardian,
-  happyGhast,
-  hoglin,
-  hopperMinecart,
-  horse,
-  husk,
-  illusioner,
-  interaction,
-  ironGolem,
-  item,
-  itemDisplay,
-  itemFrame,
-  jungleBoat,
-  jungleChestBoat,
-  leashKnot,
-  lightningBolt,
-  lingeringPotion,
-  llama,
-  llamaSpit,
-  magmaCube,
-  mangroveBoat,
-  mangroveChestBoat,
-  mannequin,
-  marker,
-  minecart,
-  mooshroom,
-  mule,
-  nautilus,
-  oakBoat,
-  oakChestBoat,
-  ocelot,
-  ominousItemSpawner,
-  painting,
-  paleOakBoat,
-  paleOakChestBoat,
-  panda,
-  parched,
-  parrot,
-  phantom,
-  pig,
-  piglin,
-  piglinBrute,
-  pillager,
-  player,
-  polarBear,
-  poplarBoat,
-  poplarChestBoat,
-  pufferfish,
-  rabbit,
-  ravager,
-  salmon,
-  sheep,
-  shulker,
-  shulkerBullet,
-  silverfish,
-  skeleton,
-  skeletonHorse,
-  slime,
-  smallFireball,
-  sniffer,
-  snowGolem,
-  snowball,
-  spawnerMinecart,
-  spectralArrow,
-  spider,
-  splashPotion,
-  spruceBoat,
-  spruceChestBoat,
-  squid,
-  stray,
-  strider,
-  sulfurCube,
-  tadpole,
-  textDisplay,
-  tnt,
-  tntMinecart,
-  traderLlama,
-  trident,
-  tropicalFish,
-  turtle,
-  vex,
-  villager,
-  vindicator,
-  wanderingTrader,
-  warden,
-  windCharge,
-  witch,
-  wither,
-  witherSkeleton,
-  witherSkull,
-  wolf,
-  zoglin,
-  zombie,
-  zombieHorse,
-  zombieNautilus,
-  zombieVillager,
-  zombifiedPiglin,
+  acaciaBoat('acacia-boat'),
+  acaciaChestBoat('acacia-chest-boat'),
+  allay('allay'),
+  areaEffectCloud('area-effect-cloud'),
+  armadillo('armadillo'),
+  armorStand('armor-stand'),
+  arrow('arrow'),
+  axolotl('axolotl'),
+  bambooChestRaft('bamboo-chest-raft'),
+  bambooRaft('bamboo-raft'),
+  bat('bat'),
+  bee('bee'),
+  birchBoat('birch-boat'),
+  birchChestBoat('birch-chest-boat'),
+  blaze('blaze'),
+  blockDisplay('block-display'),
+  bogged('bogged'),
+  breeze('breeze'),
+  breezeWindCharge('breeze-wind-charge'),
+  camel('camel'),
+  camelHusk('camel-husk'),
+  cat('cat'),
+  caveSpider('cave-spider'),
+  cherryBoat('cherry-boat'),
+  cherryChestBoat('cherry-chest-boat'),
+  chestMinecart('chest-minecart'),
+  chicken('chicken'),
+  cod('cod'),
+  commandBlockMinecart('command-block-minecart'),
+  copperGolem('copper-golem'),
+  cow('cow'),
+  creaking('creaking'),
+  creeper('creeper'),
+  cushion('cushion'),
+  darkOakBoat('dark-oak-boat'),
+  darkOakChestBoat('dark-oak-chest-boat'),
+  dolphin('dolphin'),
+  donkey('donkey'),
+  dragonFireball('dragon-fireball'),
+  drowned('drowned'),
+  egg('egg'),
+  elderGuardian('elder-guardian'),
+  endCrystal('end-crystal'),
+  enderDragon('ender-dragon'),
+  enderPearl('ender-pearl'),
+  enderman('enderman'),
+  endermite('endermite'),
+  evoker('evoker'),
+  evokerFangs('evoker-fangs'),
+  experienceBottle('experience-bottle'),
+  experienceOrb('experience-orb'),
+  eyeOfEnder('eye-of-ender'),
+  fallingBlock('falling-block'),
+  fireball('fireball'),
+  fireworkRocket('firework-rocket'),
+  fishingBobber('fishing-bobber'),
+  fox('fox'),
+  frog('frog'),
+  furnaceMinecart('furnace-minecart'),
+  ghast('ghast'),
+  giant('giant'),
+  glowItemFrame('glow-item-frame'),
+  glowSquid('glow-squid'),
+  goat('goat'),
+  guardian('guardian'),
+  happyGhast('happy-ghast'),
+  hoglin('hoglin'),
+  hopperMinecart('hopper-minecart'),
+  horse('horse'),
+  husk('husk'),
+  illusioner('illusioner'),
+  interaction('interaction'),
+  ironGolem('iron-golem'),
+  item('item'),
+  itemDisplay('item-display'),
+  itemFrame('item-frame'),
+  jungleBoat('jungle-boat'),
+  jungleChestBoat('jungle-chest-boat'),
+  leashKnot('leash-knot'),
+  lightningBolt('lightning-bolt'),
+  lingeringPotion('lingering-potion'),
+  llama('llama'),
+  llamaSpit('llama-spit'),
+  magmaCube('magma-cube'),
+  mangroveBoat('mangrove-boat'),
+  mangroveChestBoat('mangrove-chest-boat'),
+  mannequin('mannequin'),
+  marker('marker'),
+  minecart('minecart'),
+  mooshroom('mooshroom'),
+  mule('mule'),
+  nautilus('nautilus'),
+  oakBoat('oak-boat'),
+  oakChestBoat('oak-chest-boat'),
+  ocelot('ocelot'),
+  ominousItemSpawner('ominous-item-spawner'),
+  painting('painting'),
+  paleOakBoat('pale-oak-boat'),
+  paleOakChestBoat('pale-oak-chest-boat'),
+  panda('panda'),
+  parched('parched'),
+  parrot('parrot'),
+  phantom('phantom'),
+  pig('pig'),
+  piglin('piglin'),
+  piglinBrute('piglin-brute'),
+  pillager('pillager'),
+  player('player'),
+  polarBear('polar-bear'),
+  poplarBoat('poplar-boat'),
+  poplarChestBoat('poplar-chest-boat'),
+  pufferfish('pufferfish'),
+  rabbit('rabbit'),
+  ravager('ravager'),
+  salmon('salmon'),
+  sheep('sheep'),
+  shulker('shulker'),
+  shulkerBullet('shulker-bullet'),
+  silverfish('silverfish'),
+  skeleton('skeleton'),
+  skeletonHorse('skeleton-horse'),
+  slime('slime'),
+  smallFireball('small-fireball'),
+  sniffer('sniffer'),
+  snowGolem('snow-golem'),
+  snowball('snowball'),
+  spawnerMinecart('spawner-minecart'),
+  spectralArrow('spectral-arrow'),
+  spider('spider'),
+  splashPotion('splash-potion'),
+  spruceBoat('spruce-boat'),
+  spruceChestBoat('spruce-chest-boat'),
+  squid('squid'),
+  stray('stray'),
+  strider('strider'),
+  sulfurCube('sulfur-cube'),
+  tadpole('tadpole'),
+  textDisplay('text-display'),
+  tnt('tnt'),
+  tntMinecart('tnt-minecart'),
+  traderLlama('trader-llama'),
+  trident('trident'),
+  tropicalFish('tropical-fish'),
+  turtle('turtle'),
+  vex('vex'),
+  villager('villager'),
+  vindicator('vindicator'),
+  wanderingTrader('wandering-trader'),
+  warden('warden'),
+  windCharge('wind-charge'),
+  witch('witch'),
+  wither('wither'),
+  witherSkeleton('wither-skeleton'),
+  witherSkull('wither-skull'),
+  wolf('wolf'),
+  zoglin('zoglin'),
+  zombie('zombie'),
+  zombieHorse('zombie-horse'),
+  zombieNautilus('zombie-nautilus'),
+  zombieVillager('zombie-villager'),
+  zombifiedPiglin('zombified-piglin');
+  const EntityType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EntityType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EntityType> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import325")
 external i0.WasmI32 _import325(i0.WasmI32 p0);
@@ -6292,24 +6400,30 @@ external i0.WasmVoid _import332(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmF64 p2, i0.
 external i0.WasmVoid _import333(i0.WasmI32 p0, i0.WasmI32 p1);
 /// Represents the various poses an entity can be in.
 enum EntityPose {
-  standing,
-  fallFlying,
-  sleeping,
-  swimming,
-  spinAttack,
-  crouching,
-  longJumping,
-  dying,
-  croaking,
-  usingTongue,
-  sitting,
-  roaring,
-  sniffing,
-  emerging,
-  digging,
-  sliding,
-  shooting,
-  inhaling,
+  standing('standing'),
+  fallFlying('fall-flying'),
+  sleeping('sleeping'),
+  swimming('swimming'),
+  spinAttack('spin-attack'),
+  crouching('crouching'),
+  longJumping('long-jumping'),
+  dying('dying'),
+  croaking('croaking'),
+  usingTongue('using-tongue'),
+  sitting('sitting'),
+  roaring('roaring'),
+  sniffing('sniffing'),
+  emerging('emerging'),
+  digging('digging'),
+  sliding('sliding'),
+  shooting('shooting'),
+  inhaling('inhaling');
+  const EntityPose(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EntityPose? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EntityPose> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import334")
 external i0.WasmI32 _import334(i0.WasmI32 p0);
@@ -6432,12 +6546,18 @@ external i0.WasmI32 _import388(i0.WasmI32 p0);
 external i0.WasmVoid _import389(i0.WasmI32 p0);
 /// Represents a cardinal direction or block face.
 enum BlockDirection {
-  down,
-  up,
-  north,
-  south,
-  west,
-  east,
+  down('down'),
+  up('up'),
+  north('north'),
+  south('south'),
+  west('west'),
+  east('east');
+  const BlockDirection(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BlockDirection? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BlockDirection> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Result of a raycast operation.
 final class RaycastResult {
@@ -7466,57 +7586,63 @@ external i0.WasmF32 _import407(i0.WasmI32 p0);
 @pragma("wasm:import", r"component._import408")
 external i0.WasmVoid _import408(i0.WasmI32 p0, i0.WasmF32 p1);
 enum DamageType {
-  arrow,
-  badRespawnPoint,
-  cactus,
-  campfire,
-  cramming,
-  dragonBreath,
-  drown,
-  dryOut,
-  enderPearl,
-  explosion,
-  fall,
-  fallingAnvil,
-  fallingBlock,
-  fallingStalactite,
-  fireball,
-  fireworks,
-  flyIntoWall,
-  freeze,
-  generic,
-  genericKill,
-  hotFloor,
-  inFire,
-  inWall,
-  indirectMagic,
-  lava,
-  lightningBolt,
-  maceSmash,
-  magic,
-  mobAttack,
-  mobAttackNoAggro,
-  mobProjectile,
-  onFire,
-  outOfWorld,
-  outsideBorder,
-  playerAttack,
-  playerExplosion,
-  sonicBoom,
-  spear,
-  spit,
-  stalagmite,
-  starve,
-  sting,
-  sulfurCubeHot,
-  sweetBerryBush,
-  thorns,
-  thrown,
-  trident,
-  unattributedFireball,
-  windCharge,
-  wither,
-  witherSkull,
+  arrow('arrow'),
+  badRespawnPoint('bad-respawn-point'),
+  cactus('cactus'),
+  campfire('campfire'),
+  cramming('cramming'),
+  dragonBreath('dragon-breath'),
+  drown('drown'),
+  dryOut('dry-out'),
+  enderPearl('ender-pearl'),
+  explosion('explosion'),
+  fall('fall'),
+  fallingAnvil('falling-anvil'),
+  fallingBlock('falling-block'),
+  fallingStalactite('falling-stalactite'),
+  fireball('fireball'),
+  fireworks('fireworks'),
+  flyIntoWall('fly-into-wall'),
+  freeze('freeze'),
+  generic('generic'),
+  genericKill('generic-kill'),
+  hotFloor('hot-floor'),
+  inFire('in-fire'),
+  inWall('in-wall'),
+  indirectMagic('indirect-magic'),
+  lava('lava'),
+  lightningBolt('lightning-bolt'),
+  maceSmash('mace-smash'),
+  magic('magic'),
+  mobAttack('mob-attack'),
+  mobAttackNoAggro('mob-attack-no-aggro'),
+  mobProjectile('mob-projectile'),
+  onFire('on-fire'),
+  outOfWorld('out-of-world'),
+  outsideBorder('outside-border'),
+  playerAttack('player-attack'),
+  playerExplosion('player-explosion'),
+  sonicBoom('sonic-boom'),
+  spear('spear'),
+  spit('spit'),
+  stalagmite('stalagmite'),
+  starve('starve'),
+  sting('sting'),
+  sulfurCubeHot('sulfur-cube-hot'),
+  sweetBerryBush('sweet-berry-bush'),
+  thorns('thorns'),
+  thrown('thrown'),
+  trident('trident'),
+  unattributedFireball('unattributed-fireball'),
+  windCharge('wind-charge'),
+  wither('wither'),
+  witherSkull('wither-skull');
+  const DamageType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static DamageType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, DamageType> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import409")
 external i0.WasmVoid _import409(i0.WasmI32 p0, i0.WasmF32 p1, i0.WasmI32 p2);
@@ -7544,14 +7670,20 @@ external i0.WasmVoid _import419(i0.WasmI32 p0, i0.WasmI32 p1);
 external i0.WasmVoid _import420(i0.WasmI32 p0);
 /// Equipment slots available on living entities (mobs, armor stands, players).
 enum EquipmentSlot {
-  mainHand,
-  offHand,
-  feet,
-  legs,
-  chest,
-  head,
-  body,
-  saddle,
+  mainHand('main-hand'),
+  offHand('off-hand'),
+  feet('feet'),
+  legs('legs'),
+  chest('chest'),
+  head('head'),
+  body('body'),
+  saddle('saddle');
+  const EquipmentSlot(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EquipmentSlot? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EquipmentSlot> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import421")
 external i0.WasmVoid _import421(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -7862,32 +7994,38 @@ external i0.WasmVoid _import441(i0.WasmI32 p0, i0.WasmF64 p1);
 external i0.WasmI32 _import442(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmF64 p2, i0.WasmF64 p3, i0.WasmF32 p4);
 /// Node and terrain classification types evaluated during mob pathfinding.
 enum PathNodeType {
-  blocked,
-  open,
-  walkable,
-  walkableDoor,
-  trapdoor,
-  powderSnow,
-  dangerPowderSnow,
-  fence,
-  lava,
-  water,
-  waterBorder,
-  rail,
-  unpassableRail,
-  dangerFire,
-  damageFire,
-  dangerOther,
-  damageOther,
-  doorOpen,
-  doorWoodClosed,
-  doorIronClosed,
-  breach,
-  leaves,
-  stickyHoney,
-  cocoa,
-  damageCautious,
-  dangerTrapdoor,
+  blocked('blocked'),
+  open('open'),
+  walkable('walkable'),
+  walkableDoor('walkable-door'),
+  trapdoor('trapdoor'),
+  powderSnow('powder-snow'),
+  dangerPowderSnow('danger-powder-snow'),
+  fence('fence'),
+  lava('lava'),
+  water('water'),
+  waterBorder('water-border'),
+  rail('rail'),
+  unpassableRail('unpassable-rail'),
+  dangerFire('danger-fire'),
+  damageFire('damage-fire'),
+  dangerOther('danger-other'),
+  damageOther('damage-other'),
+  doorOpen('door-open'),
+  doorWoodClosed('door-wood-closed'),
+  doorIronClosed('door-iron-closed'),
+  breach('breach'),
+  leaves('leaves'),
+  stickyHoney('sticky-honey'),
+  cocoa('cocoa'),
+  damageCautious('damage-cautious'),
+  dangerTrapdoor('danger-trapdoor');
+  const PathNodeType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PathNodeType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PathNodeType> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import443")
 external i0.WasmVoid _import443(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmF32 p2);
@@ -7899,22 +8037,28 @@ external i0.WasmVoid _import445(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmF64 p2, i0.
 external i0.WasmVoid _import446(i0.WasmI32 p0, i0.WasmI32 p1);
 /// Minecraft 16 dye colors.
 enum WorldDyeColor {
-  white,
-  orange,
-  magenta,
-  lightBlue,
-  yellow,
-  lime,
-  pink,
-  gray,
-  lightGray,
-  cyan,
-  purple,
-  blue,
-  brown,
-  green,
-  red,
-  black,
+  white('white'),
+  orange('orange'),
+  magenta('magenta'),
+  lightBlue('light-blue'),
+  yellow('yellow'),
+  lime('lime'),
+  pink('pink'),
+  gray('gray'),
+  lightGray('light-gray'),
+  cyan('cyan'),
+  purple('purple'),
+  blue('blue'),
+  brown('brown'),
+  green('green'),
+  red('red'),
+  black('black');
+  const WorldDyeColor(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static WorldDyeColor? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, WorldDyeColor> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Specialized data for sheep entities.
 final class SheepData {
@@ -7945,21 +8089,27 @@ final class CatData {
 }
 /// Villager profession identifiers.
 enum VillagerProfession {
-  none,
-  armorer,
-  butcher,
-  cartographer,
-  cleric,
-  farmer,
-  fisherman,
-  fletcher,
-  leatherworker,
-  librarian,
-  mason,
-  nitwit,
-  shepherd,
-  toolsmith,
-  weaponsmith,
+  none('none'),
+  armorer('armorer'),
+  butcher('butcher'),
+  cartographer('cartographer'),
+  cleric('cleric'),
+  farmer('farmer'),
+  fisherman('fisherman'),
+  fletcher('fletcher'),
+  leatherworker('leatherworker'),
+  librarian('librarian'),
+  mason('mason'),
+  nitwit('nitwit'),
+  shepherd('shepherd'),
+  toolsmith('toolsmith'),
+  weaponsmith('weaponsmith');
+  const VillagerProfession(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static VillagerProfession? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, VillagerProfession> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Specialized data for villager entities.
 final class VillagerData {
@@ -8993,45 +9143,57 @@ external i0.WasmI32 _import453(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.W
 /// Defines how a block reacts when pushed by a piston.
 enum PistonBehavior {
 /// Normal behavior; the block can be pushed and pulled.
-  normal,
+  normal('normal'),
 /// The block is destroyed when pushed.
-  destroy,
+  destroy('destroy'),
 /// The block cannot be pushed or pulled.
-  block,
+  block('block'),
 /// The block is ignored by pistons.
-  ignore,
+  ignore('ignore'),
 /// The block can only be pushed, not pulled.
-  pushOnly,
+  pushOnly('push-only');
+  const PistonBehavior(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PistonBehavior? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PistonBehavior> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Musical instruments used by note blocks.
 enum NoteblockInstrument {
-  harp,
-  basedrum,
-  snare,
-  hat,
-  bass,
-  flute,
-  bell,
-  guitar,
-  chime,
-  xylophone,
-  ironXylophone,
-  cowBell,
-  didgeridoo,
-  bit,
-  banjo,
-  pling,
-  trumpet,
-  trumpetExposed,
-  trumpetOxidized,
-  trumpetWeathered,
-  zombie,
-  skeleton,
-  creeper,
-  dragon,
-  witherSkeleton,
-  piglin,
-  customHead,
+  harp('harp'),
+  basedrum('basedrum'),
+  snare('snare'),
+  hat('hat'),
+  bass('bass'),
+  flute('flute'),
+  bell('bell'),
+  guitar('guitar'),
+  chime('chime'),
+  xylophone('xylophone'),
+  ironXylophone('iron-xylophone'),
+  cowBell('cow-bell'),
+  didgeridoo('didgeridoo'),
+  bit('bit'),
+  banjo('banjo'),
+  pling('pling'),
+  trumpet('trumpet'),
+  trumpetExposed('trumpet-exposed'),
+  trumpetOxidized('trumpet-oxidized'),
+  trumpetWeathered('trumpet-weathered'),
+  zombie('zombie'),
+  skeleton('skeleton'),
+  creeper('creeper'),
+  dragon('dragon'),
+  witherSkeleton('wither-skeleton'),
+  piglin('piglin'),
+  customHead('custom-head');
+  const NoteblockInstrument(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static NoteblockInstrument? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, NoteblockInstrument> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Detailed information about a block's state.
 final class BlockState {
@@ -9153,73 +9315,79 @@ external i0.WasmVoid _import457(i0.WasmI32 p0);
 @pragma("wasm:import", r"component._import458")
 external i0.WasmVoid _import458(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 enum Biome {
-  badlands,
-  bambooJungle,
-  basaltDeltas,
-  beach,
-  birchForest,
-  cherryGrove,
-  coldOcean,
-  crimsonForest,
-  dappledForest,
-  darkForest,
-  deepColdOcean,
-  deepDark,
-  deepFrozenOcean,
-  deepLukewarmOcean,
-  deepOcean,
-  desert,
-  dripstoneCaves,
-  endBarrens,
-  endHighlands,
-  endMidlands,
-  erodedBadlands,
-  flowerForest,
-  forest,
-  frozenOcean,
-  frozenPeaks,
-  frozenRiver,
-  grove,
-  iceSpikes,
-  jaggedPeaks,
-  jungle,
-  lukewarmOcean,
-  lushCaves,
-  mangroveSwamp,
-  meadow,
-  mushroomFields,
-  netherWastes,
-  ocean,
-  oldGrowthBirchForest,
-  oldGrowthPineTaiga,
-  oldGrowthSpruceTaiga,
-  paleGarden,
-  plains,
-  river,
-  savanna,
-  savannaPlateau,
-  smallEndIslands,
-  snowyBeach,
-  snowyPlains,
-  snowySlopes,
-  snowyTaiga,
-  soulSandValley,
-  sparseJungle,
-  stonyPeaks,
-  stonyShore,
-  sulfurCaves,
-  sunflowerPlains,
-  swamp,
-  taiga,
-  theEnd,
-  theVoid,
-  warmOcean,
-  warpedForest,
-  windsweptForest,
-  windsweptGravellyHills,
-  windsweptHills,
-  windsweptSavanna,
-  woodedBadlands,
+  badlands('badlands'),
+  bambooJungle('bamboo-jungle'),
+  basaltDeltas('basalt-deltas'),
+  beach('beach'),
+  birchForest('birch-forest'),
+  cherryGrove('cherry-grove'),
+  coldOcean('cold-ocean'),
+  crimsonForest('crimson-forest'),
+  dappledForest('dappled-forest'),
+  darkForest('dark-forest'),
+  deepColdOcean('deep-cold-ocean'),
+  deepDark('deep-dark'),
+  deepFrozenOcean('deep-frozen-ocean'),
+  deepLukewarmOcean('deep-lukewarm-ocean'),
+  deepOcean('deep-ocean'),
+  desert('desert'),
+  dripstoneCaves('dripstone-caves'),
+  endBarrens('end-barrens'),
+  endHighlands('end-highlands'),
+  endMidlands('end-midlands'),
+  erodedBadlands('eroded-badlands'),
+  flowerForest('flower-forest'),
+  forest('forest'),
+  frozenOcean('frozen-ocean'),
+  frozenPeaks('frozen-peaks'),
+  frozenRiver('frozen-river'),
+  grove('grove'),
+  iceSpikes('ice-spikes'),
+  jaggedPeaks('jagged-peaks'),
+  jungle('jungle'),
+  lukewarmOcean('lukewarm-ocean'),
+  lushCaves('lush-caves'),
+  mangroveSwamp('mangrove-swamp'),
+  meadow('meadow'),
+  mushroomFields('mushroom-fields'),
+  netherWastes('nether-wastes'),
+  ocean('ocean'),
+  oldGrowthBirchForest('old-growth-birch-forest'),
+  oldGrowthPineTaiga('old-growth-pine-taiga'),
+  oldGrowthSpruceTaiga('old-growth-spruce-taiga'),
+  paleGarden('pale-garden'),
+  plains('plains'),
+  river('river'),
+  savanna('savanna'),
+  savannaPlateau('savanna-plateau'),
+  smallEndIslands('small-end-islands'),
+  snowyBeach('snowy-beach'),
+  snowyPlains('snowy-plains'),
+  snowySlopes('snowy-slopes'),
+  snowyTaiga('snowy-taiga'),
+  soulSandValley('soul-sand-valley'),
+  sparseJungle('sparse-jungle'),
+  stonyPeaks('stony-peaks'),
+  stonyShore('stony-shore'),
+  sulfurCaves('sulfur-caves'),
+  sunflowerPlains('sunflower-plains'),
+  swamp('swamp'),
+  taiga('taiga'),
+  theEnd('the-end'),
+  theVoid('the-void'),
+  warmOcean('warm-ocean'),
+  warpedForest('warped-forest'),
+  windsweptForest('windswept-forest'),
+  windsweptGravellyHills('windswept-gravelly-hills'),
+  windsweptHills('windswept-hills'),
+  windsweptSavanna('windswept-savanna'),
+  woodedBadlands('wooded-badlands');
+  const Biome(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Biome? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Biome> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import459")
 external i0.WasmI32 _import459(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -10645,2159 +10813,2183 @@ external i0.WasmVoid _import515(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import516")
 external i0.WasmI32 _import516(i0.WasmI32 p0);
 enum Sound {
-  entityAllayAmbientWithItem,
-  entityAllayAmbientWithoutItem,
-  entityAllayDeath,
-  entityAllayHurt,
-  entityAllayItemGiven,
-  entityAllayItemTaken,
-  entityAllayItemThrown,
-  ambientCave,
-  ambientBasaltDeltasAdditions,
-  ambientBasaltDeltasLoop,
-  ambientBasaltDeltasMood,
-  ambientCrimsonForestAdditions,
-  ambientCrimsonForestLoop,
-  ambientCrimsonForestMood,
-  ambientNetherWastesAdditions,
-  ambientNetherWastesLoop,
-  ambientNetherWastesMood,
-  ambientSoulSandValleyAdditions,
-  ambientSoulSandValleyLoop,
-  ambientSoulSandValleyMood,
-  ambientWarpedForestAdditions,
-  ambientWarpedForestLoop,
-  ambientWarpedForestMood,
-  ambientUnderwaterEnter,
-  ambientUnderwaterExit,
-  ambientUnderwaterLoop,
-  ambientUnderwaterLoopAdditions,
-  ambientUnderwaterLoopAdditionsRare,
-  ambientUnderwaterLoopAdditionsUltraRare,
-  blockAmethystBlockBreak,
-  blockAmethystBlockChime,
-  blockAmethystBlockFall,
-  blockAmethystBlockHit,
-  blockAmethystBlockPlace,
-  blockAmethystBlockResonate,
-  blockAmethystBlockStep,
-  blockAmethystClusterBreak,
-  blockAmethystClusterFall,
-  blockAmethystClusterHit,
-  blockAmethystClusterPlace,
-  blockAmethystClusterStep,
-  blockAncientDebrisBreak,
-  blockAncientDebrisStep,
-  blockAncientDebrisPlace,
-  blockAncientDebrisHit,
-  blockAncientDebrisFall,
-  blockAnvilBreak,
-  blockAnvilDestroy,
-  blockAnvilFall,
-  blockAnvilHit,
-  blockAnvilLand,
-  blockAnvilPlace,
-  blockAnvilStep,
-  blockAnvilUse,
-  entityArmadilloEat,
-  entityArmadilloHurt,
-  entityArmadilloHurtReduced,
-  entityArmadilloAmbient,
-  entityArmadilloStep,
-  entityArmadilloDeath,
-  entityArmadilloRoll,
-  entityArmadilloLand,
-  entityArmadilloScuteDrop,
-  entityArmadilloUnrollFinish,
-  entityArmadilloPeek,
-  entityArmadilloUnrollStart,
-  entityArmadilloBrush,
-  itemArmorEquipChain,
-  itemArmorEquipDiamond,
-  itemArmorEquipElytra,
-  itemArmorEquipGeneric,
-  itemArmorEquipGold,
-  itemArmorEquipIron,
-  itemArmorEquipLeather,
-  itemArmorEquipCopper,
-  itemArmorEquipNetherite,
-  itemArmorEquipTurtle,
-  itemArmorEquipWolf,
-  itemArmorUnequipWolf,
-  itemArmorEquipNautilus,
-  itemArmorUnequipNautilus,
-  entityArmorStandBreak,
-  entityArmorStandFall,
-  entityArmorStandHit,
-  entityArmorStandPlace,
-  entityArrowHit,
-  entityArrowHitPlayer,
-  entityArrowShoot,
-  itemAxeStrip,
-  itemAxeScrape,
-  itemAxeWaxOff,
-  entityAxolotlAttack,
-  entityAxolotlDeath,
-  entityAxolotlHurt,
-  entityAxolotlIdleAir,
-  entityAxolotlIdleWater,
-  entityAxolotlSplash,
-  entityAxolotlSwim,
-  blockAzaleaBreak,
-  blockAzaleaFall,
-  blockAzaleaHit,
-  blockAzaleaPlace,
-  blockAzaleaStep,
-  blockAzaleaLeavesBreak,
-  blockAzaleaLeavesFall,
-  blockAzaleaLeavesHit,
-  blockAzaleaLeavesPlace,
-  blockAzaleaLeavesStep,
-  entityBabyNautilusAmbient,
-  entityBabyNautilusAmbientLand,
-  entityBabyNautilusDeath,
-  entityBabyNautilusDeathLand,
-  entityBabyNautilusEat,
-  entityBabyNautilusHurt,
-  entityBabyNautilusHurtLand,
-  entityNautilusRiding,
-  entityBabyNautilusSwim,
-  blockBambooBreak,
-  blockBambooFall,
-  blockBambooHit,
-  blockBambooPlace,
-  blockBambooStep,
-  blockBambooSaplingBreak,
-  blockBambooSaplingHit,
-  blockBambooSaplingPlace,
-  blockBambooWoodBreak,
-  blockBambooWoodFall,
-  blockBambooWoodHit,
-  blockBambooWoodPlace,
-  blockBambooWoodStep,
-  blockBambooWoodDoorClose,
-  blockBambooWoodDoorOpen,
-  blockBambooWoodTrapdoorClose,
-  blockBambooWoodTrapdoorOpen,
-  blockBambooWoodButtonClickOff,
-  blockBambooWoodButtonClickOn,
-  blockBambooWoodPressurePlateClickOff,
-  blockBambooWoodPressurePlateClickOn,
-  blockBambooWoodFenceGateClose,
-  blockBambooWoodFenceGateOpen,
-  blockBarrelClose,
-  blockBarrelOpen,
-  blockBasaltBreak,
-  blockBasaltStep,
-  blockBasaltPlace,
-  blockBasaltHit,
-  blockBasaltFall,
-  entityBatAmbient,
-  entityBatDeath,
-  entityBatHurt,
-  entityBatLoop,
-  entityBatTakeoff,
-  blockBeaconActivate,
-  blockBeaconAmbient,
-  blockBeaconDeactivate,
-  blockBeaconPowerSelect,
-  entityBeeDeath,
-  entityBeeHurt,
-  entityBeeLoopAggressive,
-  entityBeeLoop,
-  entityBeeSting,
-  entityBeePollinate,
-  blockBeehiveDrip,
-  blockBeehiveEnter,
-  blockBeehiveExit,
-  blockBeehiveShear,
-  blockBeehiveWork,
-  blockBellUse,
-  blockBellResonate,
-  blockBigDripleafBreak,
-  blockBigDripleafFall,
-  blockBigDripleafHit,
-  blockBigDripleafPlace,
-  blockBigDripleafStep,
-  entityBlazeAmbient,
-  entityBlazeBurn,
-  entityBlazeDeath,
-  entityBlazeHurt,
-  entityBlazeShoot,
-  entityBoatPaddleLand,
-  entityBoatPaddleWater,
-  entityBoggedAmbient,
-  entityBoggedDeath,
-  entityBoggedHurt,
-  entityBoggedShear,
-  entityBoggedStep,
-  blockBoneBlockBreak,
-  blockBoneBlockFall,
-  blockBoneBlockHit,
-  blockBoneBlockPlace,
-  blockBoneBlockStep,
-  itemBoneMealUse,
-  itemBookPageTurn,
-  itemBookPut,
-  blockBlastfurnaceFireCrackle,
-  itemBottleEmpty,
-  itemBottleFill,
-  itemBottleFillDragonbreath,
-  entityBreezeCharge,
-  entityBreezeDeflect,
-  entityBreezeInhale,
-  entityBreezeIdleGround,
-  entityBreezeIdleAir,
-  entityBreezeShoot,
-  entityBreezeJump,
-  entityBreezeLand,
-  entityBreezeSlide,
-  entityBreezeDeath,
-  entityBreezeHurt,
-  entityBreezeWhirl,
-  entityBreezeWindBurst,
-  blockBrewingStandBrew,
-  itemBrushBrushingGeneric,
-  itemBrushBrushingSand,
-  itemBrushBrushingGravel,
-  itemBrushBrushingSandComplete,
-  itemBrushBrushingGravelComplete,
-  blockBubbleColumnBubblePop,
-  blockBubbleColumnUpwardsAmbient,
-  blockBubbleColumnUpwardsInside,
-  blockBubbleColumnWhirlpoolAmbient,
-  blockBubbleColumnWhirlpoolInside,
-  uiHudBubblePop,
-  itemBucketEmpty,
-  itemBucketEmptyAxolotl,
-  itemBucketEmptyFish,
-  itemBucketEmptyLava,
-  itemBucketEmptyPowderSnow,
-  itemBucketEmptySulfurCube,
-  itemBucketEmptyTadpole,
-  itemBucketFill,
-  itemBucketFillAxolotl,
-  itemBucketFillFish,
-  itemBucketFillLava,
-  itemBucketFillPowderSnow,
-  itemBucketFillSulfurCube,
-  itemBucketFillTadpole,
-  itemBundleDropContents,
-  itemBundleInsert,
-  itemBundleInsertFail,
-  itemBundleRemoveOne,
-  blockCactusFlowerBreak,
-  blockCactusFlowerPlace,
-  blockCakeAddCandle,
-  blockCalciteBreak,
-  blockCalciteStep,
-  blockCalcitePlace,
-  blockCalciteHit,
-  blockCalciteFall,
-  entityCamelHuskAmbient,
-  entityCamelHuskDash,
-  entityCamelHuskDashReady,
-  entityCamelHuskDeath,
-  entityCamelHuskEat,
-  entityCamelHuskHurt,
-  entityCamelHuskSaddle,
-  entityCamelHuskSit,
-  entityCamelHuskStand,
-  entityCamelHuskStep,
-  entityCamelHuskStepSand,
-  entityCamelAmbient,
-  entityCamelDash,
-  entityCamelDashReady,
-  entityCamelDeath,
-  entityCamelEat,
-  entityCamelHurt,
-  entityCamelSaddle,
-  entityCamelSit,
-  entityCamelStand,
-  entityCamelStep,
-  entityCamelStepSand,
-  blockCampfireCrackle,
-  blockCandleAmbient,
-  blockCandleBreak,
-  blockCandleExtinguish,
-  blockCandleFall,
-  blockCandleHit,
-  blockCandlePlace,
-  blockCandleStep,
-  entityBabyCatAmbient,
-  entityBabyCatStrayAmbient,
-  entityBabyCatDeath,
-  entityBabyCatEat,
-  entityBabyCatHiss,
-  entityBabyCatBegForFood,
-  entityBabyCatHurt,
-  entityBabyCatPurr,
-  entityBabyCatPurreow,
-  entityCatAmbient,
-  entityCatStrayAmbient,
-  entityCatHiss,
-  entityCatHurt,
-  entityCatDeath,
-  entityCatEat,
-  entityCatBegForFood,
-  entityCatPurr,
-  entityCatPurreow,
-  entityCatRoyalAmbient,
-  entityCatRoyalStrayAmbient,
-  entityCatRoyalHiss,
-  entityCatRoyalHurt,
-  entityCatRoyalDeath,
-  entityCatRoyalEat,
-  entityCatRoyalBegForFood,
-  entityCatRoyalPurr,
-  entityCatRoyalPurreow,
-  blockCaveVinesBreak,
-  blockCaveVinesFall,
-  blockCaveVinesHit,
-  blockCaveVinesPlace,
-  blockCaveVinesStep,
-  blockCaveVinesPickBerries,
-  blockChainBreak,
-  blockChainFall,
-  blockChainHit,
-  blockChainPlace,
-  blockChainStep,
-  blockCherryWoodBreak,
-  blockCherryWoodFall,
-  blockCherryWoodHit,
-  blockCherryWoodPlace,
-  blockCherryWoodStep,
-  blockCherrySaplingBreak,
-  blockCherrySaplingFall,
-  blockCherrySaplingHit,
-  blockCherrySaplingPlace,
-  blockCherrySaplingStep,
-  blockCherryLeavesBreak,
-  blockCherryLeavesFall,
-  blockCherryLeavesHit,
-  blockCherryLeavesPlace,
-  blockCherryLeavesStep,
-  blockCherryWoodHangingSignStep,
-  blockCherryWoodHangingSignBreak,
-  blockCherryWoodHangingSignFall,
-  blockCherryWoodHangingSignHit,
-  blockCherryWoodHangingSignPlace,
-  blockCherryWoodDoorClose,
-  blockCherryWoodDoorOpen,
-  blockCherryWoodTrapdoorClose,
-  blockCherryWoodTrapdoorOpen,
-  blockCherryWoodButtonClickOff,
-  blockCherryWoodButtonClickOn,
-  blockCherryWoodPressurePlateClickOff,
-  blockCherryWoodPressurePlateClickOn,
-  blockCherryWoodFenceGateClose,
-  blockCherryWoodFenceGateOpen,
-  blockChestClose,
-  blockChestLocked,
-  blockChestOpen,
-  entityBabyChickenAmbient,
-  entityBabyChickenDeath,
-  entityChickenEgg,
-  entityBabyChickenHurt,
-  entityChickenStep,
-  entityBabyChickenStep,
-  entityChickenAmbient,
-  entityChickenHurt,
-  entityChickenDeath,
-  entityChickenPickyAmbient,
-  entityChickenPickyHurt,
-  entityChickenPickyDeath,
-  blockChiseledBookshelfBreak,
-  blockChiseledBookshelfFall,
-  blockChiseledBookshelfHit,
-  blockChiseledBookshelfInsert,
-  blockChiseledBookshelfInsertEnchanted,
-  blockChiseledBookshelfStep,
-  blockChiseledBookshelfPickup,
-  blockChiseledBookshelfPickupEnchanted,
-  blockChiseledBookshelfPlace,
-  blockChorusFlowerDeath,
-  blockChorusFlowerGrow,
-  itemChorusFruitTeleport,
-  blockCobwebBreak,
-  blockCobwebStep,
-  blockCobwebPlace,
-  blockCobwebHit,
-  blockCobwebFall,
-  entityCodAmbient,
-  entityCodDeath,
-  entityCodFlop,
-  entityCodHurt,
-  blockComparatorClick,
-  blockComposterEmpty,
-  blockComposterFill,
-  blockComposterFillSuccess,
-  blockComposterReady,
-  blockConduitActivate,
-  blockConduitAmbient,
-  blockConduitAmbientShort,
-  blockConduitAttackTarget,
-  blockConduitDeactivate,
-  blockCopperBulbBreak,
-  blockCopperBulbStep,
-  blockCopperBulbPlace,
-  blockCopperBulbHit,
-  blockCopperBulbFall,
-  blockCopperBulbTurnOn,
-  blockCopperBulbTurnOff,
-  blockCopperBreak,
-  blockCopperStep,
-  blockCopperPlace,
-  blockCopperHit,
-  blockCopperFall,
-  blockCopperChestClose,
-  blockCopperChestOpen,
-  blockCopperChestWeatheredClose,
-  blockCopperChestWeatheredOpen,
-  blockCopperChestOxidizedClose,
-  blockCopperChestOxidizedOpen,
-  blockCopperDoorClose,
-  blockCopperDoorOpen,
-  entityCopperGolemStep,
-  entityCopperGolemHurt,
-  entityCopperGolemDeath,
-  entityCopperGolemWeatheredStep,
-  entityCopperGolemWeatheredHurt,
-  entityCopperGolemWeatheredDeath,
-  entityCopperGolemOxidizedStep,
-  entityCopperGolemOxidizedHurt,
-  entityCopperGolemOxidizedDeath,
-  entityCopperGolemSpin,
-  entityCopperGolemWeatheredSpin,
-  entityCopperGolemOxidizedSpin,
-  entityCopperGolemNoItemGet,
-  entityCopperGolemNoItemNoGet,
-  entityCopperGolemItemDrop,
-  entityCopperGolemItemNoDrop,
-  entityCopperGolemBecomeStatue,
-  blockCopperGolemStatueBreak,
-  blockCopperGolemStatuePlace,
-  blockCopperGolemStatueHit,
-  blockCopperGolemStatueStep,
-  blockCopperGolemStatueFall,
-  entityCopperGolemSpawn,
-  entityCopperGolemShear,
-  blockCopperGrateBreak,
-  blockCopperGrateStep,
-  blockCopperGratePlace,
-  blockCopperGrateHit,
-  blockCopperGrateFall,
-  blockCopperTrapdoorClose,
-  blockCopperTrapdoorOpen,
-  blockCoralBlockBreak,
-  blockCoralBlockFall,
-  blockCoralBlockHit,
-  blockCoralBlockPlace,
-  blockCoralBlockStep,
-  entityCowMilk,
-  entityCowAmbient,
-  entityCowHurt,
-  entityCowDeath,
-  entityCowStep,
-  entityCowMoodyAmbient,
-  entityCowMoodyHurt,
-  entityCowMoodyDeath,
-  entityCowMoodyStep,
-  blockCrafterCraft,
-  blockCrafterFail,
-  entityCreakingAmbient,
-  entityCreakingActivate,
-  entityCreakingDeactivate,
-  entityCreakingAttack,
-  entityCreakingDeath,
-  entityCreakingStep,
-  entityCreakingFreeze,
-  entityCreakingUnfreeze,
-  entityCreakingSpawn,
-  entityCreakingSway,
-  entityCreakingTwitch,
-  blockCreakingHeartBreak,
-  blockCreakingHeartFall,
-  blockCreakingHeartHit,
-  blockCreakingHeartHurt,
-  blockCreakingHeartPlace,
-  blockCreakingHeartStep,
-  blockCreakingHeartIdle,
-  blockCreakingHeartSpawn,
-  entityCreeperDeath,
-  entityCreeperHurt,
-  entityCreeperPrimed,
-  blockCropBreak,
-  itemCropPlant,
-  itemCrossbowHit,
-  itemCrossbowLoadingEnd,
-  itemCrossbowLoadingMiddle,
-  itemCrossbowLoadingStart,
-  itemCrossbowQuickCharge1,
-  itemCrossbowQuickCharge2,
-  itemCrossbowQuickCharge3,
-  itemCrossbowShoot,
-  entityCushionBreak,
-  entityCushionPlace,
-  entityCushionSit,
-  entityCushionGetUp,
-  blockDeadbushIdle,
-  blockDecoratedPotBreak,
-  blockDecoratedPotFall,
-  blockDecoratedPotHit,
-  blockDecoratedPotInsert,
-  blockDecoratedPotInsertFail,
-  blockDecoratedPotStep,
-  blockDecoratedPotPlace,
-  blockDecoratedPotShatter,
-  blockDeepslateBricksBreak,
-  blockDeepslateBricksFall,
-  blockDeepslateBricksHit,
-  blockDeepslateBricksPlace,
-  blockDeepslateBricksStep,
-  blockDeepslateBreak,
-  blockDeepslateFall,
-  blockDeepslateHit,
-  blockDeepslatePlace,
-  blockDeepslateStep,
-  blockDeepslateTilesBreak,
-  blockDeepslateTilesFall,
-  blockDeepslateTilesHit,
-  blockDeepslateTilesPlace,
-  blockDeepslateTilesStep,
-  blockDispenserDispense,
-  blockDispenserFail,
-  blockDispenserLaunch,
-  entityDolphinAmbient,
-  entityDolphinAmbientWater,
-  entityDolphinAttack,
-  entityDolphinDeath,
-  entityDolphinEat,
-  entityDolphinHurt,
-  entityDolphinJump,
-  entityDolphinPlay,
-  entityDolphinSplash,
-  entityDolphinSwim,
-  entityDonkeyAmbient,
-  entityDonkeyAngry,
-  entityDonkeyChest,
-  entityDonkeyDeath,
-  entityDonkeyEat,
-  entityDonkeyHurt,
-  entityDonkeyJump,
-  blockDriedGhastBreak,
-  blockDriedGhastStep,
-  blockDriedGhastFall,
-  blockDriedGhastAmbient,
-  blockDriedGhastAmbientWater,
-  blockDriedGhastPlace,
-  blockDriedGhastPlaceInWater,
-  blockDriedGhastTransition,
-  blockDripstoneBlockBreak,
-  blockDripstoneBlockStep,
-  blockDripstoneBlockPlace,
-  blockDripstoneBlockHit,
-  blockDripstoneBlockFall,
-  blockDryGrassAmbient,
-  blockPointedDripstoneBreak,
-  blockPointedDripstoneStep,
-  blockPointedDripstonePlace,
-  blockPointedDripstoneHit,
-  blockPointedDripstoneFall,
-  blockPointedDripstoneLand,
-  blockPointedDripstoneDripLava,
-  blockPointedDripstoneDripWater,
-  blockPointedDripstoneDripLavaIntoCauldron,
-  blockPointedDripstoneDripWaterIntoCauldron,
-  blockBigDripleafTiltDown,
-  blockBigDripleafTiltUp,
-  entityDrownedAmbient,
-  entityDrownedAmbientWater,
-  entityDrownedDeath,
-  entityDrownedDeathWater,
-  entityDrownedHurt,
-  entityDrownedHurtWater,
-  entityDrownedShoot,
-  entityDrownedStep,
-  entityDrownedSwim,
-  itemDyeUse,
-  entityEggThrow,
-  entityElderGuardianAmbient,
-  entityElderGuardianAmbientLand,
-  entityElderGuardianCurse,
-  entityElderGuardianDeath,
-  entityElderGuardianDeathLand,
-  entityElderGuardianFlop,
-  entityElderGuardianHurt,
-  entityElderGuardianHurtLand,
-  itemElytraFlying,
-  blockEnchantmentTableUse,
-  blockEnderChestClose,
-  blockEnderChestOpen,
-  entityEnderDragonAmbient,
-  entityEnderDragonDeath,
-  entityDragonFireballExplode,
-  entityEnderDragonFlap,
-  entityEnderDragonGrowl,
-  entityEnderDragonHurt,
-  entityEnderDragonShoot,
-  entityEnderEyeDeath,
-  entityEnderEyeLaunch,
-  entityEndermanAmbient,
-  entityEndermanDeath,
-  entityEndermanHurt,
-  entityEndermanScream,
-  entityEndermanStare,
-  entityEndermanTeleport,
-  entityEndermiteAmbient,
-  entityEndermiteDeath,
-  entityEndermiteHurt,
-  entityEndermiteStep,
-  entityEnderPearlThrow,
-  blockEndGatewaySpawn,
-  blockEndPortalFrameFill,
-  blockEndPortalSpawn,
-  entityEvokerAmbient,
-  entityEvokerCastSpell,
-  entityEvokerCelebrate,
-  entityEvokerDeath,
-  entityEvokerFangsAttack,
-  entityEvokerHurt,
-  entityEvokerPrepareAttack,
-  entityEvokerPrepareSummon,
-  entityEvokerPrepareWololo,
-  entityExperienceBottleThrow,
-  entityExperienceOrbPickup,
-  blockEyeblossomOpenLong,
-  blockEyeblossomOpen,
-  blockEyeblossomCloseLong,
-  blockEyeblossomClose,
-  blockEyeblossomIdle,
-  blockFenceGateClose,
-  blockFenceGateOpen,
-  itemFirechargeUse,
-  blockFireflyBushIdle,
-  entityFireworkRocketBlast,
-  entityFireworkRocketBlastFar,
-  entityFireworkRocketLargeBlast,
-  entityFireworkRocketLargeBlastFar,
-  entityFireworkRocketLaunch,
-  entityFireworkRocketShoot,
-  entityFireworkRocketTwinkle,
-  entityFireworkRocketTwinkleFar,
-  blockFireAmbient,
-  blockFireExtinguish,
-  entityFishSwim,
-  entityFishingBobberRetrieve,
-  entityFishingBobberSplash,
-  entityFishingBobberThrow,
-  itemFlintandsteelUse,
-  blockFloweringAzaleaBreak,
-  blockFloweringAzaleaFall,
-  blockFloweringAzaleaHit,
-  blockFloweringAzaleaPlace,
-  blockFloweringAzaleaStep,
-  entityFoxAggro,
-  entityFoxAmbient,
-  entityFoxBite,
-  entityFoxDeath,
-  entityFoxEat,
-  entityFoxHurt,
-  entityFoxScreech,
-  entityFoxSleep,
-  entityFoxSniff,
-  entityFoxSpit,
-  entityFoxTeleport,
-  blockSuspiciousSandBreak,
-  blockSuspiciousSandStep,
-  blockSuspiciousSandPlace,
-  blockSuspiciousSandHit,
-  blockSuspiciousSandFall,
-  blockSuspiciousGravelBreak,
-  blockSuspiciousGravelStep,
-  blockSuspiciousGravelPlace,
-  blockSuspiciousGravelHit,
-  blockSuspiciousGravelFall,
-  blockFroglightBreak,
-  blockFroglightFall,
-  blockFroglightHit,
-  blockFroglightPlace,
-  blockFroglightStep,
-  blockFrogspawnStep,
-  blockFrogspawnBreak,
-  blockFrogspawnFall,
-  blockFrogspawnHatch,
-  blockFrogspawnHit,
-  blockFrogspawnPlace,
-  entityFrogAmbient,
-  entityFrogDeath,
-  entityFrogEat,
-  entityFrogHurt,
-  entityFrogLaySpawn,
-  entityFrogLongJump,
-  entityFrogStep,
-  entityFrogTongue,
-  blockRootsBreak,
-  blockRootsStep,
-  blockRootsPlace,
-  blockRootsHit,
-  blockRootsFall,
-  blockFurnaceFireCrackle,
-  entityGenericBigFall,
-  entityGenericBurn,
-  entityGenericDeath,
-  entityGenericDrink,
-  entityGenericEat,
-  entityGenericExplode,
-  entityGenericExtinguishFire,
-  entityGenericHurt,
-  entityGenericSmallFall,
-  entityGenericSplash,
-  entityGenericSwim,
-  entityGhastAmbient,
-  entityGhastDeath,
-  entityGhastHurt,
-  entityGhastScream,
-  entityGhastShoot,
-  entityGhastWarn,
-  entityGhastlingAmbient,
-  entityGhastlingDeath,
-  entityGhastlingHurt,
-  entityGhastlingSpawn,
-  blockGildedBlackstoneBreak,
-  blockGildedBlackstoneFall,
-  blockGildedBlackstoneHit,
-  blockGildedBlackstonePlace,
-  blockGildedBlackstoneStep,
-  blockGlassBreak,
-  blockGlassFall,
-  blockGlassHit,
-  blockGlassPlace,
-  blockGlassStep,
-  itemGlowInkSacUse,
-  entityGlowItemFrameAddItem,
-  entityGlowItemFrameBreak,
-  entityGlowItemFramePlace,
-  entityGlowItemFrameRemoveItem,
-  entityGlowItemFrameRotateItem,
-  entityGlowSquidAmbient,
-  entityGlowSquidDeath,
-  entityGlowSquidHurt,
-  entityGlowSquidSquirt,
-  entityGoatAmbient,
-  entityGoatDeath,
-  entityGoatEat,
-  entityGoatHurt,
-  entityGoatLongJump,
-  entityGoatMilk,
-  entityGoatPrepareRam,
-  entityGoatRamImpact,
-  entityGoatHornBreak,
-  entityGoatScreamingAmbient,
-  entityGoatScreamingDeath,
-  entityGoatScreamingEat,
-  entityGoatScreamingHurt,
-  entityGoatScreamingLongJump,
-  entityGoatScreamingMilk,
-  entityGoatScreamingPrepareRam,
-  entityGoatScreamingRamImpact,
-  entityGoatStep,
-  itemGoldenDandelionUse,
-  itemGoldenDandelionUnuse,
-  blockGrassBreak,
-  blockGrassFall,
-  blockGrassHit,
-  blockGrassPlace,
-  blockGrassStep,
-  blockGravelBreak,
-  blockGravelFall,
-  blockGravelHit,
-  blockGravelPlace,
-  blockGravelStep,
-  blockGrindstoneUse,
-  blockGrowingPlantCrop,
-  entityGuardianAmbient,
-  entityGuardianAmbientLand,
-  entityGuardianAttack,
-  entityGuardianDeath,
-  entityGuardianDeathLand,
-  entityGuardianFlop,
-  entityGuardianHurt,
-  entityGuardianHurtLand,
-  blockHangingRootsBreak,
-  blockHangingRootsFall,
-  blockHangingRootsHit,
-  blockHangingRootsPlace,
-  blockHangingRootsStep,
-  blockHangingSignStep,
-  blockHangingSignBreak,
-  blockHangingSignFall,
-  blockHangingSignHit,
-  blockHangingSignPlace,
-  entityHappyGhastAmbient,
-  entityHappyGhastDeath,
-  entityHappyGhastHurt,
-  entityHappyGhastRiding,
-  blockHeavyCoreBreak,
-  blockHeavyCoreFall,
-  blockHeavyCoreHit,
-  blockHeavyCorePlace,
-  blockHeavyCoreStep,
-  blockNetherWoodHangingSignStep,
-  blockNetherWoodHangingSignBreak,
-  blockNetherWoodHangingSignFall,
-  blockNetherWoodHangingSignHit,
-  blockNetherWoodHangingSignPlace,
-  blockBambooWoodHangingSignStep,
-  blockBambooWoodHangingSignBreak,
-  blockBambooWoodHangingSignFall,
-  blockBambooWoodHangingSignHit,
-  blockBambooWoodHangingSignPlace,
-  blockTrialSpawnerBreak,
-  blockTrialSpawnerStep,
-  blockTrialSpawnerPlace,
-  blockTrialSpawnerHit,
-  blockTrialSpawnerFall,
-  blockTrialSpawnerSpawnMob,
-  blockTrialSpawnerAboutToSpawnItem,
-  blockTrialSpawnerSpawnItem,
-  blockTrialSpawnerSpawnItemBegin,
-  blockTrialSpawnerDetectPlayer,
-  blockTrialSpawnerOminousActivate,
-  blockTrialSpawnerAmbient,
-  blockTrialSpawnerAmbientOminous,
-  blockTrialSpawnerOpenShutter,
-  blockTrialSpawnerCloseShutter,
-  blockTrialSpawnerEjectItem,
-  entityHappyGhastEquip,
-  entityHappyGhastUnequip,
-  entityHappyGhastHarnessGogglesUp,
-  entityHappyGhastHarnessGogglesDown,
-  itemHoeTill,
-  entityHoglinAmbient,
-  entityHoglinAngry,
-  entityHoglinAttack,
-  entityHoglinConvertedToZombified,
-  entityHoglinDeath,
-  entityHoglinHurt,
-  entityHoglinRetreat,
-  entityHoglinStep,
-  blockHoneyBlockBreak,
-  blockHoneyBlockFall,
-  blockHoneyBlockHit,
-  blockHoneyBlockPlace,
-  blockHoneyBlockSlide,
-  blockHoneyBlockStep,
-  itemHoneycombWaxOn,
-  itemHoneyBottleDrink,
-  itemGoatHornSound0,
-  itemGoatHornSound1,
-  itemGoatHornSound2,
-  itemGoatHornSound3,
-  itemGoatHornSound4,
-  itemGoatHornSound5,
-  itemGoatHornSound6,
-  itemGoatHornSound7,
-  entityHorseAmbient,
-  entityBabyHorseAmbient,
-  entityHorseAngry,
-  entityBabyHorseAngry,
-  entityHorseArmor,
-  itemHorseArmorUnequip,
-  entityHorseBreathe,
-  entityBabyHorseBreathe,
-  entityHorseDeath,
-  entityBabyHorseDeath,
-  entityHorseEat,
-  entityBabyHorseEat,
-  entityHorseGallop,
-  entityHorseHurt,
-  entityBabyHorseHurt,
-  entityHorseJump,
-  entityHorseLand,
-  entityBabyHorseLand,
-  entityHorseSaddle,
-  entityHorseStep,
-  entityBabyHorseStep,
-  entityHorseStepWood,
-  entityHostileBigFall,
-  entityHostileDeath,
-  entityHostileHurt,
-  entityHostileSmallFall,
-  entityHostileSplash,
-  entityHostileSwim,
-  entityHuskAmbient,
-  entityHuskConvertedToZombie,
-  entityHuskDeath,
-  entityHuskHurt,
-  entityHuskStep,
-  entityIllusionerAmbient,
-  entityIllusionerCastSpell,
-  entityIllusionerDeath,
-  entityIllusionerHurt,
-  entityIllusionerMirrorMove,
-  entityIllusionerPrepareBlindness,
-  entityIllusionerPrepareMirror,
-  itemInkSacUse,
-  blockIronBreak,
-  blockIronStep,
-  blockIronPlace,
-  blockIronHit,
-  blockIronFall,
-  blockIronDoorClose,
-  blockIronDoorOpen,
-  entityIronGolemAttack,
-  entityIronGolemDamage,
-  entityIronGolemDeath,
-  entityIronGolemHurt,
-  entityIronGolemRepair,
-  entityIronGolemStep,
-  blockIronTrapdoorClose,
-  blockIronTrapdoorOpen,
-  entityItemFrameAddItem,
-  entityItemFrameBreak,
-  entityItemFramePlace,
-  entityItemFrameRemoveItem,
-  entityItemFrameRotateItem,
-  entityItemBreak,
-  entityItemPickup,
-  blockLadderBreak,
-  blockLadderFall,
-  blockLadderHit,
-  blockLadderPlace,
-  blockLadderStep,
-  blockLanternBreak,
-  blockLanternFall,
-  blockLanternHit,
-  blockLanternPlace,
-  blockLanternStep,
-  blockLargeAmethystBudBreak,
-  blockLargeAmethystBudPlace,
-  blockLavaAmbient,
-  blockLavaExtinguish,
-  blockLavaPop,
-  blockLeafLitterBreak,
-  blockLeafLitterStep,
-  blockLeafLitterPlace,
-  blockLeafLitterHit,
-  blockLeafLitterFall,
-  itemLeadUntied,
-  itemLeadTied,
-  itemLeadBreak,
-  blockLeverClick,
-  entityLightningBoltImpact,
-  entityLightningBoltThunder,
-  entityLingeringPotionThrow,
-  entityLlamaAmbient,
-  entityLlamaAngry,
-  entityLlamaChest,
-  entityLlamaDeath,
-  entityLlamaEat,
-  entityLlamaHurt,
-  entityLlamaSpit,
-  entityLlamaStep,
-  entityLlamaSwag,
-  itemLlamaCarpetUnequip,
-  entityMagmaCubeDeathSmall,
-  blockLodestoneBreak,
-  blockLodestoneStep,
-  blockLodestonePlace,
-  blockLodestoneHit,
-  blockLodestoneFall,
-  itemLodestoneCompassLock,
-  itemSpearLunge1,
-  itemSpearLunge2,
-  itemSpearLunge3,
-  itemMaceSmashAir,
-  itemMaceSmashGround,
-  itemMaceSmashGroundHeavy,
-  entityMagmaCubeDeath,
-  entityMagmaCubeHurt,
-  entityMagmaCubeHurtSmall,
-  entityMagmaCubeJump,
-  entityMagmaCubeSquish,
-  entityMagmaCubeSquishSmall,
-  blockMangroveRootsBreak,
-  blockMangroveRootsFall,
-  blockMangroveRootsHit,
-  blockMangroveRootsPlace,
-  blockMangroveRootsStep,
-  blockMediumAmethystBudBreak,
-  blockMediumAmethystBudPlace,
-  blockMetalBreak,
-  blockMetalFall,
-  blockMetalHit,
-  blockMetalPlace,
-  blockMetalPressurePlateClickOff,
-  blockMetalPressurePlateClickOn,
-  blockMetalStep,
-  entityMinecartInsideUnderwater,
-  entityMinecartInside,
-  entityMinecartRiding,
-  entityMooshroomConvert,
-  entityMooshroomEat,
-  entityMooshroomMilk,
-  entityMooshroomSuspiciousMilk,
-  entityMooshroomShear,
-  blockMossCarpetBreak,
-  blockMossCarpetFall,
-  blockMossCarpetHit,
-  blockMossCarpetPlace,
-  blockMossCarpetStep,
-  blockPinkPetalsBreak,
-  blockPinkPetalsFall,
-  blockPinkPetalsHit,
-  blockPinkPetalsPlace,
-  blockPinkPetalsStep,
-  blockMossBreak,
-  blockMossFall,
-  blockMossHit,
-  blockMossPlace,
-  blockMossStep,
-  blockMudBreak,
-  blockMudFall,
-  blockMudHit,
-  blockMudPlace,
-  blockMudStep,
-  blockMudBricksBreak,
-  blockMudBricksFall,
-  blockMudBricksHit,
-  blockMudBricksPlace,
-  blockMudBricksStep,
-  blockMuddyMangroveRootsBreak,
-  blockMuddyMangroveRootsFall,
-  blockMuddyMangroveRootsHit,
-  blockMuddyMangroveRootsPlace,
-  blockMuddyMangroveRootsStep,
-  entityMuleAmbient,
-  entityMuleAngry,
-  entityMuleChest,
-  entityMuleDeath,
-  entityMuleEat,
-  entityMuleHurt,
-  entityMuleJump,
-  musicCreative,
-  musicCredits,
-  musicDisc5,
-  musicDisc11,
-  musicDisc13,
-  musicDiscBlocks,
-  musicDiscBounce,
-  musicDiscCat,
-  musicDiscChirp,
-  musicDiscFar,
-  musicDiscLavaChicken,
-  musicDiscMall,
-  musicDiscMellohi,
-  musicDiscPigstep,
-  musicDiscStal,
-  musicDiscStrad,
-  musicDiscWait,
-  musicDiscWard,
-  musicDiscOtherside,
-  musicDiscRelic,
-  musicDiscCreator,
-  musicDiscCreatorMusicBox,
-  musicDiscPrecipice,
-  musicDiscTears,
-  musicDragon,
-  musicEnd,
-  musicGame,
-  musicMenu,
-  musicNetherBasaltDeltas,
-  musicNetherCrimsonForest,
-  musicOverworldDeepDark,
-  musicOverworldDripstoneCaves,
-  musicOverworldGrove,
-  musicOverworldJaggedPeaks,
-  musicOverworldLushCaves,
-  musicOverworldSwamp,
-  musicOverworldForest,
-  musicOverworldOldGrowthTaiga,
-  musicOverworldMeadow,
-  musicOverworldCherryGrove,
-  musicNetherNetherWastes,
-  musicOverworldFrozenPeaks,
-  musicOverworldSnowySlopes,
-  musicNetherSoulSandValley,
-  musicOverworldStonyPeaks,
-  musicNetherWarpedForest,
-  musicOverworldFlowerForest,
-  musicOverworldDesert,
-  musicOverworldBadlands,
-  musicOverworldJungle,
-  musicOverworldSparseJungle,
-  musicOverworldBambooJungle,
-  musicOverworldSulfurCaves,
-  musicUnderWater,
-  entityNautilusAmbient,
-  entityNautilusAmbientLand,
-  entityNautilusDash,
-  entityNautilusDashLand,
-  entityNautilusDashReady,
-  entityNautilusDashReadyLand,
-  entityNautilusDeath,
-  entityNautilusDeathLand,
-  entityNautilusEat,
-  entityNautilusHurt,
-  entityNautilusHurtLand,
-  entityNautilusSwim,
-  blockNetherBricksBreak,
-  blockNetherBricksStep,
-  blockNetherBricksPlace,
-  blockNetherBricksHit,
-  blockNetherBricksFall,
-  blockNetherWartBreak,
-  itemNetherWartPlant,
-  blockNetherWoodBreak,
-  blockNetherWoodFall,
-  blockNetherWoodHit,
-  blockNetherWoodPlace,
-  blockNetherWoodStep,
-  blockNetherWoodDoorClose,
-  blockNetherWoodDoorOpen,
-  blockNetherWoodTrapdoorClose,
-  blockNetherWoodTrapdoorOpen,
-  blockNetherWoodButtonClickOff,
-  blockNetherWoodButtonClickOn,
-  blockNetherWoodPressurePlateClickOff,
-  blockNetherWoodPressurePlateClickOn,
-  blockNetherWoodFenceGateClose,
-  blockNetherWoodFenceGateOpen,
-  intentionallyEmpty,
-  blockPackedMudBreak,
-  blockPackedMudFall,
-  blockPackedMudHit,
-  blockPackedMudPlace,
-  blockPackedMudStep,
-  blockStemBreak,
-  blockStemStep,
-  blockStemPlace,
-  blockStemHit,
-  blockStemFall,
-  blockNyliumBreak,
-  blockNyliumStep,
-  blockNyliumPlace,
-  blockNyliumHit,
-  blockNyliumFall,
-  blockNetherSproutsBreak,
-  blockNetherSproutsStep,
-  blockNetherSproutsPlace,
-  blockNetherSproutsHit,
-  blockNetherSproutsFall,
-  blockFungusBreak,
-  blockFungusStep,
-  blockFungusPlace,
-  blockFungusHit,
-  blockFungusFall,
-  blockWeepingVinesBreak,
-  blockWeepingVinesStep,
-  blockWeepingVinesPlace,
-  blockWeepingVinesHit,
-  blockWeepingVinesFall,
-  blockWartBlockBreak,
-  blockWartBlockStep,
-  blockWartBlockPlace,
-  blockWartBlockHit,
-  blockWartBlockFall,
-  blockNetheriteBlockBreak,
-  blockNetheriteBlockStep,
-  blockNetheriteBlockPlace,
-  blockNetheriteBlockHit,
-  blockNetheriteBlockFall,
-  blockNetherrackBreak,
-  blockNetherrackStep,
-  blockNetherrackPlace,
-  blockNetherrackHit,
-  blockNetherrackFall,
-  blockNoteBlockBasedrum,
-  blockNoteBlockBass,
-  blockNoteBlockBell,
-  blockNoteBlockChime,
-  blockNoteBlockFlute,
-  blockNoteBlockGuitar,
-  blockNoteBlockHarp,
-  blockNoteBlockHat,
-  blockNoteBlockPling,
-  blockNoteBlockSnare,
-  blockNoteBlockTrumpet,
-  blockNoteBlockTrumpetExposed,
-  blockNoteBlockTrumpetOxidized,
-  blockNoteBlockTrumpetWeathered,
-  blockNoteBlockXylophone,
-  blockNoteBlockIronXylophone,
-  blockNoteBlockCowBell,
-  blockNoteBlockDidgeridoo,
-  blockNoteBlockBit,
-  blockNoteBlockBanjo,
-  blockNoteBlockImitateZombie,
-  blockNoteBlockImitateSkeleton,
-  blockNoteBlockImitateCreeper,
-  blockNoteBlockImitateEnderDragon,
-  blockNoteBlockImitateWitherSkeleton,
-  blockNoteBlockImitatePiglin,
-  entityOcelotHurt,
-  entityOcelotAmbient,
-  entityOcelotDeath,
-  itemOminousBottleDispose,
-  entityPaintingBreak,
-  entityPaintingPlace,
-  blockPaleHangingMossIdle,
-  entityPandaPreSneeze,
-  entityPandaSneeze,
-  entityPandaAmbient,
-  entityPandaDeath,
-  entityPandaEat,
-  entityPandaStep,
-  entityPandaCantBreed,
-  entityPandaAggressiveAmbient,
-  entityPandaWorriedAmbient,
-  entityPandaHurt,
-  entityPandaBite,
-  entityParchedAmbient,
-  entityParchedDeath,
-  entityParchedHurt,
-  entityParchedStep,
-  entityParrotAmbient,
-  entityParrotDeath,
-  entityParrotEat,
-  entityParrotFly,
-  entityParrotHurt,
-  entityParrotImitateBlaze,
-  entityParrotImitateBogged,
-  entityParrotImitateBreeze,
-  entityParrotImitateCamelHusk,
-  entityParrotImitateCreaking,
-  entityParrotImitateCreeper,
-  entityParrotImitateDrowned,
-  entityParrotImitateElderGuardian,
-  entityParrotImitateEnderDragon,
-  entityParrotImitateEndermite,
-  entityParrotImitateEvoker,
-  entityParrotImitateGhast,
-  entityParrotImitateGuardian,
-  entityParrotImitateHoglin,
-  entityParrotImitateHusk,
-  entityParrotImitateIllusioner,
-  entityParrotImitateMagmaCube,
-  entityParrotImitatePhantom,
-  entityParrotImitateParched,
-  entityParrotImitatePiglin,
-  entityParrotImitatePiglinBrute,
-  entityParrotImitatePillager,
-  entityParrotImitateRavager,
-  entityParrotImitateShulker,
-  entityParrotImitateSilverfish,
-  entityParrotImitateSkeleton,
-  entityParrotImitateSlime,
-  entityParrotImitateSpider,
-  entityParrotImitateStray,
-  entityParrotImitateVex,
-  entityParrotImitateVindicator,
-  entityParrotImitateWarden,
-  entityParrotImitateWitch,
-  entityParrotImitateWither,
-  entityParrotImitateWitherSkeleton,
-  entityParrotImitateZoglin,
-  entityParrotImitateZombie,
-  entityParrotImitateZombieHorse,
-  entityParrotImitateZombieNautilus,
-  entityParrotImitateZombieVillager,
-  entityParrotStep,
-  entityPhantomAmbient,
-  entityPhantomBite,
-  entityPhantomDeath,
-  entityPhantomFlap,
-  entityPhantomHurt,
-  entityPhantomSwoop,
-  entityPigSaddle,
-  entityPigStep,
-  entityBabyPigStep,
-  entityBabyPigAmbient,
-  entityBabyPigEat,
-  entityBabyPigHurt,
-  entityBabyPigDeath,
-  entityPigAmbient,
-  entityPigHurt,
-  entityPigDeath,
-  entityPigEat,
-  entityPigMiniAmbient,
-  entityPigMiniHurt,
-  entityPigMiniDeath,
-  entityPigMiniEat,
-  entityPigBigAmbient,
-  entityPigBigHurt,
-  entityPigBigDeath,
-  entityPigBigEat,
-  entityPiglinAdmiringItem,
-  entityPiglinAmbient,
-  entityPiglinAngry,
-  entityPiglinCelebrate,
-  entityPiglinDeath,
-  entityPiglinJealous,
-  entityPiglinHurt,
-  entityPiglinRetreat,
-  entityPiglinStep,
-  entityPiglinConvertedToZombified,
-  entityPiglinBruteAmbient,
-  entityPiglinBruteAngry,
-  entityPiglinBruteDeath,
-  entityPiglinBruteHurt,
-  entityPiglinBruteStep,
-  entityPiglinBruteConvertedToZombified,
-  entityPillagerAmbient,
-  entityPillagerCelebrate,
-  entityPillagerDeath,
-  entityPillagerHurt,
-  blockPistonContract,
-  blockPistonExtend,
-  entityPlayerAttackCrit,
-  entityPlayerAttackKnockback,
-  entityPlayerAttackNodamage,
-  entityPlayerAttackStrong,
-  entityPlayerAttackSweep,
-  entityPlayerAttackWeak,
-  entityPlayerBigFall,
-  entityPlayerBreath,
-  entityPlayerBurp,
-  entityPlayerDeath,
-  entityPlayerHurt,
-  entityPlayerHurtDrown,
-  entityPlayerHurtFreeze,
-  entityPlayerHurtOnFire,
-  entityPlayerHurtSweetBerryBush,
-  entityPlayerLevelup,
-  entityPlayerSmallFall,
-  entityPlayerSplash,
-  entityPlayerSplashHighSpeed,
-  entityPlayerSwim,
-  entityPlayerTeleport,
-  entityPolarBearAmbient,
-  entityPolarBearAmbientBaby,
-  entityPolarBearDeath,
-  entityPolarBearHurt,
-  entityPolarBearStep,
-  entityPolarBearWarning,
-  blockPolishedDeepslateBreak,
-  blockPolishedDeepslateFall,
-  blockPolishedDeepslateHit,
-  blockPolishedDeepslatePlace,
-  blockPolishedDeepslateStep,
-  blockPortalAmbient,
-  blockPortalTravel,
-  blockPortalTrigger,
-  blockPowderSnowBreak,
-  blockPowderSnowFall,
-  blockPowderSnowHit,
-  blockPowderSnowPlace,
-  blockPowderSnowStep,
-  entityPufferFishBlowOut,
-  entityPufferFishBlowUp,
-  entityPufferFishDeath,
-  entityPufferFishFlop,
-  entityPufferFishHurt,
-  entityPufferFishSting,
-  blockPumpkinCarve,
-  entityRabbitAmbient,
-  entityRabbitAttack,
-  entityRabbitDeath,
-  entityRabbitHurt,
-  entityRabbitJump,
-  eventRaidHorn,
-  entityRavagerAmbient,
-  entityRavagerAttack,
-  entityRavagerCelebrate,
-  entityRavagerDeath,
-  entityRavagerHurt,
-  entityRavagerStep,
-  entityRavagerStunned,
-  entityRavagerRoar,
-  blockNetherGoldOreBreak,
-  blockNetherGoldOreFall,
-  blockNetherGoldOreHit,
-  blockNetherGoldOrePlace,
-  blockNetherGoldOreStep,
-  blockNetherOreBreak,
-  blockNetherOreFall,
-  blockNetherOreHit,
-  blockNetherOrePlace,
-  blockNetherOreStep,
-  blockRedstoneTorchBurnout,
-  blockResinBreak,
-  blockResinFall,
-  blockResinPlace,
-  blockResinStep,
-  blockResinBricksBreak,
-  blockResinBricksFall,
-  blockResinBricksHit,
-  blockResinBricksPlace,
-  blockResinBricksStep,
-  blockRespawnAnchorAmbient,
-  blockRespawnAnchorCharge,
-  blockRespawnAnchorDeplete,
-  blockRespawnAnchorSetSpawn,
-  blockRootedDirtBreak,
-  blockRootedDirtFall,
-  blockRootedDirtHit,
-  blockRootedDirtPlace,
-  blockRootedDirtStep,
-  entitySalmonAmbient,
-  entitySalmonDeath,
-  entitySalmonFlop,
-  entitySalmonHurt,
-  blockSandBreak,
-  blockSandFall,
-  blockSandHit,
-  blockSandPlace,
-  blockSandStep,
-  blockSandIdle,
-  blockScaffoldingBreak,
-  blockScaffoldingFall,
-  blockScaffoldingHit,
-  blockScaffoldingPlace,
-  blockScaffoldingStep,
-  blockSculkSpread,
-  blockSculkCharge,
-  blockSculkBreak,
-  blockSculkFall,
-  blockSculkHit,
-  blockSculkPlace,
-  blockSculkStep,
-  blockSculkCatalystBloom,
-  blockSculkCatalystBreak,
-  blockSculkCatalystFall,
-  blockSculkCatalystHit,
-  blockSculkCatalystPlace,
-  blockSculkCatalystStep,
-  blockSculkSensorClicking,
-  blockSculkSensorClickingStop,
-  blockSculkSensorBreak,
-  blockSculkSensorFall,
-  blockSculkSensorHit,
-  blockSculkSensorPlace,
-  blockSculkSensorStep,
-  blockSculkShriekerBreak,
-  blockSculkShriekerFall,
-  blockSculkShriekerHit,
-  blockSculkShriekerPlace,
-  blockSculkShriekerShriek,
-  blockSculkShriekerStep,
-  blockSculkVeinBreak,
-  blockSculkVeinFall,
-  blockSculkVeinHit,
-  blockSculkVeinPlace,
-  blockSculkVeinStep,
-  entitySheepAmbient,
-  entitySheepDeath,
-  entitySheepHurt,
-  entitySheepShear,
-  entitySheepStep,
-  itemShearsSnip,
-  blockShelfActivate,
-  blockShelfBreak,
-  blockShelfDeactivate,
-  blockShelfFall,
-  blockShelfHit,
-  blockShelfMultiSwap,
-  blockShelfPlace,
-  blockShelfPlaceItem,
-  blockShelfSingleSwap,
-  blockShelfStep,
-  blockShelfTakeItem,
-  itemShieldBlock,
-  itemShieldBreak,
-  blockShroomlightBreak,
-  blockShroomlightStep,
-  blockShroomlightPlace,
-  blockShroomlightHit,
-  blockShroomlightFall,
-  itemShovelFlatten,
-  entityShulkerAmbient,
-  blockShulkerBoxClose,
-  blockShulkerBoxOpen,
-  entityShulkerBulletHit,
-  entityShulkerBulletHurt,
-  entityShulkerClose,
-  entityShulkerDeath,
-  entityShulkerHurt,
-  entityShulkerHurtClosed,
-  entityShulkerOpen,
-  entityShulkerShoot,
-  entityShulkerTeleport,
-  entitySilverfishAmbient,
-  entitySilverfishDeath,
-  entitySilverfishHurt,
-  entitySilverfishStep,
-  entitySkeletonAmbient,
-  entitySkeletonConvertedToStray,
-  entitySkeletonDeath,
-  entitySkeletonHorseAmbient,
-  entitySkeletonHorseDeath,
-  entitySkeletonHorseHurt,
-  entitySkeletonHorseSwim,
-  entitySkeletonHorseAmbientWater,
-  entitySkeletonHorseGallopWater,
-  entitySkeletonHorseJumpWater,
-  entitySkeletonHorseStepWater,
-  entitySkeletonHurt,
-  entitySkeletonShoot,
-  entitySkeletonStep,
-  entitySlimeAttack,
-  entitySlimeDeath,
-  entitySlimeHurt,
-  entitySlimeJump,
-  entitySlimeSquish,
-  blockSlimeBlockBreak,
-  blockSlimeBlockFall,
-  blockSlimeBlockHit,
-  blockSlimeBlockPlace,
-  blockSlimeBlockStep,
-  blockSmallAmethystBudBreak,
-  blockSmallAmethystBudPlace,
-  blockSmallDripleafBreak,
-  blockSmallDripleafFall,
-  blockSmallDripleafHit,
-  blockSmallDripleafPlace,
-  blockSmallDripleafStep,
-  blockSoulSandBreak,
-  blockSoulSandStep,
-  blockSoulSandPlace,
-  blockSoulSandHit,
-  blockSoulSandFall,
-  blockSoulSoilBreak,
-  blockSoulSoilStep,
-  blockSoulSoilPlace,
-  blockSoulSoilHit,
-  blockSoulSoilFall,
-  particleSoulEscape,
-  blockSpawnerBreak,
-  blockSpawnerFall,
-  blockSpawnerHit,
-  blockSpawnerPlace,
-  blockSpawnerStep,
-  itemSpearUse,
-  itemSpearHit,
-  itemSpearAttack,
-  itemSpearWoodUse,
-  itemSpearWoodHit,
-  itemSpearWoodAttack,
-  blockSporeBlossomBreak,
-  blockSporeBlossomFall,
-  blockSporeBlossomHit,
-  blockSporeBlossomPlace,
-  blockSporeBlossomStep,
-  entityStriderAmbient,
-  entityStriderHappy,
-  entityStriderRetreat,
-  entityStriderDeath,
-  entityStriderHurt,
-  entityStriderStep,
-  entityStriderStepLava,
-  entityStriderEat,
-  entityStriderSaddle,
-  entitySlimeDeathSmall,
-  entitySlimeHurtSmall,
-  entitySlimeJumpSmall,
-  entitySlimeSquishSmall,
-  blockSmithingTableUse,
-  blockSmokerSmoke,
-  entitySnifferStep,
-  entitySnifferEat,
-  entitySnifferIdle,
-  entitySnifferHurt,
-  entitySnifferDeath,
-  entitySnifferDropSeed,
-  entitySnifferScenting,
-  entitySnifferSniffing,
-  entitySnifferSearching,
-  entitySnifferDigging,
-  entitySnifferDiggingStop,
-  entitySnifferHappy,
-  blockSnifferEggPlop,
-  blockSnifferEggCrack,
-  blockSnifferEggHatch,
-  entitySnowballThrow,
-  blockSnowBreak,
-  blockSnowFall,
-  entitySnowGolemAmbient,
-  entitySnowGolemDeath,
-  entitySnowGolemHurt,
-  entitySnowGolemShoot,
-  entitySnowGolemShear,
-  blockSnowHit,
-  blockSnowPlace,
-  blockSnowStep,
-  entitySpiderAmbient,
-  entitySpiderDeath,
-  entitySpiderHurt,
-  entitySpiderStep,
-  entitySplashPotionBreak,
-  entitySplashPotionThrow,
-  blockSpongeBreak,
-  blockSpongeFall,
-  blockSpongeHit,
-  blockSpongePlace,
-  blockSpongeStep,
-  blockSpongeAbsorb,
-  itemSpyglassUse,
-  itemSpyglassStopUsing,
-  entitySquidAmbient,
-  entitySquidDeath,
-  entitySquidHurt,
-  entitySquidSquirt,
-  blockStoneBreak,
-  blockStoneButtonClickOff,
-  blockStoneButtonClickOn,
-  blockStoneFall,
-  blockStoneHit,
-  blockStonePlace,
-  blockStonePressurePlateClickOff,
-  blockStonePressurePlateClickOn,
-  blockStoneStep,
-  entityStrayAmbient,
-  entityStrayDeath,
-  entityStrayHurt,
-  entityStrayStep,
-  blockSulfurSpikeBreak,
-  blockSulfurSpikeStep,
-  blockSulfurSpikePlace,
-  blockSulfurSpikeHit,
-  blockSulfurSpikeFall,
-  blockSulfurSpikeLand,
-  blockSweetBerryBushBreak,
-  blockSweetBerryBushPlace,
-  blockSweetBerryBushPickBerries,
-  entityTadpoleDeath,
-  entityTadpoleFlop,
-  entityTadpoleGrowUp,
-  entityTadpoleHurt,
-  enchantThornsHit,
-  entityTntPrimed,
-  itemTotemUse,
-  itemTridentHit,
-  itemTridentHitGround,
-  itemTridentReturn,
-  itemTridentRiptide1,
-  itemTridentRiptide2,
-  itemTridentRiptide3,
-  itemTridentThrow,
-  itemTridentThunder,
-  blockTripwireAttach,
-  blockTripwireClickOff,
-  blockTripwireClickOn,
-  blockTripwireDetach,
-  entityTropicalFishAmbient,
-  entityTropicalFishDeath,
-  entityTropicalFishFlop,
-  entityTropicalFishHurt,
-  blockTuffBreak,
-  blockTuffStep,
-  blockTuffPlace,
-  blockTuffHit,
-  blockTuffFall,
-  blockTuffBricksBreak,
-  blockTuffBricksFall,
-  blockTuffBricksHit,
-  blockTuffBricksPlace,
-  blockTuffBricksStep,
-  blockPolishedTuffBreak,
-  blockPolishedTuffFall,
-  blockPolishedTuffHit,
-  blockPolishedTuffPlace,
-  blockPolishedTuffStep,
-  entityTurtleAmbientLand,
-  entityTurtleDeath,
-  entityTurtleDeathBaby,
-  entityTurtleEggBreak,
-  entityTurtleEggCrack,
-  entityTurtleEggHatch,
-  entityTurtleHurt,
-  entityTurtleHurtBaby,
-  entityTurtleLayEgg,
-  entityTurtleShamble,
-  entityTurtleShambleBaby,
-  entityTurtleSwim,
-  uiButtonClick,
-  uiLoomSelectPattern,
-  uiLoomTakeResult,
-  uiCartographyTableTakeResult,
-  uiStonecutterTakeResult,
-  uiStonecutterSelectRecipe,
-  uiToastChallengeComplete,
-  uiToastIn,
-  uiToastOut,
-  blockVaultActivate,
-  blockVaultAmbient,
-  blockVaultBreak,
-  blockVaultCloseShutter,
-  blockVaultDeactivate,
-  blockVaultEjectItem,
-  blockVaultRejectRewardedPlayer,
-  blockVaultFall,
-  blockVaultHit,
-  blockVaultInsertItem,
-  blockVaultInsertItemFail,
-  blockVaultOpenShutter,
-  blockVaultPlace,
-  blockVaultStep,
-  entityVexAmbient,
-  entityVexCharge,
-  entityVexDeath,
-  entityVexHurt,
-  entityVillagerAmbient,
-  entityVillagerCelebrate,
-  entityVillagerDeath,
-  entityVillagerHurt,
-  entityVillagerNo,
-  entityVillagerTrade,
-  entityVillagerYes,
-  entityVillagerWorkArmorer,
-  entityVillagerWorkButcher,
-  entityVillagerWorkCartographer,
-  entityVillagerWorkCleric,
-  entityVillagerWorkFarmer,
-  entityVillagerWorkFisherman,
-  entityVillagerWorkFletcher,
-  entityVillagerWorkLeatherworker,
-  entityVillagerWorkLibrarian,
-  entityVillagerWorkMason,
-  entityVillagerWorkShepherd,
-  entityVillagerWorkToolsmith,
-  entityVillagerWorkWeaponsmith,
-  entityVindicatorAmbient,
-  entityVindicatorCelebrate,
-  entityVindicatorDeath,
-  entityVindicatorHurt,
-  blockVineBreak,
-  blockVineFall,
-  blockVineHit,
-  blockVinePlace,
-  blockVineStep,
-  blockLilyPadPlace,
-  entityWanderingTraderAmbient,
-  entityWanderingTraderDeath,
-  entityWanderingTraderDisappeared,
-  entityWanderingTraderDrinkMilk,
-  entityWanderingTraderDrinkPotion,
-  entityWanderingTraderHurt,
-  entityWanderingTraderNo,
-  entityWanderingTraderReappeared,
-  entityWanderingTraderTrade,
-  entityWanderingTraderYes,
-  entityWardenAgitated,
-  entityWardenAmbient,
-  entityWardenAngry,
-  entityWardenAttackImpact,
-  entityWardenDeath,
-  entityWardenDig,
-  entityWardenEmerge,
-  entityWardenHeartbeat,
-  entityWardenHurt,
-  entityWardenListening,
-  entityWardenListeningAngry,
-  entityWardenNearbyClose,
-  entityWardenNearbyCloser,
-  entityWardenNearbyClosest,
-  entityWardenRoar,
-  entityWardenSniff,
-  entityWardenSonicBoom,
-  entityWardenSonicCharge,
-  entityWardenStep,
-  entityWardenTendrilClicks,
-  blockHangingSignWaxedInteractFail,
-  blockSignWaxedInteractFail,
-  blockWaterAmbient,
-  weatherEndFlash,
-  weatherRain,
-  weatherRainAbove,
-  blockWetGrassBreak,
-  blockWetGrassFall,
-  blockWetGrassHit,
-  blockWetGrassPlace,
-  blockWetGrassStep,
-  blockWetSpongeBreak,
-  blockWetSpongeDries,
-  blockWetSpongeFall,
-  blockWetSpongeHit,
-  blockWetSpongePlace,
-  blockWetSpongeStep,
-  entityWindChargeWindBurst,
-  entityWindChargeThrow,
-  entityWitchAmbient,
-  entityWitchCelebrate,
-  entityWitchDeath,
-  entityWitchDrink,
-  entityWitchHurt,
-  entityWitchThrow,
-  entityWitherAmbient,
-  entityWitherBreakBlock,
-  entityWitherDeath,
-  entityWitherHurt,
-  entityWitherShoot,
-  entityWitherSkeletonAmbient,
-  entityWitherSkeletonDeath,
-  entityWitherSkeletonHurt,
-  entityWitherSkeletonStep,
-  entityWitherSpawn,
-  itemWolfArmorBreak,
-  entityBabyWolfAmbient,
-  itemWolfArmorCrack,
-  itemWolfArmorDamage,
-  itemWolfArmorRepair,
-  entityBabyWolfDeath,
-  entityBabyWolfGrowl,
-  entityBabyWolfHurt,
-  entityBabyWolfPant,
-  entityWolfShake,
-  entityWolfStep,
-  entityBabyWolfStep,
-  entityBabyWolfWhine,
-  entityWolfAmbient,
-  entityWolfDeath,
-  entityWolfGrowl,
-  entityWolfHurt,
-  entityWolfPant,
-  entityWolfWhine,
-  entityWolfPuglinAmbient,
-  entityWolfPuglinDeath,
-  entityWolfPuglinGrowl,
-  entityWolfPuglinHurt,
-  entityWolfPuglinPant,
-  entityWolfPuglinWhine,
-  entityWolfSadAmbient,
-  entityWolfSadDeath,
-  entityWolfSadGrowl,
-  entityWolfSadHurt,
-  entityWolfSadPant,
-  entityWolfSadWhine,
-  entityWolfAngryAmbient,
-  entityWolfAngryDeath,
-  entityWolfAngryGrowl,
-  entityWolfAngryHurt,
-  entityWolfAngryPant,
-  entityWolfAngryWhine,
-  entityWolfGrumpyAmbient,
-  entityWolfGrumpyDeath,
-  entityWolfGrumpyGrowl,
-  entityWolfGrumpyHurt,
-  entityWolfGrumpyPant,
-  entityWolfGrumpyWhine,
-  entityWolfBigAmbient,
-  entityWolfBigDeath,
-  entityWolfBigGrowl,
-  entityWolfBigHurt,
-  entityWolfBigPant,
-  entityWolfBigWhine,
-  entityWolfCuteAmbient,
-  entityWolfCuteDeath,
-  entityWolfCuteGrowl,
-  entityWolfCuteHurt,
-  entityWolfCutePant,
-  entityWolfCuteWhine,
-  blockWoodenDoorClose,
-  blockWoodenDoorOpen,
-  blockWoodenTrapdoorClose,
-  blockWoodenTrapdoorOpen,
-  blockWoodenButtonClickOff,
-  blockWoodenButtonClickOn,
-  blockWoodenPressurePlateClickOff,
-  blockWoodenPressurePlateClickOn,
-  blockWoodBreak,
-  blockWoodFall,
-  blockWoodHit,
-  blockWoodPlace,
-  blockWoodStep,
-  blockWoolBreak,
-  blockWoolFall,
-  blockWoolHit,
-  blockWoolPlace,
-  blockWoolStep,
-  entityZoglinAmbient,
-  entityZoglinAngry,
-  entityZoglinAttack,
-  entityZoglinDeath,
-  entityZoglinHurt,
-  entityZoglinStep,
-  entityZombieAmbient,
-  entityZombieAttackWoodenDoor,
-  entityZombieAttackIronDoor,
-  entityZombieBreakWoodenDoor,
-  entityZombieConvertedToDrowned,
-  entityZombieDeath,
-  entityZombieDestroyEgg,
-  entityZombieHorseAmbient,
-  entityZombieHorseAngry,
-  entityZombieHorseDeath,
-  entityZombieHorseEat,
-  entityZombieHorseHurt,
-  entityZombieHurt,
-  entityZombieInfect,
-  entityZombieNautilusAmbient,
-  entityZombieNautilusAmbientLand,
-  entityZombieNautilusDash,
-  entityZombieNautilusDashLand,
-  entityZombieNautilusDashReady,
-  entityZombieNautilusDashReadyLand,
-  entityZombieNautilusDeath,
-  entityZombieNautilusDeathLand,
-  entityZombieNautilusEat,
-  entityZombieNautilusHurt,
-  entityZombieNautilusHurtLand,
-  entityZombieNautilusSwim,
-  entityZombifiedPiglinAmbient,
-  entityZombifiedPiglinAngry,
-  entityZombifiedPiglinDeath,
-  entityZombifiedPiglinHurt,
-  entityZombieStep,
-  entityZombieVillagerAmbient,
-  entityZombieVillagerConverted,
-  entityZombieVillagerCure,
-  entityZombieVillagerDeath,
-  entityZombieVillagerHurt,
-  entityZombieVillagerStep,
-  eventMobEffectBadOmen,
-  eventMobEffectTrialOmen,
-  eventMobEffectRaidOmen,
-  itemSaddleUnequip,
-  itemNautilusSaddleUnderwaterEquip,
-  itemNautilusSaddleEquip,
-  blockSulfurBreak,
-  blockSulfurStep,
-  blockSulfurPlace,
-  blockSulfurHit,
-  blockSulfurFall,
-  blockPotentSulfurBreak,
-  blockPotentSulfurStep,
-  blockPotentSulfurPlace,
-  blockPotentSulfurHit,
-  blockPotentSulfurFall,
-  blockPotentSulfurGeyserEruption,
-  blockPotentSulfurGeyserEruptionActive,
-  blockPotentSulfurGeyserContinuousEruption,
-  blockPotentSulfurGeyserContinuousEruptionActive,
-  blockCinnabarBreak,
-  blockCinnabarStep,
-  blockCinnabarPlace,
-  blockCinnabarHit,
-  blockCinnabarFall,
-  entitySulfurCubeAbsorb,
-  entitySulfurCubeBounce,
-  entitySulfurCubeDeath,
-  entitySulfurCubeEject,
-  entitySulfurCubeHurt,
-  entitySulfurCubeJump,
-  entitySulfurCubeRegularHit,
-  entitySulfurCubeRegularPush,
-  entitySulfurCubeBouncyHit,
-  entitySulfurCubeBouncyPush,
-  entitySulfurCubeSlowBouncyHit,
-  entitySulfurCubeSlowBouncyPush,
-  entitySulfurCubeSlowFlatHit,
-  entitySulfurCubeSlowFlatPush,
-  entitySulfurCubeFastFlatHit,
-  entitySulfurCubeFastFlatPush,
-  entitySulfurCubeLightHit,
-  entitySulfurCubeLightPush,
-  entitySulfurCubeFastSlidingHit,
-  entitySulfurCubeFastSlidingPush,
-  entitySulfurCubeSlowSlidingHit,
-  entitySulfurCubeSlowSlidingPush,
-  entitySulfurCubeStickyHit,
-  entitySulfurCubeStickyPush,
-  entitySulfurCubeHighResistanceHit,
-  entitySulfurCubeHighResistancePush,
-  entitySulfurCubeExplosiveHit,
-  entitySulfurCubeExplosivePush,
-  entitySulfurCubeHotHit,
-  entitySulfurCubeHotPush,
-  entitySulfurCubeSquish,
-  blockPotentSulfurNoxiousGas,
-  entitySmallSulfurCubeDeath,
-  entitySmallSulfurCubeHurt,
-  entitySmallSulfurCubeJump,
-  entitySmallSulfurCubeSquish,
-  entitySmallSulfurCubeEat,
-  blockShelfMushroomBreak,
-  blockShelfMushroomFall,
-  blockShelfMushroomPlace,
-  blockShelfMushroomStep,
-  blockShelfMushroomBounce,
-  blockPoplarLeavesBreak,
-  blockPoplarLeavesHit,
-  blockPoplarLeavesFall,
-  blockPoplarLeavesPlace,
-  blockPoplarLeavesStep,
-  blockPoplarLeavesAmbient,
-  blockStrawBedBreak,
-  blockStrawBedBreakLeave,
-  blockStrawBedStep,
-  blockStrawBedPlace,
-  blockStrawBedHit,
-  blockStrawBedFall,
-  blockRedShrubBreak,
-  blockRedShrubPlace,
+  entityAllayAmbientWithItem('entity-allay-ambient-with-item'),
+  entityAllayAmbientWithoutItem('entity-allay-ambient-without-item'),
+  entityAllayDeath('entity-allay-death'),
+  entityAllayHurt('entity-allay-hurt'),
+  entityAllayItemGiven('entity-allay-item-given'),
+  entityAllayItemTaken('entity-allay-item-taken'),
+  entityAllayItemThrown('entity-allay-item-thrown'),
+  ambientCave('ambient-cave'),
+  ambientBasaltDeltasAdditions('ambient-basalt-deltas-additions'),
+  ambientBasaltDeltasLoop('ambient-basalt-deltas-loop'),
+  ambientBasaltDeltasMood('ambient-basalt-deltas-mood'),
+  ambientCrimsonForestAdditions('ambient-crimson-forest-additions'),
+  ambientCrimsonForestLoop('ambient-crimson-forest-loop'),
+  ambientCrimsonForestMood('ambient-crimson-forest-mood'),
+  ambientNetherWastesAdditions('ambient-nether-wastes-additions'),
+  ambientNetherWastesLoop('ambient-nether-wastes-loop'),
+  ambientNetherWastesMood('ambient-nether-wastes-mood'),
+  ambientSoulSandValleyAdditions('ambient-soul-sand-valley-additions'),
+  ambientSoulSandValleyLoop('ambient-soul-sand-valley-loop'),
+  ambientSoulSandValleyMood('ambient-soul-sand-valley-mood'),
+  ambientWarpedForestAdditions('ambient-warped-forest-additions'),
+  ambientWarpedForestLoop('ambient-warped-forest-loop'),
+  ambientWarpedForestMood('ambient-warped-forest-mood'),
+  ambientUnderwaterEnter('ambient-underwater-enter'),
+  ambientUnderwaterExit('ambient-underwater-exit'),
+  ambientUnderwaterLoop('ambient-underwater-loop'),
+  ambientUnderwaterLoopAdditions('ambient-underwater-loop-additions'),
+  ambientUnderwaterLoopAdditionsRare('ambient-underwater-loop-additions-rare'),
+  ambientUnderwaterLoopAdditionsUltraRare('ambient-underwater-loop-additions-ultra-rare'),
+  blockAmethystBlockBreak('block-amethyst-block-break'),
+  blockAmethystBlockChime('block-amethyst-block-chime'),
+  blockAmethystBlockFall('block-amethyst-block-fall'),
+  blockAmethystBlockHit('block-amethyst-block-hit'),
+  blockAmethystBlockPlace('block-amethyst-block-place'),
+  blockAmethystBlockResonate('block-amethyst-block-resonate'),
+  blockAmethystBlockStep('block-amethyst-block-step'),
+  blockAmethystClusterBreak('block-amethyst-cluster-break'),
+  blockAmethystClusterFall('block-amethyst-cluster-fall'),
+  blockAmethystClusterHit('block-amethyst-cluster-hit'),
+  blockAmethystClusterPlace('block-amethyst-cluster-place'),
+  blockAmethystClusterStep('block-amethyst-cluster-step'),
+  blockAncientDebrisBreak('block-ancient-debris-break'),
+  blockAncientDebrisStep('block-ancient-debris-step'),
+  blockAncientDebrisPlace('block-ancient-debris-place'),
+  blockAncientDebrisHit('block-ancient-debris-hit'),
+  blockAncientDebrisFall('block-ancient-debris-fall'),
+  blockAnvilBreak('block-anvil-break'),
+  blockAnvilDestroy('block-anvil-destroy'),
+  blockAnvilFall('block-anvil-fall'),
+  blockAnvilHit('block-anvil-hit'),
+  blockAnvilLand('block-anvil-land'),
+  blockAnvilPlace('block-anvil-place'),
+  blockAnvilStep('block-anvil-step'),
+  blockAnvilUse('block-anvil-use'),
+  entityArmadilloEat('entity-armadillo-eat'),
+  entityArmadilloHurt('entity-armadillo-hurt'),
+  entityArmadilloHurtReduced('entity-armadillo-hurt-reduced'),
+  entityArmadilloAmbient('entity-armadillo-ambient'),
+  entityArmadilloStep('entity-armadillo-step'),
+  entityArmadilloDeath('entity-armadillo-death'),
+  entityArmadilloRoll('entity-armadillo-roll'),
+  entityArmadilloLand('entity-armadillo-land'),
+  entityArmadilloScuteDrop('entity-armadillo-scute-drop'),
+  entityArmadilloUnrollFinish('entity-armadillo-unroll-finish'),
+  entityArmadilloPeek('entity-armadillo-peek'),
+  entityArmadilloUnrollStart('entity-armadillo-unroll-start'),
+  entityArmadilloBrush('entity-armadillo-brush'),
+  itemArmorEquipChain('item-armor-equip-chain'),
+  itemArmorEquipDiamond('item-armor-equip-diamond'),
+  itemArmorEquipElytra('item-armor-equip-elytra'),
+  itemArmorEquipGeneric('item-armor-equip-generic'),
+  itemArmorEquipGold('item-armor-equip-gold'),
+  itemArmorEquipIron('item-armor-equip-iron'),
+  itemArmorEquipLeather('item-armor-equip-leather'),
+  itemArmorEquipCopper('item-armor-equip-copper'),
+  itemArmorEquipNetherite('item-armor-equip-netherite'),
+  itemArmorEquipTurtle('item-armor-equip-turtle'),
+  itemArmorEquipWolf('item-armor-equip-wolf'),
+  itemArmorUnequipWolf('item-armor-unequip-wolf'),
+  itemArmorEquipNautilus('item-armor-equip-nautilus'),
+  itemArmorUnequipNautilus('item-armor-unequip-nautilus'),
+  entityArmorStandBreak('entity-armor-stand-break'),
+  entityArmorStandFall('entity-armor-stand-fall'),
+  entityArmorStandHit('entity-armor-stand-hit'),
+  entityArmorStandPlace('entity-armor-stand-place'),
+  entityArrowHit('entity-arrow-hit'),
+  entityArrowHitPlayer('entity-arrow-hit-player'),
+  entityArrowShoot('entity-arrow-shoot'),
+  itemAxeStrip('item-axe-strip'),
+  itemAxeScrape('item-axe-scrape'),
+  itemAxeWaxOff('item-axe-wax-off'),
+  entityAxolotlAttack('entity-axolotl-attack'),
+  entityAxolotlDeath('entity-axolotl-death'),
+  entityAxolotlHurt('entity-axolotl-hurt'),
+  entityAxolotlIdleAir('entity-axolotl-idle-air'),
+  entityAxolotlIdleWater('entity-axolotl-idle-water'),
+  entityAxolotlSplash('entity-axolotl-splash'),
+  entityAxolotlSwim('entity-axolotl-swim'),
+  blockAzaleaBreak('block-azalea-break'),
+  blockAzaleaFall('block-azalea-fall'),
+  blockAzaleaHit('block-azalea-hit'),
+  blockAzaleaPlace('block-azalea-place'),
+  blockAzaleaStep('block-azalea-step'),
+  blockAzaleaLeavesBreak('block-azalea-leaves-break'),
+  blockAzaleaLeavesFall('block-azalea-leaves-fall'),
+  blockAzaleaLeavesHit('block-azalea-leaves-hit'),
+  blockAzaleaLeavesPlace('block-azalea-leaves-place'),
+  blockAzaleaLeavesStep('block-azalea-leaves-step'),
+  entityBabyNautilusAmbient('entity-baby-nautilus-ambient'),
+  entityBabyNautilusAmbientLand('entity-baby-nautilus-ambient-land'),
+  entityBabyNautilusDeath('entity-baby-nautilus-death'),
+  entityBabyNautilusDeathLand('entity-baby-nautilus-death-land'),
+  entityBabyNautilusEat('entity-baby-nautilus-eat'),
+  entityBabyNautilusHurt('entity-baby-nautilus-hurt'),
+  entityBabyNautilusHurtLand('entity-baby-nautilus-hurt-land'),
+  entityNautilusRiding('entity-nautilus-riding'),
+  entityBabyNautilusSwim('entity-baby-nautilus-swim'),
+  blockBambooBreak('block-bamboo-break'),
+  blockBambooFall('block-bamboo-fall'),
+  blockBambooHit('block-bamboo-hit'),
+  blockBambooPlace('block-bamboo-place'),
+  blockBambooStep('block-bamboo-step'),
+  blockBambooSaplingBreak('block-bamboo-sapling-break'),
+  blockBambooSaplingHit('block-bamboo-sapling-hit'),
+  blockBambooSaplingPlace('block-bamboo-sapling-place'),
+  blockBambooWoodBreak('block-bamboo-wood-break'),
+  blockBambooWoodFall('block-bamboo-wood-fall'),
+  blockBambooWoodHit('block-bamboo-wood-hit'),
+  blockBambooWoodPlace('block-bamboo-wood-place'),
+  blockBambooWoodStep('block-bamboo-wood-step'),
+  blockBambooWoodDoorClose('block-bamboo-wood-door-close'),
+  blockBambooWoodDoorOpen('block-bamboo-wood-door-open'),
+  blockBambooWoodTrapdoorClose('block-bamboo-wood-trapdoor-close'),
+  blockBambooWoodTrapdoorOpen('block-bamboo-wood-trapdoor-open'),
+  blockBambooWoodButtonClickOff('block-bamboo-wood-button-click-off'),
+  blockBambooWoodButtonClickOn('block-bamboo-wood-button-click-on'),
+  blockBambooWoodPressurePlateClickOff('block-bamboo-wood-pressure-plate-click-off'),
+  blockBambooWoodPressurePlateClickOn('block-bamboo-wood-pressure-plate-click-on'),
+  blockBambooWoodFenceGateClose('block-bamboo-wood-fence-gate-close'),
+  blockBambooWoodFenceGateOpen('block-bamboo-wood-fence-gate-open'),
+  blockBarrelClose('block-barrel-close'),
+  blockBarrelOpen('block-barrel-open'),
+  blockBasaltBreak('block-basalt-break'),
+  blockBasaltStep('block-basalt-step'),
+  blockBasaltPlace('block-basalt-place'),
+  blockBasaltHit('block-basalt-hit'),
+  blockBasaltFall('block-basalt-fall'),
+  entityBatAmbient('entity-bat-ambient'),
+  entityBatDeath('entity-bat-death'),
+  entityBatHurt('entity-bat-hurt'),
+  entityBatLoop('entity-bat-loop'),
+  entityBatTakeoff('entity-bat-takeoff'),
+  blockBeaconActivate('block-beacon-activate'),
+  blockBeaconAmbient('block-beacon-ambient'),
+  blockBeaconDeactivate('block-beacon-deactivate'),
+  blockBeaconPowerSelect('block-beacon-power-select'),
+  entityBeeDeath('entity-bee-death'),
+  entityBeeHurt('entity-bee-hurt'),
+  entityBeeLoopAggressive('entity-bee-loop-aggressive'),
+  entityBeeLoop('entity-bee-loop'),
+  entityBeeSting('entity-bee-sting'),
+  entityBeePollinate('entity-bee-pollinate'),
+  blockBeehiveDrip('block-beehive-drip'),
+  blockBeehiveEnter('block-beehive-enter'),
+  blockBeehiveExit('block-beehive-exit'),
+  blockBeehiveShear('block-beehive-shear'),
+  blockBeehiveWork('block-beehive-work'),
+  blockBellUse('block-bell-use'),
+  blockBellResonate('block-bell-resonate'),
+  blockBigDripleafBreak('block-big-dripleaf-break'),
+  blockBigDripleafFall('block-big-dripleaf-fall'),
+  blockBigDripleafHit('block-big-dripleaf-hit'),
+  blockBigDripleafPlace('block-big-dripleaf-place'),
+  blockBigDripleafStep('block-big-dripleaf-step'),
+  entityBlazeAmbient('entity-blaze-ambient'),
+  entityBlazeBurn('entity-blaze-burn'),
+  entityBlazeDeath('entity-blaze-death'),
+  entityBlazeHurt('entity-blaze-hurt'),
+  entityBlazeShoot('entity-blaze-shoot'),
+  entityBoatPaddleLand('entity-boat-paddle-land'),
+  entityBoatPaddleWater('entity-boat-paddle-water'),
+  entityBoggedAmbient('entity-bogged-ambient'),
+  entityBoggedDeath('entity-bogged-death'),
+  entityBoggedHurt('entity-bogged-hurt'),
+  entityBoggedShear('entity-bogged-shear'),
+  entityBoggedStep('entity-bogged-step'),
+  blockBoneBlockBreak('block-bone-block-break'),
+  blockBoneBlockFall('block-bone-block-fall'),
+  blockBoneBlockHit('block-bone-block-hit'),
+  blockBoneBlockPlace('block-bone-block-place'),
+  blockBoneBlockStep('block-bone-block-step'),
+  itemBoneMealUse('item-bone-meal-use'),
+  itemBookPageTurn('item-book-page-turn'),
+  itemBookPut('item-book-put'),
+  blockBlastfurnaceFireCrackle('block-blastfurnace-fire-crackle'),
+  itemBottleEmpty('item-bottle-empty'),
+  itemBottleFill('item-bottle-fill'),
+  itemBottleFillDragonbreath('item-bottle-fill-dragonbreath'),
+  entityBreezeCharge('entity-breeze-charge'),
+  entityBreezeDeflect('entity-breeze-deflect'),
+  entityBreezeInhale('entity-breeze-inhale'),
+  entityBreezeIdleGround('entity-breeze-idle-ground'),
+  entityBreezeIdleAir('entity-breeze-idle-air'),
+  entityBreezeShoot('entity-breeze-shoot'),
+  entityBreezeJump('entity-breeze-jump'),
+  entityBreezeLand('entity-breeze-land'),
+  entityBreezeSlide('entity-breeze-slide'),
+  entityBreezeDeath('entity-breeze-death'),
+  entityBreezeHurt('entity-breeze-hurt'),
+  entityBreezeWhirl('entity-breeze-whirl'),
+  entityBreezeWindBurst('entity-breeze-wind-burst'),
+  blockBrewingStandBrew('block-brewing-stand-brew'),
+  itemBrushBrushingGeneric('item-brush-brushing-generic'),
+  itemBrushBrushingSand('item-brush-brushing-sand'),
+  itemBrushBrushingGravel('item-brush-brushing-gravel'),
+  itemBrushBrushingSandComplete('item-brush-brushing-sand-complete'),
+  itemBrushBrushingGravelComplete('item-brush-brushing-gravel-complete'),
+  blockBubbleColumnBubblePop('block-bubble-column-bubble-pop'),
+  blockBubbleColumnUpwardsAmbient('block-bubble-column-upwards-ambient'),
+  blockBubbleColumnUpwardsInside('block-bubble-column-upwards-inside'),
+  blockBubbleColumnWhirlpoolAmbient('block-bubble-column-whirlpool-ambient'),
+  blockBubbleColumnWhirlpoolInside('block-bubble-column-whirlpool-inside'),
+  uiHudBubblePop('ui-hud-bubble-pop'),
+  itemBucketEmpty('item-bucket-empty'),
+  itemBucketEmptyAxolotl('item-bucket-empty-axolotl'),
+  itemBucketEmptyFish('item-bucket-empty-fish'),
+  itemBucketEmptyLava('item-bucket-empty-lava'),
+  itemBucketEmptyPowderSnow('item-bucket-empty-powder-snow'),
+  itemBucketEmptySulfurCube('item-bucket-empty-sulfur-cube'),
+  itemBucketEmptyTadpole('item-bucket-empty-tadpole'),
+  itemBucketFill('item-bucket-fill'),
+  itemBucketFillAxolotl('item-bucket-fill-axolotl'),
+  itemBucketFillFish('item-bucket-fill-fish'),
+  itemBucketFillLava('item-bucket-fill-lava'),
+  itemBucketFillPowderSnow('item-bucket-fill-powder-snow'),
+  itemBucketFillSulfurCube('item-bucket-fill-sulfur-cube'),
+  itemBucketFillTadpole('item-bucket-fill-tadpole'),
+  itemBundleDropContents('item-bundle-drop-contents'),
+  itemBundleInsert('item-bundle-insert'),
+  itemBundleInsertFail('item-bundle-insert-fail'),
+  itemBundleRemoveOne('item-bundle-remove-one'),
+  blockCactusFlowerBreak('block-cactus-flower-break'),
+  blockCactusFlowerPlace('block-cactus-flower-place'),
+  blockCakeAddCandle('block-cake-add-candle'),
+  blockCalciteBreak('block-calcite-break'),
+  blockCalciteStep('block-calcite-step'),
+  blockCalcitePlace('block-calcite-place'),
+  blockCalciteHit('block-calcite-hit'),
+  blockCalciteFall('block-calcite-fall'),
+  entityCamelHuskAmbient('entity-camel-husk-ambient'),
+  entityCamelHuskDash('entity-camel-husk-dash'),
+  entityCamelHuskDashReady('entity-camel-husk-dash-ready'),
+  entityCamelHuskDeath('entity-camel-husk-death'),
+  entityCamelHuskEat('entity-camel-husk-eat'),
+  entityCamelHuskHurt('entity-camel-husk-hurt'),
+  entityCamelHuskSaddle('entity-camel-husk-saddle'),
+  entityCamelHuskSit('entity-camel-husk-sit'),
+  entityCamelHuskStand('entity-camel-husk-stand'),
+  entityCamelHuskStep('entity-camel-husk-step'),
+  entityCamelHuskStepSand('entity-camel-husk-step-sand'),
+  entityCamelAmbient('entity-camel-ambient'),
+  entityCamelDash('entity-camel-dash'),
+  entityCamelDashReady('entity-camel-dash-ready'),
+  entityCamelDeath('entity-camel-death'),
+  entityCamelEat('entity-camel-eat'),
+  entityCamelHurt('entity-camel-hurt'),
+  entityCamelSaddle('entity-camel-saddle'),
+  entityCamelSit('entity-camel-sit'),
+  entityCamelStand('entity-camel-stand'),
+  entityCamelStep('entity-camel-step'),
+  entityCamelStepSand('entity-camel-step-sand'),
+  blockCampfireCrackle('block-campfire-crackle'),
+  blockCandleAmbient('block-candle-ambient'),
+  blockCandleBreak('block-candle-break'),
+  blockCandleExtinguish('block-candle-extinguish'),
+  blockCandleFall('block-candle-fall'),
+  blockCandleHit('block-candle-hit'),
+  blockCandlePlace('block-candle-place'),
+  blockCandleStep('block-candle-step'),
+  entityBabyCatAmbient('entity-baby-cat-ambient'),
+  entityBabyCatStrayAmbient('entity-baby-cat-stray-ambient'),
+  entityBabyCatDeath('entity-baby-cat-death'),
+  entityBabyCatEat('entity-baby-cat-eat'),
+  entityBabyCatHiss('entity-baby-cat-hiss'),
+  entityBabyCatBegForFood('entity-baby-cat-beg-for-food'),
+  entityBabyCatHurt('entity-baby-cat-hurt'),
+  entityBabyCatPurr('entity-baby-cat-purr'),
+  entityBabyCatPurreow('entity-baby-cat-purreow'),
+  entityCatAmbient('entity-cat-ambient'),
+  entityCatStrayAmbient('entity-cat-stray-ambient'),
+  entityCatHiss('entity-cat-hiss'),
+  entityCatHurt('entity-cat-hurt'),
+  entityCatDeath('entity-cat-death'),
+  entityCatEat('entity-cat-eat'),
+  entityCatBegForFood('entity-cat-beg-for-food'),
+  entityCatPurr('entity-cat-purr'),
+  entityCatPurreow('entity-cat-purreow'),
+  entityCatRoyalAmbient('entity-cat-royal-ambient'),
+  entityCatRoyalStrayAmbient('entity-cat-royal-stray-ambient'),
+  entityCatRoyalHiss('entity-cat-royal-hiss'),
+  entityCatRoyalHurt('entity-cat-royal-hurt'),
+  entityCatRoyalDeath('entity-cat-royal-death'),
+  entityCatRoyalEat('entity-cat-royal-eat'),
+  entityCatRoyalBegForFood('entity-cat-royal-beg-for-food'),
+  entityCatRoyalPurr('entity-cat-royal-purr'),
+  entityCatRoyalPurreow('entity-cat-royal-purreow'),
+  blockCaveVinesBreak('block-cave-vines-break'),
+  blockCaveVinesFall('block-cave-vines-fall'),
+  blockCaveVinesHit('block-cave-vines-hit'),
+  blockCaveVinesPlace('block-cave-vines-place'),
+  blockCaveVinesStep('block-cave-vines-step'),
+  blockCaveVinesPickBerries('block-cave-vines-pick-berries'),
+  blockChainBreak('block-chain-break'),
+  blockChainFall('block-chain-fall'),
+  blockChainHit('block-chain-hit'),
+  blockChainPlace('block-chain-place'),
+  blockChainStep('block-chain-step'),
+  blockCherryWoodBreak('block-cherry-wood-break'),
+  blockCherryWoodFall('block-cherry-wood-fall'),
+  blockCherryWoodHit('block-cherry-wood-hit'),
+  blockCherryWoodPlace('block-cherry-wood-place'),
+  blockCherryWoodStep('block-cherry-wood-step'),
+  blockCherrySaplingBreak('block-cherry-sapling-break'),
+  blockCherrySaplingFall('block-cherry-sapling-fall'),
+  blockCherrySaplingHit('block-cherry-sapling-hit'),
+  blockCherrySaplingPlace('block-cherry-sapling-place'),
+  blockCherrySaplingStep('block-cherry-sapling-step'),
+  blockCherryLeavesBreak('block-cherry-leaves-break'),
+  blockCherryLeavesFall('block-cherry-leaves-fall'),
+  blockCherryLeavesHit('block-cherry-leaves-hit'),
+  blockCherryLeavesPlace('block-cherry-leaves-place'),
+  blockCherryLeavesStep('block-cherry-leaves-step'),
+  blockCherryWoodHangingSignStep('block-cherry-wood-hanging-sign-step'),
+  blockCherryWoodHangingSignBreak('block-cherry-wood-hanging-sign-break'),
+  blockCherryWoodHangingSignFall('block-cherry-wood-hanging-sign-fall'),
+  blockCherryWoodHangingSignHit('block-cherry-wood-hanging-sign-hit'),
+  blockCherryWoodHangingSignPlace('block-cherry-wood-hanging-sign-place'),
+  blockCherryWoodDoorClose('block-cherry-wood-door-close'),
+  blockCherryWoodDoorOpen('block-cherry-wood-door-open'),
+  blockCherryWoodTrapdoorClose('block-cherry-wood-trapdoor-close'),
+  blockCherryWoodTrapdoorOpen('block-cherry-wood-trapdoor-open'),
+  blockCherryWoodButtonClickOff('block-cherry-wood-button-click-off'),
+  blockCherryWoodButtonClickOn('block-cherry-wood-button-click-on'),
+  blockCherryWoodPressurePlateClickOff('block-cherry-wood-pressure-plate-click-off'),
+  blockCherryWoodPressurePlateClickOn('block-cherry-wood-pressure-plate-click-on'),
+  blockCherryWoodFenceGateClose('block-cherry-wood-fence-gate-close'),
+  blockCherryWoodFenceGateOpen('block-cherry-wood-fence-gate-open'),
+  blockChestClose('block-chest-close'),
+  blockChestLocked('block-chest-locked'),
+  blockChestOpen('block-chest-open'),
+  entityBabyChickenAmbient('entity-baby-chicken-ambient'),
+  entityBabyChickenDeath('entity-baby-chicken-death'),
+  entityChickenEgg('entity-chicken-egg'),
+  entityBabyChickenHurt('entity-baby-chicken-hurt'),
+  entityChickenStep('entity-chicken-step'),
+  entityBabyChickenStep('entity-baby-chicken-step'),
+  entityChickenAmbient('entity-chicken-ambient'),
+  entityChickenHurt('entity-chicken-hurt'),
+  entityChickenDeath('entity-chicken-death'),
+  entityChickenPickyAmbient('entity-chicken-picky-ambient'),
+  entityChickenPickyHurt('entity-chicken-picky-hurt'),
+  entityChickenPickyDeath('entity-chicken-picky-death'),
+  blockChiseledBookshelfBreak('block-chiseled-bookshelf-break'),
+  blockChiseledBookshelfFall('block-chiseled-bookshelf-fall'),
+  blockChiseledBookshelfHit('block-chiseled-bookshelf-hit'),
+  blockChiseledBookshelfInsert('block-chiseled-bookshelf-insert'),
+  blockChiseledBookshelfInsertEnchanted('block-chiseled-bookshelf-insert-enchanted'),
+  blockChiseledBookshelfStep('block-chiseled-bookshelf-step'),
+  blockChiseledBookshelfPickup('block-chiseled-bookshelf-pickup'),
+  blockChiseledBookshelfPickupEnchanted('block-chiseled-bookshelf-pickup-enchanted'),
+  blockChiseledBookshelfPlace('block-chiseled-bookshelf-place'),
+  blockChorusFlowerDeath('block-chorus-flower-death'),
+  blockChorusFlowerGrow('block-chorus-flower-grow'),
+  itemChorusFruitTeleport('item-chorus-fruit-teleport'),
+  blockCobwebBreak('block-cobweb-break'),
+  blockCobwebStep('block-cobweb-step'),
+  blockCobwebPlace('block-cobweb-place'),
+  blockCobwebHit('block-cobweb-hit'),
+  blockCobwebFall('block-cobweb-fall'),
+  entityCodAmbient('entity-cod-ambient'),
+  entityCodDeath('entity-cod-death'),
+  entityCodFlop('entity-cod-flop'),
+  entityCodHurt('entity-cod-hurt'),
+  blockComparatorClick('block-comparator-click'),
+  blockComposterEmpty('block-composter-empty'),
+  blockComposterFill('block-composter-fill'),
+  blockComposterFillSuccess('block-composter-fill-success'),
+  blockComposterReady('block-composter-ready'),
+  blockConduitActivate('block-conduit-activate'),
+  blockConduitAmbient('block-conduit-ambient'),
+  blockConduitAmbientShort('block-conduit-ambient-short'),
+  blockConduitAttackTarget('block-conduit-attack-target'),
+  blockConduitDeactivate('block-conduit-deactivate'),
+  blockCopperBulbBreak('block-copper-bulb-break'),
+  blockCopperBulbStep('block-copper-bulb-step'),
+  blockCopperBulbPlace('block-copper-bulb-place'),
+  blockCopperBulbHit('block-copper-bulb-hit'),
+  blockCopperBulbFall('block-copper-bulb-fall'),
+  blockCopperBulbTurnOn('block-copper-bulb-turn-on'),
+  blockCopperBulbTurnOff('block-copper-bulb-turn-off'),
+  blockCopperBreak('block-copper-break'),
+  blockCopperStep('block-copper-step'),
+  blockCopperPlace('block-copper-place'),
+  blockCopperHit('block-copper-hit'),
+  blockCopperFall('block-copper-fall'),
+  blockCopperChestClose('block-copper-chest-close'),
+  blockCopperChestOpen('block-copper-chest-open'),
+  blockCopperChestWeatheredClose('block-copper-chest-weathered-close'),
+  blockCopperChestWeatheredOpen('block-copper-chest-weathered-open'),
+  blockCopperChestOxidizedClose('block-copper-chest-oxidized-close'),
+  blockCopperChestOxidizedOpen('block-copper-chest-oxidized-open'),
+  blockCopperDoorClose('block-copper-door-close'),
+  blockCopperDoorOpen('block-copper-door-open'),
+  entityCopperGolemStep('entity-copper-golem-step'),
+  entityCopperGolemHurt('entity-copper-golem-hurt'),
+  entityCopperGolemDeath('entity-copper-golem-death'),
+  entityCopperGolemWeatheredStep('entity-copper-golem-weathered-step'),
+  entityCopperGolemWeatheredHurt('entity-copper-golem-weathered-hurt'),
+  entityCopperGolemWeatheredDeath('entity-copper-golem-weathered-death'),
+  entityCopperGolemOxidizedStep('entity-copper-golem-oxidized-step'),
+  entityCopperGolemOxidizedHurt('entity-copper-golem-oxidized-hurt'),
+  entityCopperGolemOxidizedDeath('entity-copper-golem-oxidized-death'),
+  entityCopperGolemSpin('entity-copper-golem-spin'),
+  entityCopperGolemWeatheredSpin('entity-copper-golem-weathered-spin'),
+  entityCopperGolemOxidizedSpin('entity-copper-golem-oxidized-spin'),
+  entityCopperGolemNoItemGet('entity-copper-golem-no-item-get'),
+  entityCopperGolemNoItemNoGet('entity-copper-golem-no-item-no-get'),
+  entityCopperGolemItemDrop('entity-copper-golem-item-drop'),
+  entityCopperGolemItemNoDrop('entity-copper-golem-item-no-drop'),
+  entityCopperGolemBecomeStatue('entity-copper-golem-become-statue'),
+  blockCopperGolemStatueBreak('block-copper-golem-statue-break'),
+  blockCopperGolemStatuePlace('block-copper-golem-statue-place'),
+  blockCopperGolemStatueHit('block-copper-golem-statue-hit'),
+  blockCopperGolemStatueStep('block-copper-golem-statue-step'),
+  blockCopperGolemStatueFall('block-copper-golem-statue-fall'),
+  entityCopperGolemSpawn('entity-copper-golem-spawn'),
+  entityCopperGolemShear('entity-copper-golem-shear'),
+  blockCopperGrateBreak('block-copper-grate-break'),
+  blockCopperGrateStep('block-copper-grate-step'),
+  blockCopperGratePlace('block-copper-grate-place'),
+  blockCopperGrateHit('block-copper-grate-hit'),
+  blockCopperGrateFall('block-copper-grate-fall'),
+  blockCopperTrapdoorClose('block-copper-trapdoor-close'),
+  blockCopperTrapdoorOpen('block-copper-trapdoor-open'),
+  blockCoralBlockBreak('block-coral-block-break'),
+  blockCoralBlockFall('block-coral-block-fall'),
+  blockCoralBlockHit('block-coral-block-hit'),
+  blockCoralBlockPlace('block-coral-block-place'),
+  blockCoralBlockStep('block-coral-block-step'),
+  entityCowMilk('entity-cow-milk'),
+  entityCowAmbient('entity-cow-ambient'),
+  entityCowHurt('entity-cow-hurt'),
+  entityCowDeath('entity-cow-death'),
+  entityCowStep('entity-cow-step'),
+  entityCowMoodyAmbient('entity-cow-moody-ambient'),
+  entityCowMoodyHurt('entity-cow-moody-hurt'),
+  entityCowMoodyDeath('entity-cow-moody-death'),
+  entityCowMoodyStep('entity-cow-moody-step'),
+  blockCrafterCraft('block-crafter-craft'),
+  blockCrafterFail('block-crafter-fail'),
+  entityCreakingAmbient('entity-creaking-ambient'),
+  entityCreakingActivate('entity-creaking-activate'),
+  entityCreakingDeactivate('entity-creaking-deactivate'),
+  entityCreakingAttack('entity-creaking-attack'),
+  entityCreakingDeath('entity-creaking-death'),
+  entityCreakingStep('entity-creaking-step'),
+  entityCreakingFreeze('entity-creaking-freeze'),
+  entityCreakingUnfreeze('entity-creaking-unfreeze'),
+  entityCreakingSpawn('entity-creaking-spawn'),
+  entityCreakingSway('entity-creaking-sway'),
+  entityCreakingTwitch('entity-creaking-twitch'),
+  blockCreakingHeartBreak('block-creaking-heart-break'),
+  blockCreakingHeartFall('block-creaking-heart-fall'),
+  blockCreakingHeartHit('block-creaking-heart-hit'),
+  blockCreakingHeartHurt('block-creaking-heart-hurt'),
+  blockCreakingHeartPlace('block-creaking-heart-place'),
+  blockCreakingHeartStep('block-creaking-heart-step'),
+  blockCreakingHeartIdle('block-creaking-heart-idle'),
+  blockCreakingHeartSpawn('block-creaking-heart-spawn'),
+  entityCreeperDeath('entity-creeper-death'),
+  entityCreeperHurt('entity-creeper-hurt'),
+  entityCreeperPrimed('entity-creeper-primed'),
+  blockCropBreak('block-crop-break'),
+  itemCropPlant('item-crop-plant'),
+  itemCrossbowHit('item-crossbow-hit'),
+  itemCrossbowLoadingEnd('item-crossbow-loading-end'),
+  itemCrossbowLoadingMiddle('item-crossbow-loading-middle'),
+  itemCrossbowLoadingStart('item-crossbow-loading-start'),
+  itemCrossbowQuickCharge1('item-crossbow-quick-charge-1'),
+  itemCrossbowQuickCharge2('item-crossbow-quick-charge-2'),
+  itemCrossbowQuickCharge3('item-crossbow-quick-charge-3'),
+  itemCrossbowShoot('item-crossbow-shoot'),
+  entityCushionBreak('entity-cushion-break'),
+  entityCushionPlace('entity-cushion-place'),
+  entityCushionSit('entity-cushion-sit'),
+  entityCushionGetUp('entity-cushion-get-up'),
+  blockDeadbushIdle('block-deadbush-idle'),
+  blockDecoratedPotBreak('block-decorated-pot-break'),
+  blockDecoratedPotFall('block-decorated-pot-fall'),
+  blockDecoratedPotHit('block-decorated-pot-hit'),
+  blockDecoratedPotInsert('block-decorated-pot-insert'),
+  blockDecoratedPotInsertFail('block-decorated-pot-insert-fail'),
+  blockDecoratedPotStep('block-decorated-pot-step'),
+  blockDecoratedPotPlace('block-decorated-pot-place'),
+  blockDecoratedPotShatter('block-decorated-pot-shatter'),
+  blockDeepslateBricksBreak('block-deepslate-bricks-break'),
+  blockDeepslateBricksFall('block-deepslate-bricks-fall'),
+  blockDeepslateBricksHit('block-deepslate-bricks-hit'),
+  blockDeepslateBricksPlace('block-deepslate-bricks-place'),
+  blockDeepslateBricksStep('block-deepslate-bricks-step'),
+  blockDeepslateBreak('block-deepslate-break'),
+  blockDeepslateFall('block-deepslate-fall'),
+  blockDeepslateHit('block-deepslate-hit'),
+  blockDeepslatePlace('block-deepslate-place'),
+  blockDeepslateStep('block-deepslate-step'),
+  blockDeepslateTilesBreak('block-deepslate-tiles-break'),
+  blockDeepslateTilesFall('block-deepslate-tiles-fall'),
+  blockDeepslateTilesHit('block-deepslate-tiles-hit'),
+  blockDeepslateTilesPlace('block-deepslate-tiles-place'),
+  blockDeepslateTilesStep('block-deepslate-tiles-step'),
+  blockDispenserDispense('block-dispenser-dispense'),
+  blockDispenserFail('block-dispenser-fail'),
+  blockDispenserLaunch('block-dispenser-launch'),
+  entityDolphinAmbient('entity-dolphin-ambient'),
+  entityDolphinAmbientWater('entity-dolphin-ambient-water'),
+  entityDolphinAttack('entity-dolphin-attack'),
+  entityDolphinDeath('entity-dolphin-death'),
+  entityDolphinEat('entity-dolphin-eat'),
+  entityDolphinHurt('entity-dolphin-hurt'),
+  entityDolphinJump('entity-dolphin-jump'),
+  entityDolphinPlay('entity-dolphin-play'),
+  entityDolphinSplash('entity-dolphin-splash'),
+  entityDolphinSwim('entity-dolphin-swim'),
+  entityDonkeyAmbient('entity-donkey-ambient'),
+  entityDonkeyAngry('entity-donkey-angry'),
+  entityDonkeyChest('entity-donkey-chest'),
+  entityDonkeyDeath('entity-donkey-death'),
+  entityDonkeyEat('entity-donkey-eat'),
+  entityDonkeyHurt('entity-donkey-hurt'),
+  entityDonkeyJump('entity-donkey-jump'),
+  blockDriedGhastBreak('block-dried-ghast-break'),
+  blockDriedGhastStep('block-dried-ghast-step'),
+  blockDriedGhastFall('block-dried-ghast-fall'),
+  blockDriedGhastAmbient('block-dried-ghast-ambient'),
+  blockDriedGhastAmbientWater('block-dried-ghast-ambient-water'),
+  blockDriedGhastPlace('block-dried-ghast-place'),
+  blockDriedGhastPlaceInWater('block-dried-ghast-place-in-water'),
+  blockDriedGhastTransition('block-dried-ghast-transition'),
+  blockDripstoneBlockBreak('block-dripstone-block-break'),
+  blockDripstoneBlockStep('block-dripstone-block-step'),
+  blockDripstoneBlockPlace('block-dripstone-block-place'),
+  blockDripstoneBlockHit('block-dripstone-block-hit'),
+  blockDripstoneBlockFall('block-dripstone-block-fall'),
+  blockDryGrassAmbient('block-dry-grass-ambient'),
+  blockPointedDripstoneBreak('block-pointed-dripstone-break'),
+  blockPointedDripstoneStep('block-pointed-dripstone-step'),
+  blockPointedDripstonePlace('block-pointed-dripstone-place'),
+  blockPointedDripstoneHit('block-pointed-dripstone-hit'),
+  blockPointedDripstoneFall('block-pointed-dripstone-fall'),
+  blockPointedDripstoneLand('block-pointed-dripstone-land'),
+  blockPointedDripstoneDripLava('block-pointed-dripstone-drip-lava'),
+  blockPointedDripstoneDripWater('block-pointed-dripstone-drip-water'),
+  blockPointedDripstoneDripLavaIntoCauldron('block-pointed-dripstone-drip-lava-into-cauldron'),
+  blockPointedDripstoneDripWaterIntoCauldron('block-pointed-dripstone-drip-water-into-cauldron'),
+  blockBigDripleafTiltDown('block-big-dripleaf-tilt-down'),
+  blockBigDripleafTiltUp('block-big-dripleaf-tilt-up'),
+  entityDrownedAmbient('entity-drowned-ambient'),
+  entityDrownedAmbientWater('entity-drowned-ambient-water'),
+  entityDrownedDeath('entity-drowned-death'),
+  entityDrownedDeathWater('entity-drowned-death-water'),
+  entityDrownedHurt('entity-drowned-hurt'),
+  entityDrownedHurtWater('entity-drowned-hurt-water'),
+  entityDrownedShoot('entity-drowned-shoot'),
+  entityDrownedStep('entity-drowned-step'),
+  entityDrownedSwim('entity-drowned-swim'),
+  itemDyeUse('item-dye-use'),
+  entityEggThrow('entity-egg-throw'),
+  entityElderGuardianAmbient('entity-elder-guardian-ambient'),
+  entityElderGuardianAmbientLand('entity-elder-guardian-ambient-land'),
+  entityElderGuardianCurse('entity-elder-guardian-curse'),
+  entityElderGuardianDeath('entity-elder-guardian-death'),
+  entityElderGuardianDeathLand('entity-elder-guardian-death-land'),
+  entityElderGuardianFlop('entity-elder-guardian-flop'),
+  entityElderGuardianHurt('entity-elder-guardian-hurt'),
+  entityElderGuardianHurtLand('entity-elder-guardian-hurt-land'),
+  itemElytraFlying('item-elytra-flying'),
+  blockEnchantmentTableUse('block-enchantment-table-use'),
+  blockEnderChestClose('block-ender-chest-close'),
+  blockEnderChestOpen('block-ender-chest-open'),
+  entityEnderDragonAmbient('entity-ender-dragon-ambient'),
+  entityEnderDragonDeath('entity-ender-dragon-death'),
+  entityDragonFireballExplode('entity-dragon-fireball-explode'),
+  entityEnderDragonFlap('entity-ender-dragon-flap'),
+  entityEnderDragonGrowl('entity-ender-dragon-growl'),
+  entityEnderDragonHurt('entity-ender-dragon-hurt'),
+  entityEnderDragonShoot('entity-ender-dragon-shoot'),
+  entityEnderEyeDeath('entity-ender-eye-death'),
+  entityEnderEyeLaunch('entity-ender-eye-launch'),
+  entityEndermanAmbient('entity-enderman-ambient'),
+  entityEndermanDeath('entity-enderman-death'),
+  entityEndermanHurt('entity-enderman-hurt'),
+  entityEndermanScream('entity-enderman-scream'),
+  entityEndermanStare('entity-enderman-stare'),
+  entityEndermanTeleport('entity-enderman-teleport'),
+  entityEndermiteAmbient('entity-endermite-ambient'),
+  entityEndermiteDeath('entity-endermite-death'),
+  entityEndermiteHurt('entity-endermite-hurt'),
+  entityEndermiteStep('entity-endermite-step'),
+  entityEnderPearlThrow('entity-ender-pearl-throw'),
+  blockEndGatewaySpawn('block-end-gateway-spawn'),
+  blockEndPortalFrameFill('block-end-portal-frame-fill'),
+  blockEndPortalSpawn('block-end-portal-spawn'),
+  entityEvokerAmbient('entity-evoker-ambient'),
+  entityEvokerCastSpell('entity-evoker-cast-spell'),
+  entityEvokerCelebrate('entity-evoker-celebrate'),
+  entityEvokerDeath('entity-evoker-death'),
+  entityEvokerFangsAttack('entity-evoker-fangs-attack'),
+  entityEvokerHurt('entity-evoker-hurt'),
+  entityEvokerPrepareAttack('entity-evoker-prepare-attack'),
+  entityEvokerPrepareSummon('entity-evoker-prepare-summon'),
+  entityEvokerPrepareWololo('entity-evoker-prepare-wololo'),
+  entityExperienceBottleThrow('entity-experience-bottle-throw'),
+  entityExperienceOrbPickup('entity-experience-orb-pickup'),
+  blockEyeblossomOpenLong('block-eyeblossom-open-long'),
+  blockEyeblossomOpen('block-eyeblossom-open'),
+  blockEyeblossomCloseLong('block-eyeblossom-close-long'),
+  blockEyeblossomClose('block-eyeblossom-close'),
+  blockEyeblossomIdle('block-eyeblossom-idle'),
+  blockFenceGateClose('block-fence-gate-close'),
+  blockFenceGateOpen('block-fence-gate-open'),
+  itemFirechargeUse('item-firecharge-use'),
+  blockFireflyBushIdle('block-firefly-bush-idle'),
+  entityFireworkRocketBlast('entity-firework-rocket-blast'),
+  entityFireworkRocketBlastFar('entity-firework-rocket-blast-far'),
+  entityFireworkRocketLargeBlast('entity-firework-rocket-large-blast'),
+  entityFireworkRocketLargeBlastFar('entity-firework-rocket-large-blast-far'),
+  entityFireworkRocketLaunch('entity-firework-rocket-launch'),
+  entityFireworkRocketShoot('entity-firework-rocket-shoot'),
+  entityFireworkRocketTwinkle('entity-firework-rocket-twinkle'),
+  entityFireworkRocketTwinkleFar('entity-firework-rocket-twinkle-far'),
+  blockFireAmbient('block-fire-ambient'),
+  blockFireExtinguish('block-fire-extinguish'),
+  entityFishSwim('entity-fish-swim'),
+  entityFishingBobberRetrieve('entity-fishing-bobber-retrieve'),
+  entityFishingBobberSplash('entity-fishing-bobber-splash'),
+  entityFishingBobberThrow('entity-fishing-bobber-throw'),
+  itemFlintandsteelUse('item-flintandsteel-use'),
+  blockFloweringAzaleaBreak('block-flowering-azalea-break'),
+  blockFloweringAzaleaFall('block-flowering-azalea-fall'),
+  blockFloweringAzaleaHit('block-flowering-azalea-hit'),
+  blockFloweringAzaleaPlace('block-flowering-azalea-place'),
+  blockFloweringAzaleaStep('block-flowering-azalea-step'),
+  entityFoxAggro('entity-fox-aggro'),
+  entityFoxAmbient('entity-fox-ambient'),
+  entityFoxBite('entity-fox-bite'),
+  entityFoxDeath('entity-fox-death'),
+  entityFoxEat('entity-fox-eat'),
+  entityFoxHurt('entity-fox-hurt'),
+  entityFoxScreech('entity-fox-screech'),
+  entityFoxSleep('entity-fox-sleep'),
+  entityFoxSniff('entity-fox-sniff'),
+  entityFoxSpit('entity-fox-spit'),
+  entityFoxTeleport('entity-fox-teleport'),
+  blockSuspiciousSandBreak('block-suspicious-sand-break'),
+  blockSuspiciousSandStep('block-suspicious-sand-step'),
+  blockSuspiciousSandPlace('block-suspicious-sand-place'),
+  blockSuspiciousSandHit('block-suspicious-sand-hit'),
+  blockSuspiciousSandFall('block-suspicious-sand-fall'),
+  blockSuspiciousGravelBreak('block-suspicious-gravel-break'),
+  blockSuspiciousGravelStep('block-suspicious-gravel-step'),
+  blockSuspiciousGravelPlace('block-suspicious-gravel-place'),
+  blockSuspiciousGravelHit('block-suspicious-gravel-hit'),
+  blockSuspiciousGravelFall('block-suspicious-gravel-fall'),
+  blockFroglightBreak('block-froglight-break'),
+  blockFroglightFall('block-froglight-fall'),
+  blockFroglightHit('block-froglight-hit'),
+  blockFroglightPlace('block-froglight-place'),
+  blockFroglightStep('block-froglight-step'),
+  blockFrogspawnStep('block-frogspawn-step'),
+  blockFrogspawnBreak('block-frogspawn-break'),
+  blockFrogspawnFall('block-frogspawn-fall'),
+  blockFrogspawnHatch('block-frogspawn-hatch'),
+  blockFrogspawnHit('block-frogspawn-hit'),
+  blockFrogspawnPlace('block-frogspawn-place'),
+  entityFrogAmbient('entity-frog-ambient'),
+  entityFrogDeath('entity-frog-death'),
+  entityFrogEat('entity-frog-eat'),
+  entityFrogHurt('entity-frog-hurt'),
+  entityFrogLaySpawn('entity-frog-lay-spawn'),
+  entityFrogLongJump('entity-frog-long-jump'),
+  entityFrogStep('entity-frog-step'),
+  entityFrogTongue('entity-frog-tongue'),
+  blockRootsBreak('block-roots-break'),
+  blockRootsStep('block-roots-step'),
+  blockRootsPlace('block-roots-place'),
+  blockRootsHit('block-roots-hit'),
+  blockRootsFall('block-roots-fall'),
+  blockFurnaceFireCrackle('block-furnace-fire-crackle'),
+  entityGenericBigFall('entity-generic-big-fall'),
+  entityGenericBurn('entity-generic-burn'),
+  entityGenericDeath('entity-generic-death'),
+  entityGenericDrink('entity-generic-drink'),
+  entityGenericEat('entity-generic-eat'),
+  entityGenericExplode('entity-generic-explode'),
+  entityGenericExtinguishFire('entity-generic-extinguish-fire'),
+  entityGenericHurt('entity-generic-hurt'),
+  entityGenericSmallFall('entity-generic-small-fall'),
+  entityGenericSplash('entity-generic-splash'),
+  entityGenericSwim('entity-generic-swim'),
+  entityGhastAmbient('entity-ghast-ambient'),
+  entityGhastDeath('entity-ghast-death'),
+  entityGhastHurt('entity-ghast-hurt'),
+  entityGhastScream('entity-ghast-scream'),
+  entityGhastShoot('entity-ghast-shoot'),
+  entityGhastWarn('entity-ghast-warn'),
+  entityGhastlingAmbient('entity-ghastling-ambient'),
+  entityGhastlingDeath('entity-ghastling-death'),
+  entityGhastlingHurt('entity-ghastling-hurt'),
+  entityGhastlingSpawn('entity-ghastling-spawn'),
+  blockGildedBlackstoneBreak('block-gilded-blackstone-break'),
+  blockGildedBlackstoneFall('block-gilded-blackstone-fall'),
+  blockGildedBlackstoneHit('block-gilded-blackstone-hit'),
+  blockGildedBlackstonePlace('block-gilded-blackstone-place'),
+  blockGildedBlackstoneStep('block-gilded-blackstone-step'),
+  blockGlassBreak('block-glass-break'),
+  blockGlassFall('block-glass-fall'),
+  blockGlassHit('block-glass-hit'),
+  blockGlassPlace('block-glass-place'),
+  blockGlassStep('block-glass-step'),
+  itemGlowInkSacUse('item-glow-ink-sac-use'),
+  entityGlowItemFrameAddItem('entity-glow-item-frame-add-item'),
+  entityGlowItemFrameBreak('entity-glow-item-frame-break'),
+  entityGlowItemFramePlace('entity-glow-item-frame-place'),
+  entityGlowItemFrameRemoveItem('entity-glow-item-frame-remove-item'),
+  entityGlowItemFrameRotateItem('entity-glow-item-frame-rotate-item'),
+  entityGlowSquidAmbient('entity-glow-squid-ambient'),
+  entityGlowSquidDeath('entity-glow-squid-death'),
+  entityGlowSquidHurt('entity-glow-squid-hurt'),
+  entityGlowSquidSquirt('entity-glow-squid-squirt'),
+  entityGoatAmbient('entity-goat-ambient'),
+  entityGoatDeath('entity-goat-death'),
+  entityGoatEat('entity-goat-eat'),
+  entityGoatHurt('entity-goat-hurt'),
+  entityGoatLongJump('entity-goat-long-jump'),
+  entityGoatMilk('entity-goat-milk'),
+  entityGoatPrepareRam('entity-goat-prepare-ram'),
+  entityGoatRamImpact('entity-goat-ram-impact'),
+  entityGoatHornBreak('entity-goat-horn-break'),
+  entityGoatScreamingAmbient('entity-goat-screaming-ambient'),
+  entityGoatScreamingDeath('entity-goat-screaming-death'),
+  entityGoatScreamingEat('entity-goat-screaming-eat'),
+  entityGoatScreamingHurt('entity-goat-screaming-hurt'),
+  entityGoatScreamingLongJump('entity-goat-screaming-long-jump'),
+  entityGoatScreamingMilk('entity-goat-screaming-milk'),
+  entityGoatScreamingPrepareRam('entity-goat-screaming-prepare-ram'),
+  entityGoatScreamingRamImpact('entity-goat-screaming-ram-impact'),
+  entityGoatStep('entity-goat-step'),
+  itemGoldenDandelionUse('item-golden-dandelion-use'),
+  itemGoldenDandelionUnuse('item-golden-dandelion-unuse'),
+  blockGrassBreak('block-grass-break'),
+  blockGrassFall('block-grass-fall'),
+  blockGrassHit('block-grass-hit'),
+  blockGrassPlace('block-grass-place'),
+  blockGrassStep('block-grass-step'),
+  blockGravelBreak('block-gravel-break'),
+  blockGravelFall('block-gravel-fall'),
+  blockGravelHit('block-gravel-hit'),
+  blockGravelPlace('block-gravel-place'),
+  blockGravelStep('block-gravel-step'),
+  blockGrindstoneUse('block-grindstone-use'),
+  blockGrowingPlantCrop('block-growing-plant-crop'),
+  entityGuardianAmbient('entity-guardian-ambient'),
+  entityGuardianAmbientLand('entity-guardian-ambient-land'),
+  entityGuardianAttack('entity-guardian-attack'),
+  entityGuardianDeath('entity-guardian-death'),
+  entityGuardianDeathLand('entity-guardian-death-land'),
+  entityGuardianFlop('entity-guardian-flop'),
+  entityGuardianHurt('entity-guardian-hurt'),
+  entityGuardianHurtLand('entity-guardian-hurt-land'),
+  blockHangingRootsBreak('block-hanging-roots-break'),
+  blockHangingRootsFall('block-hanging-roots-fall'),
+  blockHangingRootsHit('block-hanging-roots-hit'),
+  blockHangingRootsPlace('block-hanging-roots-place'),
+  blockHangingRootsStep('block-hanging-roots-step'),
+  blockHangingSignStep('block-hanging-sign-step'),
+  blockHangingSignBreak('block-hanging-sign-break'),
+  blockHangingSignFall('block-hanging-sign-fall'),
+  blockHangingSignHit('block-hanging-sign-hit'),
+  blockHangingSignPlace('block-hanging-sign-place'),
+  entityHappyGhastAmbient('entity-happy-ghast-ambient'),
+  entityHappyGhastDeath('entity-happy-ghast-death'),
+  entityHappyGhastHurt('entity-happy-ghast-hurt'),
+  entityHappyGhastRiding('entity-happy-ghast-riding'),
+  blockHeavyCoreBreak('block-heavy-core-break'),
+  blockHeavyCoreFall('block-heavy-core-fall'),
+  blockHeavyCoreHit('block-heavy-core-hit'),
+  blockHeavyCorePlace('block-heavy-core-place'),
+  blockHeavyCoreStep('block-heavy-core-step'),
+  blockNetherWoodHangingSignStep('block-nether-wood-hanging-sign-step'),
+  blockNetherWoodHangingSignBreak('block-nether-wood-hanging-sign-break'),
+  blockNetherWoodHangingSignFall('block-nether-wood-hanging-sign-fall'),
+  blockNetherWoodHangingSignHit('block-nether-wood-hanging-sign-hit'),
+  blockNetherWoodHangingSignPlace('block-nether-wood-hanging-sign-place'),
+  blockBambooWoodHangingSignStep('block-bamboo-wood-hanging-sign-step'),
+  blockBambooWoodHangingSignBreak('block-bamboo-wood-hanging-sign-break'),
+  blockBambooWoodHangingSignFall('block-bamboo-wood-hanging-sign-fall'),
+  blockBambooWoodHangingSignHit('block-bamboo-wood-hanging-sign-hit'),
+  blockBambooWoodHangingSignPlace('block-bamboo-wood-hanging-sign-place'),
+  blockTrialSpawnerBreak('block-trial-spawner-break'),
+  blockTrialSpawnerStep('block-trial-spawner-step'),
+  blockTrialSpawnerPlace('block-trial-spawner-place'),
+  blockTrialSpawnerHit('block-trial-spawner-hit'),
+  blockTrialSpawnerFall('block-trial-spawner-fall'),
+  blockTrialSpawnerSpawnMob('block-trial-spawner-spawn-mob'),
+  blockTrialSpawnerAboutToSpawnItem('block-trial-spawner-about-to-spawn-item'),
+  blockTrialSpawnerSpawnItem('block-trial-spawner-spawn-item'),
+  blockTrialSpawnerSpawnItemBegin('block-trial-spawner-spawn-item-begin'),
+  blockTrialSpawnerDetectPlayer('block-trial-spawner-detect-player'),
+  blockTrialSpawnerOminousActivate('block-trial-spawner-ominous-activate'),
+  blockTrialSpawnerAmbient('block-trial-spawner-ambient'),
+  blockTrialSpawnerAmbientOminous('block-trial-spawner-ambient-ominous'),
+  blockTrialSpawnerOpenShutter('block-trial-spawner-open-shutter'),
+  blockTrialSpawnerCloseShutter('block-trial-spawner-close-shutter'),
+  blockTrialSpawnerEjectItem('block-trial-spawner-eject-item'),
+  entityHappyGhastEquip('entity-happy-ghast-equip'),
+  entityHappyGhastUnequip('entity-happy-ghast-unequip'),
+  entityHappyGhastHarnessGogglesUp('entity-happy-ghast-harness-goggles-up'),
+  entityHappyGhastHarnessGogglesDown('entity-happy-ghast-harness-goggles-down'),
+  itemHoeTill('item-hoe-till'),
+  entityHoglinAmbient('entity-hoglin-ambient'),
+  entityHoglinAngry('entity-hoglin-angry'),
+  entityHoglinAttack('entity-hoglin-attack'),
+  entityHoglinConvertedToZombified('entity-hoglin-converted-to-zombified'),
+  entityHoglinDeath('entity-hoglin-death'),
+  entityHoglinHurt('entity-hoglin-hurt'),
+  entityHoglinRetreat('entity-hoglin-retreat'),
+  entityHoglinStep('entity-hoglin-step'),
+  blockHoneyBlockBreak('block-honey-block-break'),
+  blockHoneyBlockFall('block-honey-block-fall'),
+  blockHoneyBlockHit('block-honey-block-hit'),
+  blockHoneyBlockPlace('block-honey-block-place'),
+  blockHoneyBlockSlide('block-honey-block-slide'),
+  blockHoneyBlockStep('block-honey-block-step'),
+  itemHoneycombWaxOn('item-honeycomb-wax-on'),
+  itemHoneyBottleDrink('item-honey-bottle-drink'),
+  itemGoatHornSound0('item-goat-horn-sound-0'),
+  itemGoatHornSound1('item-goat-horn-sound-1'),
+  itemGoatHornSound2('item-goat-horn-sound-2'),
+  itemGoatHornSound3('item-goat-horn-sound-3'),
+  itemGoatHornSound4('item-goat-horn-sound-4'),
+  itemGoatHornSound5('item-goat-horn-sound-5'),
+  itemGoatHornSound6('item-goat-horn-sound-6'),
+  itemGoatHornSound7('item-goat-horn-sound-7'),
+  entityHorseAmbient('entity-horse-ambient'),
+  entityBabyHorseAmbient('entity-baby-horse-ambient'),
+  entityHorseAngry('entity-horse-angry'),
+  entityBabyHorseAngry('entity-baby-horse-angry'),
+  entityHorseArmor('entity-horse-armor'),
+  itemHorseArmorUnequip('item-horse-armor-unequip'),
+  entityHorseBreathe('entity-horse-breathe'),
+  entityBabyHorseBreathe('entity-baby-horse-breathe'),
+  entityHorseDeath('entity-horse-death'),
+  entityBabyHorseDeath('entity-baby-horse-death'),
+  entityHorseEat('entity-horse-eat'),
+  entityBabyHorseEat('entity-baby-horse-eat'),
+  entityHorseGallop('entity-horse-gallop'),
+  entityHorseHurt('entity-horse-hurt'),
+  entityBabyHorseHurt('entity-baby-horse-hurt'),
+  entityHorseJump('entity-horse-jump'),
+  entityHorseLand('entity-horse-land'),
+  entityBabyHorseLand('entity-baby-horse-land'),
+  entityHorseSaddle('entity-horse-saddle'),
+  entityHorseStep('entity-horse-step'),
+  entityBabyHorseStep('entity-baby-horse-step'),
+  entityHorseStepWood('entity-horse-step-wood'),
+  entityHostileBigFall('entity-hostile-big-fall'),
+  entityHostileDeath('entity-hostile-death'),
+  entityHostileHurt('entity-hostile-hurt'),
+  entityHostileSmallFall('entity-hostile-small-fall'),
+  entityHostileSplash('entity-hostile-splash'),
+  entityHostileSwim('entity-hostile-swim'),
+  entityHuskAmbient('entity-husk-ambient'),
+  entityHuskConvertedToZombie('entity-husk-converted-to-zombie'),
+  entityHuskDeath('entity-husk-death'),
+  entityHuskHurt('entity-husk-hurt'),
+  entityHuskStep('entity-husk-step'),
+  entityIllusionerAmbient('entity-illusioner-ambient'),
+  entityIllusionerCastSpell('entity-illusioner-cast-spell'),
+  entityIllusionerDeath('entity-illusioner-death'),
+  entityIllusionerHurt('entity-illusioner-hurt'),
+  entityIllusionerMirrorMove('entity-illusioner-mirror-move'),
+  entityIllusionerPrepareBlindness('entity-illusioner-prepare-blindness'),
+  entityIllusionerPrepareMirror('entity-illusioner-prepare-mirror'),
+  itemInkSacUse('item-ink-sac-use'),
+  blockIronBreak('block-iron-break'),
+  blockIronStep('block-iron-step'),
+  blockIronPlace('block-iron-place'),
+  blockIronHit('block-iron-hit'),
+  blockIronFall('block-iron-fall'),
+  blockIronDoorClose('block-iron-door-close'),
+  blockIronDoorOpen('block-iron-door-open'),
+  entityIronGolemAttack('entity-iron-golem-attack'),
+  entityIronGolemDamage('entity-iron-golem-damage'),
+  entityIronGolemDeath('entity-iron-golem-death'),
+  entityIronGolemHurt('entity-iron-golem-hurt'),
+  entityIronGolemRepair('entity-iron-golem-repair'),
+  entityIronGolemStep('entity-iron-golem-step'),
+  blockIronTrapdoorClose('block-iron-trapdoor-close'),
+  blockIronTrapdoorOpen('block-iron-trapdoor-open'),
+  entityItemFrameAddItem('entity-item-frame-add-item'),
+  entityItemFrameBreak('entity-item-frame-break'),
+  entityItemFramePlace('entity-item-frame-place'),
+  entityItemFrameRemoveItem('entity-item-frame-remove-item'),
+  entityItemFrameRotateItem('entity-item-frame-rotate-item'),
+  entityItemBreak('entity-item-break'),
+  entityItemPickup('entity-item-pickup'),
+  blockLadderBreak('block-ladder-break'),
+  blockLadderFall('block-ladder-fall'),
+  blockLadderHit('block-ladder-hit'),
+  blockLadderPlace('block-ladder-place'),
+  blockLadderStep('block-ladder-step'),
+  blockLanternBreak('block-lantern-break'),
+  blockLanternFall('block-lantern-fall'),
+  blockLanternHit('block-lantern-hit'),
+  blockLanternPlace('block-lantern-place'),
+  blockLanternStep('block-lantern-step'),
+  blockLargeAmethystBudBreak('block-large-amethyst-bud-break'),
+  blockLargeAmethystBudPlace('block-large-amethyst-bud-place'),
+  blockLavaAmbient('block-lava-ambient'),
+  blockLavaExtinguish('block-lava-extinguish'),
+  blockLavaPop('block-lava-pop'),
+  blockLeafLitterBreak('block-leaf-litter-break'),
+  blockLeafLitterStep('block-leaf-litter-step'),
+  blockLeafLitterPlace('block-leaf-litter-place'),
+  blockLeafLitterHit('block-leaf-litter-hit'),
+  blockLeafLitterFall('block-leaf-litter-fall'),
+  itemLeadUntied('item-lead-untied'),
+  itemLeadTied('item-lead-tied'),
+  itemLeadBreak('item-lead-break'),
+  blockLeverClick('block-lever-click'),
+  entityLightningBoltImpact('entity-lightning-bolt-impact'),
+  entityLightningBoltThunder('entity-lightning-bolt-thunder'),
+  entityLingeringPotionThrow('entity-lingering-potion-throw'),
+  entityLlamaAmbient('entity-llama-ambient'),
+  entityLlamaAngry('entity-llama-angry'),
+  entityLlamaChest('entity-llama-chest'),
+  entityLlamaDeath('entity-llama-death'),
+  entityLlamaEat('entity-llama-eat'),
+  entityLlamaHurt('entity-llama-hurt'),
+  entityLlamaSpit('entity-llama-spit'),
+  entityLlamaStep('entity-llama-step'),
+  entityLlamaSwag('entity-llama-swag'),
+  itemLlamaCarpetUnequip('item-llama-carpet-unequip'),
+  entityMagmaCubeDeathSmall('entity-magma-cube-death-small'),
+  blockLodestoneBreak('block-lodestone-break'),
+  blockLodestoneStep('block-lodestone-step'),
+  blockLodestonePlace('block-lodestone-place'),
+  blockLodestoneHit('block-lodestone-hit'),
+  blockLodestoneFall('block-lodestone-fall'),
+  itemLodestoneCompassLock('item-lodestone-compass-lock'),
+  itemSpearLunge1('item-spear-lunge-1'),
+  itemSpearLunge2('item-spear-lunge-2'),
+  itemSpearLunge3('item-spear-lunge-3'),
+  itemMaceSmashAir('item-mace-smash-air'),
+  itemMaceSmashGround('item-mace-smash-ground'),
+  itemMaceSmashGroundHeavy('item-mace-smash-ground-heavy'),
+  entityMagmaCubeDeath('entity-magma-cube-death'),
+  entityMagmaCubeHurt('entity-magma-cube-hurt'),
+  entityMagmaCubeHurtSmall('entity-magma-cube-hurt-small'),
+  entityMagmaCubeJump('entity-magma-cube-jump'),
+  entityMagmaCubeSquish('entity-magma-cube-squish'),
+  entityMagmaCubeSquishSmall('entity-magma-cube-squish-small'),
+  blockMangroveRootsBreak('block-mangrove-roots-break'),
+  blockMangroveRootsFall('block-mangrove-roots-fall'),
+  blockMangroveRootsHit('block-mangrove-roots-hit'),
+  blockMangroveRootsPlace('block-mangrove-roots-place'),
+  blockMangroveRootsStep('block-mangrove-roots-step'),
+  blockMediumAmethystBudBreak('block-medium-amethyst-bud-break'),
+  blockMediumAmethystBudPlace('block-medium-amethyst-bud-place'),
+  blockMetalBreak('block-metal-break'),
+  blockMetalFall('block-metal-fall'),
+  blockMetalHit('block-metal-hit'),
+  blockMetalPlace('block-metal-place'),
+  blockMetalPressurePlateClickOff('block-metal-pressure-plate-click-off'),
+  blockMetalPressurePlateClickOn('block-metal-pressure-plate-click-on'),
+  blockMetalStep('block-metal-step'),
+  entityMinecartInsideUnderwater('entity-minecart-inside-underwater'),
+  entityMinecartInside('entity-minecart-inside'),
+  entityMinecartRiding('entity-minecart-riding'),
+  entityMooshroomConvert('entity-mooshroom-convert'),
+  entityMooshroomEat('entity-mooshroom-eat'),
+  entityMooshroomMilk('entity-mooshroom-milk'),
+  entityMooshroomSuspiciousMilk('entity-mooshroom-suspicious-milk'),
+  entityMooshroomShear('entity-mooshroom-shear'),
+  blockMossCarpetBreak('block-moss-carpet-break'),
+  blockMossCarpetFall('block-moss-carpet-fall'),
+  blockMossCarpetHit('block-moss-carpet-hit'),
+  blockMossCarpetPlace('block-moss-carpet-place'),
+  blockMossCarpetStep('block-moss-carpet-step'),
+  blockPinkPetalsBreak('block-pink-petals-break'),
+  blockPinkPetalsFall('block-pink-petals-fall'),
+  blockPinkPetalsHit('block-pink-petals-hit'),
+  blockPinkPetalsPlace('block-pink-petals-place'),
+  blockPinkPetalsStep('block-pink-petals-step'),
+  blockMossBreak('block-moss-break'),
+  blockMossFall('block-moss-fall'),
+  blockMossHit('block-moss-hit'),
+  blockMossPlace('block-moss-place'),
+  blockMossStep('block-moss-step'),
+  blockMudBreak('block-mud-break'),
+  blockMudFall('block-mud-fall'),
+  blockMudHit('block-mud-hit'),
+  blockMudPlace('block-mud-place'),
+  blockMudStep('block-mud-step'),
+  blockMudBricksBreak('block-mud-bricks-break'),
+  blockMudBricksFall('block-mud-bricks-fall'),
+  blockMudBricksHit('block-mud-bricks-hit'),
+  blockMudBricksPlace('block-mud-bricks-place'),
+  blockMudBricksStep('block-mud-bricks-step'),
+  blockMuddyMangroveRootsBreak('block-muddy-mangrove-roots-break'),
+  blockMuddyMangroveRootsFall('block-muddy-mangrove-roots-fall'),
+  blockMuddyMangroveRootsHit('block-muddy-mangrove-roots-hit'),
+  blockMuddyMangroveRootsPlace('block-muddy-mangrove-roots-place'),
+  blockMuddyMangroveRootsStep('block-muddy-mangrove-roots-step'),
+  entityMuleAmbient('entity-mule-ambient'),
+  entityMuleAngry('entity-mule-angry'),
+  entityMuleChest('entity-mule-chest'),
+  entityMuleDeath('entity-mule-death'),
+  entityMuleEat('entity-mule-eat'),
+  entityMuleHurt('entity-mule-hurt'),
+  entityMuleJump('entity-mule-jump'),
+  musicCreative('music-creative'),
+  musicCredits('music-credits'),
+  musicDisc5('music-disc-5'),
+  musicDisc11('music-disc-11'),
+  musicDisc13('music-disc-13'),
+  musicDiscBlocks('music-disc-blocks'),
+  musicDiscBounce('music-disc-bounce'),
+  musicDiscCat('music-disc-cat'),
+  musicDiscChirp('music-disc-chirp'),
+  musicDiscFar('music-disc-far'),
+  musicDiscLavaChicken('music-disc-lava-chicken'),
+  musicDiscMall('music-disc-mall'),
+  musicDiscMellohi('music-disc-mellohi'),
+  musicDiscPigstep('music-disc-pigstep'),
+  musicDiscStal('music-disc-stal'),
+  musicDiscStrad('music-disc-strad'),
+  musicDiscWait('music-disc-wait'),
+  musicDiscWard('music-disc-ward'),
+  musicDiscOtherside('music-disc-otherside'),
+  musicDiscRelic('music-disc-relic'),
+  musicDiscCreator('music-disc-creator'),
+  musicDiscCreatorMusicBox('music-disc-creator-music-box'),
+  musicDiscPrecipice('music-disc-precipice'),
+  musicDiscTears('music-disc-tears'),
+  musicDragon('music-dragon'),
+  musicEnd('music-end'),
+  musicGame('music-game'),
+  musicMenu('music-menu'),
+  musicNetherBasaltDeltas('music-nether-basalt-deltas'),
+  musicNetherCrimsonForest('music-nether-crimson-forest'),
+  musicOverworldDeepDark('music-overworld-deep-dark'),
+  musicOverworldDripstoneCaves('music-overworld-dripstone-caves'),
+  musicOverworldGrove('music-overworld-grove'),
+  musicOverworldJaggedPeaks('music-overworld-jagged-peaks'),
+  musicOverworldLushCaves('music-overworld-lush-caves'),
+  musicOverworldSwamp('music-overworld-swamp'),
+  musicOverworldForest('music-overworld-forest'),
+  musicOverworldOldGrowthTaiga('music-overworld-old-growth-taiga'),
+  musicOverworldMeadow('music-overworld-meadow'),
+  musicOverworldCherryGrove('music-overworld-cherry-grove'),
+  musicNetherNetherWastes('music-nether-nether-wastes'),
+  musicOverworldFrozenPeaks('music-overworld-frozen-peaks'),
+  musicOverworldSnowySlopes('music-overworld-snowy-slopes'),
+  musicNetherSoulSandValley('music-nether-soul-sand-valley'),
+  musicOverworldStonyPeaks('music-overworld-stony-peaks'),
+  musicNetherWarpedForest('music-nether-warped-forest'),
+  musicOverworldFlowerForest('music-overworld-flower-forest'),
+  musicOverworldDesert('music-overworld-desert'),
+  musicOverworldBadlands('music-overworld-badlands'),
+  musicOverworldJungle('music-overworld-jungle'),
+  musicOverworldSparseJungle('music-overworld-sparse-jungle'),
+  musicOverworldBambooJungle('music-overworld-bamboo-jungle'),
+  musicOverworldSulfurCaves('music-overworld-sulfur-caves'),
+  musicUnderWater('music-under-water'),
+  entityNautilusAmbient('entity-nautilus-ambient'),
+  entityNautilusAmbientLand('entity-nautilus-ambient-land'),
+  entityNautilusDash('entity-nautilus-dash'),
+  entityNautilusDashLand('entity-nautilus-dash-land'),
+  entityNautilusDashReady('entity-nautilus-dash-ready'),
+  entityNautilusDashReadyLand('entity-nautilus-dash-ready-land'),
+  entityNautilusDeath('entity-nautilus-death'),
+  entityNautilusDeathLand('entity-nautilus-death-land'),
+  entityNautilusEat('entity-nautilus-eat'),
+  entityNautilusHurt('entity-nautilus-hurt'),
+  entityNautilusHurtLand('entity-nautilus-hurt-land'),
+  entityNautilusSwim('entity-nautilus-swim'),
+  blockNetherBricksBreak('block-nether-bricks-break'),
+  blockNetherBricksStep('block-nether-bricks-step'),
+  blockNetherBricksPlace('block-nether-bricks-place'),
+  blockNetherBricksHit('block-nether-bricks-hit'),
+  blockNetherBricksFall('block-nether-bricks-fall'),
+  blockNetherWartBreak('block-nether-wart-break'),
+  itemNetherWartPlant('item-nether-wart-plant'),
+  blockNetherWoodBreak('block-nether-wood-break'),
+  blockNetherWoodFall('block-nether-wood-fall'),
+  blockNetherWoodHit('block-nether-wood-hit'),
+  blockNetherWoodPlace('block-nether-wood-place'),
+  blockNetherWoodStep('block-nether-wood-step'),
+  blockNetherWoodDoorClose('block-nether-wood-door-close'),
+  blockNetherWoodDoorOpen('block-nether-wood-door-open'),
+  blockNetherWoodTrapdoorClose('block-nether-wood-trapdoor-close'),
+  blockNetherWoodTrapdoorOpen('block-nether-wood-trapdoor-open'),
+  blockNetherWoodButtonClickOff('block-nether-wood-button-click-off'),
+  blockNetherWoodButtonClickOn('block-nether-wood-button-click-on'),
+  blockNetherWoodPressurePlateClickOff('block-nether-wood-pressure-plate-click-off'),
+  blockNetherWoodPressurePlateClickOn('block-nether-wood-pressure-plate-click-on'),
+  blockNetherWoodFenceGateClose('block-nether-wood-fence-gate-close'),
+  blockNetherWoodFenceGateOpen('block-nether-wood-fence-gate-open'),
+  intentionallyEmpty('intentionally-empty'),
+  blockPackedMudBreak('block-packed-mud-break'),
+  blockPackedMudFall('block-packed-mud-fall'),
+  blockPackedMudHit('block-packed-mud-hit'),
+  blockPackedMudPlace('block-packed-mud-place'),
+  blockPackedMudStep('block-packed-mud-step'),
+  blockStemBreak('block-stem-break'),
+  blockStemStep('block-stem-step'),
+  blockStemPlace('block-stem-place'),
+  blockStemHit('block-stem-hit'),
+  blockStemFall('block-stem-fall'),
+  blockNyliumBreak('block-nylium-break'),
+  blockNyliumStep('block-nylium-step'),
+  blockNyliumPlace('block-nylium-place'),
+  blockNyliumHit('block-nylium-hit'),
+  blockNyliumFall('block-nylium-fall'),
+  blockNetherSproutsBreak('block-nether-sprouts-break'),
+  blockNetherSproutsStep('block-nether-sprouts-step'),
+  blockNetherSproutsPlace('block-nether-sprouts-place'),
+  blockNetherSproutsHit('block-nether-sprouts-hit'),
+  blockNetherSproutsFall('block-nether-sprouts-fall'),
+  blockFungusBreak('block-fungus-break'),
+  blockFungusStep('block-fungus-step'),
+  blockFungusPlace('block-fungus-place'),
+  blockFungusHit('block-fungus-hit'),
+  blockFungusFall('block-fungus-fall'),
+  blockWeepingVinesBreak('block-weeping-vines-break'),
+  blockWeepingVinesStep('block-weeping-vines-step'),
+  blockWeepingVinesPlace('block-weeping-vines-place'),
+  blockWeepingVinesHit('block-weeping-vines-hit'),
+  blockWeepingVinesFall('block-weeping-vines-fall'),
+  blockWartBlockBreak('block-wart-block-break'),
+  blockWartBlockStep('block-wart-block-step'),
+  blockWartBlockPlace('block-wart-block-place'),
+  blockWartBlockHit('block-wart-block-hit'),
+  blockWartBlockFall('block-wart-block-fall'),
+  blockNetheriteBlockBreak('block-netherite-block-break'),
+  blockNetheriteBlockStep('block-netherite-block-step'),
+  blockNetheriteBlockPlace('block-netherite-block-place'),
+  blockNetheriteBlockHit('block-netherite-block-hit'),
+  blockNetheriteBlockFall('block-netherite-block-fall'),
+  blockNetherrackBreak('block-netherrack-break'),
+  blockNetherrackStep('block-netherrack-step'),
+  blockNetherrackPlace('block-netherrack-place'),
+  blockNetherrackHit('block-netherrack-hit'),
+  blockNetherrackFall('block-netherrack-fall'),
+  blockNoteBlockBasedrum('block-note-block-basedrum'),
+  blockNoteBlockBass('block-note-block-bass'),
+  blockNoteBlockBell('block-note-block-bell'),
+  blockNoteBlockChime('block-note-block-chime'),
+  blockNoteBlockFlute('block-note-block-flute'),
+  blockNoteBlockGuitar('block-note-block-guitar'),
+  blockNoteBlockHarp('block-note-block-harp'),
+  blockNoteBlockHat('block-note-block-hat'),
+  blockNoteBlockPling('block-note-block-pling'),
+  blockNoteBlockSnare('block-note-block-snare'),
+  blockNoteBlockTrumpet('block-note-block-trumpet'),
+  blockNoteBlockTrumpetExposed('block-note-block-trumpet-exposed'),
+  blockNoteBlockTrumpetOxidized('block-note-block-trumpet-oxidized'),
+  blockNoteBlockTrumpetWeathered('block-note-block-trumpet-weathered'),
+  blockNoteBlockXylophone('block-note-block-xylophone'),
+  blockNoteBlockIronXylophone('block-note-block-iron-xylophone'),
+  blockNoteBlockCowBell('block-note-block-cow-bell'),
+  blockNoteBlockDidgeridoo('block-note-block-didgeridoo'),
+  blockNoteBlockBit('block-note-block-bit'),
+  blockNoteBlockBanjo('block-note-block-banjo'),
+  blockNoteBlockImitateZombie('block-note-block-imitate-zombie'),
+  blockNoteBlockImitateSkeleton('block-note-block-imitate-skeleton'),
+  blockNoteBlockImitateCreeper('block-note-block-imitate-creeper'),
+  blockNoteBlockImitateEnderDragon('block-note-block-imitate-ender-dragon'),
+  blockNoteBlockImitateWitherSkeleton('block-note-block-imitate-wither-skeleton'),
+  blockNoteBlockImitatePiglin('block-note-block-imitate-piglin'),
+  entityOcelotHurt('entity-ocelot-hurt'),
+  entityOcelotAmbient('entity-ocelot-ambient'),
+  entityOcelotDeath('entity-ocelot-death'),
+  itemOminousBottleDispose('item-ominous-bottle-dispose'),
+  entityPaintingBreak('entity-painting-break'),
+  entityPaintingPlace('entity-painting-place'),
+  blockPaleHangingMossIdle('block-pale-hanging-moss-idle'),
+  entityPandaPreSneeze('entity-panda-pre-sneeze'),
+  entityPandaSneeze('entity-panda-sneeze'),
+  entityPandaAmbient('entity-panda-ambient'),
+  entityPandaDeath('entity-panda-death'),
+  entityPandaEat('entity-panda-eat'),
+  entityPandaStep('entity-panda-step'),
+  entityPandaCantBreed('entity-panda-cant-breed'),
+  entityPandaAggressiveAmbient('entity-panda-aggressive-ambient'),
+  entityPandaWorriedAmbient('entity-panda-worried-ambient'),
+  entityPandaHurt('entity-panda-hurt'),
+  entityPandaBite('entity-panda-bite'),
+  entityParchedAmbient('entity-parched-ambient'),
+  entityParchedDeath('entity-parched-death'),
+  entityParchedHurt('entity-parched-hurt'),
+  entityParchedStep('entity-parched-step'),
+  entityParrotAmbient('entity-parrot-ambient'),
+  entityParrotDeath('entity-parrot-death'),
+  entityParrotEat('entity-parrot-eat'),
+  entityParrotFly('entity-parrot-fly'),
+  entityParrotHurt('entity-parrot-hurt'),
+  entityParrotImitateBlaze('entity-parrot-imitate-blaze'),
+  entityParrotImitateBogged('entity-parrot-imitate-bogged'),
+  entityParrotImitateBreeze('entity-parrot-imitate-breeze'),
+  entityParrotImitateCamelHusk('entity-parrot-imitate-camel-husk'),
+  entityParrotImitateCreaking('entity-parrot-imitate-creaking'),
+  entityParrotImitateCreeper('entity-parrot-imitate-creeper'),
+  entityParrotImitateDrowned('entity-parrot-imitate-drowned'),
+  entityParrotImitateElderGuardian('entity-parrot-imitate-elder-guardian'),
+  entityParrotImitateEnderDragon('entity-parrot-imitate-ender-dragon'),
+  entityParrotImitateEndermite('entity-parrot-imitate-endermite'),
+  entityParrotImitateEvoker('entity-parrot-imitate-evoker'),
+  entityParrotImitateGhast('entity-parrot-imitate-ghast'),
+  entityParrotImitateGuardian('entity-parrot-imitate-guardian'),
+  entityParrotImitateHoglin('entity-parrot-imitate-hoglin'),
+  entityParrotImitateHusk('entity-parrot-imitate-husk'),
+  entityParrotImitateIllusioner('entity-parrot-imitate-illusioner'),
+  entityParrotImitateMagmaCube('entity-parrot-imitate-magma-cube'),
+  entityParrotImitatePhantom('entity-parrot-imitate-phantom'),
+  entityParrotImitateParched('entity-parrot-imitate-parched'),
+  entityParrotImitatePiglin('entity-parrot-imitate-piglin'),
+  entityParrotImitatePiglinBrute('entity-parrot-imitate-piglin-brute'),
+  entityParrotImitatePillager('entity-parrot-imitate-pillager'),
+  entityParrotImitateRavager('entity-parrot-imitate-ravager'),
+  entityParrotImitateShulker('entity-parrot-imitate-shulker'),
+  entityParrotImitateSilverfish('entity-parrot-imitate-silverfish'),
+  entityParrotImitateSkeleton('entity-parrot-imitate-skeleton'),
+  entityParrotImitateSlime('entity-parrot-imitate-slime'),
+  entityParrotImitateSpider('entity-parrot-imitate-spider'),
+  entityParrotImitateStray('entity-parrot-imitate-stray'),
+  entityParrotImitateVex('entity-parrot-imitate-vex'),
+  entityParrotImitateVindicator('entity-parrot-imitate-vindicator'),
+  entityParrotImitateWarden('entity-parrot-imitate-warden'),
+  entityParrotImitateWitch('entity-parrot-imitate-witch'),
+  entityParrotImitateWither('entity-parrot-imitate-wither'),
+  entityParrotImitateWitherSkeleton('entity-parrot-imitate-wither-skeleton'),
+  entityParrotImitateZoglin('entity-parrot-imitate-zoglin'),
+  entityParrotImitateZombie('entity-parrot-imitate-zombie'),
+  entityParrotImitateZombieHorse('entity-parrot-imitate-zombie-horse'),
+  entityParrotImitateZombieNautilus('entity-parrot-imitate-zombie-nautilus'),
+  entityParrotImitateZombieVillager('entity-parrot-imitate-zombie-villager'),
+  entityParrotStep('entity-parrot-step'),
+  entityPhantomAmbient('entity-phantom-ambient'),
+  entityPhantomBite('entity-phantom-bite'),
+  entityPhantomDeath('entity-phantom-death'),
+  entityPhantomFlap('entity-phantom-flap'),
+  entityPhantomHurt('entity-phantom-hurt'),
+  entityPhantomSwoop('entity-phantom-swoop'),
+  entityPigSaddle('entity-pig-saddle'),
+  entityPigStep('entity-pig-step'),
+  entityBabyPigStep('entity-baby-pig-step'),
+  entityBabyPigAmbient('entity-baby-pig-ambient'),
+  entityBabyPigEat('entity-baby-pig-eat'),
+  entityBabyPigHurt('entity-baby-pig-hurt'),
+  entityBabyPigDeath('entity-baby-pig-death'),
+  entityPigAmbient('entity-pig-ambient'),
+  entityPigHurt('entity-pig-hurt'),
+  entityPigDeath('entity-pig-death'),
+  entityPigEat('entity-pig-eat'),
+  entityPigMiniAmbient('entity-pig-mini-ambient'),
+  entityPigMiniHurt('entity-pig-mini-hurt'),
+  entityPigMiniDeath('entity-pig-mini-death'),
+  entityPigMiniEat('entity-pig-mini-eat'),
+  entityPigBigAmbient('entity-pig-big-ambient'),
+  entityPigBigHurt('entity-pig-big-hurt'),
+  entityPigBigDeath('entity-pig-big-death'),
+  entityPigBigEat('entity-pig-big-eat'),
+  entityPiglinAdmiringItem('entity-piglin-admiring-item'),
+  entityPiglinAmbient('entity-piglin-ambient'),
+  entityPiglinAngry('entity-piglin-angry'),
+  entityPiglinCelebrate('entity-piglin-celebrate'),
+  entityPiglinDeath('entity-piglin-death'),
+  entityPiglinJealous('entity-piglin-jealous'),
+  entityPiglinHurt('entity-piglin-hurt'),
+  entityPiglinRetreat('entity-piglin-retreat'),
+  entityPiglinStep('entity-piglin-step'),
+  entityPiglinConvertedToZombified('entity-piglin-converted-to-zombified'),
+  entityPiglinBruteAmbient('entity-piglin-brute-ambient'),
+  entityPiglinBruteAngry('entity-piglin-brute-angry'),
+  entityPiglinBruteDeath('entity-piglin-brute-death'),
+  entityPiglinBruteHurt('entity-piglin-brute-hurt'),
+  entityPiglinBruteStep('entity-piglin-brute-step'),
+  entityPiglinBruteConvertedToZombified('entity-piglin-brute-converted-to-zombified'),
+  entityPillagerAmbient('entity-pillager-ambient'),
+  entityPillagerCelebrate('entity-pillager-celebrate'),
+  entityPillagerDeath('entity-pillager-death'),
+  entityPillagerHurt('entity-pillager-hurt'),
+  blockPistonContract('block-piston-contract'),
+  blockPistonExtend('block-piston-extend'),
+  entityPlayerAttackCrit('entity-player-attack-crit'),
+  entityPlayerAttackKnockback('entity-player-attack-knockback'),
+  entityPlayerAttackNodamage('entity-player-attack-nodamage'),
+  entityPlayerAttackStrong('entity-player-attack-strong'),
+  entityPlayerAttackSweep('entity-player-attack-sweep'),
+  entityPlayerAttackWeak('entity-player-attack-weak'),
+  entityPlayerBigFall('entity-player-big-fall'),
+  entityPlayerBreath('entity-player-breath'),
+  entityPlayerBurp('entity-player-burp'),
+  entityPlayerDeath('entity-player-death'),
+  entityPlayerHurt('entity-player-hurt'),
+  entityPlayerHurtDrown('entity-player-hurt-drown'),
+  entityPlayerHurtFreeze('entity-player-hurt-freeze'),
+  entityPlayerHurtOnFire('entity-player-hurt-on-fire'),
+  entityPlayerHurtSweetBerryBush('entity-player-hurt-sweet-berry-bush'),
+  entityPlayerLevelup('entity-player-levelup'),
+  entityPlayerSmallFall('entity-player-small-fall'),
+  entityPlayerSplash('entity-player-splash'),
+  entityPlayerSplashHighSpeed('entity-player-splash-high-speed'),
+  entityPlayerSwim('entity-player-swim'),
+  entityPlayerTeleport('entity-player-teleport'),
+  entityPolarBearAmbient('entity-polar-bear-ambient'),
+  entityPolarBearAmbientBaby('entity-polar-bear-ambient-baby'),
+  entityPolarBearDeath('entity-polar-bear-death'),
+  entityPolarBearHurt('entity-polar-bear-hurt'),
+  entityPolarBearStep('entity-polar-bear-step'),
+  entityPolarBearWarning('entity-polar-bear-warning'),
+  blockPolishedDeepslateBreak('block-polished-deepslate-break'),
+  blockPolishedDeepslateFall('block-polished-deepslate-fall'),
+  blockPolishedDeepslateHit('block-polished-deepslate-hit'),
+  blockPolishedDeepslatePlace('block-polished-deepslate-place'),
+  blockPolishedDeepslateStep('block-polished-deepslate-step'),
+  blockPortalAmbient('block-portal-ambient'),
+  blockPortalTravel('block-portal-travel'),
+  blockPortalTrigger('block-portal-trigger'),
+  blockPowderSnowBreak('block-powder-snow-break'),
+  blockPowderSnowFall('block-powder-snow-fall'),
+  blockPowderSnowHit('block-powder-snow-hit'),
+  blockPowderSnowPlace('block-powder-snow-place'),
+  blockPowderSnowStep('block-powder-snow-step'),
+  entityPufferFishBlowOut('entity-puffer-fish-blow-out'),
+  entityPufferFishBlowUp('entity-puffer-fish-blow-up'),
+  entityPufferFishDeath('entity-puffer-fish-death'),
+  entityPufferFishFlop('entity-puffer-fish-flop'),
+  entityPufferFishHurt('entity-puffer-fish-hurt'),
+  entityPufferFishSting('entity-puffer-fish-sting'),
+  blockPumpkinCarve('block-pumpkin-carve'),
+  entityRabbitAmbient('entity-rabbit-ambient'),
+  entityRabbitAttack('entity-rabbit-attack'),
+  entityRabbitDeath('entity-rabbit-death'),
+  entityRabbitHurt('entity-rabbit-hurt'),
+  entityRabbitJump('entity-rabbit-jump'),
+  eventRaidHorn('event-raid-horn'),
+  entityRavagerAmbient('entity-ravager-ambient'),
+  entityRavagerAttack('entity-ravager-attack'),
+  entityRavagerCelebrate('entity-ravager-celebrate'),
+  entityRavagerDeath('entity-ravager-death'),
+  entityRavagerHurt('entity-ravager-hurt'),
+  entityRavagerStep('entity-ravager-step'),
+  entityRavagerStunned('entity-ravager-stunned'),
+  entityRavagerRoar('entity-ravager-roar'),
+  blockNetherGoldOreBreak('block-nether-gold-ore-break'),
+  blockNetherGoldOreFall('block-nether-gold-ore-fall'),
+  blockNetherGoldOreHit('block-nether-gold-ore-hit'),
+  blockNetherGoldOrePlace('block-nether-gold-ore-place'),
+  blockNetherGoldOreStep('block-nether-gold-ore-step'),
+  blockNetherOreBreak('block-nether-ore-break'),
+  blockNetherOreFall('block-nether-ore-fall'),
+  blockNetherOreHit('block-nether-ore-hit'),
+  blockNetherOrePlace('block-nether-ore-place'),
+  blockNetherOreStep('block-nether-ore-step'),
+  blockRedstoneTorchBurnout('block-redstone-torch-burnout'),
+  blockResinBreak('block-resin-break'),
+  blockResinFall('block-resin-fall'),
+  blockResinPlace('block-resin-place'),
+  blockResinStep('block-resin-step'),
+  blockResinBricksBreak('block-resin-bricks-break'),
+  blockResinBricksFall('block-resin-bricks-fall'),
+  blockResinBricksHit('block-resin-bricks-hit'),
+  blockResinBricksPlace('block-resin-bricks-place'),
+  blockResinBricksStep('block-resin-bricks-step'),
+  blockRespawnAnchorAmbient('block-respawn-anchor-ambient'),
+  blockRespawnAnchorCharge('block-respawn-anchor-charge'),
+  blockRespawnAnchorDeplete('block-respawn-anchor-deplete'),
+  blockRespawnAnchorSetSpawn('block-respawn-anchor-set-spawn'),
+  blockRootedDirtBreak('block-rooted-dirt-break'),
+  blockRootedDirtFall('block-rooted-dirt-fall'),
+  blockRootedDirtHit('block-rooted-dirt-hit'),
+  blockRootedDirtPlace('block-rooted-dirt-place'),
+  blockRootedDirtStep('block-rooted-dirt-step'),
+  entitySalmonAmbient('entity-salmon-ambient'),
+  entitySalmonDeath('entity-salmon-death'),
+  entitySalmonFlop('entity-salmon-flop'),
+  entitySalmonHurt('entity-salmon-hurt'),
+  blockSandBreak('block-sand-break'),
+  blockSandFall('block-sand-fall'),
+  blockSandHit('block-sand-hit'),
+  blockSandPlace('block-sand-place'),
+  blockSandStep('block-sand-step'),
+  blockSandIdle('block-sand-idle'),
+  blockScaffoldingBreak('block-scaffolding-break'),
+  blockScaffoldingFall('block-scaffolding-fall'),
+  blockScaffoldingHit('block-scaffolding-hit'),
+  blockScaffoldingPlace('block-scaffolding-place'),
+  blockScaffoldingStep('block-scaffolding-step'),
+  blockSculkSpread('block-sculk-spread'),
+  blockSculkCharge('block-sculk-charge'),
+  blockSculkBreak('block-sculk-break'),
+  blockSculkFall('block-sculk-fall'),
+  blockSculkHit('block-sculk-hit'),
+  blockSculkPlace('block-sculk-place'),
+  blockSculkStep('block-sculk-step'),
+  blockSculkCatalystBloom('block-sculk-catalyst-bloom'),
+  blockSculkCatalystBreak('block-sculk-catalyst-break'),
+  blockSculkCatalystFall('block-sculk-catalyst-fall'),
+  blockSculkCatalystHit('block-sculk-catalyst-hit'),
+  blockSculkCatalystPlace('block-sculk-catalyst-place'),
+  blockSculkCatalystStep('block-sculk-catalyst-step'),
+  blockSculkSensorClicking('block-sculk-sensor-clicking'),
+  blockSculkSensorClickingStop('block-sculk-sensor-clicking-stop'),
+  blockSculkSensorBreak('block-sculk-sensor-break'),
+  blockSculkSensorFall('block-sculk-sensor-fall'),
+  blockSculkSensorHit('block-sculk-sensor-hit'),
+  blockSculkSensorPlace('block-sculk-sensor-place'),
+  blockSculkSensorStep('block-sculk-sensor-step'),
+  blockSculkShriekerBreak('block-sculk-shrieker-break'),
+  blockSculkShriekerFall('block-sculk-shrieker-fall'),
+  blockSculkShriekerHit('block-sculk-shrieker-hit'),
+  blockSculkShriekerPlace('block-sculk-shrieker-place'),
+  blockSculkShriekerShriek('block-sculk-shrieker-shriek'),
+  blockSculkShriekerStep('block-sculk-shrieker-step'),
+  blockSculkVeinBreak('block-sculk-vein-break'),
+  blockSculkVeinFall('block-sculk-vein-fall'),
+  blockSculkVeinHit('block-sculk-vein-hit'),
+  blockSculkVeinPlace('block-sculk-vein-place'),
+  blockSculkVeinStep('block-sculk-vein-step'),
+  entitySheepAmbient('entity-sheep-ambient'),
+  entitySheepDeath('entity-sheep-death'),
+  entitySheepHurt('entity-sheep-hurt'),
+  entitySheepShear('entity-sheep-shear'),
+  entitySheepStep('entity-sheep-step'),
+  itemShearsSnip('item-shears-snip'),
+  blockShelfActivate('block-shelf-activate'),
+  blockShelfBreak('block-shelf-break'),
+  blockShelfDeactivate('block-shelf-deactivate'),
+  blockShelfFall('block-shelf-fall'),
+  blockShelfHit('block-shelf-hit'),
+  blockShelfMultiSwap('block-shelf-multi-swap'),
+  blockShelfPlace('block-shelf-place'),
+  blockShelfPlaceItem('block-shelf-place-item'),
+  blockShelfSingleSwap('block-shelf-single-swap'),
+  blockShelfStep('block-shelf-step'),
+  blockShelfTakeItem('block-shelf-take-item'),
+  itemShieldBlock('item-shield-block'),
+  itemShieldBreak('item-shield-break'),
+  blockShroomlightBreak('block-shroomlight-break'),
+  blockShroomlightStep('block-shroomlight-step'),
+  blockShroomlightPlace('block-shroomlight-place'),
+  blockShroomlightHit('block-shroomlight-hit'),
+  blockShroomlightFall('block-shroomlight-fall'),
+  itemShovelFlatten('item-shovel-flatten'),
+  entityShulkerAmbient('entity-shulker-ambient'),
+  blockShulkerBoxClose('block-shulker-box-close'),
+  blockShulkerBoxOpen('block-shulker-box-open'),
+  entityShulkerBulletHit('entity-shulker-bullet-hit'),
+  entityShulkerBulletHurt('entity-shulker-bullet-hurt'),
+  entityShulkerClose('entity-shulker-close'),
+  entityShulkerDeath('entity-shulker-death'),
+  entityShulkerHurt('entity-shulker-hurt'),
+  entityShulkerHurtClosed('entity-shulker-hurt-closed'),
+  entityShulkerOpen('entity-shulker-open'),
+  entityShulkerShoot('entity-shulker-shoot'),
+  entityShulkerTeleport('entity-shulker-teleport'),
+  entitySilverfishAmbient('entity-silverfish-ambient'),
+  entitySilverfishDeath('entity-silverfish-death'),
+  entitySilverfishHurt('entity-silverfish-hurt'),
+  entitySilverfishStep('entity-silverfish-step'),
+  entitySkeletonAmbient('entity-skeleton-ambient'),
+  entitySkeletonConvertedToStray('entity-skeleton-converted-to-stray'),
+  entitySkeletonDeath('entity-skeleton-death'),
+  entitySkeletonHorseAmbient('entity-skeleton-horse-ambient'),
+  entitySkeletonHorseDeath('entity-skeleton-horse-death'),
+  entitySkeletonHorseHurt('entity-skeleton-horse-hurt'),
+  entitySkeletonHorseSwim('entity-skeleton-horse-swim'),
+  entitySkeletonHorseAmbientWater('entity-skeleton-horse-ambient-water'),
+  entitySkeletonHorseGallopWater('entity-skeleton-horse-gallop-water'),
+  entitySkeletonHorseJumpWater('entity-skeleton-horse-jump-water'),
+  entitySkeletonHorseStepWater('entity-skeleton-horse-step-water'),
+  entitySkeletonHurt('entity-skeleton-hurt'),
+  entitySkeletonShoot('entity-skeleton-shoot'),
+  entitySkeletonStep('entity-skeleton-step'),
+  entitySlimeAttack('entity-slime-attack'),
+  entitySlimeDeath('entity-slime-death'),
+  entitySlimeHurt('entity-slime-hurt'),
+  entitySlimeJump('entity-slime-jump'),
+  entitySlimeSquish('entity-slime-squish'),
+  blockSlimeBlockBreak('block-slime-block-break'),
+  blockSlimeBlockFall('block-slime-block-fall'),
+  blockSlimeBlockHit('block-slime-block-hit'),
+  blockSlimeBlockPlace('block-slime-block-place'),
+  blockSlimeBlockStep('block-slime-block-step'),
+  blockSmallAmethystBudBreak('block-small-amethyst-bud-break'),
+  blockSmallAmethystBudPlace('block-small-amethyst-bud-place'),
+  blockSmallDripleafBreak('block-small-dripleaf-break'),
+  blockSmallDripleafFall('block-small-dripleaf-fall'),
+  blockSmallDripleafHit('block-small-dripleaf-hit'),
+  blockSmallDripleafPlace('block-small-dripleaf-place'),
+  blockSmallDripleafStep('block-small-dripleaf-step'),
+  blockSoulSandBreak('block-soul-sand-break'),
+  blockSoulSandStep('block-soul-sand-step'),
+  blockSoulSandPlace('block-soul-sand-place'),
+  blockSoulSandHit('block-soul-sand-hit'),
+  blockSoulSandFall('block-soul-sand-fall'),
+  blockSoulSoilBreak('block-soul-soil-break'),
+  blockSoulSoilStep('block-soul-soil-step'),
+  blockSoulSoilPlace('block-soul-soil-place'),
+  blockSoulSoilHit('block-soul-soil-hit'),
+  blockSoulSoilFall('block-soul-soil-fall'),
+  particleSoulEscape('particle-soul-escape'),
+  blockSpawnerBreak('block-spawner-break'),
+  blockSpawnerFall('block-spawner-fall'),
+  blockSpawnerHit('block-spawner-hit'),
+  blockSpawnerPlace('block-spawner-place'),
+  blockSpawnerStep('block-spawner-step'),
+  itemSpearUse('item-spear-use'),
+  itemSpearHit('item-spear-hit'),
+  itemSpearAttack('item-spear-attack'),
+  itemSpearWoodUse('item-spear-wood-use'),
+  itemSpearWoodHit('item-spear-wood-hit'),
+  itemSpearWoodAttack('item-spear-wood-attack'),
+  blockSporeBlossomBreak('block-spore-blossom-break'),
+  blockSporeBlossomFall('block-spore-blossom-fall'),
+  blockSporeBlossomHit('block-spore-blossom-hit'),
+  blockSporeBlossomPlace('block-spore-blossom-place'),
+  blockSporeBlossomStep('block-spore-blossom-step'),
+  entityStriderAmbient('entity-strider-ambient'),
+  entityStriderHappy('entity-strider-happy'),
+  entityStriderRetreat('entity-strider-retreat'),
+  entityStriderDeath('entity-strider-death'),
+  entityStriderHurt('entity-strider-hurt'),
+  entityStriderStep('entity-strider-step'),
+  entityStriderStepLava('entity-strider-step-lava'),
+  entityStriderEat('entity-strider-eat'),
+  entityStriderSaddle('entity-strider-saddle'),
+  entitySlimeDeathSmall('entity-slime-death-small'),
+  entitySlimeHurtSmall('entity-slime-hurt-small'),
+  entitySlimeJumpSmall('entity-slime-jump-small'),
+  entitySlimeSquishSmall('entity-slime-squish-small'),
+  blockSmithingTableUse('block-smithing-table-use'),
+  blockSmokerSmoke('block-smoker-smoke'),
+  entitySnifferStep('entity-sniffer-step'),
+  entitySnifferEat('entity-sniffer-eat'),
+  entitySnifferIdle('entity-sniffer-idle'),
+  entitySnifferHurt('entity-sniffer-hurt'),
+  entitySnifferDeath('entity-sniffer-death'),
+  entitySnifferDropSeed('entity-sniffer-drop-seed'),
+  entitySnifferScenting('entity-sniffer-scenting'),
+  entitySnifferSniffing('entity-sniffer-sniffing'),
+  entitySnifferSearching('entity-sniffer-searching'),
+  entitySnifferDigging('entity-sniffer-digging'),
+  entitySnifferDiggingStop('entity-sniffer-digging-stop'),
+  entitySnifferHappy('entity-sniffer-happy'),
+  blockSnifferEggPlop('block-sniffer-egg-plop'),
+  blockSnifferEggCrack('block-sniffer-egg-crack'),
+  blockSnifferEggHatch('block-sniffer-egg-hatch'),
+  entitySnowballThrow('entity-snowball-throw'),
+  blockSnowBreak('block-snow-break'),
+  blockSnowFall('block-snow-fall'),
+  entitySnowGolemAmbient('entity-snow-golem-ambient'),
+  entitySnowGolemDeath('entity-snow-golem-death'),
+  entitySnowGolemHurt('entity-snow-golem-hurt'),
+  entitySnowGolemShoot('entity-snow-golem-shoot'),
+  entitySnowGolemShear('entity-snow-golem-shear'),
+  blockSnowHit('block-snow-hit'),
+  blockSnowPlace('block-snow-place'),
+  blockSnowStep('block-snow-step'),
+  entitySpiderAmbient('entity-spider-ambient'),
+  entitySpiderDeath('entity-spider-death'),
+  entitySpiderHurt('entity-spider-hurt'),
+  entitySpiderStep('entity-spider-step'),
+  entitySplashPotionBreak('entity-splash-potion-break'),
+  entitySplashPotionThrow('entity-splash-potion-throw'),
+  blockSpongeBreak('block-sponge-break'),
+  blockSpongeFall('block-sponge-fall'),
+  blockSpongeHit('block-sponge-hit'),
+  blockSpongePlace('block-sponge-place'),
+  blockSpongeStep('block-sponge-step'),
+  blockSpongeAbsorb('block-sponge-absorb'),
+  itemSpyglassUse('item-spyglass-use'),
+  itemSpyglassStopUsing('item-spyglass-stop-using'),
+  entitySquidAmbient('entity-squid-ambient'),
+  entitySquidDeath('entity-squid-death'),
+  entitySquidHurt('entity-squid-hurt'),
+  entitySquidSquirt('entity-squid-squirt'),
+  blockStoneBreak('block-stone-break'),
+  blockStoneButtonClickOff('block-stone-button-click-off'),
+  blockStoneButtonClickOn('block-stone-button-click-on'),
+  blockStoneFall('block-stone-fall'),
+  blockStoneHit('block-stone-hit'),
+  blockStonePlace('block-stone-place'),
+  blockStonePressurePlateClickOff('block-stone-pressure-plate-click-off'),
+  blockStonePressurePlateClickOn('block-stone-pressure-plate-click-on'),
+  blockStoneStep('block-stone-step'),
+  entityStrayAmbient('entity-stray-ambient'),
+  entityStrayDeath('entity-stray-death'),
+  entityStrayHurt('entity-stray-hurt'),
+  entityStrayStep('entity-stray-step'),
+  blockSulfurSpikeBreak('block-sulfur-spike-break'),
+  blockSulfurSpikeStep('block-sulfur-spike-step'),
+  blockSulfurSpikePlace('block-sulfur-spike-place'),
+  blockSulfurSpikeHit('block-sulfur-spike-hit'),
+  blockSulfurSpikeFall('block-sulfur-spike-fall'),
+  blockSulfurSpikeLand('block-sulfur-spike-land'),
+  blockSweetBerryBushBreak('block-sweet-berry-bush-break'),
+  blockSweetBerryBushPlace('block-sweet-berry-bush-place'),
+  blockSweetBerryBushPickBerries('block-sweet-berry-bush-pick-berries'),
+  entityTadpoleDeath('entity-tadpole-death'),
+  entityTadpoleFlop('entity-tadpole-flop'),
+  entityTadpoleGrowUp('entity-tadpole-grow-up'),
+  entityTadpoleHurt('entity-tadpole-hurt'),
+  enchantThornsHit('enchant-thorns-hit'),
+  entityTntPrimed('entity-tnt-primed'),
+  itemTotemUse('item-totem-use'),
+  itemTridentHit('item-trident-hit'),
+  itemTridentHitGround('item-trident-hit-ground'),
+  itemTridentReturn('item-trident-return'),
+  itemTridentRiptide1('item-trident-riptide-1'),
+  itemTridentRiptide2('item-trident-riptide-2'),
+  itemTridentRiptide3('item-trident-riptide-3'),
+  itemTridentThrow('item-trident-throw'),
+  itemTridentThunder('item-trident-thunder'),
+  blockTripwireAttach('block-tripwire-attach'),
+  blockTripwireClickOff('block-tripwire-click-off'),
+  blockTripwireClickOn('block-tripwire-click-on'),
+  blockTripwireDetach('block-tripwire-detach'),
+  entityTropicalFishAmbient('entity-tropical-fish-ambient'),
+  entityTropicalFishDeath('entity-tropical-fish-death'),
+  entityTropicalFishFlop('entity-tropical-fish-flop'),
+  entityTropicalFishHurt('entity-tropical-fish-hurt'),
+  blockTuffBreak('block-tuff-break'),
+  blockTuffStep('block-tuff-step'),
+  blockTuffPlace('block-tuff-place'),
+  blockTuffHit('block-tuff-hit'),
+  blockTuffFall('block-tuff-fall'),
+  blockTuffBricksBreak('block-tuff-bricks-break'),
+  blockTuffBricksFall('block-tuff-bricks-fall'),
+  blockTuffBricksHit('block-tuff-bricks-hit'),
+  blockTuffBricksPlace('block-tuff-bricks-place'),
+  blockTuffBricksStep('block-tuff-bricks-step'),
+  blockPolishedTuffBreak('block-polished-tuff-break'),
+  blockPolishedTuffFall('block-polished-tuff-fall'),
+  blockPolishedTuffHit('block-polished-tuff-hit'),
+  blockPolishedTuffPlace('block-polished-tuff-place'),
+  blockPolishedTuffStep('block-polished-tuff-step'),
+  entityTurtleAmbientLand('entity-turtle-ambient-land'),
+  entityTurtleDeath('entity-turtle-death'),
+  entityTurtleDeathBaby('entity-turtle-death-baby'),
+  entityTurtleEggBreak('entity-turtle-egg-break'),
+  entityTurtleEggCrack('entity-turtle-egg-crack'),
+  entityTurtleEggHatch('entity-turtle-egg-hatch'),
+  entityTurtleHurt('entity-turtle-hurt'),
+  entityTurtleHurtBaby('entity-turtle-hurt-baby'),
+  entityTurtleLayEgg('entity-turtle-lay-egg'),
+  entityTurtleShamble('entity-turtle-shamble'),
+  entityTurtleShambleBaby('entity-turtle-shamble-baby'),
+  entityTurtleSwim('entity-turtle-swim'),
+  uiButtonClick('ui-button-click'),
+  uiLoomSelectPattern('ui-loom-select-pattern'),
+  uiLoomTakeResult('ui-loom-take-result'),
+  uiCartographyTableTakeResult('ui-cartography-table-take-result'),
+  uiStonecutterTakeResult('ui-stonecutter-take-result'),
+  uiStonecutterSelectRecipe('ui-stonecutter-select-recipe'),
+  uiToastChallengeComplete('ui-toast-challenge-complete'),
+  uiToastIn('ui-toast-in'),
+  uiToastOut('ui-toast-out'),
+  blockVaultActivate('block-vault-activate'),
+  blockVaultAmbient('block-vault-ambient'),
+  blockVaultBreak('block-vault-break'),
+  blockVaultCloseShutter('block-vault-close-shutter'),
+  blockVaultDeactivate('block-vault-deactivate'),
+  blockVaultEjectItem('block-vault-eject-item'),
+  blockVaultRejectRewardedPlayer('block-vault-reject-rewarded-player'),
+  blockVaultFall('block-vault-fall'),
+  blockVaultHit('block-vault-hit'),
+  blockVaultInsertItem('block-vault-insert-item'),
+  blockVaultInsertItemFail('block-vault-insert-item-fail'),
+  blockVaultOpenShutter('block-vault-open-shutter'),
+  blockVaultPlace('block-vault-place'),
+  blockVaultStep('block-vault-step'),
+  entityVexAmbient('entity-vex-ambient'),
+  entityVexCharge('entity-vex-charge'),
+  entityVexDeath('entity-vex-death'),
+  entityVexHurt('entity-vex-hurt'),
+  entityVillagerAmbient('entity-villager-ambient'),
+  entityVillagerCelebrate('entity-villager-celebrate'),
+  entityVillagerDeath('entity-villager-death'),
+  entityVillagerHurt('entity-villager-hurt'),
+  entityVillagerNo('entity-villager-no'),
+  entityVillagerTrade('entity-villager-trade'),
+  entityVillagerYes('entity-villager-yes'),
+  entityVillagerWorkArmorer('entity-villager-work-armorer'),
+  entityVillagerWorkButcher('entity-villager-work-butcher'),
+  entityVillagerWorkCartographer('entity-villager-work-cartographer'),
+  entityVillagerWorkCleric('entity-villager-work-cleric'),
+  entityVillagerWorkFarmer('entity-villager-work-farmer'),
+  entityVillagerWorkFisherman('entity-villager-work-fisherman'),
+  entityVillagerWorkFletcher('entity-villager-work-fletcher'),
+  entityVillagerWorkLeatherworker('entity-villager-work-leatherworker'),
+  entityVillagerWorkLibrarian('entity-villager-work-librarian'),
+  entityVillagerWorkMason('entity-villager-work-mason'),
+  entityVillagerWorkShepherd('entity-villager-work-shepherd'),
+  entityVillagerWorkToolsmith('entity-villager-work-toolsmith'),
+  entityVillagerWorkWeaponsmith('entity-villager-work-weaponsmith'),
+  entityVindicatorAmbient('entity-vindicator-ambient'),
+  entityVindicatorCelebrate('entity-vindicator-celebrate'),
+  entityVindicatorDeath('entity-vindicator-death'),
+  entityVindicatorHurt('entity-vindicator-hurt'),
+  blockVineBreak('block-vine-break'),
+  blockVineFall('block-vine-fall'),
+  blockVineHit('block-vine-hit'),
+  blockVinePlace('block-vine-place'),
+  blockVineStep('block-vine-step'),
+  blockLilyPadPlace('block-lily-pad-place'),
+  entityWanderingTraderAmbient('entity-wandering-trader-ambient'),
+  entityWanderingTraderDeath('entity-wandering-trader-death'),
+  entityWanderingTraderDisappeared('entity-wandering-trader-disappeared'),
+  entityWanderingTraderDrinkMilk('entity-wandering-trader-drink-milk'),
+  entityWanderingTraderDrinkPotion('entity-wandering-trader-drink-potion'),
+  entityWanderingTraderHurt('entity-wandering-trader-hurt'),
+  entityWanderingTraderNo('entity-wandering-trader-no'),
+  entityWanderingTraderReappeared('entity-wandering-trader-reappeared'),
+  entityWanderingTraderTrade('entity-wandering-trader-trade'),
+  entityWanderingTraderYes('entity-wandering-trader-yes'),
+  entityWardenAgitated('entity-warden-agitated'),
+  entityWardenAmbient('entity-warden-ambient'),
+  entityWardenAngry('entity-warden-angry'),
+  entityWardenAttackImpact('entity-warden-attack-impact'),
+  entityWardenDeath('entity-warden-death'),
+  entityWardenDig('entity-warden-dig'),
+  entityWardenEmerge('entity-warden-emerge'),
+  entityWardenHeartbeat('entity-warden-heartbeat'),
+  entityWardenHurt('entity-warden-hurt'),
+  entityWardenListening('entity-warden-listening'),
+  entityWardenListeningAngry('entity-warden-listening-angry'),
+  entityWardenNearbyClose('entity-warden-nearby-close'),
+  entityWardenNearbyCloser('entity-warden-nearby-closer'),
+  entityWardenNearbyClosest('entity-warden-nearby-closest'),
+  entityWardenRoar('entity-warden-roar'),
+  entityWardenSniff('entity-warden-sniff'),
+  entityWardenSonicBoom('entity-warden-sonic-boom'),
+  entityWardenSonicCharge('entity-warden-sonic-charge'),
+  entityWardenStep('entity-warden-step'),
+  entityWardenTendrilClicks('entity-warden-tendril-clicks'),
+  blockHangingSignWaxedInteractFail('block-hanging-sign-waxed-interact-fail'),
+  blockSignWaxedInteractFail('block-sign-waxed-interact-fail'),
+  blockWaterAmbient('block-water-ambient'),
+  weatherEndFlash('weather-end-flash'),
+  weatherRain('weather-rain'),
+  weatherRainAbove('weather-rain-above'),
+  blockWetGrassBreak('block-wet-grass-break'),
+  blockWetGrassFall('block-wet-grass-fall'),
+  blockWetGrassHit('block-wet-grass-hit'),
+  blockWetGrassPlace('block-wet-grass-place'),
+  blockWetGrassStep('block-wet-grass-step'),
+  blockWetSpongeBreak('block-wet-sponge-break'),
+  blockWetSpongeDries('block-wet-sponge-dries'),
+  blockWetSpongeFall('block-wet-sponge-fall'),
+  blockWetSpongeHit('block-wet-sponge-hit'),
+  blockWetSpongePlace('block-wet-sponge-place'),
+  blockWetSpongeStep('block-wet-sponge-step'),
+  entityWindChargeWindBurst('entity-wind-charge-wind-burst'),
+  entityWindChargeThrow('entity-wind-charge-throw'),
+  entityWitchAmbient('entity-witch-ambient'),
+  entityWitchCelebrate('entity-witch-celebrate'),
+  entityWitchDeath('entity-witch-death'),
+  entityWitchDrink('entity-witch-drink'),
+  entityWitchHurt('entity-witch-hurt'),
+  entityWitchThrow('entity-witch-throw'),
+  entityWitherAmbient('entity-wither-ambient'),
+  entityWitherBreakBlock('entity-wither-break-block'),
+  entityWitherDeath('entity-wither-death'),
+  entityWitherHurt('entity-wither-hurt'),
+  entityWitherShoot('entity-wither-shoot'),
+  entityWitherSkeletonAmbient('entity-wither-skeleton-ambient'),
+  entityWitherSkeletonDeath('entity-wither-skeleton-death'),
+  entityWitherSkeletonHurt('entity-wither-skeleton-hurt'),
+  entityWitherSkeletonStep('entity-wither-skeleton-step'),
+  entityWitherSpawn('entity-wither-spawn'),
+  itemWolfArmorBreak('item-wolf-armor-break'),
+  entityBabyWolfAmbient('entity-baby-wolf-ambient'),
+  itemWolfArmorCrack('item-wolf-armor-crack'),
+  itemWolfArmorDamage('item-wolf-armor-damage'),
+  itemWolfArmorRepair('item-wolf-armor-repair'),
+  entityBabyWolfDeath('entity-baby-wolf-death'),
+  entityBabyWolfGrowl('entity-baby-wolf-growl'),
+  entityBabyWolfHurt('entity-baby-wolf-hurt'),
+  entityBabyWolfPant('entity-baby-wolf-pant'),
+  entityWolfShake('entity-wolf-shake'),
+  entityWolfStep('entity-wolf-step'),
+  entityBabyWolfStep('entity-baby-wolf-step'),
+  entityBabyWolfWhine('entity-baby-wolf-whine'),
+  entityWolfAmbient('entity-wolf-ambient'),
+  entityWolfDeath('entity-wolf-death'),
+  entityWolfGrowl('entity-wolf-growl'),
+  entityWolfHurt('entity-wolf-hurt'),
+  entityWolfPant('entity-wolf-pant'),
+  entityWolfWhine('entity-wolf-whine'),
+  entityWolfPuglinAmbient('entity-wolf-puglin-ambient'),
+  entityWolfPuglinDeath('entity-wolf-puglin-death'),
+  entityWolfPuglinGrowl('entity-wolf-puglin-growl'),
+  entityWolfPuglinHurt('entity-wolf-puglin-hurt'),
+  entityWolfPuglinPant('entity-wolf-puglin-pant'),
+  entityWolfPuglinWhine('entity-wolf-puglin-whine'),
+  entityWolfSadAmbient('entity-wolf-sad-ambient'),
+  entityWolfSadDeath('entity-wolf-sad-death'),
+  entityWolfSadGrowl('entity-wolf-sad-growl'),
+  entityWolfSadHurt('entity-wolf-sad-hurt'),
+  entityWolfSadPant('entity-wolf-sad-pant'),
+  entityWolfSadWhine('entity-wolf-sad-whine'),
+  entityWolfAngryAmbient('entity-wolf-angry-ambient'),
+  entityWolfAngryDeath('entity-wolf-angry-death'),
+  entityWolfAngryGrowl('entity-wolf-angry-growl'),
+  entityWolfAngryHurt('entity-wolf-angry-hurt'),
+  entityWolfAngryPant('entity-wolf-angry-pant'),
+  entityWolfAngryWhine('entity-wolf-angry-whine'),
+  entityWolfGrumpyAmbient('entity-wolf-grumpy-ambient'),
+  entityWolfGrumpyDeath('entity-wolf-grumpy-death'),
+  entityWolfGrumpyGrowl('entity-wolf-grumpy-growl'),
+  entityWolfGrumpyHurt('entity-wolf-grumpy-hurt'),
+  entityWolfGrumpyPant('entity-wolf-grumpy-pant'),
+  entityWolfGrumpyWhine('entity-wolf-grumpy-whine'),
+  entityWolfBigAmbient('entity-wolf-big-ambient'),
+  entityWolfBigDeath('entity-wolf-big-death'),
+  entityWolfBigGrowl('entity-wolf-big-growl'),
+  entityWolfBigHurt('entity-wolf-big-hurt'),
+  entityWolfBigPant('entity-wolf-big-pant'),
+  entityWolfBigWhine('entity-wolf-big-whine'),
+  entityWolfCuteAmbient('entity-wolf-cute-ambient'),
+  entityWolfCuteDeath('entity-wolf-cute-death'),
+  entityWolfCuteGrowl('entity-wolf-cute-growl'),
+  entityWolfCuteHurt('entity-wolf-cute-hurt'),
+  entityWolfCutePant('entity-wolf-cute-pant'),
+  entityWolfCuteWhine('entity-wolf-cute-whine'),
+  blockWoodenDoorClose('block-wooden-door-close'),
+  blockWoodenDoorOpen('block-wooden-door-open'),
+  blockWoodenTrapdoorClose('block-wooden-trapdoor-close'),
+  blockWoodenTrapdoorOpen('block-wooden-trapdoor-open'),
+  blockWoodenButtonClickOff('block-wooden-button-click-off'),
+  blockWoodenButtonClickOn('block-wooden-button-click-on'),
+  blockWoodenPressurePlateClickOff('block-wooden-pressure-plate-click-off'),
+  blockWoodenPressurePlateClickOn('block-wooden-pressure-plate-click-on'),
+  blockWoodBreak('block-wood-break'),
+  blockWoodFall('block-wood-fall'),
+  blockWoodHit('block-wood-hit'),
+  blockWoodPlace('block-wood-place'),
+  blockWoodStep('block-wood-step'),
+  blockWoolBreak('block-wool-break'),
+  blockWoolFall('block-wool-fall'),
+  blockWoolHit('block-wool-hit'),
+  blockWoolPlace('block-wool-place'),
+  blockWoolStep('block-wool-step'),
+  entityZoglinAmbient('entity-zoglin-ambient'),
+  entityZoglinAngry('entity-zoglin-angry'),
+  entityZoglinAttack('entity-zoglin-attack'),
+  entityZoglinDeath('entity-zoglin-death'),
+  entityZoglinHurt('entity-zoglin-hurt'),
+  entityZoglinStep('entity-zoglin-step'),
+  entityZombieAmbient('entity-zombie-ambient'),
+  entityZombieAttackWoodenDoor('entity-zombie-attack-wooden-door'),
+  entityZombieAttackIronDoor('entity-zombie-attack-iron-door'),
+  entityZombieBreakWoodenDoor('entity-zombie-break-wooden-door'),
+  entityZombieConvertedToDrowned('entity-zombie-converted-to-drowned'),
+  entityZombieDeath('entity-zombie-death'),
+  entityZombieDestroyEgg('entity-zombie-destroy-egg'),
+  entityZombieHorseAmbient('entity-zombie-horse-ambient'),
+  entityZombieHorseAngry('entity-zombie-horse-angry'),
+  entityZombieHorseDeath('entity-zombie-horse-death'),
+  entityZombieHorseEat('entity-zombie-horse-eat'),
+  entityZombieHorseHurt('entity-zombie-horse-hurt'),
+  entityZombieHurt('entity-zombie-hurt'),
+  entityZombieInfect('entity-zombie-infect'),
+  entityZombieNautilusAmbient('entity-zombie-nautilus-ambient'),
+  entityZombieNautilusAmbientLand('entity-zombie-nautilus-ambient-land'),
+  entityZombieNautilusDash('entity-zombie-nautilus-dash'),
+  entityZombieNautilusDashLand('entity-zombie-nautilus-dash-land'),
+  entityZombieNautilusDashReady('entity-zombie-nautilus-dash-ready'),
+  entityZombieNautilusDashReadyLand('entity-zombie-nautilus-dash-ready-land'),
+  entityZombieNautilusDeath('entity-zombie-nautilus-death'),
+  entityZombieNautilusDeathLand('entity-zombie-nautilus-death-land'),
+  entityZombieNautilusEat('entity-zombie-nautilus-eat'),
+  entityZombieNautilusHurt('entity-zombie-nautilus-hurt'),
+  entityZombieNautilusHurtLand('entity-zombie-nautilus-hurt-land'),
+  entityZombieNautilusSwim('entity-zombie-nautilus-swim'),
+  entityZombifiedPiglinAmbient('entity-zombified-piglin-ambient'),
+  entityZombifiedPiglinAngry('entity-zombified-piglin-angry'),
+  entityZombifiedPiglinDeath('entity-zombified-piglin-death'),
+  entityZombifiedPiglinHurt('entity-zombified-piglin-hurt'),
+  entityZombieStep('entity-zombie-step'),
+  entityZombieVillagerAmbient('entity-zombie-villager-ambient'),
+  entityZombieVillagerConverted('entity-zombie-villager-converted'),
+  entityZombieVillagerCure('entity-zombie-villager-cure'),
+  entityZombieVillagerDeath('entity-zombie-villager-death'),
+  entityZombieVillagerHurt('entity-zombie-villager-hurt'),
+  entityZombieVillagerStep('entity-zombie-villager-step'),
+  eventMobEffectBadOmen('event-mob-effect-bad-omen'),
+  eventMobEffectTrialOmen('event-mob-effect-trial-omen'),
+  eventMobEffectRaidOmen('event-mob-effect-raid-omen'),
+  itemSaddleUnequip('item-saddle-unequip'),
+  itemNautilusSaddleUnderwaterEquip('item-nautilus-saddle-underwater-equip'),
+  itemNautilusSaddleEquip('item-nautilus-saddle-equip'),
+  blockSulfurBreak('block-sulfur-break'),
+  blockSulfurStep('block-sulfur-step'),
+  blockSulfurPlace('block-sulfur-place'),
+  blockSulfurHit('block-sulfur-hit'),
+  blockSulfurFall('block-sulfur-fall'),
+  blockPotentSulfurBreak('block-potent-sulfur-break'),
+  blockPotentSulfurStep('block-potent-sulfur-step'),
+  blockPotentSulfurPlace('block-potent-sulfur-place'),
+  blockPotentSulfurHit('block-potent-sulfur-hit'),
+  blockPotentSulfurFall('block-potent-sulfur-fall'),
+  blockPotentSulfurGeyserEruption('block-potent-sulfur-geyser-eruption'),
+  blockPotentSulfurGeyserEruptionActive('block-potent-sulfur-geyser-eruption-active'),
+  blockPotentSulfurGeyserContinuousEruption('block-potent-sulfur-geyser-continuous-eruption'),
+  blockPotentSulfurGeyserContinuousEruptionActive('block-potent-sulfur-geyser-continuous-eruption-active'),
+  blockCinnabarBreak('block-cinnabar-break'),
+  blockCinnabarStep('block-cinnabar-step'),
+  blockCinnabarPlace('block-cinnabar-place'),
+  blockCinnabarHit('block-cinnabar-hit'),
+  blockCinnabarFall('block-cinnabar-fall'),
+  entitySulfurCubeAbsorb('entity-sulfur-cube-absorb'),
+  entitySulfurCubeBounce('entity-sulfur-cube-bounce'),
+  entitySulfurCubeDeath('entity-sulfur-cube-death'),
+  entitySulfurCubeEject('entity-sulfur-cube-eject'),
+  entitySulfurCubeHurt('entity-sulfur-cube-hurt'),
+  entitySulfurCubeJump('entity-sulfur-cube-jump'),
+  entitySulfurCubeRegularHit('entity-sulfur-cube-regular-hit'),
+  entitySulfurCubeRegularPush('entity-sulfur-cube-regular-push'),
+  entitySulfurCubeBouncyHit('entity-sulfur-cube-bouncy-hit'),
+  entitySulfurCubeBouncyPush('entity-sulfur-cube-bouncy-push'),
+  entitySulfurCubeSlowBouncyHit('entity-sulfur-cube-slow-bouncy-hit'),
+  entitySulfurCubeSlowBouncyPush('entity-sulfur-cube-slow-bouncy-push'),
+  entitySulfurCubeSlowFlatHit('entity-sulfur-cube-slow-flat-hit'),
+  entitySulfurCubeSlowFlatPush('entity-sulfur-cube-slow-flat-push'),
+  entitySulfurCubeFastFlatHit('entity-sulfur-cube-fast-flat-hit'),
+  entitySulfurCubeFastFlatPush('entity-sulfur-cube-fast-flat-push'),
+  entitySulfurCubeLightHit('entity-sulfur-cube-light-hit'),
+  entitySulfurCubeLightPush('entity-sulfur-cube-light-push'),
+  entitySulfurCubeFastSlidingHit('entity-sulfur-cube-fast-sliding-hit'),
+  entitySulfurCubeFastSlidingPush('entity-sulfur-cube-fast-sliding-push'),
+  entitySulfurCubeSlowSlidingHit('entity-sulfur-cube-slow-sliding-hit'),
+  entitySulfurCubeSlowSlidingPush('entity-sulfur-cube-slow-sliding-push'),
+  entitySulfurCubeStickyHit('entity-sulfur-cube-sticky-hit'),
+  entitySulfurCubeStickyPush('entity-sulfur-cube-sticky-push'),
+  entitySulfurCubeHighResistanceHit('entity-sulfur-cube-high-resistance-hit'),
+  entitySulfurCubeHighResistancePush('entity-sulfur-cube-high-resistance-push'),
+  entitySulfurCubeExplosiveHit('entity-sulfur-cube-explosive-hit'),
+  entitySulfurCubeExplosivePush('entity-sulfur-cube-explosive-push'),
+  entitySulfurCubeHotHit('entity-sulfur-cube-hot-hit'),
+  entitySulfurCubeHotPush('entity-sulfur-cube-hot-push'),
+  entitySulfurCubeSquish('entity-sulfur-cube-squish'),
+  blockPotentSulfurNoxiousGas('block-potent-sulfur-noxious-gas'),
+  entitySmallSulfurCubeDeath('entity-small-sulfur-cube-death'),
+  entitySmallSulfurCubeHurt('entity-small-sulfur-cube-hurt'),
+  entitySmallSulfurCubeJump('entity-small-sulfur-cube-jump'),
+  entitySmallSulfurCubeSquish('entity-small-sulfur-cube-squish'),
+  entitySmallSulfurCubeEat('entity-small-sulfur-cube-eat'),
+  blockShelfMushroomBreak('block-shelf-mushroom-break'),
+  blockShelfMushroomFall('block-shelf-mushroom-fall'),
+  blockShelfMushroomPlace('block-shelf-mushroom-place'),
+  blockShelfMushroomStep('block-shelf-mushroom-step'),
+  blockShelfMushroomBounce('block-shelf-mushroom-bounce'),
+  blockPoplarLeavesBreak('block-poplar-leaves-break'),
+  blockPoplarLeavesHit('block-poplar-leaves-hit'),
+  blockPoplarLeavesFall('block-poplar-leaves-fall'),
+  blockPoplarLeavesPlace('block-poplar-leaves-place'),
+  blockPoplarLeavesStep('block-poplar-leaves-step'),
+  blockPoplarLeavesAmbient('block-poplar-leaves-ambient'),
+  blockStrawBedBreak('block-straw-bed-break'),
+  blockStrawBedBreakLeave('block-straw-bed-break-leave'),
+  blockStrawBedStep('block-straw-bed-step'),
+  blockStrawBedPlace('block-straw-bed-place'),
+  blockStrawBedHit('block-straw-bed-hit'),
+  blockStrawBedFall('block-straw-bed-fall'),
+  blockRedShrubBreak('block-red-shrub-break'),
+  blockRedShrubPlace('block-red-shrub-place');
+  const Sound(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Sound? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Sound> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum SoundCategory {
-  master,
-  music,
-  records,
-  weather,
-  blocks,
-  hostile,
-  neutral,
-  players,
-  ambient,
-  voice,
-  ui,
+  master('master'),
+  music('music'),
+  records('records'),
+  weather('weather'),
+  blocks('blocks'),
+  hostile('hostile'),
+  neutral('neutral'),
+  players('players'),
+  ambient('ambient'),
+  voice('voice'),
+  ui('ui');
+  const SoundCategory(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static SoundCategory? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, SoundCategory> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import517")
 external i0.WasmVoid _import517(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmF64 p3, i0.WasmF64 p4, i0.WasmF64 p5, i0.WasmF32 p6, i0.WasmF32 p7);
 @pragma("wasm:import", r"component._import518")
 external i0.WasmVoid _import518(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmF64 p4, i0.WasmF64 p5, i0.WasmF64 p6, i0.WasmF32 p7, i0.WasmF32 p8);
 enum Particle {
-  angryVillager,
-  block,
-  blockMarker,
-  bubble,
-  sulfurBubbles,
-  noxiousGas,
-  noxiousGasCloud,
-  geyser,
-  geyserBase,
-  geyserPoof,
-  geyserPlume,
-  cloud,
-  copperFireFlame,
-  crit,
-  damageIndicator,
-  dragonBreath,
-  drippingLava,
-  fallingLava,
-  landingLava,
-  drippingWater,
-  fallingWater,
-  dust,
-  dustColorTransition,
-  effect,
-  elderGuardian,
-  enchantedHit,
-  enchant,
-  endRod,
-  entityEffect,
-  explosionEmitter,
-  explosion,
-  gust,
-  smallGust,
-  gustEmitterLarge,
-  gustEmitterSmall,
-  sonicBoom,
-  fallingDust,
-  firework,
-  fishing,
-  flame,
-  infested,
-  cherryLeaves,
-  paleOakLeaves,
-  redPoplarLeaves,
-  orangePoplarLeaves,
-  yellowPoplarLeaves,
-  tintedLeaves,
-  sculkSoul,
-  sculkCharge,
-  sculkChargePop,
-  soulFireFlame,
-  soul,
-  flash,
-  happyVillager,
-  composter,
-  heart,
-  instantEffect,
-  item,
-  vibration,
-  trail,
-  pauseMobGrowth,
-  resetMobGrowth,
-  itemSlime,
-  itemCobweb,
-  itemSnowball,
-  largeSmoke,
-  lava,
-  mycelium,
-  note,
-  poof,
-  portal,
-  rain,
-  smoke,
-  whiteSmoke,
-  sneeze,
-  spit,
-  squidInk,
-  sweepAttack,
-  totemOfUndying,
-  underwater,
-  splash,
-  witch,
-  bubblePop,
-  currentDown,
-  bubbleColumnUp,
-  nautilus,
-  dolphin,
-  campfireCosySmoke,
-  campfireSignalSmoke,
-  drippingHoney,
-  fallingHoney,
-  landingHoney,
-  fallingNectar,
-  fallingSporeBlossom,
-  ash,
-  crimsonSpore,
-  warpedSpore,
-  sporeBlossomAir,
-  drippingObsidianTear,
-  fallingObsidianTear,
-  landingObsidianTear,
-  reversePortal,
-  whiteAsh,
-  smallFlame,
-  snowflake,
-  drippingDripstoneLava,
-  fallingDripstoneLava,
-  drippingDripstoneWater,
-  fallingDripstoneWater,
-  glowSquidInk,
-  glow,
-  waxOn,
-  waxOff,
-  electricSpark,
-  scrape,
-  shriek,
-  eggCrack,
-  dustPlume,
-  trialSpawnerDetection,
-  trialSpawnerDetectionOminous,
-  vaultConnection,
-  dustPillar,
-  ominousSpawning,
-  raidOmen,
-  trialOmen,
-  blockCrumble,
-  firefly,
-  sulfurCubeGoo,
+  angryVillager('angry-villager'),
+  block('block'),
+  blockMarker('block-marker'),
+  bubble('bubble'),
+  sulfurBubbles('sulfur-bubbles'),
+  noxiousGas('noxious-gas'),
+  noxiousGasCloud('noxious-gas-cloud'),
+  geyser('geyser'),
+  geyserBase('geyser-base'),
+  geyserPoof('geyser-poof'),
+  geyserPlume('geyser-plume'),
+  cloud('cloud'),
+  copperFireFlame('copper-fire-flame'),
+  crit('crit'),
+  damageIndicator('damage-indicator'),
+  dragonBreath('dragon-breath'),
+  drippingLava('dripping-lava'),
+  fallingLava('falling-lava'),
+  landingLava('landing-lava'),
+  drippingWater('dripping-water'),
+  fallingWater('falling-water'),
+  dust('dust'),
+  dustColorTransition('dust-color-transition'),
+  effect('effect'),
+  elderGuardian('elder-guardian'),
+  enchantedHit('enchanted-hit'),
+  enchant('enchant'),
+  endRod('end-rod'),
+  entityEffect('entity-effect'),
+  explosionEmitter('explosion-emitter'),
+  explosion('explosion'),
+  gust('gust'),
+  smallGust('small-gust'),
+  gustEmitterLarge('gust-emitter-large'),
+  gustEmitterSmall('gust-emitter-small'),
+  sonicBoom('sonic-boom'),
+  fallingDust('falling-dust'),
+  firework('firework'),
+  fishing('fishing'),
+  flame('flame'),
+  infested('infested'),
+  cherryLeaves('cherry-leaves'),
+  paleOakLeaves('pale-oak-leaves'),
+  redPoplarLeaves('red-poplar-leaves'),
+  orangePoplarLeaves('orange-poplar-leaves'),
+  yellowPoplarLeaves('yellow-poplar-leaves'),
+  tintedLeaves('tinted-leaves'),
+  sculkSoul('sculk-soul'),
+  sculkCharge('sculk-charge'),
+  sculkChargePop('sculk-charge-pop'),
+  soulFireFlame('soul-fire-flame'),
+  soul('soul'),
+  flash('flash'),
+  happyVillager('happy-villager'),
+  composter('composter'),
+  heart('heart'),
+  instantEffect('instant-effect'),
+  item('item'),
+  vibration('vibration'),
+  trail('trail'),
+  pauseMobGrowth('pause-mob-growth'),
+  resetMobGrowth('reset-mob-growth'),
+  itemSlime('item-slime'),
+  itemCobweb('item-cobweb'),
+  itemSnowball('item-snowball'),
+  largeSmoke('large-smoke'),
+  lava('lava'),
+  mycelium('mycelium'),
+  note('note'),
+  poof('poof'),
+  portal('portal'),
+  rain('rain'),
+  smoke('smoke'),
+  whiteSmoke('white-smoke'),
+  sneeze('sneeze'),
+  spit('spit'),
+  squidInk('squid-ink'),
+  sweepAttack('sweep-attack'),
+  totemOfUndying('totem-of-undying'),
+  underwater('underwater'),
+  splash('splash'),
+  witch('witch'),
+  bubblePop('bubble-pop'),
+  currentDown('current-down'),
+  bubbleColumnUp('bubble-column-up'),
+  nautilus('nautilus'),
+  dolphin('dolphin'),
+  campfireCosySmoke('campfire-cosy-smoke'),
+  campfireSignalSmoke('campfire-signal-smoke'),
+  drippingHoney('dripping-honey'),
+  fallingHoney('falling-honey'),
+  landingHoney('landing-honey'),
+  fallingNectar('falling-nectar'),
+  fallingSporeBlossom('falling-spore-blossom'),
+  ash('ash'),
+  crimsonSpore('crimson-spore'),
+  warpedSpore('warped-spore'),
+  sporeBlossomAir('spore-blossom-air'),
+  drippingObsidianTear('dripping-obsidian-tear'),
+  fallingObsidianTear('falling-obsidian-tear'),
+  landingObsidianTear('landing-obsidian-tear'),
+  reversePortal('reverse-portal'),
+  whiteAsh('white-ash'),
+  smallFlame('small-flame'),
+  snowflake('snowflake'),
+  drippingDripstoneLava('dripping-dripstone-lava'),
+  fallingDripstoneLava('falling-dripstone-lava'),
+  drippingDripstoneWater('dripping-dripstone-water'),
+  fallingDripstoneWater('falling-dripstone-water'),
+  glowSquidInk('glow-squid-ink'),
+  glow('glow'),
+  waxOn('wax-on'),
+  waxOff('wax-off'),
+  electricSpark('electric-spark'),
+  scrape('scrape'),
+  shriek('shriek'),
+  eggCrack('egg-crack'),
+  dustPlume('dust-plume'),
+  trialSpawnerDetection('trial-spawner-detection'),
+  trialSpawnerDetectionOminous('trial-spawner-detection-ominous'),
+  vaultConnection('vault-connection'),
+  dustPillar('dust-pillar'),
+  ominousSpawning('ominous-spawning'),
+  raidOmen('raid-omen'),
+  trialOmen('trial-omen'),
+  blockCrumble('block-crumble'),
+  firefly('firefly'),
+  sulfurCubeGoo('sulfur-cube-goo');
+  const Particle(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Particle? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Particle> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import519")
 external i0.WasmVoid _import519(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmF64 p2, i0.WasmF64 p3, i0.WasmF64 p4, i0.WasmF64 p5, i0.WasmF64 p6, i0.WasmF64 p7, i0.WasmF32 p8, i0.WasmI32 p9);
 /// Defines how an explosion interacts with blocks in the world.
 enum ExplosionInteraction {
 /// No interaction with blocks.
-  none,
+  none('none'),
 /// Blocks are destroyed and may drop loot.
-  block,
+  block('block'),
 /// Interaction typical for mob-caused explosions.
-  mob,
+  mob('mob'),
 /// Interaction typical for TNT explosions.
-  tnt,
+  tnt('tnt'),
 /// Triggers specific block behaviors.
-  trigger,
+  trigger('trigger');
+  const ExplosionInteraction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ExplosionInteraction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ExplosionInteraction> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import520")
 external i0.WasmVoid _import520(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmF64 p2, i0.WasmF64 p3, i0.WasmF32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
@@ -12861,65 +13053,71 @@ final class GameRuleValueBool extends GameRuleValue {
   const GameRuleValueBool(this.value);
 }
 enum GameRule {
-  advanceTime,
-  advanceWeather,
-  allowEnteringNetherUsingPortals,
-  blockDrops,
-  blockExplosionDropDecay,
-  commandBlockOutput,
-  commandBlocksWork,
-  drowningDamage,
-  elytraMovementCheck,
-  enderPearlsVanishOnDeath,
-  entityDrops,
-  fallDamage,
-  fireDamage,
-  fireSpreadRadiusAroundPlayer,
-  forgiveDeadPlayers,
-  freezeDamage,
-  globalSoundEvents,
-  immediateRespawn,
-  keepInventory,
-  lavaSourceConversion,
-  limitedCrafting,
-  locatorBar,
-  logAdminCommands,
-  maxBlockModifications,
-  maxCommandForks,
-  maxCommandSequenceLength,
-  maxEntityCramming,
-  maxMinecartSpeed,
-  maxSnowAccumulationHeight,
-  mobDrops,
-  mobExplosionDropDecay,
-  mobGriefing,
-  naturalHealthRegeneration,
-  playerMovementCheck,
-  playersNetherPortalCreativeDelay,
-  playersNetherPortalDefaultDelay,
-  playersSleepingPercentage,
-  projectilesCanBreakBlocks,
-  pvp,
-  raids,
-  randomTickSpeed,
-  reducedDebugInfo,
-  respawnRadius,
-  sendCommandFeedback,
-  showAdvancementMessages,
-  showDeathMessages,
-  spawnMobs,
-  spawnMonsters,
-  spawnPatrols,
-  spawnPhantoms,
-  spawnWanderingTraders,
-  spawnWardens,
-  spawnerBlocksWork,
-  spectatorsGenerateChunks,
-  spreadVines,
-  tntExplodes,
-  tntExplosionDropDecay,
-  universalAnger,
-  waterSourceConversion,
+  advanceTime('advance-time'),
+  advanceWeather('advance-weather'),
+  allowEnteringNetherUsingPortals('allow-entering-nether-using-portals'),
+  blockDrops('block-drops'),
+  blockExplosionDropDecay('block-explosion-drop-decay'),
+  commandBlockOutput('command-block-output'),
+  commandBlocksWork('command-blocks-work'),
+  drowningDamage('drowning-damage'),
+  elytraMovementCheck('elytra-movement-check'),
+  enderPearlsVanishOnDeath('ender-pearls-vanish-on-death'),
+  entityDrops('entity-drops'),
+  fallDamage('fall-damage'),
+  fireDamage('fire-damage'),
+  fireSpreadRadiusAroundPlayer('fire-spread-radius-around-player'),
+  forgiveDeadPlayers('forgive-dead-players'),
+  freezeDamage('freeze-damage'),
+  globalSoundEvents('global-sound-events'),
+  immediateRespawn('immediate-respawn'),
+  keepInventory('keep-inventory'),
+  lavaSourceConversion('lava-source-conversion'),
+  limitedCrafting('limited-crafting'),
+  locatorBar('locator-bar'),
+  logAdminCommands('log-admin-commands'),
+  maxBlockModifications('max-block-modifications'),
+  maxCommandForks('max-command-forks'),
+  maxCommandSequenceLength('max-command-sequence-length'),
+  maxEntityCramming('max-entity-cramming'),
+  maxMinecartSpeed('max-minecart-speed'),
+  maxSnowAccumulationHeight('max-snow-accumulation-height'),
+  mobDrops('mob-drops'),
+  mobExplosionDropDecay('mob-explosion-drop-decay'),
+  mobGriefing('mob-griefing'),
+  naturalHealthRegeneration('natural-health-regeneration'),
+  playerMovementCheck('player-movement-check'),
+  playersNetherPortalCreativeDelay('players-nether-portal-creative-delay'),
+  playersNetherPortalDefaultDelay('players-nether-portal-default-delay'),
+  playersSleepingPercentage('players-sleeping-percentage'),
+  projectilesCanBreakBlocks('projectiles-can-break-blocks'),
+  pvp('pvp'),
+  raids('raids'),
+  randomTickSpeed('random-tick-speed'),
+  reducedDebugInfo('reduced-debug-info'),
+  respawnRadius('respawn-radius'),
+  sendCommandFeedback('send-command-feedback'),
+  showAdvancementMessages('show-advancement-messages'),
+  showDeathMessages('show-death-messages'),
+  spawnMobs('spawn-mobs'),
+  spawnMonsters('spawn-monsters'),
+  spawnPatrols('spawn-patrols'),
+  spawnPhantoms('spawn-phantoms'),
+  spawnWanderingTraders('spawn-wandering-traders'),
+  spawnWardens('spawn-wardens'),
+  spawnerBlocksWork('spawner-blocks-work'),
+  spectatorsGenerateChunks('spectators-generate-chunks'),
+  spreadVines('spread-vines'),
+  tntExplodes('tnt-explodes'),
+  tntExplosionDropDecay('tnt-explosion-drop-decay'),
+  universalAnger('universal-anger'),
+  waterSourceConversion('water-source-conversion');
+  const GameRule(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static GameRule? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, GameRule> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import545")
 external i0.WasmVoid _import545(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -14414,10 +14612,16 @@ external i0.WasmI32 _import566(i0.WasmI32 p0);
 external i0.WasmVoid _import567(i0.WasmI32 p0, i0.WasmI32 p1);
 /// Billboard rendering constraints for display entities.
 enum BillboardMode {
-  fixed,
-  vertical,
-  horizontal,
-  center,
+  fixed('fixed'),
+  vertical('vertical'),
+  horizontal('horizontal'),
+  center('center');
+  const BillboardMode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BillboardMode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BillboardMode> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import568")
 external i0.WasmI32 _import568(i0.WasmI32 p0);
@@ -14734,15 +14938,21 @@ external i0.WasmVoid _import592(i0.WasmI32 p0, i0.WasmI32 p1);
 external i0.WasmVoid _import593(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 /// Item display transformation modes for item display entities.
 enum ItemDisplayMode {
-  none,
-  thirdpersonLefthand,
-  thirdpersonRighthand,
-  firstpersonLefthand,
-  firstpersonRighthand,
-  head,
-  gui,
-  ground,
-  fixed,
+  none('none'),
+  thirdpersonLefthand('thirdperson-lefthand'),
+  thirdpersonRighthand('thirdperson-righthand'),
+  firstpersonLefthand('firstperson-lefthand'),
+  firstpersonRighthand('firstperson-righthand'),
+  head('head'),
+  gui('gui'),
+  ground('ground'),
+  fixed('fixed');
+  const ItemDisplayMode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ItemDisplayMode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ItemDisplayMode> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import594")
 external i0.WasmI32 _import594(i0.WasmI32 p0);
@@ -14874,9 +15084,15 @@ external i0.WasmI32 _import611(i0.WasmI32 p0);
 external i0.WasmVoid _import612(i0.WasmI32 p0, i0.WasmI32 p1);
 /// Text alignment options for text display entities.
 enum TextAlignment {
-  center,
-  left,
-  right,
+  center('center'),
+  left('left'),
+  right('right');
+  const TextAlignment(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static TextAlignment? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, TextAlignment> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import613")
 external i0.WasmI32 _import613(i0.WasmI32 p0);
@@ -15174,10 +15390,16 @@ external i0.WasmF32 _import630(i0.WasmI32 p0);
 external i0.WasmI32 _import631(i0.WasmI32 p0);
 /// Represents the game modes available in Minecraft.
 enum GameMode {
-  survival,
-  creative,
-  adventure,
-  spectator,
+  survival('survival'),
+  creative('creative'),
+  adventure('adventure'),
+  spectator('spectator');
+  const GameMode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static GameMode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, GameMode> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import632")
 external i0.WasmI32 _import632(i0.WasmI32 p0);
@@ -15197,11 +15419,17 @@ external i0.WasmI32 _import635(i0.WasmI32 p0);
 /// - `Three`:  `admin`: Player or executor can use commands related to multiplayer management.
 /// - `Four`: `owner`: Player or executor can use all of the commands, including commands related to server management.
 enum PermissionLevel {
-  zero,
-  one,
-  two,
-  three,
-  four,
+  zero('zero'),
+  one('one'),
+  two('two'),
+  three('three'),
+  four('four');
+  const PermissionLevel(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PermissionLevel? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PermissionLevel> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import636")
 external i0.WasmI32 _import636(i0.WasmI32 p0);
@@ -15291,16 +15519,22 @@ external i0.WasmVoid _import677(i0.WasmI32 p0, i0.WasmI32 p1);
 external i0.WasmI32 _import678(i0.WasmI32 p0);
 /// Built-in known server link types displayed in the client Escape pause menu.
 enum KnownServerLink {
-  bugReport,
-  communityGuidelines,
-  support,
-  status,
-  feedback,
-  community,
-  website,
-  forums,
-  news,
-  announcements,
+  bugReport('bug-report'),
+  communityGuidelines('community-guidelines'),
+  support('support'),
+  status('status'),
+  feedback('feedback'),
+  community('community'),
+  website('website'),
+  forums('forums'),
+  news('news'),
+  announcements('announcements');
+  const KnownServerLink(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static KnownServerLink? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, KnownServerLink> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Label for a server link: either a built-in standard link type or a custom text component.
 sealed class ServerLinkLabel {
@@ -15372,45 +15606,51 @@ external i0.WasmVoid _import685(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.
 @pragma("wasm:import", r"component._import686")
 external i0.WasmVoid _import686(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
 enum StatusEffectType {
-  speed,
-  slowness,
-  haste,
-  miningFatigue,
-  strength,
-  instantHealth,
-  instantDamage,
-  jumpBoost,
-  nausea,
-  regeneration,
-  resistance,
-  fireResistance,
-  waterBreathing,
-  invisibility,
-  blindness,
-  nightVision,
-  hunger,
-  weakness,
-  poison,
-  wither,
-  healthBoost,
-  absorption,
-  saturation,
-  glowing,
-  levitation,
-  luck,
-  unluck,
-  slowFalling,
-  conduitPower,
-  dolphinsGrace,
-  badOmen,
-  heroOfTheVillage,
-  darkness,
-  trialOmen,
-  raidOmen,
-  windCharged,
-  weaving,
-  oozing,
-  infested,
+  speed('speed'),
+  slowness('slowness'),
+  haste('haste'),
+  miningFatigue('mining-fatigue'),
+  strength('strength'),
+  instantHealth('instant-health'),
+  instantDamage('instant-damage'),
+  jumpBoost('jump-boost'),
+  nausea('nausea'),
+  regeneration('regeneration'),
+  resistance('resistance'),
+  fireResistance('fire-resistance'),
+  waterBreathing('water-breathing'),
+  invisibility('invisibility'),
+  blindness('blindness'),
+  nightVision('night-vision'),
+  hunger('hunger'),
+  weakness('weakness'),
+  poison('poison'),
+  wither('wither'),
+  healthBoost('health-boost'),
+  absorption('absorption'),
+  saturation('saturation'),
+  glowing('glowing'),
+  levitation('levitation'),
+  luck('luck'),
+  unluck('unluck'),
+  slowFalling('slow-falling'),
+  conduitPower('conduit-power'),
+  dolphinsGrace('dolphins-grace'),
+  badOmen('bad-omen'),
+  heroOfTheVillage('hero-of-the-village'),
+  darkness('darkness'),
+  trialOmen('trial-omen'),
+  raidOmen('raid-omen'),
+  windCharged('wind-charged'),
+  weaving('weaving'),
+  oozing('oozing'),
+  infested('infested');
+  const StatusEffectType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static StatusEffectType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, StatusEffectType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class StatusEffectInstance {
   final StatusEffectType effectType;
@@ -15441,15 +15681,21 @@ external i0.WasmVoid _import694(i0.WasmI32 p0, i0.WasmF32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import695")
 external i0.WasmVoid _import695(i0.WasmI32 p0);
 enum StatisticCategory {
-  mined,
-  crafted,
-  used,
-  broken,
-  pickedUp,
-  dropped,
-  killed,
-  killedBy,
-  custom,
+  mined('mined'),
+  crafted('crafted'),
+  used('used'),
+  broken('broken'),
+  pickedUp('picked-up'),
+  dropped('dropped'),
+  killed('killed'),
+  killedBy('killed-by'),
+  custom('custom');
+  const StatisticCategory(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static StatisticCategory? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, StatisticCategory> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import696")
 external i0.WasmI32 _import696(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -15458,84 +15704,90 @@ external i0.WasmVoid _import697(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.
 @pragma("wasm:import", r"component._import698")
 external i0.WasmVoid _import698(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
 enum CustomStatistic {
-  leaveGame,
-  playTime,
-  totalWorldTime,
-  timeSinceDeath,
-  timeSinceRest,
-  sneakTime,
-  walkOneCm,
-  crouchOneCm,
-  sprintOneCm,
-  walkOnWaterOneCm,
-  fallOneCm,
-  climbOneCm,
-  flyOneCm,
-  walkUnderWaterOneCm,
-  minecartOneCm,
-  boatOneCm,
-  pigOneCm,
-  happyGhastOneCm,
-  horseOneCm,
-  aviateOneCm,
-  swimOneCm,
-  striderOneCm,
-  nautilusOneCm,
-  jump,
-  drop,
-  damageDealt,
-  damageDealtAbsorbed,
-  damageDealtResisted,
-  damageTaken,
-  damageBlockedByShield,
-  damageAbsorbed,
-  damageResisted,
-  deaths,
-  mobKills,
-  animalsBred,
-  playerKills,
-  fishCaught,
-  talkedToVillager,
-  tradedWithVillager,
-  eatCakeSlice,
-  fillCauldron,
-  useCauldron,
-  cleanArmor,
-  cleanBanner,
-  cleanShulkerBox,
-  interactWithBrewingstand,
-  interactWithBeacon,
-  inspectDropper,
-  inspectHopper,
-  inspectDispenser,
-  playNoteblock,
-  tuneNoteblock,
-  potFlower,
-  triggerTrappedChest,
-  openEnderchest,
-  enchantItem,
-  playRecord,
-  interactWithFurnace,
-  interactWithCraftingTable,
-  openChest,
-  sleepInBed,
-  sleepInStrawBed,
-  openShulkerBox,
-  openBarrel,
-  interactWithBlastFurnace,
-  interactWithSmoker,
-  interactWithLectern,
-  interactWithCampfire,
-  interactWithCartographyTable,
-  interactWithLoom,
-  interactWithStonecutter,
-  bellRing,
-  raidTrigger,
-  raidWin,
-  interactWithAnvil,
-  interactWithGrindstone,
-  targetHit,
-  interactWithSmithingTable,
+  leaveGame('leave-game'),
+  playTime('play-time'),
+  totalWorldTime('total-world-time'),
+  timeSinceDeath('time-since-death'),
+  timeSinceRest('time-since-rest'),
+  sneakTime('sneak-time'),
+  walkOneCm('walk-one-cm'),
+  crouchOneCm('crouch-one-cm'),
+  sprintOneCm('sprint-one-cm'),
+  walkOnWaterOneCm('walk-on-water-one-cm'),
+  fallOneCm('fall-one-cm'),
+  climbOneCm('climb-one-cm'),
+  flyOneCm('fly-one-cm'),
+  walkUnderWaterOneCm('walk-under-water-one-cm'),
+  minecartOneCm('minecart-one-cm'),
+  boatOneCm('boat-one-cm'),
+  pigOneCm('pig-one-cm'),
+  happyGhastOneCm('happy-ghast-one-cm'),
+  horseOneCm('horse-one-cm'),
+  aviateOneCm('aviate-one-cm'),
+  swimOneCm('swim-one-cm'),
+  striderOneCm('strider-one-cm'),
+  nautilusOneCm('nautilus-one-cm'),
+  jump('jump'),
+  drop('drop'),
+  damageDealt('damage-dealt'),
+  damageDealtAbsorbed('damage-dealt-absorbed'),
+  damageDealtResisted('damage-dealt-resisted'),
+  damageTaken('damage-taken'),
+  damageBlockedByShield('damage-blocked-by-shield'),
+  damageAbsorbed('damage-absorbed'),
+  damageResisted('damage-resisted'),
+  deaths('deaths'),
+  mobKills('mob-kills'),
+  animalsBred('animals-bred'),
+  playerKills('player-kills'),
+  fishCaught('fish-caught'),
+  talkedToVillager('talked-to-villager'),
+  tradedWithVillager('traded-with-villager'),
+  eatCakeSlice('eat-cake-slice'),
+  fillCauldron('fill-cauldron'),
+  useCauldron('use-cauldron'),
+  cleanArmor('clean-armor'),
+  cleanBanner('clean-banner'),
+  cleanShulkerBox('clean-shulker-box'),
+  interactWithBrewingstand('interact-with-brewingstand'),
+  interactWithBeacon('interact-with-beacon'),
+  inspectDropper('inspect-dropper'),
+  inspectHopper('inspect-hopper'),
+  inspectDispenser('inspect-dispenser'),
+  playNoteblock('play-noteblock'),
+  tuneNoteblock('tune-noteblock'),
+  potFlower('pot-flower'),
+  triggerTrappedChest('trigger-trapped-chest'),
+  openEnderchest('open-enderchest'),
+  enchantItem('enchant-item'),
+  playRecord('play-record'),
+  interactWithFurnace('interact-with-furnace'),
+  interactWithCraftingTable('interact-with-crafting-table'),
+  openChest('open-chest'),
+  sleepInBed('sleep-in-bed'),
+  sleepInStrawBed('sleep-in-straw-bed'),
+  openShulkerBox('open-shulker-box'),
+  openBarrel('open-barrel'),
+  interactWithBlastFurnace('interact-with-blast-furnace'),
+  interactWithSmoker('interact-with-smoker'),
+  interactWithLectern('interact-with-lectern'),
+  interactWithCampfire('interact-with-campfire'),
+  interactWithCartographyTable('interact-with-cartography-table'),
+  interactWithLoom('interact-with-loom'),
+  interactWithStonecutter('interact-with-stonecutter'),
+  bellRing('bell-ring'),
+  raidTrigger('raid-trigger'),
+  raidWin('raid-win'),
+  interactWithAnvil('interact-with-anvil'),
+  interactWithGrindstone('interact-with-grindstone'),
+  targetHit('target-hit'),
+  interactWithSmithingTable('interact-with-smithing-table');
+  const CustomStatistic(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static CustomStatistic? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, CustomStatistic> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import699")
 external i0.WasmI32 _import699(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -15689,8 +15941,14 @@ external i0.WasmVoid _import753(i0.WasmI32 p0, i0.WasmI32 p1);
 external i0.WasmI32 _import754(i0.WasmI32 p0);
 /// Represents per-player weather condition overrides.
 enum PlayerWeather {
-  clear,
-  downfall,
+  clear('clear'),
+  downfall('downfall');
+  const PlayerWeather(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PlayerWeather? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PlayerWeather> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import755")
 external i0.WasmVoid _import755(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -15734,15 +15992,21 @@ external i0.WasmVoid _import773(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 external i0.WasmVoid _import774(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmI32 p2, i0.WasmI32 p3);
 /// Types of projectiles that can be launched by a player.
 enum ProjectileType {
-  arrow,
-  snowball,
-  egg,
-  enderPearl,
-  splashPotion,
-  fireball,
-  smallFireball,
-  trident,
-  windCharge,
+  arrow('arrow'),
+  snowball('snowball'),
+  egg('egg'),
+  enderPearl('ender-pearl'),
+  splashPotion('splash-potion'),
+  fireball('fireball'),
+  smallFireball('small-fireball'),
+  trident('trident'),
+  windCharge('wind-charge');
+  const ProjectileType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ProjectileType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ProjectileType> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import775")
 external i0.WasmVoid _import775(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -17841,59 +18105,65 @@ set selectedAdvancementTab(String? value) { setSelectedAdvancementTab(tabId: val
 }
 /// Represents a specific version of the Minecraft Java Edition protocol.
 enum JavaMinecraftVersion {
-  v172,
-  v176,
-  v18,
-  v19,
-  v191,
-  v192,
-  v193,
-  v110,
-  v111,
-  v1111,
-  v112,
-  v1121,
-  v1122,
-  v113,
-  v1131,
-  v1132,
-  v114,
-  v1141,
-  v1142,
-  v1143,
-  v1144,
-  v115,
-  v1151,
-  v1152,
-  v116,
-  v1161,
-  v1162,
-  v1163,
-  v1164,
-  v117,
-  v1171,
-  v118,
-  v1182,
-  v119,
-  v1191,
-  v1193,
-  v1194,
-  v120,
-  v1202,
-  v1203,
-  v1205,
-  v121,
-  v1212,
-  v1214,
-  v1215,
-  v1216,
-  v1217,
-  v1219,
-  v12111,
-  v261,
-  v262,
-  v263,
-  unknown,
+  v172('v-1-7-2'),
+  v176('v-1-7-6'),
+  v18('v-1-8'),
+  v19('v-1-9'),
+  v191('v-1-9-1'),
+  v192('v-1-9-2'),
+  v193('v-1-9-3'),
+  v110('v-1-10'),
+  v111('v-1-11'),
+  v1111('v-1-11-1'),
+  v112('v-1-12'),
+  v1121('v-1-12-1'),
+  v1122('v-1-12-2'),
+  v113('v-1-13'),
+  v1131('v-1-13-1'),
+  v1132('v-1-13-2'),
+  v114('v-1-14'),
+  v1141('v-1-14-1'),
+  v1142('v-1-14-2'),
+  v1143('v-1-14-3'),
+  v1144('v-1-14-4'),
+  v115('v-1-15'),
+  v1151('v-1-15-1'),
+  v1152('v-1-15-2'),
+  v116('v-1-16'),
+  v1161('v-1-16-1'),
+  v1162('v-1-16-2'),
+  v1163('v-1-16-3'),
+  v1164('v-1-16-4'),
+  v117('v-1-17'),
+  v1171('v-1-17-1'),
+  v118('v-1-18'),
+  v1182('v-1-18-2'),
+  v119('v-1-19'),
+  v1191('v-1-19-1'),
+  v1193('v-1-19-3'),
+  v1194('v-1-19-4'),
+  v120('v-1-20'),
+  v1202('v-1-20-2'),
+  v1203('v-1-20-3'),
+  v1205('v-1-20-5'),
+  v121('v-1-21'),
+  v1212('v-1-21-2'),
+  v1214('v-1-21-4'),
+  v1215('v-1-21-5'),
+  v1216('v-1-21-6'),
+  v1217('v-1-21-7'),
+  v1219('v-1-21-9'),
+  v12111('v-1-21-11'),
+  v261('v-26-1'),
+  v262('v-26-2'),
+  v263('v-26-3'),
+  unknown('unknown');
+  const JavaMinecraftVersion(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static JavaMinecraftVersion? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, JavaMinecraftVersion> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import787")
 external i0.WasmI32 _import787(i0.WasmI32 p0);
@@ -17904,11 +18174,17 @@ external i0.WasmVoid _import789(i0.WasmI32 p0, i0.WasmI32 p1);
 /// The chat visibility settings for a player.
 enum ChatMode {
 /// Chat is fully enabled.
-  enabled,
+  enabled('enabled'),
 /// Only system messages and commands are shown.
-  commandsOnly,
+  commandsOnly('commands-only'),
 /// Chat is completely hidden.
-  hidden,
+  hidden('hidden');
+  const ChatMode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ChatMode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ChatMode> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents settings for a Java Edition player.
 final class JavaPlayerSettings {
@@ -18251,9 +18527,15 @@ final class ArgumentTypeLong {
   ArgumentTypeLong copyWith({int? min, bool clearMin = false, int? max, bool clearMax = false, }) => ArgumentTypeLong(min: clearMin ? null : (min ?? this.min), max: clearMax ? null : (max ?? this.max), );
 }
 enum StringProtoArgBehavior {
-  singleWord,
-  quotablePhrase,
-  greedyPhrase,
+  singleWord('single-word'),
+  quotablePhrase('quotable-phrase'),
+  greedyPhrase('greedy-phrase');
+  const StringProtoArgBehavior(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static StringProtoArgBehavior? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, StringProtoArgBehavior> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class ArgumentTypeEntity {
   final int flags;
@@ -18477,10 +18759,16 @@ final class ArgumentTypeUuid extends ArgumentType {
   const ArgumentTypeUuid();
 }
 enum SuggestionProviders {
-  askServer,
-  allRecipes,
-  availableSounds,
-  summonableEntities,
+  askServer('ask-server'),
+  allRecipes('all-recipes'),
+  availableSounds('available-sounds'),
+  summonableEntities('summonable-entities');
+  const SuggestionProviders(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static SuggestionProviders? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, SuggestionProviders> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class ProtoNodeTypeArgument {
   final String name;
@@ -19238,11 +19526,17 @@ final class CSetPlayerInventory {
   CSetPlayerInventory copyWith({int? slot, String? item, }) => CSetPlayerInventory(slot: slot ?? this.slot, item: item ?? this.item, );
 }
 enum TeamMethod {
-  create,
-  remove,
-  update,
-  addPlayers,
-  removePlayers,
+  create('create'),
+  remove('remove'),
+  update('update'),
+  addPlayers('add-players'),
+  removePlayers('remove-players');
+  const TeamMethod(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static TeamMethod? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, TeamMethod> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class TeamParameters {
   final String displayName;
@@ -19463,9 +19757,15 @@ final class CUpdateScore {
   CUpdateScore copyWith({String? entityName, String? objectiveName, int? value, String? displayName, bool clearDisplayName = false, String? numberFormat, bool clearNumberFormat = false, }) => CUpdateScore(entityName: entityName ?? this.entityName, objectiveName: objectiveName ?? this.objectiveName, value: value ?? this.value, displayName: clearDisplayName ? null : (displayName ?? this.displayName), numberFormat: clearNumberFormat ? null : (numberFormat ?? this.numberFormat), );
 }
 enum WaypointOperation {
-  track,
-  untrack,
-  update,
+  track('track'),
+  untrack('untrack'),
+  update('update');
+  const WaypointOperation(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static WaypointOperation? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, WaypointOperation> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class WaypointIcon {
   final String? style;
@@ -20188,15 +20488,21 @@ external i0.WasmVoid _import792(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.
 /// Represents the layout and button configuration of a dialog.
 enum DialogType {
 /// A simple dialog with a single "OK" button.
-  notice,
+  notice('notice'),
 /// A dialog with "Yes" and "No" buttons.
-  confirmation,
+  confirmation('confirmation'),
 /// A scrollable list of custom buttons.
-  multiAction,
+  multiAction('multi-action'),
 /// A list of buttons that open other registered dialogs.
-  dialogList,
+  dialogList('dialog-list'),
 /// A dedicated menu for displaying server-related links.
-  serverLinks,
+  serverLinks('server-links');
+  const DialogType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static DialogType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, DialogType> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents an element in the main content area of a dialog.
 sealed class DialogBody {
@@ -20304,16 +20610,22 @@ final class ActionButton {
 }
 /// Built-in link types recognized by the Java Edition client.
 enum LinkType {
-  bugReport,
-  communityGuidelines,
-  support,
-  status,
-  feedback,
-  community,
-  website,
-  forums,
-  news,
-  announcements,
+  bugReport('bug-report'),
+  communityGuidelines('community-guidelines'),
+  support('support'),
+  status('status'),
+  feedback('feedback'),
+  community('community'),
+  website('website'),
+  forums('forums'),
+  news('news'),
+  announcements('announcements');
+  const LinkType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static LinkType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, LinkType> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// The label for a link, which can be a built-in type or custom text.
 sealed class LinkLabel {
@@ -20341,9 +20653,15 @@ final class Link {
 /// Defines what happens after a dialog is closed.
 enum AfterAction {
 /// Returns the player to the previous screen (e.g., keeping an inventory open).
-  peek,
+  peek('peek'),
 /// Closes all open screens.
-  pop,
+  pop('pop');
+  const AfterAction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static AfterAction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, AfterAction> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents a dialog shown to a Java Edition player.
 final class Dialog {
@@ -20400,11 +20718,17 @@ external i0.WasmVoid _import799(i0.WasmI32 p0);
 /// Policy for tearing down the player's network connection.
 enum SocketTeardownPolicy {
 /// Send the disconnect packet and gracefully close the connection.
-  graceful,
+  graceful('graceful'),
 /// Send the disconnect packet and close the socket immediately.
-  immediateClose,
+  immediateClose('immediate-close'),
 /// Terminate the connection immediately without sending any disconnect packet.
-  dropConnection,
+  dropConnection('drop-connection');
+  const SocketTeardownPolicy(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static SocketTeardownPolicy? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, SocketTeardownPolicy> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Options for disconnecting a Java Edition player.
 final class JavaKickOptions {
@@ -20421,88 +20745,100 @@ final class JavaKickOptions {
 external i0.WasmVoid _import800(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
 /// Types of clientbound game events.
 enum ClientGameEvent {
-  noRespawnBlockAvailable,
-  beginRaining,
-  endRaining,
-  changeGameMode,
-  winGame,
-  demoEvent,
-  arrowHitPlayer,
-  rainLevelChange,
-  thunderLevelChange,
-  playPufferfishStringSound,
-  playElderGuardianMobAppearance,
-  enabledRespawnScreen,
-  limitedCrafting,
-  startWaitingChunks,
+  noRespawnBlockAvailable('no-respawn-block-available'),
+  beginRaining('begin-raining'),
+  endRaining('end-raining'),
+  changeGameMode('change-game-mode'),
+  winGame('win-game'),
+  demoEvent('demo-event'),
+  arrowHitPlayer('arrow-hit-player'),
+  rainLevelChange('rain-level-change'),
+  thunderLevelChange('thunder-level-change'),
+  playPufferfishStringSound('play-pufferfish-string-sound'),
+  playElderGuardianMobAppearance('play-elder-guardian-mob-appearance'),
+  enabledRespawnScreen('enabled-respawn-screen'),
+  limitedCrafting('limited-crafting'),
+  startWaitingChunks('start-waiting-chunks');
+  const ClientGameEvent(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ClientGameEvent? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ClientGameEvent> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import801")
 external i0.WasmVoid _import801(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmF32 p2);
 enum EntityStatus {
-  armadilloPeek,
-  armorstandWobble,
-  boatLaunch,
-  boatSink,
-  bodyBreak,
-  cancelShakeWetness,
-  chestBreak,
-  death,
-  dolphinLookingForTreasure,
-  drownParticles,
-  eatGrass,
-  endRam,
-  feetBreak,
-  fireworksExplode,
-  fishingRodReelIn,
-  foxEat,
-  fullDebugInfo,
-  guardianAttackSound,
-  headBreak,
-  honeyJump,
-  honeySlide,
-  inLoveHearts,
-  jump,
-  kineticHit,
-  legsBreak,
-  loveHearts,
-  mainhandBreak,
-  offerFlower,
-  offhandBreak,
-  permissionLevelAdmins,
-  permissionLevelAll,
-  permissionLevelGamemasters,
-  permissionLevelModerators,
-  permissionLevelOwners,
-  poof,
-  protectedFromDeath,
-  ravagerRoared,
-  ravagerStunned,
-  reducedDebugInfo,
-  saddleBreak,
-  shake,
-  shakeWetness,
-  silverfishMergeAnim,
-  snifferDiggingSound,
-  sonicCharge,
-  squidAnimSynch,
-  startAttacking,
-  startRam,
-  stopAttacking,
-  stopOfferFlower,
-  swapHands,
-  tamingFailed,
-  tamingSucceeded,
-  teleport,
-  tendrilsShiver,
-  tntPrime,
-  trustingFailed,
-  trustingSucceeded,
-  useItemComplete,
-  villagerAngry,
-  villagerHappy,
-  villagerSweat,
-  witchHatMagic,
-  zombieConverting,
+  armadilloPeek('armadillo-peek'),
+  armorstandWobble('armorstand-wobble'),
+  boatLaunch('boat-launch'),
+  boatSink('boat-sink'),
+  bodyBreak('body-break'),
+  cancelShakeWetness('cancel-shake-wetness'),
+  chestBreak('chest-break'),
+  death('death'),
+  dolphinLookingForTreasure('dolphin-looking-for-treasure'),
+  drownParticles('drown-particles'),
+  eatGrass('eat-grass'),
+  endRam('end-ram'),
+  feetBreak('feet-break'),
+  fireworksExplode('fireworks-explode'),
+  fishingRodReelIn('fishing-rod-reel-in'),
+  foxEat('fox-eat'),
+  fullDebugInfo('full-debug-info'),
+  guardianAttackSound('guardian-attack-sound'),
+  headBreak('head-break'),
+  honeyJump('honey-jump'),
+  honeySlide('honey-slide'),
+  inLoveHearts('in-love-hearts'),
+  jump('jump'),
+  kineticHit('kinetic-hit'),
+  legsBreak('legs-break'),
+  loveHearts('love-hearts'),
+  mainhandBreak('mainhand-break'),
+  offerFlower('offer-flower'),
+  offhandBreak('offhand-break'),
+  permissionLevelAdmins('permission-level-admins'),
+  permissionLevelAll('permission-level-all'),
+  permissionLevelGamemasters('permission-level-gamemasters'),
+  permissionLevelModerators('permission-level-moderators'),
+  permissionLevelOwners('permission-level-owners'),
+  poof('poof'),
+  protectedFromDeath('protected-from-death'),
+  ravagerRoared('ravager-roared'),
+  ravagerStunned('ravager-stunned'),
+  reducedDebugInfo('reduced-debug-info'),
+  saddleBreak('saddle-break'),
+  shake('shake'),
+  shakeWetness('shake-wetness'),
+  silverfishMergeAnim('silverfish-merge-anim'),
+  snifferDiggingSound('sniffer-digging-sound'),
+  sonicCharge('sonic-charge'),
+  squidAnimSynch('squid-anim-synch'),
+  startAttacking('start-attacking'),
+  startRam('start-ram'),
+  stopAttacking('stop-attacking'),
+  stopOfferFlower('stop-offer-flower'),
+  swapHands('swap-hands'),
+  tamingFailed('taming-failed'),
+  tamingSucceeded('taming-succeeded'),
+  teleport('teleport'),
+  tendrilsShiver('tendrils-shiver'),
+  tntPrime('tnt-prime'),
+  trustingFailed('trusting-failed'),
+  trustingSucceeded('trusting-succeeded'),
+  useItemComplete('use-item-complete'),
+  villagerAngry('villager-angry'),
+  villagerHappy('villager-happy'),
+  villagerSweat('villager-sweat'),
+  witchHatMagic('witch-hat-magic'),
+  zombieConverting('zombie-converting');
+  const EntityStatus(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EntityStatus? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EntityStatus> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import802")
 external i0.WasmVoid _import802(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -23811,60 +24147,90 @@ Scoreboard get scoreboard => getScoreboard();
 }
 /// Represents a specific version of the Minecraft Bedrock Edition protocol.
 enum BedrockMinecraftVersion {
-  v121,
-  v12630,
-  unknown,
+  v121('v-1-21'),
+  v12630('v-1-26-30'),
+  unknown('unknown');
+  const BedrockMinecraftVersion(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockMinecraftVersion? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockMinecraftVersion> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import803")
 external i0.WasmI32 _import803(i0.WasmI32 p0);
 /// Represents the operating system of a Bedrock Edition client.
 enum BedrockDeviceOs {
-  android,
-  ios,
-  osx,
-  amazon,
-  gearVr,
-  holoLens,
-  windows10,
-  win32,
-  dedicated,
-  tvOs,
-  playstation,
-  nintendo,
-  xbox,
-  windowsPhone,
-  linux,
+  android('android'),
+  ios('ios'),
+  osx('osx'),
+  amazon('amazon'),
+  gearVr('gear-vr'),
+  holoLens('holo-lens'),
+  windows10('windows-10'),
+  win32('win-32'),
+  dedicated('dedicated'),
+  tvOs('tv-os'),
+  playstation('playstation'),
+  nintendo('nintendo'),
+  xbox('xbox'),
+  windowsPhone('windows-phone'),
+  linux('linux'),
 /// Fallback for unrecognized operating systems.
-  unknown,
+  unknown('unknown');
+  const BedrockDeviceOs(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockDeviceOs? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockDeviceOs> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents the input mode used by a Bedrock Edition client.
 enum BedrockInputMode {
 /// Unknown input mode.
-  unknown,
+  unknown('unknown'),
 /// Mouse and keyboard.
-  mouse,
+  mouse('mouse'),
 /// Touch screen.
-  touch,
+  touch('touch'),
 /// Game controller.
-  gamePad,
+  gamePad('game-pad'),
 /// Motion-based controller.
-  motionController,
+  motionController('motion-controller');
+  const BedrockInputMode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockInputMode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockInputMode> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents the UI profile used by a Bedrock Edition client.
 enum BedrockUiProfile {
 /// Classic desktop UI.
-  classic,
+  classic('classic'),
 /// Pocket/Mobile optimized UI.
-  pocket,
+  pocket('pocket'),
 /// Unknown UI profile.
-  unknown,
+  unknown('unknown');
+  const BedrockUiProfile(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockUiProfile? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockUiProfile> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents the graphics mode used by a Bedrock Edition client.
 enum BedrockGraphicsMode {
-  simple,
-  fancy,
-  rayTraced,
-  unknown,
+  simple('simple'),
+  fancy('fancy'),
+  rayTraced('ray-traced'),
+  unknown('unknown');
+  const BedrockGraphicsMode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockGraphicsMode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockGraphicsMode> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents settings and client data for a Bedrock Edition player.
 final class BedrockPlayerSettings {
@@ -23920,45 +24286,51 @@ external i0.WasmVoid _import804(i0.WasmI32 p0, i0.WasmI32 p1);
 /// Represents the various abilities a Bedrock Edition player can have.
 enum BedrockAbility {
 /// Whether the player can build.
-  build,
+  build('build'),
 /// Whether the player can mine blocks.
-  mine,
+  mine('mine'),
 /// Whether the player can use doors and switches.
-  doorsAndSwitches,
+  doorsAndSwitches('doors-and-switches'),
 /// Whether the player can open containers.
-  openContainers,
+  openContainers('open-containers'),
 /// Whether the player can attack other players.
-  attackPlayers,
+  attackPlayers('attack-players'),
 /// Whether the player can attack mobs.
-  attackMobs,
+  attackMobs('attack-mobs'),
 /// Whether the player can use operator commands.
-  operatorCommands,
+  operatorCommands('operator-commands'),
 /// Whether the player can teleport.
-  teleport,
+  teleport('teleport'),
 /// Whether the player is invulnerable.
-  invulnerable,
+  invulnerable('invulnerable'),
 /// Whether the player is currently flying.
-  flying,
+  flying('flying'),
 /// Whether the player is allowed to fly.
-  mayFly,
+  mayFly('may-fly'),
 /// Whether the player has instant build (creative).
-  instabuild,
+  instabuild('instabuild'),
 /// Whether the player can use lightning-related abilities.
-  lightning,
+  lightning('lightning'),
 /// The speed at which the player flies.
-  flySpeed,
+  flySpeed('fly-speed'),
 /// The speed at which the player walks.
-  walkSpeed,
+  walkSpeed('walk-speed'),
 /// Whether the player is muted.
-  muted,
+  muted('muted'),
 /// Whether the player is a world builder.
-  worldBuilder,
+  worldBuilder('world-builder'),
 /// Whether the player has no-clip enabled.
-  noClip,
+  noClip('no-clip'),
 /// Whether the player is a privileged builder.
-  privilegedBuilder,
+  privilegedBuilder('privileged-builder'),
 /// The speed at which the player flies vertically.
-  verticalFlySpeed,
+  verticalFlySpeed('vertical-fly-speed');
+  const BedrockAbility(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockAbility? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockAbility> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import805")
 external i0.WasmI32 _import805(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -23968,253 +24340,259 @@ external i0.WasmVoid _import806(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 /// These flags control client-side rendering and behavior.
 enum BedrockStatusFlag {
 /// Whether the entity is currently on fire.
-  onFire,
+  onFire('on-fire'),
 /// Whether the entity is sneaking.
-  sneaking,
+  sneaking('sneaking'),
 /// Whether the entity is riding another entity.
-  riding,
+  riding('riding'),
 /// Whether the entity is sprinting.
-  sprinting,
+  sprinting('sprinting'),
 /// Whether the entity is using an item (e.g., eating, blocking).
-  usingItem,
+  usingItem('using-item'),
 /// Whether the entity is invisible.
-  invisible,
+  invisible('invisible'),
 /// Whether the entity is tempted by an item.
-  tempted,
+  tempted('tempted'),
 /// Whether the entity is in love (breeding).
-  inLove,
+  inLove('in-love'),
 /// Whether the entity is saddled.
-  saddled,
+  saddled('saddled'),
 /// Whether the entity is powered (e.g., charged creeper).
-  powered,
+  powered('powered'),
 /// Whether the entity is ignited.
-  ignited,
+  ignited('ignited'),
 /// Whether the entity is a baby.
-  baby,
+  baby('baby'),
 /// Whether the entity is currently converting to another type.
-  converting,
+  converting('converting'),
 /// Whether the entity is in a critical state.
-  critical,
+  critical('critical'),
 /// Whether to show the entity's name tag.
-  showName,
+  showName('show-name'),
 /// Whether to always show the entity's name tag.
-  alwaysShowName,
+  alwaysShowName('always-show-name'),
 /// Whether the entity has no AI.
-  noAi,
+  noAi('no-ai'),
 /// Whether the entity is silent.
-  silent,
+  silent('silent'),
 /// Whether the entity is climbing a wall.
-  wallClimbing,
+  wallClimbing('wall-climbing'),
 /// Whether the entity is climbing.
-  climb,
+  climb('climb'),
 /// Whether the entity is swimming.
-  swim,
+  swim('swim'),
 /// Whether the entity is flying.
-  fly,
+  fly('fly'),
 /// Whether the entity is walking.
-  walk,
+  walk('walk'),
 /// Whether the entity is resting.
-  resting,
+  resting('resting'),
 /// Whether the entity is sitting.
-  sitting,
+  sitting('sitting'),
 /// Whether the entity is angry.
-  angry,
+  angry('angry'),
 /// Whether the entity is interested.
-  interested,
+  interested('interested'),
 /// Whether the entity is charged.
-  charged,
+  charged('charged'),
 /// Whether the entity is tamed.
-  tamed,
+  tamed('tamed'),
 /// Whether the entity is orphaned.
-  orphaned,
+  orphaned('orphaned'),
 /// Whether the entity is leashed.
-  leashed,
+  leashed('leashed'),
 /// Whether the entity is sheared.
-  sheared,
+  sheared('sheared'),
 /// Whether the entity is gliding (elytra).
-  gliding,
+  gliding('gliding'),
 /// Whether the entity is an elder (e.g., elder guardian).
-  elder,
+  elder('elder'),
 /// Whether the entity is moving.
-  moving,
+  moving('moving'),
 /// Whether the entity is breathing.
-  breathing,
+  breathing('breathing'),
 /// Whether the entity has a chest (e.g., donkey).
-  chested,
+  chested('chested'),
 /// Whether the entity is stackable.
-  stackable,
+  stackable('stackable'),
 /// Whether to show the bottom of the entity.
-  showBottom,
+  showBottom('show-bottom'),
 /// Whether the entity is standing.
-  standing,
+  standing('standing'),
 /// Whether the entity is shaking.
-  shaking,
+  shaking('shaking'),
 /// Whether the entity is idling.
-  idling,
+  idling('idling'),
 /// Whether the entity is casting (e.g., evoker).
-  casting,
+  casting('casting'),
 /// Whether the entity is charging an attack.
-  charging,
+  charging('charging'),
 /// Whether the entity is controlled by a keyboard.
-  keyboardControlled,
+  keyboardControlled('keyboard-controlled'),
 /// Whether the entity is performing a power jump.
-  powerJump,
+  powerJump('power-jump'),
 /// Whether the entity is dashing.
-  dash,
+  dash('dash'),
 /// Whether the entity is lingering.
-  lingering,
+  lingering('lingering'),
 /// Whether the entity has collision.
-  hasCollision,
+  hasCollision('has-collision'),
 /// Whether the entity has gravity.
-  hasGravity,
+  hasGravity('has-gravity'),
 /// Whether the entity is immune to fire.
-  fireImmune,
+  fireImmune('fire-immune'),
 /// Whether the entity is dancing.
-  dancing,
+  dancing('dancing'),
 /// Whether the entity is enchanted.
-  enchanted,
+  enchanted('enchanted'),
 /// Whether a trident will return to the entity.
-  returnTrident,
+  returnTrident('return-trident'),
 /// Whether the container is private.
-  containerPrivate,
+  containerPrivate('container-private'),
 /// Whether the entity is transforming.
-  transforming,
+  transforming('transforming'),
 /// Whether the entity damages nearby mobs.
-  damageNearbyMobs,
+  damageNearbyMobs('damage-nearby-mobs'),
 /// Whether the entity is swimming.
-  swimming,
+  swimming('swimming'),
 /// Whether the entity has been bribed.
-  bribed,
+  bribed('bribed'),
 /// Whether the entity is pregnant.
-  pregnant,
+  pregnant('pregnant'),
 /// Whether the entity is laying an egg.
-  layingEgg,
+  layingEgg('laying-egg'),
 /// Whether a passenger can pick up the entity.
-  passengerCanPick,
+  passengerCanPick('passenger-can-pick'),
 /// Whether the entity is transitioning to sitting.
-  transitionSitting,
+  transitionSitting('transition-sitting'),
 /// Whether the entity is eating.
-  eating,
+  eating('eating'),
 /// Whether the entity is laying down.
-  layingDown,
+  layingDown('laying-down'),
 /// Whether the entity is sneezing.
-  sneezing,
+  sneezing('sneezing'),
 /// Whether the entity is trusting.
-  trusting,
+  trusting('trusting'),
 /// Whether the entity is rolling.
-  rolling,
+  rolling('rolling'),
 /// Whether the entity is scared.
-  scared,
+  scared('scared'),
 /// Whether the entity is in scaffolding.
-  inScaffolding,
+  inScaffolding('in-scaffolding'),
 /// Whether the entity is over scaffolding.
-  overScaffolding,
+  overScaffolding('over-scaffolding'),
 /// Whether the entity is descending through a block.
-  descendThroughBlock,
+  descendThroughBlock('descend-through-block'),
 /// Whether the entity is blocking.
-  blocking,
+  blocking('blocking'),
 /// Whether the entity is transitioning to blocking.
-  transitionBlocking,
+  transitionBlocking('transition-blocking'),
 /// Whether the entity is blocked using a shield.
-  blockedUsingShield,
+  blockedUsingShield('blocked-using-shield'),
 /// Whether the entity is blocked using a damaged shield.
-  blockedUsingDamagedShield,
+  blockedUsingDamagedShield('blocked-using-damaged-shield'),
 /// Whether the entity is sleeping.
-  sleeping,
+  sleeping('sleeping'),
 /// Whether the entity wants to wake up.
-  wantsToWake,
+  wantsToWake('wants-to-wake'),
 /// Whether the entity shows interest in trading.
-  tradeInterest,
+  tradeInterest('trade-interest'),
 /// Whether the entity can break doors.
-  doorBreaker,
+  doorBreaker('door-breaker'),
 /// Whether the entity is breaking an obstruction.
-  breakingObstruction,
+  breakingObstruction('breaking-obstruction'),
 /// Whether the entity can open doors.
-  doorOpener,
+  doorOpener('door-opener'),
 /// Whether the entity is a captain (raid).
-  captain,
+  captain('captain'),
 /// Whether the entity is stunned.
-  stunned,
+  stunned('stunned'),
 /// Whether the entity is roaring.
-  roaring,
+  roaring('roaring'),
 /// Whether the entity has a delayed attack.
-  delayedAttack,
+  delayedAttack('delayed-attack'),
 /// Whether the entity is avoiding mobs.
-  avoidingMobs,
+  avoidingMobs('avoiding-mobs'),
 /// Whether the entity is avoiding a block.
-  avoidingBlock,
+  avoidingBlock('avoiding-block'),
 /// Whether the entity is facing a target for a ranged attack.
-  facingTargetToRangeAttack,
+  facingTargetToRangeAttack('facing-target-to-range-attack'),
 /// Whether the entity is hidden when invisible.
-  hiddenWhenInvisible,
+  hiddenWhenInvisible('hidden-when-invisible'),
 /// Whether the entity is in a UI.
-  inUi,
+  inUi('in-ui'),
 /// Whether the entity is stalking.
-  stalking,
+  stalking('stalking'),
 /// Whether the entity is emoting.
-  emoting,
+  emoting('emoting'),
 /// Whether the entity is celebrating.
-  celebrating,
+  celebrating('celebrating'),
 /// Whether the entity is admiring (piglin).
-  admiring,
+  admiring('admiring'),
 /// Whether the entity is celebrating a special event.
-  celebratingSpecial,
+  celebratingSpecial('celebrating-special'),
 /// Whether the entity is out of control.
-  outOfControl,
+  outOfControl('out-of-control'),
 /// Whether the entity is performing a ram attack.
-  ramAttack,
+  ramAttack('ram-attack'),
 /// Whether the entity is playing dead.
-  playingDead,
+  playingDead('playing-dead'),
 /// Whether the entity is in an ascending block.
-  inAscendingBlock,
+  inAscendingBlock('in-ascending-block'),
 /// Whether the entity is over a descending block.
-  overDescendingBlock,
+  overDescendingBlock('over-descending-block'),
 /// Whether the entity is croaking (frog).
-  croaking,
+  croaking('croaking'),
 /// Whether the entity is digesting a mob.
-  digestMob,
+  digestMob('digest-mob'),
 /// Whether the entity has a jump goal.
-  jumpGoal,
+  jumpGoal('jump-goal'),
 /// Whether the entity is emerging.
-  emerging,
+  emerging('emerging'),
 /// Whether the entity is sniffing.
-  sniffing,
+  sniffing('sniffing'),
 /// Whether the entity is digging.
-  digging,
+  digging('digging'),
 /// Whether the entity is performing a sonic boom.
-  sonicBoom,
+  sonicBoom('sonic-boom'),
 /// Whether the entity has a dash timeout.
-  hasDashTimeout,
+  hasDashTimeout('has-dash-timeout'),
 /// Whether the entity is pushed towards the closest space.
-  pushTowardsClosestSpace,
+  pushTowardsClosestSpace('push-towards-closest-space'),
 /// Whether the entity is scenting.
-  scenting,
+  scenting('scenting'),
 /// Whether the entity is rising.
-  rising,
+  rising('rising'),
 /// Whether the entity is feeling happy.
-  feelingHappy,
+  feelingHappy('feeling-happy'),
 /// Whether the entity is searching.
-  searching,
+  searching('searching'),
 /// Whether the entity is crawling.
-  crawling,
+  crawling('crawling'),
 /// Whether the entity's body rotation is blocked.
-  bodyRotationBlocked,
+  bodyRotationBlocked('body-rotation-blocked'),
 /// Whether the entity is rendered when invisible.
-  renderWhenInvisible,
+  renderWhenInvisible('render-when-invisible'),
 /// Whether the entity's body rotation is axis-aligned.
-  bodyRotationAxisAligned,
+  bodyRotationAxisAligned('body-rotation-axis-aligned'),
 /// Whether the entity is collidable.
-  collidable,
+  collidable('collidable'),
 /// Whether the entity is air-controlled via WASD.
-  wasdAirControlled,
+  wasdAirControlled('wasd-air-controlled'),
 /// Whether only the server can authorize a dismount.
-  doesServerAuthOnlyDismount,
+  doesServerAuthOnlyDismount('does-server-auth-only-dismount'),
 /// Whether the body rotation always follows the head.
-  bodyRotationAlwaysFollowsHead,
+  bodyRotationAlwaysFollowsHead('body-rotation-always-follows-head'),
 /// Whether the entity can use vertical movement actions.
-  canUseVerticalMovementAction,
+  canUseVerticalMovementAction('can-use-vertical-movement-action'),
 /// Whether rotation is locked to the vehicle.
-  rotationLockedToVehicle,
+  rotationLockedToVehicle('rotation-locked-to-vehicle');
+  const BedrockStatusFlag(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockStatusFlag? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockStatusFlag> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import807")
 external i0.WasmI32 _import807(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -24295,26 +24673,44 @@ final class NetworkItemStackDescriptor {
   NetworkItemStackDescriptor copyWith({int? id, int? stackSize, int? auxValue, int? blockRuntimeId, List<int>? extraData, int? netId, bool clearNetId = false, }) => NetworkItemStackDescriptor(id: id ?? this.id, stackSize: stackSize ?? this.stackSize, auxValue: auxValue ?? this.auxValue, blockRuntimeId: blockRuntimeId ?? this.blockRuntimeId, extraData: extraData ?? this.extraData, netId: clearNetId ? null : (netId ?? this.netId), );
 }
 enum GameType {
-  unknown,
-  survival,
-  creative,
-  adventure,
-  default_,
-  spectator,
+  unknown('unknown'),
+  survival('survival'),
+  creative('creative'),
+  adventure('adventure'),
+  default_('default'),
+  spectator('spectator');
+  const GameType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static GameType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, GameType> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum PlayerPermissionLevel {
-  visitor,
-  member,
-  operator,
-  custom,
+  visitor('visitor'),
+  member('member'),
+  operator('operator'),
+  custom('custom');
+  const PlayerPermissionLevel(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PlayerPermissionLevel? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PlayerPermissionLevel> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum CommandPermissionLevel {
-  any,
-  gameDirectors,
-  admin,
-  host,
-  owner,
-  internal,
+  any('any'),
+  gameDirectors('game-directors'),
+  admin('admin'),
+  host('host'),
+  owner('owner'),
+  internal('internal');
+  const CommandPermissionLevel(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static CommandPermissionLevel? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, CommandPermissionLevel> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SerializedAbilitiesDataSerializedLayer {
   final int serializedLayer;
@@ -24335,21 +24731,27 @@ final class SerializedAbilitiesData {
   SerializedAbilitiesData copyWith({int? targetPlayerRawId, PlayerPermissionLevel? playerPermissions, CommandPermissionLevel? commandPermissions, List<SerializedAbilitiesDataSerializedLayer>? layers, }) => SerializedAbilitiesData(targetPlayerRawId: targetPlayerRawId ?? this.targetPlayerRawId, playerPermissions: playerPermissions ?? this.playerPermissions, commandPermissions: commandPermissions ?? this.commandPermissions, layers: layers ?? this.layers, );
 }
 enum BuildPlatform {
-  unknown,
-  google,
-  ios,
-  osx,
-  amazon,
-  gearVr,
-  uwp,
-  win32,
-  dedicated,
-  tvOs,
-  sony,
-  nintendo,
-  xbox,
-  windowsPhone,
-  linux,
+  unknown('unknown'),
+  google('google'),
+  ios('ios'),
+  osx('osx'),
+  amazon('amazon'),
+  gearVr('gear-vr'),
+  uwp('uwp'),
+  win32('win32'),
+  dedicated('dedicated'),
+  tvOs('tv-os'),
+  sony('sony'),
+  nintendo('nintendo'),
+  xbox('xbox'),
+  windowsPhone('windows-phone'),
+  linux('linux');
+  const BuildPlatform(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BuildPlatform? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BuildPlatform> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class CAddPlayer {
   final Uuid uuid;
@@ -24594,13 +24996,19 @@ final class CCraftingData {
   CCraftingData copyWith({List<BedrockRecipe>? recipes, bool? cleanRecipes, }) => CCraftingData(recipes: recipes ?? this.recipes, cleanRecipes: cleanRecipes ?? this.cleanRecipes, );
 }
 enum CreativeCategory {
-  all,
-  construction,
-  nature,
-  equipment,
-  items,
-  itemCommandOnly,
-  undefined,
+  all('all'),
+  construction('construction'),
+  nature('nature'),
+  equipment('equipment'),
+  items('items'),
+  itemCommandOnly('item-command-only'),
+  undefined('undefined');
+  const CreativeCategory(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static CreativeCategory? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, CreativeCategory> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class CreativeGroupInfoPayload {
   final CreativeCategory creativeCategory;
@@ -24631,7 +25039,13 @@ final class CDisconnect {
   CDisconnect copyWith({int? reason, bool? skipMessage, String? message, String? filteredMessage, }) => CDisconnect(reason: reason ?? this.reason, skipMessage: skipMessage ?? this.skipMessage, message: message ?? this.message, filteredMessage: filteredMessage ?? this.filteredMessage, );
 }
 enum RuleValue {
-  null_,
+  null_('null');
+  const RuleValue(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static RuleValue? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, RuleValue> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class BedrockPacketsGameRule {
   final String ruleName;
@@ -24646,73 +25060,79 @@ final class CGamerulesChanged {
   CGamerulesChanged copyWith({List<BedrockPacketsGameRule>? ruleData, }) => CGamerulesChanged(ruleData: ruleData ?? this.ruleData, );
 }
 enum ContainerName {
-  anvilInput,
-  anvilMaterial,
-  anvilResultPreview,
-  smithingTableInput,
-  smithingTableMaterial,
-  smithingTableResultPreview,
-  armor,
-  levelEntity,
-  beaconPayment,
-  brewingStandInput,
-  brewingStandResult,
-  brewingStandFuel,
-  combinedHotBarAndInventory,
-  craftingInput,
-  craftingOutputPreview,
-  recipeConstruction,
-  recipeNature,
-  recipeItems,
-  recipeSearch,
-  recipeSearchBar,
-  recipeEquipment,
-  recipeBook,
-  enchantingInput,
-  enchantingMaterial,
-  furnaceFuel,
-  furnaceIngredient,
-  furnaceResult,
-  horseEquip,
-  hotBar,
-  inventory,
-  shulkerBox,
-  tradeIngredient1,
-  tradeIngredient2,
-  tradeResultPreview,
-  offhand,
-  compoundCreatorInput,
-  compoundCreatorOutputPreview,
-  elementConstructorOutputPreview,
-  materialReducerInput,
-  materialReducerOutput,
-  labTableInput,
-  loomInput,
-  loomDye,
-  loomMaterial,
-  loomResultPreview,
-  blastFurnaceIngredient,
-  smokerIngredient,
-  trade2Ingredient1,
-  trade2Ingredient2,
-  trade2ResultPreview,
-  grindstoneInput,
-  grindstoneAdditional,
-  grindstoneResultPreview,
-  stonecutterInput,
-  stonecutterResultPreview,
-  cartographyInput,
-  cartographyAdditional,
-  cartographyResultPreview,
-  barrel,
-  cursor,
-  createdOutput,
-  smithingTableTemplate,
-  crafterLevelEntity,
-  dynamic,
-  recipeFood,
-  recipeBlocks,
-  recipeFurnaceItems,
+  anvilInput('anvil-input'),
+  anvilMaterial('anvil-material'),
+  anvilResultPreview('anvil-result-preview'),
+  smithingTableInput('smithing-table-input'),
+  smithingTableMaterial('smithing-table-material'),
+  smithingTableResultPreview('smithing-table-result-preview'),
+  armor('armor'),
+  levelEntity('level-entity'),
+  beaconPayment('beacon-payment'),
+  brewingStandInput('brewing-stand-input'),
+  brewingStandResult('brewing-stand-result'),
+  brewingStandFuel('brewing-stand-fuel'),
+  combinedHotBarAndInventory('combined-hot-bar-and-inventory'),
+  craftingInput('crafting-input'),
+  craftingOutputPreview('crafting-output-preview'),
+  recipeConstruction('recipe-construction'),
+  recipeNature('recipe-nature'),
+  recipeItems('recipe-items'),
+  recipeSearch('recipe-search'),
+  recipeSearchBar('recipe-search-bar'),
+  recipeEquipment('recipe-equipment'),
+  recipeBook('recipe-book'),
+  enchantingInput('enchanting-input'),
+  enchantingMaterial('enchanting-material'),
+  furnaceFuel('furnace-fuel'),
+  furnaceIngredient('furnace-ingredient'),
+  furnaceResult('furnace-result'),
+  horseEquip('horse-equip'),
+  hotBar('hot-bar'),
+  inventory('inventory'),
+  shulkerBox('shulker-box'),
+  tradeIngredient1('trade-ingredient1'),
+  tradeIngredient2('trade-ingredient2'),
+  tradeResultPreview('trade-result-preview'),
+  offhand('offhand'),
+  compoundCreatorInput('compound-creator-input'),
+  compoundCreatorOutputPreview('compound-creator-output-preview'),
+  elementConstructorOutputPreview('element-constructor-output-preview'),
+  materialReducerInput('material-reducer-input'),
+  materialReducerOutput('material-reducer-output'),
+  labTableInput('lab-table-input'),
+  loomInput('loom-input'),
+  loomDye('loom-dye'),
+  loomMaterial('loom-material'),
+  loomResultPreview('loom-result-preview'),
+  blastFurnaceIngredient('blast-furnace-ingredient'),
+  smokerIngredient('smoker-ingredient'),
+  trade2Ingredient1('trade2-ingredient1'),
+  trade2Ingredient2('trade2-ingredient2'),
+  trade2ResultPreview('trade2-result-preview'),
+  grindstoneInput('grindstone-input'),
+  grindstoneAdditional('grindstone-additional'),
+  grindstoneResultPreview('grindstone-result-preview'),
+  stonecutterInput('stonecutter-input'),
+  stonecutterResultPreview('stonecutter-result-preview'),
+  cartographyInput('cartography-input'),
+  cartographyAdditional('cartography-additional'),
+  cartographyResultPreview('cartography-result-preview'),
+  barrel('barrel'),
+  cursor('cursor'),
+  createdOutput('created-output'),
+  smithingTableTemplate('smithing-table-template'),
+  crafterLevelEntity('crafter-level-entity'),
+  dynamic('dynamic'),
+  recipeFood('recipe-food'),
+  recipeBlocks('recipe-blocks'),
+  recipeFurnaceItems('recipe-furnace-items');
+  const ContainerName(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ContainerName? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ContainerName> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class FullContainerName {
   final ContainerName containerName;
@@ -24881,16 +25301,22 @@ final class CNetworkSettings {
   CNetworkSettings copyWith({int? compressionThreshold, int? compressionAlgorithm, bool? clientThrottleEnabled, int? clientThrottleThreshold, double? clientThrottleScalar, }) => CNetworkSettings(compressionThreshold: compressionThreshold ?? this.compressionThreshold, compressionAlgorithm: compressionAlgorithm ?? this.compressionAlgorithm, clientThrottleEnabled: clientThrottleEnabled ?? this.clientThrottleEnabled, clientThrottleThreshold: clientThrottleThreshold ?? this.clientThrottleThreshold, clientThrottleScalar: clientThrottleScalar ?? this.clientThrottleScalar, );
 }
 enum CPlayStatus {
-  loginSuccess,
-  outdatedClient,
-  outdatedServer,
-  playerSpawn,
-  invalidTenant,
-  editionMismatchEduToVanilla,
-  editionMismatchVanillaToEdu,
-  serverFullSubClient,
-  editorMismatchEditorToVanilla,
-  editorMismatchVanillaToEditor,
+  loginSuccess('login-success'),
+  outdatedClient('outdated-client'),
+  outdatedServer('outdated-server'),
+  playerSpawn('player-spawn'),
+  invalidTenant('invalid-tenant'),
+  editionMismatchEduToVanilla('edition-mismatch-edu-to-vanilla'),
+  editionMismatchVanillaToEdu('edition-mismatch-vanilla-to-edu'),
+  serverFullSubClient('server-full-sub-client'),
+  editorMismatchEditorToVanilla('editor-mismatch-editor-to-vanilla'),
+  editorMismatchVanillaToEditor('editor-mismatch-vanilla-to-editor');
+  const CPlayStatus(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static CPlayStatus? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, CPlayStatus> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class CPlayerHotbar {
   final int selectedSlot;
@@ -25103,8 +25529,14 @@ final class CSetScore {
   CSetScore copyWith({int? action, List<ScoreEntry>? entries, }) => CSetScore(action: action ?? this.action, entries: entries ?? this.entries, );
 }
 enum SpawnPositionType {
-  playerRespawn,
-  worldRespawn,
+  playerRespawn('player-respawn'),
+  worldRespawn('world-respawn');
+  const SpawnPositionType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static SpawnPositionType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, SpawnPositionType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class CSetSpawnPosition {
   final SpawnPositionType spawnPositionType;
@@ -25120,15 +25552,21 @@ final class CSetTime {
   CSetTime copyWith({int? time, }) => CSetTime(time: time ?? this.time, );
 }
 enum TitleType {
-  clear,
-  reset,
-  title,
-  subtitle,
-  actionbar,
-  times,
-  titleTextObject,
-  subtitleTextObject,
-  actionbarTextObject,
+  clear('clear'),
+  reset('reset'),
+  title('title'),
+  subtitle('subtitle'),
+  actionbar('actionbar'),
+  times('times'),
+  titleTextObject('title-text-object'),
+  subtitleTextObject('subtitle-text-object'),
+  actionbarTextObject('actionbar-text-object');
+  const TitleType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static TitleType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, TitleType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class CSetTitle {
   final TitleType titleType;
@@ -25149,11 +25587,17 @@ final class CShowCredits {
   CShowCredits copyWith({int? playerRuntimeId, int? creditsState, }) => CShowCredits(playerRuntimeId: playerRuntimeId ?? this.playerRuntimeId, creditsState: creditsState ?? this.creditsState, );
 }
 enum GamePublishSetting {
-  noMultiPlay,
-  inviteOnly,
-  friendsOnly,
-  friendsOfFriends,
-  public,
+  noMultiPlay('no-multi-play'),
+  inviteOnly('invite-only'),
+  friendsOnly('friends-only'),
+  friendsOfFriends('friends-of-friends'),
+  public('public');
+  const GamePublishSetting(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static GamePublishSetting? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, GamePublishSetting> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class LevelSettings {
   final int seed;
@@ -25595,8 +26039,14 @@ final class ClientboundPacketUnknown extends ClientboundPacket {
 @pragma("wasm:import", r"component._import809")
 external i0.WasmVoid _import809(i0.WasmI32 p0);
 enum ImageType {
-  url,
-  path,
+  url('url'),
+  path('path');
+  const ImageType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ImageType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ImageType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class FormImage {
   final ImageType type;
@@ -25730,154 +26180,160 @@ final class BedrockResourcePacksInfo {
 external i0.WasmVoid _import813(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI64 p6, i0.WasmI64 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12);
 /// Protocol-level disconnect reasons for Minecraft Bedrock Edition.
 enum BedrockDisconnectReason {
-  unknown,
-  cantConnectNoInternet,
-  noPermissions,
-  unrecoverableError,
-  thirdPartyBlocked,
-  thirdPartyNoInternet,
-  thirdPartyBadIp,
-  thirdPartyNoServerOrServerLocked,
-  versionMismatch,
-  skinIssue,
-  inviteSessionNotFound,
-  eduLevelSettingsMissing,
-  localServerNotFound,
-  legacyDisconnect,
-  userLeaveGameAttempted,
-  platformLockedSkinsError,
-  realmsWorldUnassigned,
-  realmsServerCantConnect,
-  realmsServerHidden,
-  realmsServerDisabledBeta,
-  realmsServerDisabled,
-  crossPlatformDisabled,
-  cantConnect,
-  sessionNotFound,
-  clientSettingsIncompatibleWithServer,
-  serverFull,
-  invalidPlatformSkin,
-  editionVersionMismatch,
-  editionMismatch,
-  levelNewerThanExeVersion,
-  noFailOccurred,
-  bannedSkin,
-  timeout,
-  serverNotFound,
-  outdatedServer,
-  outdatedClient,
-  noPremiumPlatform,
-  multiplayerDisabled,
-  noWifi,
-  worldCorruption,
-  noReason,
-  disconnected,
-  invalidPlayer,
-  loggedInOtherLocation,
-  serverIdConflict,
-  notAllowed,
-  notAuthenticated,
-  invalidTenant,
-  unknownPacket,
-  unexpectedPacket,
-  invalidCommandRequestPacket,
-  hostSuspended,
-  loginPacketNoRequest,
-  loginPacketNoCert,
-  missingClient,
-  kicked,
-  kickedForExploit,
-  kickedForIdle,
-  resourcePackProblem,
-  incompatiblePack,
-  outOfStorage,
-  invalidLevel,
-  disconnectPacket,
-  blockMismatch,
-  invalidHeights,
-  invalidWidths,
-  connectionLost,
-  zombieConnection,
-  shutdown,
-  reasonNotSet,
-  loadingStateTimeout,
-  resourcePackLoadingFailed,
-  searchingForSessionLoadingScreenFailed,
-  netherNetProtocolVersion,
-  subsystemStatusError,
-  emptyAuthFromDiscovery,
-  emptyUrlFromDiscovery,
-  expiredAuthFromDiscovery,
-  unknownSignalServiceSignInFailure,
-  xblJoinLobbyFailure,
-  unspecifiedClientInstanceDisconnection,
-  netherNetSessionNotFound,
-  netherNetCreatePeerConnection,
-  netherNetIce,
-  netherNetConnectRequest,
-  netherNetConnectResponse,
-  netherNetNegotiationTimeout,
-  netherNetInactivityTimeout,
-  staleConnectionBeingReplaced,
-  realmsSessionNotFound,
-  badPacket,
-  netherNetFailedToCreateOffer,
-  netherNetFailedToCreateAnswer,
-  netherNetFailedToSetLocalDescription,
-  netherNetFailedToSetRemoteDescription,
-  netherNetNegotiationTimeoutWaitingForResponse,
-  netherNetNegotiationTimeoutWaitingForAccept,
-  netherNetIncomingConnectionIgnored,
-  netherNetSignalingParsingFailure,
-  netherNetSignalingUnknownError,
-  netherNetSignalingUnicastDeliveryFailed,
-  netherNetSignalingBroadcastDeliveryFailed,
-  netherNetSignalingGenericDeliveryFailed,
-  editorMismatchEditorWorld,
-  editorMismatchVanillaWorld,
-  worldTransferNotPrimaryClient,
-  requestServerShutdown,
-  clientGameSetupCancelled,
-  clientGameSetupFailed,
-  noVenue,
-  netherNetSignalingSigninFailed,
-  sessionAccessDenied,
-  serviceSigninIssue,
-  netherNetNoSignalingChannel,
-  netherNetNotLoggedIn,
-  netherNetClientSignalingError,
-  subClientLoginDisabled,
-  deepLinkTryingToOpenDemoWorldWhileSignedIn,
-  asyncJoinTaskDenied,
-  realmsTimelineRequired,
-  guestWithoutHost,
-  failedToJoinExperience,
-  netherNetDataChannelClosed,
-  discoveryEnvironmentMismatch,
-  hostWithoutKeys,
-  hostSignedOut,
-  scriptWatchdogException,
-  scriptMemoryLimitExceeded,
-  storageLowDuringGameplay,
-  storageFullDuringGameplay,
-  levelStorageCorruption,
-  editionMismatchVanillaToEdu,
-  editionMismatchEduToVanilla,
-  editorMismatchEditorToVanilla,
-  editorMismatchVanillaToEditor,
-  denyListed,
-  nonceMissing,
-  nonceNotFound,
-  nonceExpired,
-  nonceNotValid,
-  hostDisconnected,
-  editorJoinIntentPolicyFailure,
-  netherNetIdentityNotAllowed,
-  invalidName,
-  expiredToken,
-  hostAcceptsNoTypeOfAuth,
-  notAuthenticatedFastFail,
-  editorNotAllowed,
+  unknown('unknown'),
+  cantConnectNoInternet('cant-connect-no-internet'),
+  noPermissions('no-permissions'),
+  unrecoverableError('unrecoverable-error'),
+  thirdPartyBlocked('third-party-blocked'),
+  thirdPartyNoInternet('third-party-no-internet'),
+  thirdPartyBadIp('third-party-bad-ip'),
+  thirdPartyNoServerOrServerLocked('third-party-no-server-or-server-locked'),
+  versionMismatch('version-mismatch'),
+  skinIssue('skin-issue'),
+  inviteSessionNotFound('invite-session-not-found'),
+  eduLevelSettingsMissing('edu-level-settings-missing'),
+  localServerNotFound('local-server-not-found'),
+  legacyDisconnect('legacy-disconnect'),
+  userLeaveGameAttempted('user-leave-game-attempted'),
+  platformLockedSkinsError('platform-locked-skins-error'),
+  realmsWorldUnassigned('realms-world-unassigned'),
+  realmsServerCantConnect('realms-server-cant-connect'),
+  realmsServerHidden('realms-server-hidden'),
+  realmsServerDisabledBeta('realms-server-disabled-beta'),
+  realmsServerDisabled('realms-server-disabled'),
+  crossPlatformDisabled('cross-platform-disabled'),
+  cantConnect('cant-connect'),
+  sessionNotFound('session-not-found'),
+  clientSettingsIncompatibleWithServer('client-settings-incompatible-with-server'),
+  serverFull('server-full'),
+  invalidPlatformSkin('invalid-platform-skin'),
+  editionVersionMismatch('edition-version-mismatch'),
+  editionMismatch('edition-mismatch'),
+  levelNewerThanExeVersion('level-newer-than-exe-version'),
+  noFailOccurred('no-fail-occurred'),
+  bannedSkin('banned-skin'),
+  timeout('timeout'),
+  serverNotFound('server-not-found'),
+  outdatedServer('outdated-server'),
+  outdatedClient('outdated-client'),
+  noPremiumPlatform('no-premium-platform'),
+  multiplayerDisabled('multiplayer-disabled'),
+  noWifi('no-wifi'),
+  worldCorruption('world-corruption'),
+  noReason('no-reason'),
+  disconnected('disconnected'),
+  invalidPlayer('invalid-player'),
+  loggedInOtherLocation('logged-in-other-location'),
+  serverIdConflict('server-id-conflict'),
+  notAllowed('not-allowed'),
+  notAuthenticated('not-authenticated'),
+  invalidTenant('invalid-tenant'),
+  unknownPacket('unknown-packet'),
+  unexpectedPacket('unexpected-packet'),
+  invalidCommandRequestPacket('invalid-command-request-packet'),
+  hostSuspended('host-suspended'),
+  loginPacketNoRequest('login-packet-no-request'),
+  loginPacketNoCert('login-packet-no-cert'),
+  missingClient('missing-client'),
+  kicked('kicked'),
+  kickedForExploit('kicked-for-exploit'),
+  kickedForIdle('kicked-for-idle'),
+  resourcePackProblem('resource-pack-problem'),
+  incompatiblePack('incompatible-pack'),
+  outOfStorage('out-of-storage'),
+  invalidLevel('invalid-level'),
+  disconnectPacket('disconnect-packet'),
+  blockMismatch('block-mismatch'),
+  invalidHeights('invalid-heights'),
+  invalidWidths('invalid-widths'),
+  connectionLost('connection-lost'),
+  zombieConnection('zombie-connection'),
+  shutdown('shutdown'),
+  reasonNotSet('reason-not-set'),
+  loadingStateTimeout('loading-state-timeout'),
+  resourcePackLoadingFailed('resource-pack-loading-failed'),
+  searchingForSessionLoadingScreenFailed('searching-for-session-loading-screen-failed'),
+  netherNetProtocolVersion('nether-net-protocol-version'),
+  subsystemStatusError('subsystem-status-error'),
+  emptyAuthFromDiscovery('empty-auth-from-discovery'),
+  emptyUrlFromDiscovery('empty-url-from-discovery'),
+  expiredAuthFromDiscovery('expired-auth-from-discovery'),
+  unknownSignalServiceSignInFailure('unknown-signal-service-sign-in-failure'),
+  xblJoinLobbyFailure('xbl-join-lobby-failure'),
+  unspecifiedClientInstanceDisconnection('unspecified-client-instance-disconnection'),
+  netherNetSessionNotFound('nether-net-session-not-found'),
+  netherNetCreatePeerConnection('nether-net-create-peer-connection'),
+  netherNetIce('nether-net-ice'),
+  netherNetConnectRequest('nether-net-connect-request'),
+  netherNetConnectResponse('nether-net-connect-response'),
+  netherNetNegotiationTimeout('nether-net-negotiation-timeout'),
+  netherNetInactivityTimeout('nether-net-inactivity-timeout'),
+  staleConnectionBeingReplaced('stale-connection-being-replaced'),
+  realmsSessionNotFound('realms-session-not-found'),
+  badPacket('bad-packet'),
+  netherNetFailedToCreateOffer('nether-net-failed-to-create-offer'),
+  netherNetFailedToCreateAnswer('nether-net-failed-to-create-answer'),
+  netherNetFailedToSetLocalDescription('nether-net-failed-to-set-local-description'),
+  netherNetFailedToSetRemoteDescription('nether-net-failed-to-set-remote-description'),
+  netherNetNegotiationTimeoutWaitingForResponse('nether-net-negotiation-timeout-waiting-for-response'),
+  netherNetNegotiationTimeoutWaitingForAccept('nether-net-negotiation-timeout-waiting-for-accept'),
+  netherNetIncomingConnectionIgnored('nether-net-incoming-connection-ignored'),
+  netherNetSignalingParsingFailure('nether-net-signaling-parsing-failure'),
+  netherNetSignalingUnknownError('nether-net-signaling-unknown-error'),
+  netherNetSignalingUnicastDeliveryFailed('nether-net-signaling-unicast-delivery-failed'),
+  netherNetSignalingBroadcastDeliveryFailed('nether-net-signaling-broadcast-delivery-failed'),
+  netherNetSignalingGenericDeliveryFailed('nether-net-signaling-generic-delivery-failed'),
+  editorMismatchEditorWorld('editor-mismatch-editor-world'),
+  editorMismatchVanillaWorld('editor-mismatch-vanilla-world'),
+  worldTransferNotPrimaryClient('world-transfer-not-primary-client'),
+  requestServerShutdown('request-server-shutdown'),
+  clientGameSetupCancelled('client-game-setup-cancelled'),
+  clientGameSetupFailed('client-game-setup-failed'),
+  noVenue('no-venue'),
+  netherNetSignalingSigninFailed('nether-net-signaling-signin-failed'),
+  sessionAccessDenied('session-access-denied'),
+  serviceSigninIssue('service-signin-issue'),
+  netherNetNoSignalingChannel('nether-net-no-signaling-channel'),
+  netherNetNotLoggedIn('nether-net-not-logged-in'),
+  netherNetClientSignalingError('nether-net-client-signaling-error'),
+  subClientLoginDisabled('sub-client-login-disabled'),
+  deepLinkTryingToOpenDemoWorldWhileSignedIn('deep-link-trying-to-open-demo-world-while-signed-in'),
+  asyncJoinTaskDenied('async-join-task-denied'),
+  realmsTimelineRequired('realms-timeline-required'),
+  guestWithoutHost('guest-without-host'),
+  failedToJoinExperience('failed-to-join-experience'),
+  netherNetDataChannelClosed('nether-net-data-channel-closed'),
+  discoveryEnvironmentMismatch('discovery-environment-mismatch'),
+  hostWithoutKeys('host-without-keys'),
+  hostSignedOut('host-signed-out'),
+  scriptWatchdogException('script-watchdog-exception'),
+  scriptMemoryLimitExceeded('script-memory-limit-exceeded'),
+  storageLowDuringGameplay('storage-low-during-gameplay'),
+  storageFullDuringGameplay('storage-full-during-gameplay'),
+  levelStorageCorruption('level-storage-corruption'),
+  editionMismatchVanillaToEdu('edition-mismatch-vanilla-to-edu'),
+  editionMismatchEduToVanilla('edition-mismatch-edu-to-vanilla'),
+  editorMismatchEditorToVanilla('editor-mismatch-editor-to-vanilla'),
+  editorMismatchVanillaToEditor('editor-mismatch-vanilla-to-editor'),
+  denyListed('deny-listed'),
+  nonceMissing('nonce-missing'),
+  nonceNotFound('nonce-not-found'),
+  nonceExpired('nonce-expired'),
+  nonceNotValid('nonce-not-valid'),
+  hostDisconnected('host-disconnected'),
+  editorJoinIntentPolicyFailure('editor-join-intent-policy-failure'),
+  netherNetIdentityNotAllowed('nether-net-identity-not-allowed'),
+  invalidName('invalid-name'),
+  expiredToken('expired-token'),
+  hostAcceptsNoTypeOfAuth('host-accepts-no-type-of-auth'),
+  notAuthenticatedFastFail('not-authenticated-fast-fail'),
+  editorNotAllowed('editor-not-allowed');
+  const BedrockDisconnectReason(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockDisconnectReason? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockDisconnectReason> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Options for disconnecting a Bedrock Edition player.
 final class BedrockKickOptions {
@@ -28532,21 +28988,33 @@ BedrockScoreboard get scoreboard => getScoreboard();
 }
 /// Represents the color of a boss bar.
 enum BossBarColor {
-  pink,
-  blue,
-  red,
-  green,
-  yellow,
-  purple,
-  white,
+  pink('pink'),
+  blue('blue'),
+  red('red'),
+  green('green'),
+  yellow('yellow'),
+  purple('purple'),
+  white('white');
+  const BossBarColor(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BossBarColor? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BossBarColor> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Represents the notches/divisions of a boss bar.
 enum BossBarDivision {
-  noDivision,
-  notches6,
-  notches10,
-  notches12,
-  notches20,
+  noDivision('no-division'),
+  notches6('notches-6'),
+  notches10('notches-10'),
+  notches12('notches-12'),
+  notches20('notches-20');
+  const BossBarDivision(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BossBarDivision? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BossBarDivision> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import815")
 external i0.WasmI32 _import815(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
@@ -29323,13 +29791,19 @@ external i0.WasmVoid _import852(i0.WasmI32 p0, i0.WasmI32 p1);
 /// Represents the difficulty setting of a Minecraft server.
 enum Difficulty {
 /// Hostile mobs do not spawn. Players regain health automatically.
-  peaceful,
+  peaceful('peaceful'),
 /// Hostile mobs deal less damage.
-  easy,
+  easy('easy'),
 /// Standard Minecraft difficulty.
-  normal,
+  normal('normal'),
 /// Hostile mobs deal more damage.
-  hard,
+  hard('hard');
+  const Difficulty(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Difficulty? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Difficulty> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import853")
 external i0.WasmI32 _import853(i0.WasmI32 p0);
@@ -29365,9 +29839,15 @@ final class ServerCommandSenderPlayer extends ServerCommandSender {
 external i0.WasmVoid _import863(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 /// Represents the three main Minecraft dimensions.
 enum Dimension {
-  overworld,
-  nether,
-  end,
+  overworld('overworld'),
+  nether('nether'),
+  end('end');
+  const Dimension(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Dimension? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Dimension> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import864")
 external i0.WasmI32 _import864(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
@@ -29417,9 +29897,15 @@ external i0.WasmI32 _import885(i0.WasmI32 p0);
 external i0.WasmI32 _import886(i0.WasmI32 p0);
 /// Frame type for an advancement.
 enum FrameType {
-  task,
-  challenge,
-  goal,
+  task('task'),
+  challenge('challenge'),
+  goal('goal');
+  const FrameType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static FrameType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, FrameType> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// Display information for an advancement.
 final class AdvancementDisplay {
@@ -30176,9 +30662,15 @@ DatapackManager get datapackManager => getDatapackManager();
 @pragma("wasm:import", r"component._import894")
 external i0.WasmI32 _import894(i0.WasmI32 p0, i0.WasmI32 p1);
 enum StringType {
-  singleWord,
-  quotable,
-  greedy,
+  singleWord('single-word'),
+  quotable('quotable'),
+  greedy('greedy');
+  const StringType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static StringType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, StringType> _byWireName = {for (final value in values) value.wireName: value};
 }
 sealed class CommandArgumentType {
   const CommandArgumentType();
@@ -30950,11 +31442,17 @@ external i0.WasmI32 _import907(i0.WasmI32 p0);
 @pragma("wasm:import", r"component._import908")
 external i0.WasmVoid _import908(i0.WasmI32 p0, i0.WasmI32 p1);
 enum PermissionLevel2 {
-  zero,
-  one,
-  two,
-  three,
-  four,
+  zero('zero'),
+  one('one'),
+  two('two'),
+  three('three'),
+  four('four');
+  const PermissionLevel2(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PermissionLevel2? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PermissionLevel2> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import909")
 external i0.WasmI32 _import909(i0.WasmI32 p0);
@@ -30968,134 +31466,140 @@ external i0.WasmVoid _import912(i0.WasmI32 p0, i0.WasmI32 p1);
 external i0.WasmVoid _import913(i0.WasmI32 p0, i0.WasmI32 p1);
 /// All Minecraft-supported locales.
 enum Locale {
-  afZa,
-  arSa,
-  astEs,
-  azAz,
-  baRu,
-  bar,
-  beBy,
-  bgBg,
-  brFr,
-  brb,
-  bsBa,
-  caEs,
-  csCz,
-  cyGb,
-  daDk,
-  deAt,
-  deCh,
-  deDe,
-  elGr,
-  enAu,
-  enCa,
-  enGb,
-  enNz,
-  enPt,
-  enUd,
-  enUs,
-  enp,
-  enws,
-  eoUy,
-  esAr,
-  esCl,
-  esEc,
-  esEs,
-  esMx,
-  esUy,
-  esVe,
-  esan,
-  etEe,
-  euEs,
-  faIr,
-  fiFi,
-  filPh,
-  foFo,
-  frCa,
-  frFr,
-  fraDe,
-  furIt,
-  fyNl,
-  gaIe,
-  gdGb,
-  glEs,
-  hawUs,
-  heIl,
-  hiIn,
-  hrHr,
-  huHu,
-  hyAm,
-  idId,
-  igNg,
-  ioEn,
-  isIs,
-  isv,
-  itIt,
-  jaJp,
-  jboEn,
-  kaGe,
-  kkKz,
-  knIn,
-  koKr,
-  ksh,
-  kwGb,
-  laLa,
-  lbLu,
-  liLi,
-  lmo,
-  loLa,
-  lolUs,
-  ltLt,
-  lvLv,
-  lzh,
-  mkMk,
-  mnMn,
-  msMy,
-  mtMt,
-  nah,
-  ndsDe,
-  nlBe,
-  nlNl,
-  nnNo,
-  noNo,
-  ocFr,
-  ovd,
-  plPl,
-  ptBr,
-  ptPt,
-  qyaAa,
-  roRo,
-  rpr,
-  ruRu,
-  ryUa,
-  sahSah,
-  seNo,
-  skSk,
-  slSi,
-  soSo,
-  sqAl,
-  srCs,
-  srSp,
-  svSe,
-  sxu,
-  szl,
-  taIn,
-  thTh,
-  tlPh,
-  tlhAa,
-  tok,
-  trTr,
-  ttRu,
-  ukUa,
-  valEs,
-  vecIt,
-  viVn,
-  yiDe,
-  yoNg,
-  zhCn,
-  zhHk,
-  zhTw,
-  zlmArab,
+  afZa('af-za'),
+  arSa('ar-sa'),
+  astEs('ast-es'),
+  azAz('az-az'),
+  baRu('ba-ru'),
+  bar('bar'),
+  beBy('be-by'),
+  bgBg('bg-bg'),
+  brFr('br-fr'),
+  brb('brb'),
+  bsBa('bs-ba'),
+  caEs('ca-es'),
+  csCz('cs-cz'),
+  cyGb('cy-gb'),
+  daDk('da-dk'),
+  deAt('de-at'),
+  deCh('de-ch'),
+  deDe('de-de'),
+  elGr('el-gr'),
+  enAu('en-au'),
+  enCa('en-ca'),
+  enGb('en-gb'),
+  enNz('en-nz'),
+  enPt('en-pt'),
+  enUd('en-ud'),
+  enUs('en-us'),
+  enp('enp'),
+  enws('enws'),
+  eoUy('eo-uy'),
+  esAr('es-ar'),
+  esCl('es-cl'),
+  esEc('es-ec'),
+  esEs('es-es'),
+  esMx('es-mx'),
+  esUy('es-uy'),
+  esVe('es-ve'),
+  esan('esan'),
+  etEe('et-ee'),
+  euEs('eu-es'),
+  faIr('fa-ir'),
+  fiFi('fi-fi'),
+  filPh('fil-ph'),
+  foFo('fo-fo'),
+  frCa('fr-ca'),
+  frFr('fr-fr'),
+  fraDe('fra-de'),
+  furIt('fur-it'),
+  fyNl('fy-nl'),
+  gaIe('ga-ie'),
+  gdGb('gd-gb'),
+  glEs('gl-es'),
+  hawUs('haw-us'),
+  heIl('he-il'),
+  hiIn('hi-in'),
+  hrHr('hr-hr'),
+  huHu('hu-hu'),
+  hyAm('hy-am'),
+  idId('id-id'),
+  igNg('ig-ng'),
+  ioEn('io-en'),
+  isIs('is-is'),
+  isv('isv'),
+  itIt('it-it'),
+  jaJp('ja-jp'),
+  jboEn('jbo-en'),
+  kaGe('ka-ge'),
+  kkKz('kk-kz'),
+  knIn('kn-in'),
+  koKr('ko-kr'),
+  ksh('ksh'),
+  kwGb('kw-gb'),
+  laLa('la-la'),
+  lbLu('lb-lu'),
+  liLi('li-li'),
+  lmo('lmo'),
+  loLa('lo-la'),
+  lolUs('lol-us'),
+  ltLt('lt-lt'),
+  lvLv('lv-lv'),
+  lzh('lzh'),
+  mkMk('mk-mk'),
+  mnMn('mn-mn'),
+  msMy('ms-my'),
+  mtMt('mt-mt'),
+  nah('nah'),
+  ndsDe('nds-de'),
+  nlBe('nl-be'),
+  nlNl('nl-nl'),
+  nnNo('nn-no'),
+  noNo('no-no'),
+  ocFr('oc-fr'),
+  ovd('ovd'),
+  plPl('pl-pl'),
+  ptBr('pt-br'),
+  ptPt('pt-pt'),
+  qyaAa('qya-aa'),
+  roRo('ro-ro'),
+  rpr('rpr'),
+  ruRu('ru-ru'),
+  ryUa('ry-ua'),
+  sahSah('sah-sah'),
+  seNo('se-no'),
+  skSk('sk-sk'),
+  slSi('sl-si'),
+  soSo('so-so'),
+  sqAl('sq-al'),
+  srCs('sr-cs'),
+  srSp('sr-sp'),
+  svSe('sv-se'),
+  sxu('sxu'),
+  szl('szl'),
+  taIn('ta-in'),
+  thTh('th-th'),
+  tlPh('tl-ph'),
+  tlhAa('tlh-aa'),
+  tok('tok'),
+  trTr('tr-tr'),
+  ttRu('tt-ru'),
+  ukUa('uk-ua'),
+  valEs('val-es'),
+  vecIt('vec-it'),
+  viVn('vi-vn'),
+  yiDe('yi-de'),
+  yoNg('yo-ng'),
+  zhCn('zh-cn'),
+  zhHk('zh-hk'),
+  zhTw('zh-tw'),
+  zlmArab('zlm-arab');
+  const Locale(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Locale? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Locale> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import914")
 external i0.WasmI32 _import914(i0.WasmI32 p0);
@@ -31328,36 +31832,60 @@ final class NotInBoundsUpperBound extends NotInBounds {
   const NotInBoundsUpperBound(this.value);
 }
 enum BossbarColor {
-  pink,
-  blue,
-  red,
-  green,
-  yellow,
-  purple,
-  white,
+  pink('pink'),
+  blue('blue'),
+  red('red'),
+  green('green'),
+  yellow('yellow'),
+  purple('purple'),
+  white('white');
+  const BossbarColor(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BossbarColor? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BossbarColor> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum BossbarStyle {
-  noDivision,
-  notches6,
-  notches10,
-  notches12,
-  notches20,
+  noDivision('no-division'),
+  notches6('notches6'),
+  notches10('notches10'),
+  notches12('notches12'),
+  notches20('notches20');
+  const BossbarStyle(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BossbarStyle? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BossbarStyle> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum CommandSoundCategory {
-  master,
-  music,
-  records,
-  weather,
-  blocks,
-  hostile,
-  neutral,
-  players,
-  ambient,
-  voice,
+  master('master'),
+  music('music'),
+  records('records'),
+  weather('weather'),
+  blocks('blocks'),
+  hostile('hostile'),
+  neutral('neutral'),
+  players('players'),
+  ambient('ambient'),
+  voice('voice');
+  const CommandSoundCategory(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static CommandSoundCategory? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, CommandSoundCategory> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum EntityAnchor {
-  eyes,
-  feet,
+  eyes('eyes'),
+  feet('feet');
+  const EntityAnchor(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EntityAnchor? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EntityAnchor> _byWireName = {for (final value in values) value.wireName: value};
 }
 sealed class Arg {
   const Arg();
@@ -31858,286 +32386,298 @@ _import921(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(handlerId
 }
 }
 enum EventType {
-  playerJoinEvent,
-  playerLeaveEvent,
-  playerLoginEvent,
-  playerChatEvent,
-  playerCommandSendEvent,
-  playerPermissionCheckEvent,
-  playerMoveEvent,
-  playerTeleportEvent,
-  playerChangeWorldEvent,
-  playerRespawnEvent,
-  playerExpChangeEvent,
-  playerItemHeldEvent,
-  playerChangedMainHandEvent,
-  playerGamemodeChangeEvent,
-  playerCustomPayloadEvent,
-  playerFishEvent,
-  playerEggThrowEvent,
-  playerInteractUnknownEntityEvent,
-  playerInteractEntityEvent,
-  playerInteractEvent,
-  playerToggleSneakEvent,
-  playerToggleFlightEvent,
-  playerToggleSprintEvent,
-  inventoryClickEvent,
-  inventoryCloseEvent,
-  blockRedstoneEvent,
-  blockBreakEvent,
-  blockBurnEvent,
-  blockCanBuildEvent,
-  blockGrowEvent,
-  blockPlaceEvent,
-  bedrockFormResponseEvent,
-  dialogClickActionEvent,
-  dialogShowEvent,
-  dialogClearEvent,
-  serverCommandEvent,
-  serverListPingEvent,
-  serverLoadEvent,
-  spawnChangeEvent,
-  serverBroadcastEvent,
-  serverTickStartEvent,
-  serverTickEndEvent,
-  packetReceivedEvent,
-  packetSentEvent,
-  chunkLoadEvent,
-  chunkSaveEvent,
-  chunkSendEvent,
-  entityDamageEvent,
-  entityDeathEvent,
-  playerDeathEvent,
-  entitySpawnEvent,
-  entityCombustEvent,
-  entityRegainHealthEvent,
-  entityAirChangeEvent,
-  entityBreedEvent,
-  entityDismountEvent,
-  entityDyeEvent,
-  entityEnterLoveModeEvent,
-  entityExplodeEvent,
-  entityMountEvent,
-  entityPickupItemEvent,
-  entityPortalEvent,
-  entityResurrectEvent,
-  entityShootBowEvent,
-  entityTameEvent,
-  entityTargetEvent,
-  entityTeleportEvent,
-  entityToggleGlideEvent,
-  entityTransformEvent,
-  playerItemConsumeEvent,
-  playerItemDamageEvent,
-  playerDropItemEvent,
-  playerBedEnterEvent,
-  playerBedLeaveEvent,
-  playerBucketEmptyEvent,
-  playerBucketFillEvent,
-  blockDamageEvent,
-  blockIgniteEvent,
-  blockFromToEvent,
-  blockFormEvent,
-  blockFadeEvent,
-  blockDispenseEvent,
-  blockExplodeEvent,
-  blockPhysicsEvent,
-  blockPistonExtendEvent,
-  blockPistonRetractEvent,
-  notePlayEvent,
-  signChangeEvent,
-  spongeAbsorbEvent,
-  tntPrimeEvent,
-  weatherChangeEvent,
-  thunderChangeEvent,
-  worldLoadEvent,
-  worldUnloadEvent,
-  asyncStructureGenerateEvent,
-  asyncStructureSpawnEvent,
-  chunkPopulateEvent,
-  chunkUnloadEvent,
-  entitiesLoadEvent,
-  entitiesUnloadEvent,
-  genericGameEvent,
-  lootGenerateEvent,
-  portalCreateEvent,
-  structureGrowEvent,
-  timeSkipEvent,
-  worldInitEvent,
-  worldSaveEvent,
-  inventoryOpenEvent,
-  inventoryDragEvent,
-  craftItemEvent,
-  furnaceSmeltEvent,
-  brewEvent,
-  brewingStandFuelEvent,
-  furnaceBurnEvent,
-  furnaceExtractEvent,
-  furnaceStartSmeltEvent,
-  hopperInventorySearchEvent,
-  inventoryCreativeEvent,
-  inventoryInteractEvent,
-  inventoryMoveItemEvent,
-  inventoryPickupItemEvent,
-  prepareAnvilEvent,
-  prepareGrindstoneEvent,
-  prepareInventoryResultEvent,
-  prepareItemCraftEvent,
-  prepareSmithingEvent,
-  smithItemEvent,
-  tradeSelectEvent,
-  vehicleBlockCollisionEvent,
-  vehicleCollisionEvent,
-  vehicleCreateEvent,
-  vehicleDamageEvent,
-  vehicleDestroyEvent,
-  vehicleEnterEvent,
-  vehicleEntityCollisionEvent,
-  vehicleExitEvent,
-  vehicleMoveEvent,
-  vehicleUpdateEvent,
-  prepareItemEnchantEvent,
-  enchantItemEvent,
-  mapInitializeEvent,
-  hangingBreakEvent,
-  hangingBreakByEntityEvent,
-  hangingPlaceEvent,
-  bellResonateEvent,
-  bellRingEvent,
-  blockBrushEvent,
-  blockCookEvent,
-  blockDamageAbortEvent,
-  blockDispenseArmorEvent,
-  blockDispenseLootEvent,
-  blockDropItemEvent,
-  blockExpEvent,
-  blockFertilizeEvent,
-  blockMultiPlaceEvent,
-  blockReceiveGameEvent,
-  blockShearEntityEvent,
-  blockSpreadEvent,
-  brewingStartEvent,
-  campfireStartEvent,
-  cauldronLevelChangeEvent,
-  crafterCraftEvent,
-  entityBlockFormEvent,
-  fluidLevelChangeEvent,
-  inventoryBlockStartEvent,
-  leavesDecayEvent,
-  moistureChangeEvent,
-  sculkBloomEvent,
-  vaultDisplayItemEvent,
-  creatureSpawnEvent,
-  enderDragonChangePhaseEvent,
-  entityBreakDoorEvent,
-  entityChangeBlockEvent,
-  entityDamageByBlockEvent,
-  entityDamageByEntityEvent,
-  entityDropItemEvent,
-  entityEnterBlockEvent,
-  entityExhaustionEvent,
-  entityInteractEvent,
-  entityKnockbackEvent,
-  entityPlaceEvent,
-  entityPoseChangeEvent,
-  entityPotionEffectEvent,
-  entitySpellCastEvent,
-  entityTargetLivingEntityEvent,
-  entityToggleSwimEvent,
-  explosionPrimeEvent,
-  fireworkExplodeEvent,
-  foodLevelChangeEvent,
-  itemDespawnEvent,
-  itemMergeEvent,
-  itemSpawnEvent,
-  piglinBarterEvent,
-  projectileHitEvent,
-  projectileLaunchEvent,
-  sheepDyeWoolEvent,
-  sheepRegrowWoolEvent,
-  slimeSplitEvent,
-  striderTemperatureChangeEvent,
-  villagerAcquireTradeEvent,
-  villagerCareerChangeEvent,
-  villagerReplenishTradeEvent,
-  wardenAngerChangeEvent,
-  areaEffectCloudApplyEvent,
-  arrowBodyCountChangeEvent,
-  batToggleSleepEvent,
-  creeperPowerEvent,
-  entityCombustByBlockEvent,
-  entityCombustByEntityEvent,
-  entityKnockbackByEntityEvent,
-  entityPortalEnterEvent,
-  entityPortalExitEvent,
-  entityRemoveEvent,
-  entityTargetBlockEvent,
-  entityUnleashEvent,
-  expBottleEvent,
-  horseJumpEvent,
-  lingeringPotionSplashEvent,
-  pigZapEvent,
-  pigZombieAngerEvent,
-  potionSplashEvent,
-  spawnerSpawnEvent,
-  trialSpawnerSpawnEvent,
-  villagerReputationChangeEvent,
-  asyncPlayerChatEvent,
-  asyncPlayerPreLoginEvent,
-  playerAdvancementDoneEvent,
-  playerAnimationEvent,
-  playerArmorStandManipulateEvent,
-  playerBucketEntityEvent,
-  playerChangedWorldEvent,
-  playerChannelEvent,
-  playerCommandPreprocessEvent,
-  playerEditBookEvent,
-  playerElytraBoostEvent,
-  playerExpCooldownChangeEvent,
-  playerHarvestBlockEvent,
-  playerHideEntityEvent,
-  playerItemBreakEvent,
-  playerItemMendEvent,
-  playerKickEvent,
-  playerLeashEntityEvent,
-  playerLevelChangeEvent,
-  playerLocaleChangeEvent,
-  playerNameEntityEvent,
-  playerOpenSignEvent,
-  playerPortalEvent,
-  playerPreLoginEvent,
-  playerRiptideEvent,
-  playerShearEntityEvent,
-  playerShowEntityEvent,
-  playerSpawnChangeEvent,
-  playerStatisticIncrementEvent,
-  playerSwapHandsEvent,
-  playerTakeLecternBookEvent,
-  playerUnleashEntityEvent,
-  playerVelocityEvent,
-  playerInputEvent,
-  playerInteractAtEntityEvent,
-  playerLinksSendEvent,
-  playerPickupArrowEvent,
-  playerRecipeBookClickEvent,
-  playerRecipeBookSettingsChangeEvent,
-  playerRecipeDiscoverEvent,
-  playerRegisterChannelEvent,
-  playerResourcePackStatusEvent,
-  playerSpawnLocationEvent,
-  playerUnregisterChannelEvent,
-  raidFinishEvent,
-  raidSpawnWaveEvent,
-  raidStopEvent,
-  raidTriggerEvent,
-  lightningStrikeEvent,
+  playerJoinEvent('player-join-event'),
+  playerLeaveEvent('player-leave-event'),
+  playerLoginEvent('player-login-event'),
+  playerChatEvent('player-chat-event'),
+  playerCommandSendEvent('player-command-send-event'),
+  playerPermissionCheckEvent('player-permission-check-event'),
+  playerMoveEvent('player-move-event'),
+  playerTeleportEvent('player-teleport-event'),
+  playerChangeWorldEvent('player-change-world-event'),
+  playerRespawnEvent('player-respawn-event'),
+  playerExpChangeEvent('player-exp-change-event'),
+  playerItemHeldEvent('player-item-held-event'),
+  playerChangedMainHandEvent('player-changed-main-hand-event'),
+  playerGamemodeChangeEvent('player-gamemode-change-event'),
+  playerCustomPayloadEvent('player-custom-payload-event'),
+  playerFishEvent('player-fish-event'),
+  playerEggThrowEvent('player-egg-throw-event'),
+  playerInteractUnknownEntityEvent('player-interact-unknown-entity-event'),
+  playerInteractEntityEvent('player-interact-entity-event'),
+  playerInteractEvent('player-interact-event'),
+  playerToggleSneakEvent('player-toggle-sneak-event'),
+  playerToggleFlightEvent('player-toggle-flight-event'),
+  playerToggleSprintEvent('player-toggle-sprint-event'),
+  inventoryClickEvent('inventory-click-event'),
+  inventoryCloseEvent('inventory-close-event'),
+  blockRedstoneEvent('block-redstone-event'),
+  blockBreakEvent('block-break-event'),
+  blockBurnEvent('block-burn-event'),
+  blockCanBuildEvent('block-can-build-event'),
+  blockGrowEvent('block-grow-event'),
+  blockPlaceEvent('block-place-event'),
+  bedrockFormResponseEvent('bedrock-form-response-event'),
+  dialogClickActionEvent('dialog-click-action-event'),
+  dialogShowEvent('dialog-show-event'),
+  dialogClearEvent('dialog-clear-event'),
+  serverCommandEvent('server-command-event'),
+  serverListPingEvent('server-list-ping-event'),
+  serverLoadEvent('server-load-event'),
+  spawnChangeEvent('spawn-change-event'),
+  serverBroadcastEvent('server-broadcast-event'),
+  serverTickStartEvent('server-tick-start-event'),
+  serverTickEndEvent('server-tick-end-event'),
+  packetReceivedEvent('packet-received-event'),
+  packetSentEvent('packet-sent-event'),
+  chunkLoadEvent('chunk-load-event'),
+  chunkSaveEvent('chunk-save-event'),
+  chunkSendEvent('chunk-send-event'),
+  entityDamageEvent('entity-damage-event'),
+  entityDeathEvent('entity-death-event'),
+  playerDeathEvent('player-death-event'),
+  entitySpawnEvent('entity-spawn-event'),
+  entityCombustEvent('entity-combust-event'),
+  entityRegainHealthEvent('entity-regain-health-event'),
+  entityAirChangeEvent('entity-air-change-event'),
+  entityBreedEvent('entity-breed-event'),
+  entityDismountEvent('entity-dismount-event'),
+  entityDyeEvent('entity-dye-event'),
+  entityEnterLoveModeEvent('entity-enter-love-mode-event'),
+  entityExplodeEvent('entity-explode-event'),
+  entityMountEvent('entity-mount-event'),
+  entityPickupItemEvent('entity-pickup-item-event'),
+  entityPortalEvent('entity-portal-event'),
+  entityResurrectEvent('entity-resurrect-event'),
+  entityShootBowEvent('entity-shoot-bow-event'),
+  entityTameEvent('entity-tame-event'),
+  entityTargetEvent('entity-target-event'),
+  entityTeleportEvent('entity-teleport-event'),
+  entityToggleGlideEvent('entity-toggle-glide-event'),
+  entityTransformEvent('entity-transform-event'),
+  playerItemConsumeEvent('player-item-consume-event'),
+  playerItemDamageEvent('player-item-damage-event'),
+  playerDropItemEvent('player-drop-item-event'),
+  playerBedEnterEvent('player-bed-enter-event'),
+  playerBedLeaveEvent('player-bed-leave-event'),
+  playerBucketEmptyEvent('player-bucket-empty-event'),
+  playerBucketFillEvent('player-bucket-fill-event'),
+  blockDamageEvent('block-damage-event'),
+  blockIgniteEvent('block-ignite-event'),
+  blockFromToEvent('block-from-to-event'),
+  blockFormEvent('block-form-event'),
+  blockFadeEvent('block-fade-event'),
+  blockDispenseEvent('block-dispense-event'),
+  blockExplodeEvent('block-explode-event'),
+  blockPhysicsEvent('block-physics-event'),
+  blockPistonExtendEvent('block-piston-extend-event'),
+  blockPistonRetractEvent('block-piston-retract-event'),
+  notePlayEvent('note-play-event'),
+  signChangeEvent('sign-change-event'),
+  spongeAbsorbEvent('sponge-absorb-event'),
+  tntPrimeEvent('tnt-prime-event'),
+  weatherChangeEvent('weather-change-event'),
+  thunderChangeEvent('thunder-change-event'),
+  worldLoadEvent('world-load-event'),
+  worldUnloadEvent('world-unload-event'),
+  asyncStructureGenerateEvent('async-structure-generate-event'),
+  asyncStructureSpawnEvent('async-structure-spawn-event'),
+  chunkPopulateEvent('chunk-populate-event'),
+  chunkUnloadEvent('chunk-unload-event'),
+  entitiesLoadEvent('entities-load-event'),
+  entitiesUnloadEvent('entities-unload-event'),
+  genericGameEvent('generic-game-event'),
+  lootGenerateEvent('loot-generate-event'),
+  portalCreateEvent('portal-create-event'),
+  structureGrowEvent('structure-grow-event'),
+  timeSkipEvent('time-skip-event'),
+  worldInitEvent('world-init-event'),
+  worldSaveEvent('world-save-event'),
+  inventoryOpenEvent('inventory-open-event'),
+  inventoryDragEvent('inventory-drag-event'),
+  craftItemEvent('craft-item-event'),
+  furnaceSmeltEvent('furnace-smelt-event'),
+  brewEvent('brew-event'),
+  brewingStandFuelEvent('brewing-stand-fuel-event'),
+  furnaceBurnEvent('furnace-burn-event'),
+  furnaceExtractEvent('furnace-extract-event'),
+  furnaceStartSmeltEvent('furnace-start-smelt-event'),
+  hopperInventorySearchEvent('hopper-inventory-search-event'),
+  inventoryCreativeEvent('inventory-creative-event'),
+  inventoryInteractEvent('inventory-interact-event'),
+  inventoryMoveItemEvent('inventory-move-item-event'),
+  inventoryPickupItemEvent('inventory-pickup-item-event'),
+  prepareAnvilEvent('prepare-anvil-event'),
+  prepareGrindstoneEvent('prepare-grindstone-event'),
+  prepareInventoryResultEvent('prepare-inventory-result-event'),
+  prepareItemCraftEvent('prepare-item-craft-event'),
+  prepareSmithingEvent('prepare-smithing-event'),
+  smithItemEvent('smith-item-event'),
+  tradeSelectEvent('trade-select-event'),
+  vehicleBlockCollisionEvent('vehicle-block-collision-event'),
+  vehicleCollisionEvent('vehicle-collision-event'),
+  vehicleCreateEvent('vehicle-create-event'),
+  vehicleDamageEvent('vehicle-damage-event'),
+  vehicleDestroyEvent('vehicle-destroy-event'),
+  vehicleEnterEvent('vehicle-enter-event'),
+  vehicleEntityCollisionEvent('vehicle-entity-collision-event'),
+  vehicleExitEvent('vehicle-exit-event'),
+  vehicleMoveEvent('vehicle-move-event'),
+  vehicleUpdateEvent('vehicle-update-event'),
+  prepareItemEnchantEvent('prepare-item-enchant-event'),
+  enchantItemEvent('enchant-item-event'),
+  mapInitializeEvent('map-initialize-event'),
+  hangingBreakEvent('hanging-break-event'),
+  hangingBreakByEntityEvent('hanging-break-by-entity-event'),
+  hangingPlaceEvent('hanging-place-event'),
+  bellResonateEvent('bell-resonate-event'),
+  bellRingEvent('bell-ring-event'),
+  blockBrushEvent('block-brush-event'),
+  blockCookEvent('block-cook-event'),
+  blockDamageAbortEvent('block-damage-abort-event'),
+  blockDispenseArmorEvent('block-dispense-armor-event'),
+  blockDispenseLootEvent('block-dispense-loot-event'),
+  blockDropItemEvent('block-drop-item-event'),
+  blockExpEvent('block-exp-event'),
+  blockFertilizeEvent('block-fertilize-event'),
+  blockMultiPlaceEvent('block-multi-place-event'),
+  blockReceiveGameEvent('block-receive-game-event'),
+  blockShearEntityEvent('block-shear-entity-event'),
+  blockSpreadEvent('block-spread-event'),
+  brewingStartEvent('brewing-start-event'),
+  campfireStartEvent('campfire-start-event'),
+  cauldronLevelChangeEvent('cauldron-level-change-event'),
+  crafterCraftEvent('crafter-craft-event'),
+  entityBlockFormEvent('entity-block-form-event'),
+  fluidLevelChangeEvent('fluid-level-change-event'),
+  inventoryBlockStartEvent('inventory-block-start-event'),
+  leavesDecayEvent('leaves-decay-event'),
+  moistureChangeEvent('moisture-change-event'),
+  sculkBloomEvent('sculk-bloom-event'),
+  vaultDisplayItemEvent('vault-display-item-event'),
+  creatureSpawnEvent('creature-spawn-event'),
+  enderDragonChangePhaseEvent('ender-dragon-change-phase-event'),
+  entityBreakDoorEvent('entity-break-door-event'),
+  entityChangeBlockEvent('entity-change-block-event'),
+  entityDamageByBlockEvent('entity-damage-by-block-event'),
+  entityDamageByEntityEvent('entity-damage-by-entity-event'),
+  entityDropItemEvent('entity-drop-item-event'),
+  entityEnterBlockEvent('entity-enter-block-event'),
+  entityExhaustionEvent('entity-exhaustion-event'),
+  entityInteractEvent('entity-interact-event'),
+  entityKnockbackEvent('entity-knockback-event'),
+  entityPlaceEvent('entity-place-event'),
+  entityPoseChangeEvent('entity-pose-change-event'),
+  entityPotionEffectEvent('entity-potion-effect-event'),
+  entitySpellCastEvent('entity-spell-cast-event'),
+  entityTargetLivingEntityEvent('entity-target-living-entity-event'),
+  entityToggleSwimEvent('entity-toggle-swim-event'),
+  explosionPrimeEvent('explosion-prime-event'),
+  fireworkExplodeEvent('firework-explode-event'),
+  foodLevelChangeEvent('food-level-change-event'),
+  itemDespawnEvent('item-despawn-event'),
+  itemMergeEvent('item-merge-event'),
+  itemSpawnEvent('item-spawn-event'),
+  piglinBarterEvent('piglin-barter-event'),
+  projectileHitEvent('projectile-hit-event'),
+  projectileLaunchEvent('projectile-launch-event'),
+  sheepDyeWoolEvent('sheep-dye-wool-event'),
+  sheepRegrowWoolEvent('sheep-regrow-wool-event'),
+  slimeSplitEvent('slime-split-event'),
+  striderTemperatureChangeEvent('strider-temperature-change-event'),
+  villagerAcquireTradeEvent('villager-acquire-trade-event'),
+  villagerCareerChangeEvent('villager-career-change-event'),
+  villagerReplenishTradeEvent('villager-replenish-trade-event'),
+  wardenAngerChangeEvent('warden-anger-change-event'),
+  areaEffectCloudApplyEvent('area-effect-cloud-apply-event'),
+  arrowBodyCountChangeEvent('arrow-body-count-change-event'),
+  batToggleSleepEvent('bat-toggle-sleep-event'),
+  creeperPowerEvent('creeper-power-event'),
+  entityCombustByBlockEvent('entity-combust-by-block-event'),
+  entityCombustByEntityEvent('entity-combust-by-entity-event'),
+  entityKnockbackByEntityEvent('entity-knockback-by-entity-event'),
+  entityPortalEnterEvent('entity-portal-enter-event'),
+  entityPortalExitEvent('entity-portal-exit-event'),
+  entityRemoveEvent('entity-remove-event'),
+  entityTargetBlockEvent('entity-target-block-event'),
+  entityUnleashEvent('entity-unleash-event'),
+  expBottleEvent('exp-bottle-event'),
+  horseJumpEvent('horse-jump-event'),
+  lingeringPotionSplashEvent('lingering-potion-splash-event'),
+  pigZapEvent('pig-zap-event'),
+  pigZombieAngerEvent('pig-zombie-anger-event'),
+  potionSplashEvent('potion-splash-event'),
+  spawnerSpawnEvent('spawner-spawn-event'),
+  trialSpawnerSpawnEvent('trial-spawner-spawn-event'),
+  villagerReputationChangeEvent('villager-reputation-change-event'),
+  asyncPlayerChatEvent('async-player-chat-event'),
+  asyncPlayerPreLoginEvent('async-player-pre-login-event'),
+  playerAdvancementDoneEvent('player-advancement-done-event'),
+  playerAnimationEvent('player-animation-event'),
+  playerArmorStandManipulateEvent('player-armor-stand-manipulate-event'),
+  playerBucketEntityEvent('player-bucket-entity-event'),
+  playerChangedWorldEvent('player-changed-world-event'),
+  playerChannelEvent('player-channel-event'),
+  playerCommandPreprocessEvent('player-command-preprocess-event'),
+  playerEditBookEvent('player-edit-book-event'),
+  playerElytraBoostEvent('player-elytra-boost-event'),
+  playerExpCooldownChangeEvent('player-exp-cooldown-change-event'),
+  playerHarvestBlockEvent('player-harvest-block-event'),
+  playerHideEntityEvent('player-hide-entity-event'),
+  playerItemBreakEvent('player-item-break-event'),
+  playerItemMendEvent('player-item-mend-event'),
+  playerKickEvent('player-kick-event'),
+  playerLeashEntityEvent('player-leash-entity-event'),
+  playerLevelChangeEvent('player-level-change-event'),
+  playerLocaleChangeEvent('player-locale-change-event'),
+  playerNameEntityEvent('player-name-entity-event'),
+  playerOpenSignEvent('player-open-sign-event'),
+  playerPortalEvent('player-portal-event'),
+  playerPreLoginEvent('player-pre-login-event'),
+  playerRiptideEvent('player-riptide-event'),
+  playerShearEntityEvent('player-shear-entity-event'),
+  playerShowEntityEvent('player-show-entity-event'),
+  playerSpawnChangeEvent('player-spawn-change-event'),
+  playerStatisticIncrementEvent('player-statistic-increment-event'),
+  playerSwapHandsEvent('player-swap-hands-event'),
+  playerTakeLecternBookEvent('player-take-lectern-book-event'),
+  playerUnleashEntityEvent('player-unleash-entity-event'),
+  playerVelocityEvent('player-velocity-event'),
+  playerInputEvent('player-input-event'),
+  playerInteractAtEntityEvent('player-interact-at-entity-event'),
+  playerLinksSendEvent('player-links-send-event'),
+  playerPickupArrowEvent('player-pickup-arrow-event'),
+  playerRecipeBookClickEvent('player-recipe-book-click-event'),
+  playerRecipeBookSettingsChangeEvent('player-recipe-book-settings-change-event'),
+  playerRecipeDiscoverEvent('player-recipe-discover-event'),
+  playerRegisterChannelEvent('player-register-channel-event'),
+  playerResourcePackStatusEvent('player-resource-pack-status-event'),
+  playerSpawnLocationEvent('player-spawn-location-event'),
+  playerUnregisterChannelEvent('player-unregister-channel-event'),
+  raidFinishEvent('raid-finish-event'),
+  raidSpawnWaveEvent('raid-spawn-wave-event'),
+  raidStopEvent('raid-stop-event'),
+  raidTriggerEvent('raid-trigger-event'),
+  lightningStrikeEvent('lightning-strike-event');
+  const EventType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EventType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EventType> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum EventPriority {
-  highest,
-  high,
-  normal,
-  low,
-  lowest,
+  highest('highest'),
+  high('high'),
+  normal('normal'),
+  low('low'),
+  lowest('lowest');
+  const EventPriority(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EventPriority? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EventPriority> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import922")
 external i0.WasmVoid _import922(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
@@ -33119,79 +33659,85 @@ return tmp6;
 /// merely for alignment with POSIX.
 enum ErrorCode {
 /// Permission denied, similar to `EACCES` in POSIX.
-  access,
+  access('access'),
 /// Resource unavailable, or operation would block, similar to `EAGAIN` and `EWOULDBLOCK` in POSIX.
-  wouldBlock,
+  wouldBlock('would-block'),
 /// Connection already in progress, similar to `EALREADY` in POSIX.
-  already,
+  already('already'),
 /// Bad descriptor, similar to `EBADF` in POSIX.
-  badDescriptor,
+  badDescriptor('bad-descriptor'),
 /// Device or resource busy, similar to `EBUSY` in POSIX.
-  busy,
+  busy('busy'),
 /// Resource deadlock would occur, similar to `EDEADLK` in POSIX.
-  deadlock,
+  deadlock('deadlock'),
 /// Storage quota exceeded, similar to `EDQUOT` in POSIX.
-  quota,
+  quota('quota'),
 /// File exists, similar to `EEXIST` in POSIX.
-  exist,
+  exist('exist'),
 /// File too large, similar to `EFBIG` in POSIX.
-  fileTooLarge,
+  fileTooLarge('file-too-large'),
 /// Illegal byte sequence, similar to `EILSEQ` in POSIX.
-  illegalByteSequence,
+  illegalByteSequence('illegal-byte-sequence'),
 /// Operation in progress, similar to `EINPROGRESS` in POSIX.
-  inProgress,
+  inProgress('in-progress'),
 /// Interrupted function, similar to `EINTR` in POSIX.
-  interrupted,
+  interrupted('interrupted'),
 /// Invalid argument, similar to `EINVAL` in POSIX.
-  invalid,
+  invalid('invalid'),
 /// I/O error, similar to `EIO` in POSIX.
-  io,
+  io('io'),
 /// Is a directory, similar to `EISDIR` in POSIX.
-  isDirectory,
+  isDirectory('is-directory'),
 /// Too many levels of symbolic links, similar to `ELOOP` in POSIX.
-  loop,
+  loop('loop'),
 /// Too many links, similar to `EMLINK` in POSIX.
-  tooManyLinks,
+  tooManyLinks('too-many-links'),
 /// Message too large, similar to `EMSGSIZE` in POSIX.
-  messageSize,
+  messageSize('message-size'),
 /// Filename too long, similar to `ENAMETOOLONG` in POSIX.
-  nameTooLong,
+  nameTooLong('name-too-long'),
 /// No such device, similar to `ENODEV` in POSIX.
-  noDevice,
+  noDevice('no-device'),
 /// No such file or directory, similar to `ENOENT` in POSIX.
-  noEntry,
+  noEntry('no-entry'),
 /// No locks available, similar to `ENOLCK` in POSIX.
-  noLock,
+  noLock('no-lock'),
 /// Not enough space, similar to `ENOMEM` in POSIX.
-  insufficientMemory,
+  insufficientMemory('insufficient-memory'),
 /// No space left on device, similar to `ENOSPC` in POSIX.
-  insufficientSpace,
+  insufficientSpace('insufficient-space'),
 /// Not a directory or a symbolic link to a directory, similar to `ENOTDIR` in POSIX.
-  notDirectory,
+  notDirectory('not-directory'),
 /// Directory not empty, similar to `ENOTEMPTY` in POSIX.
-  notEmpty,
+  notEmpty('not-empty'),
 /// State not recoverable, similar to `ENOTRECOVERABLE` in POSIX.
-  notRecoverable,
+  notRecoverable('not-recoverable'),
 /// Not supported, similar to `ENOTSUP` and `ENOSYS` in POSIX.
-  unsupported,
+  unsupported('unsupported'),
 /// Inappropriate I/O control operation, similar to `ENOTTY` in POSIX.
-  noTty,
+  noTty('no-tty'),
 /// No such device or address, similar to `ENXIO` in POSIX.
-  noSuchDevice,
+  noSuchDevice('no-such-device'),
 /// Value too large to be stored in data type, similar to `EOVERFLOW` in POSIX.
-  overflow,
+  overflow('overflow'),
 /// Operation not permitted, similar to `EPERM` in POSIX.
-  notPermitted,
+  notPermitted('not-permitted'),
 /// Broken pipe, similar to `EPIPE` in POSIX.
-  pipe,
+  pipe('pipe'),
 /// Read-only file system, similar to `EROFS` in POSIX.
-  readOnly,
+  readOnly('read-only'),
 /// Invalid seek, similar to `ESPIPE` in POSIX.
-  invalidSeek,
+  invalidSeek('invalid-seek'),
 /// Text file busy, similar to `ETXTBSY` in POSIX.
-  textFileBusy,
+  textFileBusy('text-file-busy'),
 /// Cross-device link, similar to `EXDEV` in POSIX.
-  crossDevice,
+  crossDevice('cross-device');
+  const ErrorCode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ErrorCode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ErrorCode> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import946")
 external i0.WasmVoid _import946(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI32 p2);
@@ -33203,22 +33749,28 @@ external i0.WasmVoid _import948(i0.WasmI32 p0, i0.WasmI32 p1);
 enum Advice {
 /// The application has no advice to give on its behavior with respect
 /// to the specified data.
-  normal,
+  normal('normal'),
 /// The application expects to access the specified data sequentially
 /// from lower offsets to higher offsets.
-  sequential,
+  sequential('sequential'),
 /// The application expects to access the specified data in a random
 /// order.
-  random,
+  random('random'),
 /// The application expects to access the specified data in the near
 /// future.
-  willNeed,
+  willNeed('will-need'),
 /// The application expects that it will not access the specified data
 /// in the near future.
-  dontNeed,
+  dontNeed('dont-need'),
 /// The application expects to access the specified data once and then
 /// not reuse it thereafter.
-  noReuse,
+  noReuse('no-reuse');
+  const Advice(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Advice? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Advice> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import949")
 external i0.WasmVoid _import949(i0.WasmI32 p0, i0.WasmI64 p1, i0.WasmI64 p2, i0.WasmI32 p3, i0.WasmI32 p4);
@@ -33274,21 +33826,27 @@ external i0.WasmVoid _import951(i0.WasmI32 p0, i0.WasmI32 p1);
 enum DescriptorType {
 /// The type of the descriptor or file is unknown or is different from
 /// any of the other types specified.
-  unknown,
+  unknown('unknown'),
 /// The descriptor refers to a block device inode.
-  blockDevice,
+  blockDevice('block-device'),
 /// The descriptor refers to a character device inode.
-  characterDevice,
+  characterDevice('character-device'),
 /// The descriptor refers to a directory inode.
-  directory,
+  directory('directory'),
 /// The descriptor refers to a named pipe.
-  fifo,
+  fifo('fifo'),
 /// The file refers to a symbolic link inode.
-  symbolicLink,
+  symbolicLink('symbolic-link'),
 /// The descriptor refers to a regular file inode.
-  regularFile,
+  regularFile('regular-file'),
 /// The descriptor refers to a socket.
-  socket,
+  socket('socket');
+  const DescriptorType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static DescriptorType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, DescriptorType> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import952")
 external i0.WasmVoid _import952(i0.WasmI32 p0, i0.WasmI32 p1);
@@ -34647,11 +35205,17 @@ return tmp7;
 }
 const preopens = _Imported$Preopens();
 enum Level {
-  trace,
-  debug,
-  info,
-  warn,
-  error,
+  trace('trace'),
+  debug('debug'),
+  info('info'),
+  warn('warn'),
+  error('error');
+  const Level(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static Level? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, Level> _byWireName = {for (final value in values) value.wireName: value};
 }
 abstract interface class Logging {
 /// log any general purpose message
@@ -36293,6 +36857,8 @@ final class PlayerJoinEventData {
   final bool cancelled;
   const PlayerJoinEventData({required this.player, required this.joinMessage, required this.cancelled, });
   PlayerJoinEventData copyWith({Player? player, TextComponent? joinMessage, bool? cancelled, }) => PlayerJoinEventData(player: player ?? this.player, joinMessage: joinMessage ?? this.joinMessage, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerJoinEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerLeaveEventData {
   final Player player;
@@ -36300,6 +36866,8 @@ final class PlayerLeaveEventData {
   final bool cancelled;
   const PlayerLeaveEventData({required this.player, required this.leaveMessage, required this.cancelled, });
   PlayerLeaveEventData copyWith({Player? player, TextComponent? leaveMessage, bool? cancelled, }) => PlayerLeaveEventData(player: player ?? this.player, leaveMessage: leaveMessage ?? this.leaveMessage, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerLeaveEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerLoginEventData {
   final Player player;
@@ -36307,6 +36875,8 @@ final class PlayerLoginEventData {
   final bool cancelled;
   const PlayerLoginEventData({required this.player, required this.kickMessage, required this.cancelled, });
   PlayerLoginEventData copyWith({Player? player, TextComponent? kickMessage, bool? cancelled, }) => PlayerLoginEventData(player: player ?? this.player, kickMessage: kickMessage ?? this.kickMessage, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerLoginEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerChatEventData {
   final Player player;
@@ -36316,6 +36886,8 @@ final class PlayerChatEventData {
   final bool cancelled;
   const PlayerChatEventData({required this.player, required this.message, required this.recipients, required this.signature, required this.cancelled, });
   PlayerChatEventData copyWith({Player? player, String? message, List<Player>? recipients, List<int>? signature, bool clearSignature = false, bool? cancelled, }) => PlayerChatEventData(player: player ?? this.player, message: message ?? this.message, recipients: recipients ?? this.recipients, signature: clearSignature ? null : (signature ?? this.signature), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerChatEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerCommandSendEventData {
   final Player player;
@@ -36323,6 +36895,8 @@ final class PlayerCommandSendEventData {
   final bool cancelled;
   const PlayerCommandSendEventData({required this.player, required this.command, required this.cancelled, });
   PlayerCommandSendEventData copyWith({Player? player, String? command, bool? cancelled, }) => PlayerCommandSendEventData(player: player ?? this.player, command: command ?? this.command, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerCommandSendEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerPermissionCheckEventData {
   final Player player;
@@ -36338,6 +36912,8 @@ final class PlayerMoveEventData {
   final bool cancelled;
   const PlayerMoveEventData({required this.player, required this.fromPosition, required this.toPosition, required this.cancelled, });
   PlayerMoveEventData copyWith({Player? player, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => PlayerMoveEventData(player: player ?? this.player, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerMoveEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerTeleportEventData {
   final Player player;
@@ -36346,6 +36922,8 @@ final class PlayerTeleportEventData {
   final bool cancelled;
   const PlayerTeleportEventData({required this.player, required this.fromPosition, required this.toPosition, required this.cancelled, });
   PlayerTeleportEventData copyWith({Player? player, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => PlayerTeleportEventData(player: player ?? this.player, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerTeleportEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerChangeWorldEventData {
   final Player player;
@@ -36357,6 +36935,8 @@ final class PlayerChangeWorldEventData {
   final bool cancelled;
   const PlayerChangeWorldEventData({required this.player, required this.previousWorld, required this.newWorld, required this.position, required this.yaw, required this.pitch, required this.cancelled, });
   PlayerChangeWorldEventData copyWith({Player? player, World? previousWorld, World? newWorld, (double, double, double, )? position, double? yaw, double? pitch, bool? cancelled, }) => PlayerChangeWorldEventData(player: player ?? this.player, previousWorld: previousWorld ?? this.previousWorld, newWorld: newWorld ?? this.newWorld, position: position ?? this.position, yaw: yaw ?? this.yaw, pitch: pitch ?? this.pitch, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerChangeWorldEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerRespawnEventData {
   final Player player;
@@ -36382,6 +36962,8 @@ final class PlayerItemHeldEventData {
   final bool cancelled;
   const PlayerItemHeldEventData({required this.player, required this.previousSlot, required this.newSlot, required this.cancelled, });
   PlayerItemHeldEventData copyWith({Player? player, int? previousSlot, int? newSlot, bool? cancelled, }) => PlayerItemHeldEventData(player: player ?? this.player, previousSlot: previousSlot ?? this.previousSlot, newSlot: newSlot ?? this.newSlot, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerItemHeldEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerChangedMainHandEventData {
   final Player player;
@@ -36396,6 +36978,8 @@ final class PlayerGamemodeChangeEventData {
   final bool cancelled;
   const PlayerGamemodeChangeEventData({required this.player, required this.previousGamemode, required this.newGamemode, required this.cancelled, });
   PlayerGamemodeChangeEventData copyWith({Player? player, GameMode? previousGamemode, GameMode? newGamemode, bool? cancelled, }) => PlayerGamemodeChangeEventData(player: player ?? this.player, previousGamemode: previousGamemode ?? this.previousGamemode, newGamemode: newGamemode ?? this.newGamemode, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerGamemodeChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerCustomPayloadEventData {
   final Player player;
@@ -36405,13 +36989,19 @@ final class PlayerCustomPayloadEventData {
   PlayerCustomPayloadEventData copyWith({Player? player, String? channel, List<int>? data, }) => PlayerCustomPayloadEventData(player: player ?? this.player, channel: channel ?? this.channel, data: data ?? this.data, );
 }
 enum PlayerFishState {
-  fishing,
-  caughtFish,
-  caughtEntity,
-  inGround,
-  failedAttempt,
-  reelIn,
-  bite,
+  fishing('fishing'),
+  caughtFish('caught-fish'),
+  caughtEntity('caught-entity'),
+  inGround('in-ground'),
+  failedAttempt('failed-attempt'),
+  reelIn('reel-in'),
+  bite('bite');
+  const PlayerFishState(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PlayerFishState? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PlayerFishState> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class PlayerFishEventData {
   final Player player;
@@ -36424,6 +37014,8 @@ final class PlayerFishEventData {
   final bool cancelled;
   const PlayerFishEventData({required this.player, required this.caughtUuid, required this.caughtType, required this.hookUuid, required this.state, required this.hand, required this.expToDrop, required this.cancelled, });
   PlayerFishEventData copyWith({Player? player, Uuid? caughtUuid, bool clearCaughtUuid = false, String? caughtType, Uuid? hookUuid, PlayerFishState? state, Hand? hand, int? expToDrop, bool? cancelled, }) => PlayerFishEventData(player: player ?? this.player, caughtUuid: clearCaughtUuid ? null : (caughtUuid ?? this.caughtUuid), caughtType: caughtType ?? this.caughtType, hookUuid: hookUuid ?? this.hookUuid, state: state ?? this.state, hand: hand ?? this.hand, expToDrop: expToDrop ?? this.expToDrop, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerFishEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerEggThrowEventData {
   final Player player;
@@ -36434,11 +37026,19 @@ final class PlayerEggThrowEventData {
   final bool cancelled;
   const PlayerEggThrowEventData({required this.player, required this.eggUuid, required this.hatching, required this.numHatches, required this.hatchingType, required this.cancelled, });
   PlayerEggThrowEventData copyWith({Player? player, Uuid? eggUuid, bool? hatching, int? numHatches, String? hatchingType, bool? cancelled, }) => PlayerEggThrowEventData(player: player ?? this.player, eggUuid: eggUuid ?? this.eggUuid, hatching: hatching ?? this.hatching, numHatches: numHatches ?? this.numHatches, hatchingType: hatchingType ?? this.hatchingType, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerEggThrowEventData cancel() => copyWith(cancelled: true);
 }
 enum EntityInteractionAction {
-  interact,
-  attack,
-  interactAt,
+  interact('interact'),
+  attack('attack'),
+  interactAt('interact-at');
+  const EntityInteractionAction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static EntityInteractionAction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, EntityInteractionAction> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class PlayerInteractUnknownEntityEventData {
   final Player player;
@@ -36447,6 +37047,8 @@ final class PlayerInteractUnknownEntityEventData {
   final bool cancelled;
   const PlayerInteractUnknownEntityEventData({required this.player, required this.entityId, required this.action, required this.cancelled, });
   PlayerInteractUnknownEntityEventData copyWith({Player? player, int? entityId, EntityInteractionAction? action, bool? cancelled, }) => PlayerInteractUnknownEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, action: action ?? this.action, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerInteractUnknownEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerInteractEntityEventData {
   final Player player;
@@ -36456,12 +37058,20 @@ final class PlayerInteractEntityEventData {
   final bool cancelled;
   const PlayerInteractEntityEventData({required this.player, required this.entityId, required this.action, required this.sneaking, required this.cancelled, });
   PlayerInteractEntityEventData copyWith({Player? player, int? entityId, EntityInteractionAction? action, bool? sneaking, bool? cancelled, }) => PlayerInteractEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, action: action ?? this.action, sneaking: sneaking ?? this.sneaking, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerInteractEntityEventData cancel() => copyWith(cancelled: true);
 }
 enum InteractAction {
-  leftClickBlock,
-  leftClickAir,
-  rightClickAir,
-  rightClickBlock,
+  leftClickBlock('left-click-block'),
+  leftClickAir('left-click-air'),
+  rightClickAir('right-click-air'),
+  rightClickBlock('right-click-block');
+  const InteractAction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static InteractAction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, InteractAction> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class PlayerInteractEventData {
   final Player player;
@@ -36471,6 +37081,8 @@ final class PlayerInteractEventData {
   final bool cancelled;
   const PlayerInteractEventData({required this.player, required this.action, required this.clickedPos, required this.block, required this.cancelled, });
   PlayerInteractEventData copyWith({Player? player, InteractAction? action, BlockPos? clickedPos, bool clearClickedPos = false, String? block, bool? cancelled, }) => PlayerInteractEventData(player: player ?? this.player, action: action ?? this.action, clickedPos: clearClickedPos ? null : (clickedPos ?? this.clickedPos), block: block ?? this.block, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerInteractEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerToggleSneakEventData {
   final Player player;
@@ -36478,6 +37090,8 @@ final class PlayerToggleSneakEventData {
   final bool cancelled;
   const PlayerToggleSneakEventData({required this.player, required this.isSneaking, required this.cancelled, });
   PlayerToggleSneakEventData copyWith({Player? player, bool? isSneaking, bool? cancelled, }) => PlayerToggleSneakEventData(player: player ?? this.player, isSneaking: isSneaking ?? this.isSneaking, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerToggleSneakEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerToggleFlightEventData {
   final Player player;
@@ -36485,6 +37099,8 @@ final class PlayerToggleFlightEventData {
   final bool cancelled;
   const PlayerToggleFlightEventData({required this.player, required this.isFlying, required this.cancelled, });
   PlayerToggleFlightEventData copyWith({Player? player, bool? isFlying, bool? cancelled, }) => PlayerToggleFlightEventData(player: player ?? this.player, isFlying: isFlying ?? this.isFlying, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerToggleFlightEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerToggleSprintEventData {
   final Player player;
@@ -36492,19 +37108,27 @@ final class PlayerToggleSprintEventData {
   final bool cancelled;
   const PlayerToggleSprintEventData({required this.player, required this.isSprinting, required this.cancelled, });
   PlayerToggleSprintEventData copyWith({Player? player, bool? isSprinting, bool? cancelled, }) => PlayerToggleSprintEventData(player: player ?? this.player, isSprinting: isSprinting ?? this.isSprinting, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerToggleSprintEventData cancel() => copyWith(cancelled: true);
 }
 /// Represents the type of click interaction in a GUI.
 enum ClickType {
-  left,
-  right,
-  shiftLeft,
-  shiftRight,
-  middle,
-  drop,
-  controlDrop,
-  doubleClick,
-  numberKey,
-  unknown,
+  left('left'),
+  right('right'),
+  shiftLeft('shift-left'),
+  shiftRight('shift-right'),
+  middle('middle'),
+  drop('drop'),
+  controlDrop('control-drop'),
+  doubleClick('double-click'),
+  numberKey('number-key'),
+  unknown('unknown');
+  const ClickType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ClickType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ClickType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class InventoryClickEventData {
   final Player player;
@@ -36518,6 +37142,8 @@ final class InventoryClickEventData {
   final bool cancelled;
   const InventoryClickEventData({required this.player, required this.windowType, required this.clickType, required this.slot, required this.rawSlot, required this.clickedItem, required this.cursor, required this.hotbarButton, required this.cancelled, });
   InventoryClickEventData copyWith({Player? player, Screen? windowType, bool clearWindowType = false, ClickType? clickType, int? slot, int? rawSlot, ItemStack? clickedItem, bool clearClickedItem = false, ItemStack? cursor, bool clearCursor = false, int? hotbarButton, bool? cancelled, }) => InventoryClickEventData(player: player ?? this.player, windowType: clearWindowType ? null : (windowType ?? this.windowType), clickType: clickType ?? this.clickType, slot: slot ?? this.slot, rawSlot: rawSlot ?? this.rawSlot, clickedItem: clearClickedItem ? null : (clickedItem ?? this.clickedItem), cursor: clearCursor ? null : (cursor ?? this.cursor), hotbarButton: hotbarButton ?? this.hotbarButton, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  InventoryClickEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryCloseEventData {
   final Player player;
@@ -36534,6 +37160,8 @@ final class BlockRedstoneEventData {
   final bool cancelled;
   const BlockRedstoneEventData({required this.targetWorld, required this.stateId, required this.blockPos, required this.oldCurrent, required this.newCurrent, required this.cancelled, });
   BlockRedstoneEventData copyWith({World? targetWorld, int? stateId, BlockPos? blockPos, int? oldCurrent, int? newCurrent, bool? cancelled, }) => BlockRedstoneEventData(targetWorld: targetWorld ?? this.targetWorld, stateId: stateId ?? this.stateId, blockPos: blockPos ?? this.blockPos, oldCurrent: oldCurrent ?? this.oldCurrent, newCurrent: newCurrent ?? this.newCurrent, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockRedstoneEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockBreakEventData {
   final Player? player;
@@ -36544,6 +37172,8 @@ final class BlockBreakEventData {
   final bool cancelled;
   const BlockBreakEventData({required this.player, required this.block, required this.blockPos, required this.exp, required this.shouldDrop, required this.cancelled, });
   BlockBreakEventData copyWith({Player? player, bool clearPlayer = false, String? block, BlockPos? blockPos, int? exp, bool? shouldDrop, bool? cancelled, }) => BlockBreakEventData(player: clearPlayer ? null : (player ?? this.player), block: block ?? this.block, blockPos: blockPos ?? this.blockPos, exp: exp ?? this.exp, shouldDrop: shouldDrop ?? this.shouldDrop, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockBreakEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockBurnEventData {
   final String ignitingBlock;
@@ -36551,6 +37181,8 @@ final class BlockBurnEventData {
   final bool cancelled;
   const BlockBurnEventData({required this.ignitingBlock, required this.block, required this.cancelled, });
   BlockBurnEventData copyWith({String? ignitingBlock, String? block, bool? cancelled, }) => BlockBurnEventData(ignitingBlock: ignitingBlock ?? this.ignitingBlock, block: block ?? this.block, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockBurnEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockCanBuildEventData {
   final String blockToBuild;
@@ -36560,6 +37192,8 @@ final class BlockCanBuildEventData {
   final bool cancelled;
   const BlockCanBuildEventData({required this.blockToBuild, required this.buildable, required this.player, required this.block, required this.cancelled, });
   BlockCanBuildEventData copyWith({String? blockToBuild, bool? buildable, Player? player, String? block, bool? cancelled, }) => BlockCanBuildEventData(blockToBuild: blockToBuild ?? this.blockToBuild, buildable: buildable ?? this.buildable, player: player ?? this.player, block: block ?? this.block, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockCanBuildEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockGrowEventData {
   final World targetWorld;
@@ -36571,6 +37205,8 @@ final class BlockGrowEventData {
   final bool cancelled;
   const BlockGrowEventData({required this.targetWorld, required this.oldBlock, required this.oldStateId, required this.newBlock, required this.newStateId, required this.blockPos, required this.cancelled, });
   BlockGrowEventData copyWith({World? targetWorld, String? oldBlock, int? oldStateId, String? newBlock, int? newStateId, BlockPos? blockPos, bool? cancelled, }) => BlockGrowEventData(targetWorld: targetWorld ?? this.targetWorld, oldBlock: oldBlock ?? this.oldBlock, oldStateId: oldStateId ?? this.oldStateId, newBlock: newBlock ?? this.newBlock, newStateId: newStateId ?? this.newStateId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockGrowEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockPlaceEventData {
   final Player player;
@@ -36581,6 +37217,8 @@ final class BlockPlaceEventData {
   final bool cancelled;
   const BlockPlaceEventData({required this.player, required this.blockPlaced, required this.blockPlacedAgainst, required this.blockPos, required this.canBuild, required this.cancelled, });
   BlockPlaceEventData copyWith({Player? player, String? blockPlaced, String? blockPlacedAgainst, BlockPos? blockPos, bool? canBuild, bool? cancelled, }) => BlockPlaceEventData(player: player ?? this.player, blockPlaced: blockPlaced ?? this.blockPlaced, blockPlacedAgainst: blockPlacedAgainst ?? this.blockPlacedAgainst, blockPos: blockPos ?? this.blockPos, canBuild: canBuild ?? this.canBuild, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockPlaceEventData cancel() => copyWith(cancelled: true);
 }
 final class DialogClickActionEventData {
   final Player player;
@@ -36589,6 +37227,8 @@ final class DialogClickActionEventData {
   final bool cancelled;
   const DialogClickActionEventData({required this.player, required this.id, required this.payload, required this.cancelled, });
   DialogClickActionEventData copyWith({Player? player, String? id, List<int>? payload, bool clearPayload = false, bool? cancelled, }) => DialogClickActionEventData(player: player ?? this.player, id: id ?? this.id, payload: clearPayload ? null : (payload ?? this.payload), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  DialogClickActionEventData cancel() => copyWith(cancelled: true);
 }
 final class DialogShowEventData {
   final Player player;
@@ -36596,12 +37236,16 @@ final class DialogShowEventData {
   final bool cancelled;
   const DialogShowEventData({required this.player, required this.dialog, required this.cancelled, });
   DialogShowEventData copyWith({Player? player, Dialog? dialog, bool? cancelled, }) => DialogShowEventData(player: player ?? this.player, dialog: dialog ?? this.dialog, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  DialogShowEventData cancel() => copyWith(cancelled: true);
 }
 final class DialogClearEventData {
   final Player player;
   final bool cancelled;
   const DialogClearEventData({required this.player, required this.cancelled, });
   DialogClearEventData copyWith({Player? player, bool? cancelled, }) => DialogClearEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  DialogClearEventData cancel() => copyWith(cancelled: true);
 }
 final class BedrockFormResponseEventData {
   final Player player;
@@ -36615,6 +37259,8 @@ final class ServerCommandEventData {
   final bool cancelled;
   const ServerCommandEventData({required this.command, required this.cancelled, });
   ServerCommandEventData copyWith({String? command, bool? cancelled, }) => ServerCommandEventData(command: command ?? this.command, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ServerCommandEventData cancel() => copyWith(cancelled: true);
 }
 final class ServerListPingAddress {
   final String host;
@@ -36633,8 +37279,14 @@ final class ServerListPingEventData {
   ServerListPingEventData copyWith({String? hostname, ServerListPingAddress? address, TextComponent? motd, int? maxPlayers, int? numPlayers, String? favicon, bool clearFavicon = false, }) => ServerListPingEventData(hostname: hostname ?? this.hostname, address: address ?? this.address, motd: motd ?? this.motd, maxPlayers: maxPlayers ?? this.maxPlayers, numPlayers: numPlayers ?? this.numPlayers, favicon: clearFavicon ? null : (favicon ?? this.favicon), );
 }
 enum ServerLoadType {
-  startup,
-  reload,
+  startup('startup'),
+  reload('reload');
+  const ServerLoadType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ServerLoadType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ServerLoadType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class ServerLoadEventData {
   final ServerLoadType loadType;
@@ -36658,6 +37310,8 @@ final class ServerBroadcastEventData {
   final bool cancelled;
   const ServerBroadcastEventData({required this.message, required this.sender, required this.cancelled, });
   ServerBroadcastEventData copyWith({TextComponent? message, TextComponent? sender, bool? cancelled, }) => ServerBroadcastEventData(message: message ?? this.message, sender: sender ?? this.sender, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ServerBroadcastEventData cancel() => copyWith(cancelled: true);
 }
 final class ServerTickStartEventData {
   final int tick;
@@ -36811,13 +37465,19 @@ final class SChunkBatch {
   SChunkBatch copyWith({double? chunksPerTick, }) => SChunkBatch(chunksPerTick: chunksPerTick ?? this.chunksPerTick, );
 }
 enum SlotActionType {
-  pickup,
-  quickMove,
-  swap,
-  clone,
-  throw_,
-  quickCraft,
-  pickupAll,
+  pickup('pickup'),
+  quickMove('quick-move'),
+  swap('swap'),
+  clone('clone'),
+  throw_('throw'),
+  quickCraft('quick-craft'),
+  pickupAll('pickup-all');
+  const SlotActionType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static SlotActionType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, SlotActionType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SClickSlot {
   final int syncId;
@@ -36995,15 +37655,21 @@ final class JavaPacketsSPlayerAction {
   JavaPacketsSPlayerAction copyWith({int? status, (int, int, int, )? position, int? face, int? sequence, }) => JavaPacketsSPlayerAction(status: status ?? this.status, position: position ?? this.position, face: face ?? this.face, sequence: sequence ?? this.sequence, );
 }
 enum JavaPacketsAction {
-  startSneaking,
-  stopSneaking,
-  leaveBed,
-  startSprinting,
-  stopSprinting,
-  startHorseJump,
-  stopHorseJump,
-  openVehicleInventory,
-  startFlyingElytra,
+  startSneaking('start-sneaking'),
+  stopSneaking('stop-sneaking'),
+  leaveBed('leave-bed'),
+  startSprinting('start-sprinting'),
+  stopSprinting('stop-sprinting'),
+  startHorseJump('start-horse-jump'),
+  stopHorseJump('stop-horse-jump'),
+  openVehicleInventory('open-vehicle-inventory'),
+  startFlyingElytra('start-flying-elytra');
+  const JavaPacketsAction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static JavaPacketsAction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, JavaPacketsAction> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SPlayerCommand {
   final int entityId;
@@ -37170,10 +37836,16 @@ final class SSetStructureBlock {
   SSetStructureBlock copyWith({(int, int, int, )? location, int? action, int? mode, String? name, int? offsetX, int? offsetY, int? offsetZ, int? sizeX, int? sizeY, int? sizeZ, int? mirror, int? rotation, String? metadata, double? integrity, int? seed, int? flags, }) => SSetStructureBlock(location: location ?? this.location, action: action ?? this.action, mode: mode ?? this.mode, name: name ?? this.name, offsetX: offsetX ?? this.offsetX, offsetY: offsetY ?? this.offsetY, offsetZ: offsetZ ?? this.offsetZ, sizeX: sizeX ?? this.sizeX, sizeY: sizeY ?? this.sizeY, sizeZ: sizeZ ?? this.sizeZ, mirror: mirror ?? this.mirror, rotation: rotation ?? this.rotation, metadata: metadata ?? this.metadata, integrity: integrity ?? this.integrity, seed: seed ?? this.seed, flags: flags ?? this.flags, );
 }
 enum TestBlockMode {
-  start,
-  log,
-  fail,
-  accept,
+  start('start'),
+  log('log'),
+  fail('fail'),
+  accept('accept');
+  const TestBlockMode(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static TestBlockMode? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, TestBlockMode> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SSetTestBlock {
   final (int, int, int, ) position;
@@ -37193,13 +37865,19 @@ final class STeleportToEntity {
   STeleportToEntity copyWith({Uuid? target, }) => STeleportToEntity(target: target ?? this.target, );
 }
 enum TestInstanceBlockAction {
-  init,
-  query,
-  set,
-  reset,
-  save,
-  export,
-  run,
+  init('init'),
+  query('query'),
+  set('set'),
+  reset('reset'),
+  save('save'),
+  export('export'),
+  run('run');
+  const TestInstanceBlockAction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static TestInstanceBlockAction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, TestInstanceBlockAction> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class VarIntVector3 {
   final int x;
@@ -37209,10 +37887,16 @@ final class VarIntVector3 {
   VarIntVector3 copyWith({int? x, int? y, int? z, }) => VarIntVector3(x: x ?? this.x, y: y ?? this.y, z: z ?? this.z, );
 }
 enum TestInstanceBlockStatus {
-  cleared,
-  running,
-  success,
-  failed,
+  cleared('cleared'),
+  running('running'),
+  success('success'),
+  failed('failed');
+  const TestInstanceBlockStatus(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static TestInstanceBlockStatus? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, TestInstanceBlockStatus> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class TestInstanceBlockData {
   final String? test;
@@ -37601,67 +38285,73 @@ final class JavaPacketsServerboundPacketUnknown extends JavaPacketsServerboundPa
   const JavaPacketsServerboundPacketUnknown();
 }
 enum ActorEventId {
-  none,
-  jump,
-  hurt,
-  death,
-  startAttacking,
-  stopAttacking,
-  tamingFailed,
-  tamingSucceeded,
-  shakeWetness,
-  eatGrass,
-  fishhookBubble,
-  fishhookFishPos,
-  fishhookHookTime,
-  fishhookTease,
-  squidFleeing,
-  zombieConverting,
-  playAmbient,
-  spawnAlive,
-  startOfferFlower,
-  stopOfferFlower,
-  loveHearts,
-  villagerAngry,
-  villagerHappy,
-  witchHatMagic,
-  fireworksExplode,
-  inLoveHearts,
-  silverfishMergeAnimation,
-  guardianAttackSound,
-  drinkPotion,
-  throwPotion,
-  primeTntCart,
-  primeCreeper,
-  airSupply,
-  deprecatedAddPlayerLevels,
-  guardianMiningFatigue,
-  agentSwingArm,
-  dragonStartDeathAnim,
-  groundDust,
-  shake,
-  feed,
-  babyAge,
-  instantDeath,
-  notifyTrade,
-  leashDestroyed,
-  caravanUpdated,
-  talismanActivate,
-  deprecatedUpdateStructureFeature,
-  playerSpawnedMob,
-  puke,
-  updateStackSize,
-  startSwimming,
-  balloonPop,
-  treasureHunt,
-  summonAgent,
-  finishedChargingItem,
-  actorGrowUp,
-  vibrationDetected,
-  drinkMilk,
-  shakeWetnessStop,
-  kineticDamageDealt,
-  hurtWithoutReceivingDamage,
+  none('none'),
+  jump('jump'),
+  hurt('hurt'),
+  death('death'),
+  startAttacking('start-attacking'),
+  stopAttacking('stop-attacking'),
+  tamingFailed('taming-failed'),
+  tamingSucceeded('taming-succeeded'),
+  shakeWetness('shake-wetness'),
+  eatGrass('eat-grass'),
+  fishhookBubble('fishhook-bubble'),
+  fishhookFishPos('fishhook-fish-pos'),
+  fishhookHookTime('fishhook-hook-time'),
+  fishhookTease('fishhook-tease'),
+  squidFleeing('squid-fleeing'),
+  zombieConverting('zombie-converting'),
+  playAmbient('play-ambient'),
+  spawnAlive('spawn-alive'),
+  startOfferFlower('start-offer-flower'),
+  stopOfferFlower('stop-offer-flower'),
+  loveHearts('love-hearts'),
+  villagerAngry('villager-angry'),
+  villagerHappy('villager-happy'),
+  witchHatMagic('witch-hat-magic'),
+  fireworksExplode('fireworks-explode'),
+  inLoveHearts('in-love-hearts'),
+  silverfishMergeAnimation('silverfish-merge-animation'),
+  guardianAttackSound('guardian-attack-sound'),
+  drinkPotion('drink-potion'),
+  throwPotion('throw-potion'),
+  primeTntCart('prime-tnt-cart'),
+  primeCreeper('prime-creeper'),
+  airSupply('air-supply'),
+  deprecatedAddPlayerLevels('deprecated-add-player-levels'),
+  guardianMiningFatigue('guardian-mining-fatigue'),
+  agentSwingArm('agent-swing-arm'),
+  dragonStartDeathAnim('dragon-start-death-anim'),
+  groundDust('ground-dust'),
+  shake('shake'),
+  feed('feed'),
+  babyAge('baby-age'),
+  instantDeath('instant-death'),
+  notifyTrade('notify-trade'),
+  leashDestroyed('leash-destroyed'),
+  caravanUpdated('caravan-updated'),
+  talismanActivate('talisman-activate'),
+  deprecatedUpdateStructureFeature('deprecated-update-structure-feature'),
+  playerSpawnedMob('player-spawned-mob'),
+  puke('puke'),
+  updateStackSize('update-stack-size'),
+  startSwimming('start-swimming'),
+  balloonPop('balloon-pop'),
+  treasureHunt('treasure-hunt'),
+  summonAgent('summon-agent'),
+  finishedChargingItem('finished-charging-item'),
+  actorGrowUp('actor-grow-up'),
+  vibrationDetected('vibration-detected'),
+  drinkMilk('drink-milk'),
+  shakeWetnessStop('shake-wetness-stop'),
+  kineticDamageDealt('kinetic-damage-dealt'),
+  hurtWithoutReceivingDamage('hurt-without-receiving-damage');
+  const ActorEventId(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ActorEventId? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ActorEventId> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SActorEvent {
   final int targetRuntimeId;
@@ -37672,22 +38362,34 @@ final class SActorEvent {
   SActorEvent copyWith({int? targetRuntimeId, ActorEventId? eventId, int? data, (double, double, double, )? fireAtPosition, bool clearFireAtPosition = false, }) => SActorEvent(targetRuntimeId: targetRuntimeId ?? this.targetRuntimeId, eventId: eventId ?? this.eventId, data: data ?? this.data, fireAtPosition: clearFireAtPosition ? null : (fireAtPosition ?? this.fireAtPosition), );
 }
 enum AnimateAction {
-  noAction,
-  swingArm,
-  wakeUp,
-  criticalHit,
-  magicCriticalHit,
+  noAction('no-action'),
+  swingArm('swing-arm'),
+  wakeUp('wake-up'),
+  criticalHit('critical-hit'),
+  magicCriticalHit('magic-critical-hit');
+  const AnimateAction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static AnimateAction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, AnimateAction> _byWireName = {for (final value in values) value.wireName: value};
 }
 enum ActorSwingSource {
-  none,
-  build,
-  mine,
-  interact,
-  attack,
-  useItem,
-  throwItem,
-  dropItem,
-  event,
+  none('none'),
+  build('build'),
+  mine('mine'),
+  interact('interact'),
+  attack('attack'),
+  useItem('use-item'),
+  throwItem('throw-item'),
+  dropItem('drop-item'),
+  event('event');
+  const ActorSwingSource(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ActorSwingSource? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ActorSwingSource> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SAnimate {
   final AnimateAction action;
@@ -37755,11 +38457,17 @@ final class SEmoteList {
   SEmoteList copyWith({int? runtimeId, List<Uuid>? emotePieceIds, }) => SEmoteList(runtimeId: runtimeId ?? this.runtimeId, emotePieceIds: emotePieceIds ?? this.emotePieceIds, );
 }
 enum BedrockPacketsAction {
-  invalid,
-  stopRiding,
-  interactUpdate,
-  npcOpen,
-  openInventory,
+  invalid('invalid'),
+  stopRiding('stop-riding'),
+  interactUpdate('interact-update'),
+  npcOpen('npc-open'),
+  openInventory('open-inventory');
+  const BedrockPacketsAction(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static BedrockPacketsAction? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, BedrockPacketsAction> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SInteract {
   final BedrockPacketsAction action;
@@ -37785,8 +38493,14 @@ final class InventoryAction {
   InventoryAction copyWith({int? sourceType, int? windowId, bool clearWindowId = false, int? sourceFlags, bool clearSourceFlags = false, int? inventorySlot, NetworkItemDescriptor? oldItem, NetworkItemDescriptor? newItem, }) => InventoryAction(sourceType: sourceType ?? this.sourceType, windowId: clearWindowId ? null : (windowId ?? this.windowId), sourceFlags: clearSourceFlags ? null : (sourceFlags ?? this.sourceFlags), inventorySlot: inventorySlot ?? this.inventorySlot, oldItem: oldItem ?? this.oldItem, newItem: newItem ?? this.newItem, );
 }
 enum HandSlot {
-  mainhand,
-  offhand,
+  mainhand('mainhand'),
+  offhand('offhand');
+  const HandSlot(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static HandSlot? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, HandSlot> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class UseItemTransactionData {
   final int actionType;
@@ -38058,8 +38772,14 @@ final class SItemStackRequest {
   SItemStackRequest copyWith({List<ItemStackRequest>? requests, }) => SItemStackRequest(requests: requests ?? this.requests, );
 }
 enum LoadingScreenPacketType {
-  startLoadingScreen,
-  endLoadingScreen,
+  startLoadingScreen('start-loading-screen'),
+  endLoadingScreen('end-loading-screen');
+  const LoadingScreenPacketType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static LoadingScreenPacketType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, LoadingScreenPacketType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SLoadingScreen {
   final LoadingScreenPacketType loadingScreenPacketType;
@@ -38099,47 +38819,53 @@ final class SPacketViolationWarning {
   SPacketViolationWarning copyWith({int? violationType, int? violationSeverity, int? violationPacketId, String? violationContext, }) => SPacketViolationWarning(violationType: violationType ?? this.violationType, violationSeverity: violationSeverity ?? this.violationSeverity, violationPacketId: violationPacketId ?? this.violationPacketId, violationContext: violationContext ?? this.violationContext, );
 }
 enum PlayerActionType {
-  unknown,
-  startDestroyBlock,
-  abortDestroyBlock,
-  stopDestroyBlock,
-  getUpdatedBlock,
-  dropItem,
-  startSleeping,
-  stopSleeping,
-  respawn,
-  startJump,
-  startSprinting,
-  stopSprinting,
-  startSneaking,
-  stopSneaking,
-  creativeDestroyBlock,
-  changeDimensionAck,
-  startGliding,
-  stopGliding,
-  denyDestroyBlock,
-  crackBlock,
-  changeSkin,
-  updatedEnchantingSeed,
-  startSwimming,
-  stopSwimming,
-  startSpinAttack,
-  stopSpinAttack,
-  interactWithBlock,
-  predictDestroyBlock,
-  continueDestroyBlock,
-  startItemUseOn,
-  stopItemUseOn,
-  handledTeleport,
-  missedSwing,
-  startCrawling,
-  stopCrawling,
-  startFlying,
-  stopFlying,
-  clientAckServerData,
-  startUsingItem,
-  internalUpdate,
-  count,
+  unknown('unknown'),
+  startDestroyBlock('start-destroy-block'),
+  abortDestroyBlock('abort-destroy-block'),
+  stopDestroyBlock('stop-destroy-block'),
+  getUpdatedBlock('get-updated-block'),
+  dropItem('drop-item'),
+  startSleeping('start-sleeping'),
+  stopSleeping('stop-sleeping'),
+  respawn('respawn'),
+  startJump('start-jump'),
+  startSprinting('start-sprinting'),
+  stopSprinting('stop-sprinting'),
+  startSneaking('start-sneaking'),
+  stopSneaking('stop-sneaking'),
+  creativeDestroyBlock('creative-destroy-block'),
+  changeDimensionAck('change-dimension-ack'),
+  startGliding('start-gliding'),
+  stopGliding('stop-gliding'),
+  denyDestroyBlock('deny-destroy-block'),
+  crackBlock('crack-block'),
+  changeSkin('change-skin'),
+  updatedEnchantingSeed('updated-enchanting-seed'),
+  startSwimming('start-swimming'),
+  stopSwimming('stop-swimming'),
+  startSpinAttack('start-spin-attack'),
+  stopSpinAttack('stop-spin-attack'),
+  interactWithBlock('interact-with-block'),
+  predictDestroyBlock('predict-destroy-block'),
+  continueDestroyBlock('continue-destroy-block'),
+  startItemUseOn('start-item-use-on'),
+  stopItemUseOn('stop-item-use-on'),
+  handledTeleport('handled-teleport'),
+  missedSwing('missed-swing'),
+  startCrawling('start-crawling'),
+  stopCrawling('stop-crawling'),
+  startFlying('start-flying'),
+  stopFlying('stop-flying'),
+  clientAckServerData('client-ack-server-data'),
+  startUsingItem('start-using-item'),
+  internalUpdate('internal-update'),
+  count('count');
+  const PlayerActionType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static PlayerActionType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, PlayerActionType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SPlayerAction {
   final int playerRuntimeId;
@@ -38248,9 +38974,15 @@ final class SResourcePackClientResponse {
   SResourcePackClientResponse copyWith({int? response, int? downloadSize, List<String>? packIds, }) => SResourcePackClientResponse(response: response ?? this.response, downloadSize: downloadSize ?? this.downloadSize, packIds: packIds ?? this.packIds, );
 }
 enum RespawnState {
-  searchingForSpawn,
-  readyToSpawn,
-  clientReadyToSpawn,
+  searchingForSpawn('searching-for-spawn'),
+  readyToSpawn('ready-to-spawn'),
+  clientReadyToSpawn('client-ready-to-spawn');
+  const RespawnState(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static RespawnState? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, RespawnState> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SRespawn {
   final (double, double, double, ) position;
@@ -38274,18 +39006,24 @@ final class SSetPlayerInventoryOptions {
   SSetPlayerInventoryOptions copyWith({int? leftInventoryTab, int? rightInventoryTab, bool? filtering, int? layoutInv, int? layoutCraft, }) => SSetPlayerInventoryOptions(leftInventoryTab: leftInventoryTab ?? this.leftInventoryTab, rightInventoryTab: rightInventoryTab ?? this.rightInventoryTab, filtering: filtering ?? this.filtering, layoutInv: layoutInv ?? this.layoutInv, layoutCraft: layoutCraft ?? this.layoutCraft, );
 }
 enum TextPacketType {
-  raw,
-  chat,
-  translation,
-  popup,
-  jukeboxPopup,
-  tip,
-  system,
-  whisper,
-  announcement,
-  jsonWhisper,
-  json,
-  jsonAnnouncement,
+  raw('raw'),
+  chat('chat'),
+  translation('translation'),
+  popup('popup'),
+  jukeboxPopup('jukebox-popup'),
+  tip('tip'),
+  system('system'),
+  whisper('whisper'),
+  announcement('announcement'),
+  jsonWhisper('json-whisper'),
+  json('json'),
+  jsonAnnouncement('json-announcement');
+  const TextPacketType(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static TextPacketType? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, TextPacketType> _byWireName = {for (final value in values) value.wireName: value};
 }
 final class SText {
   final bool needsTranslation;
@@ -38439,6 +39177,8 @@ final class PacketReceivedEventData {
   final bool cancelled;
   const PacketReceivedEventData({required this.player, required this.packet, required this.packetId, required this.rawPayload, required this.cancelled, });
   PacketReceivedEventData copyWith({Player? player, EventServerboundPacket? packet, int? packetId, List<int>? rawPayload, bool? cancelled, }) => PacketReceivedEventData(player: player ?? this.player, packet: packet ?? this.packet, packetId: packetId ?? this.packetId, rawPayload: rawPayload ?? this.rawPayload, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PacketReceivedEventData cancel() => copyWith(cancelled: true);
 }
 sealed class EventClientboundPacket {
   const EventClientboundPacket();
@@ -38462,6 +39202,8 @@ final class PacketSentEventData {
   final bool cancelled;
   const PacketSentEventData({required this.player, required this.packet, required this.packetId, required this.rawPayload, required this.cancelled, });
   PacketSentEventData copyWith({Player? player, EventClientboundPacket? packet, int? packetId, List<int>? rawPayload, bool? cancelled, }) => PacketSentEventData(player: player ?? this.player, packet: packet ?? this.packet, packetId: packetId ?? this.packetId, rawPayload: rawPayload ?? this.rawPayload, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PacketSentEventData cancel() => copyWith(cancelled: true);
 }
 final class ChunkLoadEventData {
   final World targetWorld;
@@ -38470,6 +39212,8 @@ final class ChunkLoadEventData {
   final bool cancelled;
   const ChunkLoadEventData({required this.targetWorld, required this.chunkX, required this.chunkZ, required this.cancelled, });
   ChunkLoadEventData copyWith({World? targetWorld, int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkLoadEventData(targetWorld: targetWorld ?? this.targetWorld, chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ChunkLoadEventData cancel() => copyWith(cancelled: true);
 }
 final class ChunkSaveEventData {
   final World targetWorld;
@@ -38478,6 +39222,8 @@ final class ChunkSaveEventData {
   final bool cancelled;
   const ChunkSaveEventData({required this.targetWorld, required this.chunkX, required this.chunkZ, required this.cancelled, });
   ChunkSaveEventData copyWith({World? targetWorld, int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkSaveEventData(targetWorld: targetWorld ?? this.targetWorld, chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ChunkSaveEventData cancel() => copyWith(cancelled: true);
 }
 final class ChunkSendEventData {
   final World targetWorld;
@@ -38486,6 +39232,8 @@ final class ChunkSendEventData {
   final bool cancelled;
   const ChunkSendEventData({required this.targetWorld, required this.chunkX, required this.chunkZ, required this.cancelled, });
   ChunkSendEventData copyWith({World? targetWorld, int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkSendEventData(targetWorld: targetWorld ?? this.targetWorld, chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ChunkSendEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityDamageEventData {
   final int entityId;
@@ -38494,6 +39242,8 @@ final class EntityDamageEventData {
   final bool cancelled;
   const EntityDamageEventData({required this.entityId, required this.damage, required this.damageType, required this.cancelled, });
   EntityDamageEventData copyWith({int? entityId, double? damage, DamageType? damageType, bool? cancelled, }) => EntityDamageEventData(entityId: entityId ?? this.entityId, damage: damage ?? this.damage, damageType: damageType ?? this.damageType, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityDamageEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityDeathEventData {
   final int entityId;
@@ -38509,6 +39259,8 @@ final class PlayerDeathEventData {
   final bool cancelled;
   const PlayerDeathEventData({required this.player, required this.deathMessage, required this.droppedExp, required this.keepInventory, required this.cancelled, });
   PlayerDeathEventData copyWith({Player? player, TextComponent? deathMessage, int? droppedExp, bool? keepInventory, bool? cancelled, }) => PlayerDeathEventData(player: player ?? this.player, deathMessage: deathMessage ?? this.deathMessage, droppedExp: droppedExp ?? this.droppedExp, keepInventory: keepInventory ?? this.keepInventory, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerDeathEventData cancel() => copyWith(cancelled: true);
 }
 final class EntitySpawnEventData {
   final int entityId;
@@ -38518,6 +39270,8 @@ final class EntitySpawnEventData {
   final bool cancelled;
   const EntitySpawnEventData({required this.entityId, required this.entityType, required this.position, required this.targetWorld, required this.cancelled, });
   EntitySpawnEventData copyWith({int? entityId, String? entityType, (double, double, double, )? position, World? targetWorld, bool? cancelled, }) => EntitySpawnEventData(entityId: entityId ?? this.entityId, entityType: entityType ?? this.entityType, position: position ?? this.position, targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntitySpawnEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityCombustEventData {
   final int entityId;
@@ -38525,6 +39279,8 @@ final class EntityCombustEventData {
   final bool cancelled;
   const EntityCombustEventData({required this.entityId, required this.durationSecs, required this.cancelled, });
   EntityCombustEventData copyWith({int? entityId, double? durationSecs, bool? cancelled, }) => EntityCombustEventData(entityId: entityId ?? this.entityId, durationSecs: durationSecs ?? this.durationSecs, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityCombustEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityRegainHealthEventData {
   final int entityId;
@@ -38532,6 +39288,8 @@ final class EntityRegainHealthEventData {
   final bool cancelled;
   const EntityRegainHealthEventData({required this.entityId, required this.amount, required this.cancelled, });
   EntityRegainHealthEventData copyWith({int? entityId, double? amount, bool? cancelled, }) => EntityRegainHealthEventData(entityId: entityId ?? this.entityId, amount: amount ?? this.amount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityRegainHealthEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityAirChangeEventData {
   final int entityId;
@@ -38539,6 +39297,8 @@ final class EntityAirChangeEventData {
   final bool cancelled;
   const EntityAirChangeEventData({required this.entityId, required this.amount, required this.cancelled, });
   EntityAirChangeEventData copyWith({int? entityId, int? amount, bool? cancelled, }) => EntityAirChangeEventData(entityId: entityId ?? this.entityId, amount: amount ?? this.amount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityAirChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityBreedEventData {
   final int fatherId;
@@ -38547,6 +39307,8 @@ final class EntityBreedEventData {
   final bool cancelled;
   const EntityBreedEventData({required this.fatherId, required this.motherId, required this.childId, required this.cancelled, });
   EntityBreedEventData copyWith({int? fatherId, int? motherId, int? childId, bool? cancelled, }) => EntityBreedEventData(fatherId: fatherId ?? this.fatherId, motherId: motherId ?? this.motherId, childId: childId ?? this.childId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityBreedEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityDismountEventData {
   final int entityId;
@@ -38554,6 +39316,8 @@ final class EntityDismountEventData {
   final bool cancelled;
   const EntityDismountEventData({required this.entityId, required this.dismountedId, required this.cancelled, });
   EntityDismountEventData copyWith({int? entityId, int? dismountedId, bool? cancelled, }) => EntityDismountEventData(entityId: entityId ?? this.entityId, dismountedId: dismountedId ?? this.dismountedId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityDismountEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityDyeEventData {
   final int entityId;
@@ -38562,6 +39326,8 @@ final class EntityDyeEventData {
   final bool cancelled;
   const EntityDyeEventData({required this.entityId, required this.color, required this.player, required this.cancelled, });
   EntityDyeEventData copyWith({int? entityId, String? color, Player? player, bool clearPlayer = false, bool? cancelled, }) => EntityDyeEventData(entityId: entityId ?? this.entityId, color: color ?? this.color, player: clearPlayer ? null : (player ?? this.player), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityDyeEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityEnterLoveModeEventData {
   final int entityId;
@@ -38570,6 +39336,8 @@ final class EntityEnterLoveModeEventData {
   final bool cancelled;
   const EntityEnterLoveModeEventData({required this.entityId, required this.humanEntityId, required this.ticksInLove, required this.cancelled, });
   EntityEnterLoveModeEventData copyWith({int? entityId, int? humanEntityId, bool clearHumanEntityId = false, int? ticksInLove, bool? cancelled, }) => EntityEnterLoveModeEventData(entityId: entityId ?? this.entityId, humanEntityId: clearHumanEntityId ? null : (humanEntityId ?? this.humanEntityId), ticksInLove: ticksInLove ?? this.ticksInLove, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityEnterLoveModeEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityExplodeEventData {
   final int entityId;
@@ -38578,6 +39346,8 @@ final class EntityExplodeEventData {
   final bool cancelled;
   const EntityExplodeEventData({required this.entityId, required this.position, required this.yieldRate, required this.cancelled, });
   EntityExplodeEventData copyWith({int? entityId, (double, double, double, )? position, double? yieldRate, bool? cancelled, }) => EntityExplodeEventData(entityId: entityId ?? this.entityId, position: position ?? this.position, yieldRate: yieldRate ?? this.yieldRate, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityExplodeEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityMountEventData {
   final int entityId;
@@ -38585,6 +39355,8 @@ final class EntityMountEventData {
   final bool cancelled;
   const EntityMountEventData({required this.entityId, required this.mountedId, required this.cancelled, });
   EntityMountEventData copyWith({int? entityId, int? mountedId, bool? cancelled, }) => EntityMountEventData(entityId: entityId ?? this.entityId, mountedId: mountedId ?? this.mountedId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityMountEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityPickupItemEventData {
   final int entityId;
@@ -38593,6 +39365,8 @@ final class EntityPickupItemEventData {
   final bool cancelled;
   const EntityPickupItemEventData({required this.entityId, required this.itemName, required this.count, required this.cancelled, });
   EntityPickupItemEventData copyWith({int? entityId, String? itemName, int? count, bool? cancelled, }) => EntityPickupItemEventData(entityId: entityId ?? this.entityId, itemName: itemName ?? this.itemName, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityPickupItemEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityPortalEventData {
   final int entityId;
@@ -38600,12 +39374,16 @@ final class EntityPortalEventData {
   final bool cancelled;
   const EntityPortalEventData({required this.entityId, required this.portalPos, required this.cancelled, });
   EntityPortalEventData copyWith({int? entityId, BlockPos? portalPos, bool? cancelled, }) => EntityPortalEventData(entityId: entityId ?? this.entityId, portalPos: portalPos ?? this.portalPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityPortalEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityResurrectEventData {
   final int entityId;
   final bool cancelled;
   const EntityResurrectEventData({required this.entityId, required this.cancelled, });
   EntityResurrectEventData copyWith({int? entityId, bool? cancelled, }) => EntityResurrectEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityResurrectEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityShootBowEventData {
   final int entityId;
@@ -38614,6 +39392,8 @@ final class EntityShootBowEventData {
   final bool cancelled;
   const EntityShootBowEventData({required this.entityId, required this.weaponName, required this.force, required this.cancelled, });
   EntityShootBowEventData copyWith({int? entityId, String? weaponName, double? force, bool? cancelled, }) => EntityShootBowEventData(entityId: entityId ?? this.entityId, weaponName: weaponName ?? this.weaponName, force: force ?? this.force, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityShootBowEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityTameEventData {
   final int entityId;
@@ -38621,6 +39401,8 @@ final class EntityTameEventData {
   final bool cancelled;
   const EntityTameEventData({required this.entityId, required this.owner, required this.cancelled, });
   EntityTameEventData copyWith({int? entityId, Player? owner, bool? cancelled, }) => EntityTameEventData(entityId: entityId ?? this.entityId, owner: owner ?? this.owner, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityTameEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityTargetEventData {
   final int entityId;
@@ -38628,6 +39410,8 @@ final class EntityTargetEventData {
   final bool cancelled;
   const EntityTargetEventData({required this.entityId, required this.targetId, required this.cancelled, });
   EntityTargetEventData copyWith({int? entityId, int? targetId, bool clearTargetId = false, bool? cancelled, }) => EntityTargetEventData(entityId: entityId ?? this.entityId, targetId: clearTargetId ? null : (targetId ?? this.targetId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityTargetEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityTeleportEventData {
   final int entityId;
@@ -38636,6 +39420,8 @@ final class EntityTeleportEventData {
   final bool cancelled;
   const EntityTeleportEventData({required this.entityId, required this.fromPosition, required this.toPosition, required this.cancelled, });
   EntityTeleportEventData copyWith({int? entityId, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => EntityTeleportEventData(entityId: entityId ?? this.entityId, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityTeleportEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityToggleGlideEventData {
   final int entityId;
@@ -38643,6 +39429,8 @@ final class EntityToggleGlideEventData {
   final bool cancelled;
   const EntityToggleGlideEventData({required this.entityId, required this.isGliding, required this.cancelled, });
   EntityToggleGlideEventData copyWith({int? entityId, bool? isGliding, bool? cancelled, }) => EntityToggleGlideEventData(entityId: entityId ?? this.entityId, isGliding: isGliding ?? this.isGliding, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityToggleGlideEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityTransformEventData {
   final int entityId;
@@ -38651,6 +39439,8 @@ final class EntityTransformEventData {
   final bool cancelled;
   const EntityTransformEventData({required this.entityId, required this.newEntityId, required this.transformReason, required this.cancelled, });
   EntityTransformEventData copyWith({int? entityId, int? newEntityId, String? transformReason, bool? cancelled, }) => EntityTransformEventData(entityId: entityId ?? this.entityId, newEntityId: newEntityId ?? this.newEntityId, transformReason: transformReason ?? this.transformReason, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityTransformEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerItemConsumeEventData {
   final Player player;
@@ -38658,6 +39448,8 @@ final class PlayerItemConsumeEventData {
   final bool cancelled;
   const PlayerItemConsumeEventData({required this.player, required this.itemName, required this.cancelled, });
   PlayerItemConsumeEventData copyWith({Player? player, String? itemName, bool? cancelled, }) => PlayerItemConsumeEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerItemConsumeEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerItemDamageEventData {
   final Player player;
@@ -38666,6 +39458,8 @@ final class PlayerItemDamageEventData {
   final bool cancelled;
   const PlayerItemDamageEventData({required this.player, required this.itemName, required this.damage, required this.cancelled, });
   PlayerItemDamageEventData copyWith({Player? player, String? itemName, int? damage, bool? cancelled, }) => PlayerItemDamageEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, damage: damage ?? this.damage, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerItemDamageEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerDropItemEventData {
   final Player player;
@@ -38674,6 +39468,8 @@ final class PlayerDropItemEventData {
   final bool cancelled;
   const PlayerDropItemEventData({required this.player, required this.itemName, required this.count, required this.cancelled, });
   PlayerDropItemEventData copyWith({Player? player, String? itemName, int? count, bool? cancelled, }) => PlayerDropItemEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerDropItemEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerBedEnterEventData {
   final Player player;
@@ -38681,6 +39477,8 @@ final class PlayerBedEnterEventData {
   final bool cancelled;
   const PlayerBedEnterEventData({required this.player, required this.bedPos, required this.cancelled, });
   PlayerBedEnterEventData copyWith({Player? player, BlockPos? bedPos, bool? cancelled, }) => PlayerBedEnterEventData(player: player ?? this.player, bedPos: bedPos ?? this.bedPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerBedEnterEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerBedLeaveEventData {
   final Player player;
@@ -38695,6 +39493,8 @@ final class PlayerBucketEmptyEventData {
   final bool cancelled;
   const PlayerBucketEmptyEventData({required this.player, required this.blockPos, required this.bucket, required this.cancelled, });
   PlayerBucketEmptyEventData copyWith({Player? player, BlockPos? blockPos, String? bucket, bool? cancelled, }) => PlayerBucketEmptyEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, bucket: bucket ?? this.bucket, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerBucketEmptyEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerBucketFillEventData {
   final Player player;
@@ -38703,6 +39503,8 @@ final class PlayerBucketFillEventData {
   final bool cancelled;
   const PlayerBucketFillEventData({required this.player, required this.blockPos, required this.bucket, required this.cancelled, });
   PlayerBucketFillEventData copyWith({Player? player, BlockPos? blockPos, String? bucket, bool? cancelled, }) => PlayerBucketFillEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, bucket: bucket ?? this.bucket, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerBucketFillEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockDamageEventData {
   final Player player;
@@ -38711,12 +39513,16 @@ final class BlockDamageEventData {
   final bool cancelled;
   const BlockDamageEventData({required this.player, required this.blockPos, required this.instaBreak, required this.cancelled, });
   BlockDamageEventData copyWith({Player? player, BlockPos? blockPos, bool? instaBreak, bool? cancelled, }) => BlockDamageEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, instaBreak: instaBreak ?? this.instaBreak, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockDamageEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockIgniteEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const BlockIgniteEventData({required this.blockPos, required this.cancelled, });
   BlockIgniteEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => BlockIgniteEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockIgniteEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockFromToEventData {
   final BlockPos fromPos;
@@ -38724,18 +39530,24 @@ final class BlockFromToEventData {
   final bool cancelled;
   const BlockFromToEventData({required this.fromPos, required this.toPos, required this.cancelled, });
   BlockFromToEventData copyWith({BlockPos? fromPos, BlockPos? toPos, bool? cancelled, }) => BlockFromToEventData(fromPos: fromPos ?? this.fromPos, toPos: toPos ?? this.toPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockFromToEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockFormEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const BlockFormEventData({required this.blockPos, required this.cancelled, });
   BlockFormEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => BlockFormEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockFormEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockFadeEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const BlockFadeEventData({required this.blockPos, required this.cancelled, });
   BlockFadeEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => BlockFadeEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockFadeEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockDispenseEventData {
   final BlockPos blockPos;
@@ -38743,6 +39555,8 @@ final class BlockDispenseEventData {
   final bool cancelled;
   const BlockDispenseEventData({required this.blockPos, required this.itemName, required this.cancelled, });
   BlockDispenseEventData copyWith({BlockPos? blockPos, String? itemName, bool? cancelled, }) => BlockDispenseEventData(blockPos: blockPos ?? this.blockPos, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockDispenseEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockExplodeEventData {
   final BlockPos blockPos;
@@ -38750,6 +39564,8 @@ final class BlockExplodeEventData {
   final bool cancelled;
   const BlockExplodeEventData({required this.blockPos, required this.yieldRate, required this.cancelled, });
   BlockExplodeEventData copyWith({BlockPos? blockPos, double? yieldRate, bool? cancelled, }) => BlockExplodeEventData(blockPos: blockPos ?? this.blockPos, yieldRate: yieldRate ?? this.yieldRate, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockExplodeEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockPhysicsEventData {
   final BlockPos blockPos;
@@ -38757,6 +39573,8 @@ final class BlockPhysicsEventData {
   final bool cancelled;
   const BlockPhysicsEventData({required this.blockPos, required this.changedPos, required this.cancelled, });
   BlockPhysicsEventData copyWith({BlockPos? blockPos, BlockPos? changedPos, bool? cancelled, }) => BlockPhysicsEventData(blockPos: blockPos ?? this.blockPos, changedPos: changedPos ?? this.changedPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockPhysicsEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockPistonExtendEventData {
   final BlockPos blockPos;
@@ -38764,6 +39582,8 @@ final class BlockPistonExtendEventData {
   final bool cancelled;
   const BlockPistonExtendEventData({required this.blockPos, required this.direction, required this.cancelled, });
   BlockPistonExtendEventData copyWith({BlockPos? blockPos, String? direction, bool? cancelled, }) => BlockPistonExtendEventData(blockPos: blockPos ?? this.blockPos, direction: direction ?? this.direction, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockPistonExtendEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockPistonRetractEventData {
   final BlockPos blockPos;
@@ -38771,6 +39591,8 @@ final class BlockPistonRetractEventData {
   final bool cancelled;
   const BlockPistonRetractEventData({required this.blockPos, required this.direction, required this.cancelled, });
   BlockPistonRetractEventData copyWith({BlockPos? blockPos, String? direction, bool? cancelled, }) => BlockPistonRetractEventData(blockPos: blockPos ?? this.blockPos, direction: direction ?? this.direction, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockPistonRetractEventData cancel() => copyWith(cancelled: true);
 }
 final class NotePlayEventData {
   final BlockPos blockPos;
@@ -38779,6 +39601,8 @@ final class NotePlayEventData {
   final bool cancelled;
   const NotePlayEventData({required this.blockPos, required this.instrument, required this.note, required this.cancelled, });
   NotePlayEventData copyWith({BlockPos? blockPos, String? instrument, int? note, bool? cancelled, }) => NotePlayEventData(blockPos: blockPos ?? this.blockPos, instrument: instrument ?? this.instrument, note: note ?? this.note, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  NotePlayEventData cancel() => copyWith(cancelled: true);
 }
 final class SignChangeEventData {
   final Player player;
@@ -38787,12 +39611,16 @@ final class SignChangeEventData {
   final bool cancelled;
   const SignChangeEventData({required this.player, required this.blockPos, required this.lines, required this.cancelled, });
   SignChangeEventData copyWith({Player? player, BlockPos? blockPos, List<String>? lines, bool? cancelled, }) => SignChangeEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, lines: lines ?? this.lines, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SignChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class SpongeAbsorbEventData {
   final BlockPos blockPos;
   final bool cancelled;
   const SpongeAbsorbEventData({required this.blockPos, required this.cancelled, });
   SpongeAbsorbEventData copyWith({BlockPos? blockPos, bool? cancelled, }) => SpongeAbsorbEventData(blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SpongeAbsorbEventData cancel() => copyWith(cancelled: true);
 }
 final class TntPrimeEventData {
   final BlockPos blockPos;
@@ -38800,6 +39628,8 @@ final class TntPrimeEventData {
   final bool cancelled;
   const TntPrimeEventData({required this.blockPos, required this.primeReason, required this.cancelled, });
   TntPrimeEventData copyWith({BlockPos? blockPos, String? primeReason, bool? cancelled, }) => TntPrimeEventData(blockPos: blockPos ?? this.blockPos, primeReason: primeReason ?? this.primeReason, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  TntPrimeEventData cancel() => copyWith(cancelled: true);
 }
 final class WeatherChangeEventData {
   final World targetWorld;
@@ -38807,6 +39637,8 @@ final class WeatherChangeEventData {
   final bool cancelled;
   const WeatherChangeEventData({required this.targetWorld, required this.toWeatherState, required this.cancelled, });
   WeatherChangeEventData copyWith({World? targetWorld, bool? toWeatherState, bool? cancelled, }) => WeatherChangeEventData(targetWorld: targetWorld ?? this.targetWorld, toWeatherState: toWeatherState ?? this.toWeatherState, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  WeatherChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class ThunderChangeEventData {
   final World targetWorld;
@@ -38814,6 +39646,8 @@ final class ThunderChangeEventData {
   final bool cancelled;
   const ThunderChangeEventData({required this.targetWorld, required this.toThunderState, required this.cancelled, });
   ThunderChangeEventData copyWith({World? targetWorld, bool? toThunderState, bool? cancelled, }) => ThunderChangeEventData(targetWorld: targetWorld ?? this.targetWorld, toThunderState: toThunderState ?? this.toThunderState, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ThunderChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class WorldLoadEventData {
   final World targetWorld;
@@ -38825,6 +39659,8 @@ final class WorldUnloadEventData {
   final bool cancelled;
   const WorldUnloadEventData({required this.targetWorld, required this.cancelled, });
   WorldUnloadEventData copyWith({World? targetWorld, bool? cancelled, }) => WorldUnloadEventData(targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  WorldUnloadEventData cancel() => copyWith(cancelled: true);
 }
 final class AsyncStructureGenerateEventData {
   final String worldName;
@@ -38833,6 +39669,8 @@ final class AsyncStructureGenerateEventData {
   final bool cancelled;
   const AsyncStructureGenerateEventData({required this.worldName, required this.structureName, required this.pos, required this.cancelled, });
   AsyncStructureGenerateEventData copyWith({String? worldName, String? structureName, BlockPos? pos, bool? cancelled, }) => AsyncStructureGenerateEventData(worldName: worldName ?? this.worldName, structureName: structureName ?? this.structureName, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  AsyncStructureGenerateEventData cancel() => copyWith(cancelled: true);
 }
 final class AsyncStructureSpawnEventData {
   final String worldName;
@@ -38841,6 +39679,8 @@ final class AsyncStructureSpawnEventData {
   final bool cancelled;
   const AsyncStructureSpawnEventData({required this.worldName, required this.structureName, required this.pos, required this.cancelled, });
   AsyncStructureSpawnEventData copyWith({String? worldName, String? structureName, BlockPos? pos, bool? cancelled, }) => AsyncStructureSpawnEventData(worldName: worldName ?? this.worldName, structureName: structureName ?? this.structureName, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  AsyncStructureSpawnEventData cancel() => copyWith(cancelled: true);
 }
 final class ChunkPopulateEventData {
   final int chunkX;
@@ -38848,6 +39688,8 @@ final class ChunkPopulateEventData {
   final bool cancelled;
   const ChunkPopulateEventData({required this.chunkX, required this.chunkZ, required this.cancelled, });
   ChunkPopulateEventData copyWith({int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkPopulateEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ChunkPopulateEventData cancel() => copyWith(cancelled: true);
 }
 final class ChunkUnloadEventData {
   final int chunkX;
@@ -38855,6 +39697,8 @@ final class ChunkUnloadEventData {
   final bool cancelled;
   const ChunkUnloadEventData({required this.chunkX, required this.chunkZ, required this.cancelled, });
   ChunkUnloadEventData copyWith({int? chunkX, int? chunkZ, bool? cancelled, }) => ChunkUnloadEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ChunkUnloadEventData cancel() => copyWith(cancelled: true);
 }
 final class EntitiesLoadEventData {
   final int chunkX;
@@ -38863,6 +39707,8 @@ final class EntitiesLoadEventData {
   final bool cancelled;
   const EntitiesLoadEventData({required this.chunkX, required this.chunkZ, required this.entityCount, required this.cancelled, });
   EntitiesLoadEventData copyWith({int? chunkX, int? chunkZ, int? entityCount, bool? cancelled, }) => EntitiesLoadEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, entityCount: entityCount ?? this.entityCount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntitiesLoadEventData cancel() => copyWith(cancelled: true);
 }
 final class EntitiesUnloadEventData {
   final int chunkX;
@@ -38871,6 +39717,8 @@ final class EntitiesUnloadEventData {
   final bool cancelled;
   const EntitiesUnloadEventData({required this.chunkX, required this.chunkZ, required this.entityCount, required this.cancelled, });
   EntitiesUnloadEventData copyWith({int? chunkX, int? chunkZ, int? entityCount, bool? cancelled, }) => EntitiesUnloadEventData(chunkX: chunkX ?? this.chunkX, chunkZ: chunkZ ?? this.chunkZ, entityCount: entityCount ?? this.entityCount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntitiesUnloadEventData cancel() => copyWith(cancelled: true);
 }
 final class GenericGameEventData {
   final String eventId;
@@ -38878,12 +39726,16 @@ final class GenericGameEventData {
   final bool cancelled;
   const GenericGameEventData({required this.eventId, required this.pos, required this.cancelled, });
   GenericGameEventData copyWith({String? eventId, (double, double, double, )? pos, bool? cancelled, }) => GenericGameEventData(eventId: eventId ?? this.eventId, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  GenericGameEventData cancel() => copyWith(cancelled: true);
 }
 final class LootGenerateEventData {
   final String lootTable;
   final bool cancelled;
   const LootGenerateEventData({required this.lootTable, required this.cancelled, });
   LootGenerateEventData copyWith({String? lootTable, bool? cancelled, }) => LootGenerateEventData(lootTable: lootTable ?? this.lootTable, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  LootGenerateEventData cancel() => copyWith(cancelled: true);
 }
 final class PortalCreateEventData {
   final BlockPos pos;
@@ -38891,6 +39743,8 @@ final class PortalCreateEventData {
   final bool cancelled;
   const PortalCreateEventData({required this.pos, required this.portalType, required this.cancelled, });
   PortalCreateEventData copyWith({BlockPos? pos, String? portalType, bool? cancelled, }) => PortalCreateEventData(pos: pos ?? this.pos, portalType: portalType ?? this.portalType, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PortalCreateEventData cancel() => copyWith(cancelled: true);
 }
 final class StructureGrowEventData {
   final BlockPos pos;
@@ -38899,12 +39753,16 @@ final class StructureGrowEventData {
   final bool cancelled;
   const StructureGrowEventData({required this.pos, required this.species, required this.boneMeal, required this.cancelled, });
   StructureGrowEventData copyWith({BlockPos? pos, String? species, bool? boneMeal, bool? cancelled, }) => StructureGrowEventData(pos: pos ?? this.pos, species: species ?? this.species, boneMeal: boneMeal ?? this.boneMeal, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  StructureGrowEventData cancel() => copyWith(cancelled: true);
 }
 final class TimeSkipEventData {
   final int skipAmount;
   final bool cancelled;
   const TimeSkipEventData({required this.skipAmount, required this.cancelled, });
   TimeSkipEventData copyWith({int? skipAmount, bool? cancelled, }) => TimeSkipEventData(skipAmount: skipAmount ?? this.skipAmount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  TimeSkipEventData cancel() => copyWith(cancelled: true);
 }
 final class WorldInitEventData {
   final World targetWorld;
@@ -38916,18 +39774,24 @@ final class WorldSaveEventData {
   final bool cancelled;
   const WorldSaveEventData({required this.worldName, required this.cancelled, });
   WorldSaveEventData copyWith({String? worldName, bool? cancelled, }) => WorldSaveEventData(worldName: worldName ?? this.worldName, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  WorldSaveEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryOpenEventData {
   final Player player;
   final bool cancelled;
   const InventoryOpenEventData({required this.player, required this.cancelled, });
   InventoryOpenEventData copyWith({Player? player, bool? cancelled, }) => InventoryOpenEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  InventoryOpenEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryDragEventData {
   final Player player;
   final bool cancelled;
   const InventoryDragEventData({required this.player, required this.cancelled, });
   InventoryDragEventData copyWith({Player? player, bool? cancelled, }) => InventoryDragEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  InventoryDragEventData cancel() => copyWith(cancelled: true);
 }
 final class CraftItemEventData {
   final Player player;
@@ -38935,6 +39799,8 @@ final class CraftItemEventData {
   final bool cancelled;
   const CraftItemEventData({required this.player, required this.recipeId, required this.cancelled, });
   CraftItemEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => CraftItemEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  CraftItemEventData cancel() => copyWith(cancelled: true);
 }
 final class FurnaceSmeltEventData {
   final BlockPos blockPos;
@@ -38943,6 +39809,8 @@ final class FurnaceSmeltEventData {
   final bool cancelled;
   const FurnaceSmeltEventData({required this.blockPos, required this.sourceItem, required this.resultItem, required this.cancelled, });
   FurnaceSmeltEventData copyWith({BlockPos? blockPos, String? sourceItem, String? resultItem, bool? cancelled, }) => FurnaceSmeltEventData(blockPos: blockPos ?? this.blockPos, sourceItem: sourceItem ?? this.sourceItem, resultItem: resultItem ?? this.resultItem, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  FurnaceSmeltEventData cancel() => copyWith(cancelled: true);
 }
 final class BrewEventData {
   final BlockPos blockPos;
@@ -38950,6 +39818,8 @@ final class BrewEventData {
   final bool cancelled;
   const BrewEventData({required this.blockPos, required this.fuelLevel, required this.cancelled, });
   BrewEventData copyWith({BlockPos? blockPos, int? fuelLevel, bool? cancelled, }) => BrewEventData(blockPos: blockPos ?? this.blockPos, fuelLevel: fuelLevel ?? this.fuelLevel, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BrewEventData cancel() => copyWith(cancelled: true);
 }
 final class BrewingStandFuelEventData {
   final BlockPos blockPos;
@@ -38957,6 +39827,8 @@ final class BrewingStandFuelEventData {
   final bool cancelled;
   const BrewingStandFuelEventData({required this.blockPos, required this.fuelPower, required this.cancelled, });
   BrewingStandFuelEventData copyWith({BlockPos? blockPos, int? fuelPower, bool? cancelled, }) => BrewingStandFuelEventData(blockPos: blockPos ?? this.blockPos, fuelPower: fuelPower ?? this.fuelPower, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BrewingStandFuelEventData cancel() => copyWith(cancelled: true);
 }
 final class FurnaceBurnEventData {
   final BlockPos blockPos;
@@ -38965,6 +39837,8 @@ final class FurnaceBurnEventData {
   final bool cancelled;
   const FurnaceBurnEventData({required this.blockPos, required this.fuelItem, required this.burnTime, required this.cancelled, });
   FurnaceBurnEventData copyWith({BlockPos? blockPos, String? fuelItem, int? burnTime, bool? cancelled, }) => FurnaceBurnEventData(blockPos: blockPos ?? this.blockPos, fuelItem: fuelItem ?? this.fuelItem, burnTime: burnTime ?? this.burnTime, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  FurnaceBurnEventData cancel() => copyWith(cancelled: true);
 }
 final class FurnaceExtractEventData {
   final Player player;
@@ -38982,6 +39856,8 @@ final class FurnaceStartSmeltEventData {
   final bool cancelled;
   const FurnaceStartSmeltEventData({required this.blockPos, required this.sourceItem, required this.cookingTime, required this.cancelled, });
   FurnaceStartSmeltEventData copyWith({BlockPos? blockPos, String? sourceItem, int? cookingTime, bool? cancelled, }) => FurnaceStartSmeltEventData(blockPos: blockPos ?? this.blockPos, sourceItem: sourceItem ?? this.sourceItem, cookingTime: cookingTime ?? this.cookingTime, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  FurnaceStartSmeltEventData cancel() => copyWith(cancelled: true);
 }
 final class HopperInventorySearchEventData {
   final BlockPos blockPos;
@@ -38989,6 +39865,8 @@ final class HopperInventorySearchEventData {
   final bool cancelled;
   const HopperInventorySearchEventData({required this.blockPos, required this.searchPos, required this.cancelled, });
   HopperInventorySearchEventData copyWith({BlockPos? blockPos, BlockPos? searchPos, bool? cancelled, }) => HopperInventorySearchEventData(blockPos: blockPos ?? this.blockPos, searchPos: searchPos ?? this.searchPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  HopperInventorySearchEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryCreativeEventData {
   final Player player;
@@ -38998,12 +39876,16 @@ final class InventoryCreativeEventData {
   final bool cancelled;
   const InventoryCreativeEventData({required this.player, required this.slot, required this.itemId, required this.itemCount, required this.cancelled, });
   InventoryCreativeEventData copyWith({Player? player, int? slot, String? itemId, int? itemCount, bool? cancelled, }) => InventoryCreativeEventData(player: player ?? this.player, slot: slot ?? this.slot, itemId: itemId ?? this.itemId, itemCount: itemCount ?? this.itemCount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  InventoryCreativeEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryInteractEventData {
   final Player player;
   final bool cancelled;
   const InventoryInteractEventData({required this.player, required this.cancelled, });
   InventoryInteractEventData copyWith({Player? player, bool? cancelled, }) => InventoryInteractEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  InventoryInteractEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryMoveItemEventData {
   final BlockPos sourcePos;
@@ -39013,6 +39895,8 @@ final class InventoryMoveItemEventData {
   final bool cancelled;
   const InventoryMoveItemEventData({required this.sourcePos, required this.targetPos, required this.itemId, required this.itemAmount, required this.cancelled, });
   InventoryMoveItemEventData copyWith({BlockPos? sourcePos, BlockPos? targetPos, String? itemId, int? itemAmount, bool? cancelled, }) => InventoryMoveItemEventData(sourcePos: sourcePos ?? this.sourcePos, targetPos: targetPos ?? this.targetPos, itemId: itemId ?? this.itemId, itemAmount: itemAmount ?? this.itemAmount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  InventoryMoveItemEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryPickupItemEventData {
   final BlockPos blockPos;
@@ -39021,6 +39905,8 @@ final class InventoryPickupItemEventData {
   final bool cancelled;
   const InventoryPickupItemEventData({required this.blockPos, required this.itemEntityId, required this.itemId, required this.cancelled, });
   InventoryPickupItemEventData copyWith({BlockPos? blockPos, int? itemEntityId, String? itemId, bool? cancelled, }) => InventoryPickupItemEventData(blockPos: blockPos ?? this.blockPos, itemEntityId: itemEntityId ?? this.itemEntityId, itemId: itemId ?? this.itemId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  InventoryPickupItemEventData cancel() => copyWith(cancelled: true);
 }
 final class PrepareAnvilEventData {
   final Player player;
@@ -39047,6 +39933,8 @@ final class PrepareItemCraftEventData {
   final bool cancelled;
   const PrepareItemCraftEventData({required this.player, required this.recipeId, required this.cancelled, });
   PrepareItemCraftEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => PrepareItemCraftEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PrepareItemCraftEventData cancel() => copyWith(cancelled: true);
 }
 final class PrepareSmithingEventData {
   final Player player;
@@ -39060,6 +39948,8 @@ final class SmithItemEventData {
   final bool cancelled;
   const SmithItemEventData({required this.player, required this.recipeId, required this.cancelled, });
   SmithItemEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => SmithItemEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SmithItemEventData cancel() => copyWith(cancelled: true);
 }
 final class TradeSelectEventData {
   final Player player;
@@ -39067,6 +39957,8 @@ final class TradeSelectEventData {
   final bool cancelled;
   const TradeSelectEventData({required this.player, required this.slotIndex, required this.cancelled, });
   TradeSelectEventData copyWith({Player? player, int? slotIndex, bool? cancelled, }) => TradeSelectEventData(player: player ?? this.player, slotIndex: slotIndex ?? this.slotIndex, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  TradeSelectEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleBlockCollisionEventData {
   final int vehicleId;
@@ -39074,18 +39966,24 @@ final class VehicleBlockCollisionEventData {
   final bool cancelled;
   const VehicleBlockCollisionEventData({required this.vehicleId, required this.blockPos, required this.cancelled, });
   VehicleBlockCollisionEventData copyWith({int? vehicleId, BlockPos? blockPos, bool? cancelled, }) => VehicleBlockCollisionEventData(vehicleId: vehicleId ?? this.vehicleId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleBlockCollisionEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleCollisionEventData {
   final int vehicleId;
   final bool cancelled;
   const VehicleCollisionEventData({required this.vehicleId, required this.cancelled, });
   VehicleCollisionEventData copyWith({int? vehicleId, bool? cancelled, }) => VehicleCollisionEventData(vehicleId: vehicleId ?? this.vehicleId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleCollisionEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleCreateEventData {
   final int vehicleId;
   final bool cancelled;
   const VehicleCreateEventData({required this.vehicleId, required this.cancelled, });
   VehicleCreateEventData copyWith({int? vehicleId, bool? cancelled, }) => VehicleCreateEventData(vehicleId: vehicleId ?? this.vehicleId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleCreateEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleDamageEventData {
   final int vehicleId;
@@ -39094,6 +39992,8 @@ final class VehicleDamageEventData {
   final bool cancelled;
   const VehicleDamageEventData({required this.vehicleId, required this.damage, required this.attackerId, required this.cancelled, });
   VehicleDamageEventData copyWith({int? vehicleId, double? damage, int? attackerId, bool clearAttackerId = false, bool? cancelled, }) => VehicleDamageEventData(vehicleId: vehicleId ?? this.vehicleId, damage: damage ?? this.damage, attackerId: clearAttackerId ? null : (attackerId ?? this.attackerId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleDamageEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleDestroyEventData {
   final int vehicleId;
@@ -39101,6 +40001,8 @@ final class VehicleDestroyEventData {
   final bool cancelled;
   const VehicleDestroyEventData({required this.vehicleId, required this.attackerId, required this.cancelled, });
   VehicleDestroyEventData copyWith({int? vehicleId, int? attackerId, bool clearAttackerId = false, bool? cancelled, }) => VehicleDestroyEventData(vehicleId: vehicleId ?? this.vehicleId, attackerId: clearAttackerId ? null : (attackerId ?? this.attackerId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleDestroyEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleEnterEventData {
   final int vehicleId;
@@ -39108,6 +40010,8 @@ final class VehicleEnterEventData {
   final bool cancelled;
   const VehicleEnterEventData({required this.vehicleId, required this.enteredId, required this.cancelled, });
   VehicleEnterEventData copyWith({int? vehicleId, int? enteredId, bool? cancelled, }) => VehicleEnterEventData(vehicleId: vehicleId ?? this.vehicleId, enteredId: enteredId ?? this.enteredId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleEnterEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleEntityCollisionEventData {
   final int vehicleId;
@@ -39115,6 +40019,8 @@ final class VehicleEntityCollisionEventData {
   final bool cancelled;
   const VehicleEntityCollisionEventData({required this.vehicleId, required this.collidedEntityId, required this.cancelled, });
   VehicleEntityCollisionEventData copyWith({int? vehicleId, int? collidedEntityId, bool? cancelled, }) => VehicleEntityCollisionEventData(vehicleId: vehicleId ?? this.vehicleId, collidedEntityId: collidedEntityId ?? this.collidedEntityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleEntityCollisionEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleExitEventData {
   final int vehicleId;
@@ -39122,6 +40028,8 @@ final class VehicleExitEventData {
   final bool cancelled;
   const VehicleExitEventData({required this.vehicleId, required this.exitedId, required this.cancelled, });
   VehicleExitEventData copyWith({int? vehicleId, int? exitedId, bool? cancelled, }) => VehicleExitEventData(vehicleId: vehicleId ?? this.vehicleId, exitedId: exitedId ?? this.exitedId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleExitEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleMoveEventData {
   final int vehicleId;
@@ -39130,12 +40038,16 @@ final class VehicleMoveEventData {
   final bool cancelled;
   const VehicleMoveEventData({required this.vehicleId, required this.fromPosition, required this.toPosition, required this.cancelled, });
   VehicleMoveEventData copyWith({int? vehicleId, (double, double, double, )? fromPosition, (double, double, double, )? toPosition, bool? cancelled, }) => VehicleMoveEventData(vehicleId: vehicleId ?? this.vehicleId, fromPosition: fromPosition ?? this.fromPosition, toPosition: toPosition ?? this.toPosition, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleMoveEventData cancel() => copyWith(cancelled: true);
 }
 final class VehicleUpdateEventData {
   final int vehicleId;
   final bool cancelled;
   const VehicleUpdateEventData({required this.vehicleId, required this.cancelled, });
   VehicleUpdateEventData copyWith({int? vehicleId, bool? cancelled, }) => VehicleUpdateEventData(vehicleId: vehicleId ?? this.vehicleId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VehicleUpdateEventData cancel() => copyWith(cancelled: true);
 }
 final class EnchantmentOffer {
   final int cost;
@@ -39152,6 +40064,8 @@ final class PrepareItemEnchantEventData {
   final bool cancelled;
   const PrepareItemEnchantEventData({required this.player, required this.item, required this.offers, required this.bookshelfCount, required this.cancelled, });
   PrepareItemEnchantEventData copyWith({Player? player, ItemStack? item, List<EnchantmentOffer>? offers, int? bookshelfCount, bool? cancelled, }) => PrepareItemEnchantEventData(player: player ?? this.player, item: item ?? this.item, offers: offers ?? this.offers, bookshelfCount: bookshelfCount ?? this.bookshelfCount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PrepareItemEnchantEventData cancel() => copyWith(cancelled: true);
 }
 final class EventEnchantmentValue {
   final Enchantment enchantment;
@@ -39168,6 +40082,8 @@ final class EnchantItemEventData {
   final bool cancelled;
   const EnchantItemEventData({required this.player, required this.item, required this.option, required this.cost, required this.enchantmentsToAdd, required this.cancelled, });
   EnchantItemEventData copyWith({Player? player, ItemStack? item, int? option, int? cost, List<EventEnchantmentValue>? enchantmentsToAdd, bool? cancelled, }) => EnchantItemEventData(player: player ?? this.player, item: item ?? this.item, option: option ?? this.option, cost: cost ?? this.cost, enchantmentsToAdd: enchantmentsToAdd ?? this.enchantmentsToAdd, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EnchantItemEventData cancel() => copyWith(cancelled: true);
 }
 final class MapInitializeEventData {
   final int mapId;
@@ -39180,6 +40096,8 @@ final class HangingBreakEventData {
   final bool cancelled;
   const HangingBreakEventData({required this.entityId, required this.removerEntityId, required this.cancelled, });
   HangingBreakEventData copyWith({int? entityId, int? removerEntityId, bool clearRemoverEntityId = false, bool? cancelled, }) => HangingBreakEventData(entityId: entityId ?? this.entityId, removerEntityId: clearRemoverEntityId ? null : (removerEntityId ?? this.removerEntityId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  HangingBreakEventData cancel() => copyWith(cancelled: true);
 }
 final class HangingBreakByEntityEventData {
   final int entityId;
@@ -39187,6 +40105,8 @@ final class HangingBreakByEntityEventData {
   final bool cancelled;
   const HangingBreakByEntityEventData({required this.entityId, required this.removerEntityId, required this.cancelled, });
   HangingBreakByEntityEventData copyWith({int? entityId, int? removerEntityId, bool? cancelled, }) => HangingBreakByEntityEventData(entityId: entityId ?? this.entityId, removerEntityId: removerEntityId ?? this.removerEntityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  HangingBreakByEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class HangingPlaceEventData {
   final int entityId;
@@ -39196,6 +40116,8 @@ final class HangingPlaceEventData {
   final bool cancelled;
   const HangingPlaceEventData({required this.entityId, required this.player, required this.blockPos, required this.blockFace, required this.cancelled, });
   HangingPlaceEventData copyWith({int? entityId, Player? player, bool clearPlayer = false, BlockPos? blockPos, String? blockFace, bool? cancelled, }) => HangingPlaceEventData(entityId: entityId ?? this.entityId, player: clearPlayer ? null : (player ?? this.player), blockPos: blockPos ?? this.blockPos, blockFace: blockFace ?? this.blockFace, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  HangingPlaceEventData cancel() => copyWith(cancelled: true);
 }
 final class BellResonateEventData {
   final BlockPos blockPos;
@@ -39203,6 +40125,8 @@ final class BellResonateEventData {
   final bool cancelled;
   const BellResonateEventData({required this.blockPos, required this.targetWorld, required this.cancelled, });
   BellResonateEventData copyWith({BlockPos? blockPos, World? targetWorld, bool? cancelled, }) => BellResonateEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BellResonateEventData cancel() => copyWith(cancelled: true);
 }
 final class BellRingEventData {
   final BlockPos blockPos;
@@ -39212,6 +40136,8 @@ final class BellRingEventData {
   final bool cancelled;
   const BellRingEventData({required this.blockPos, required this.targetWorld, required this.entityId, required this.direction, required this.cancelled, });
   BellRingEventData copyWith({BlockPos? blockPos, World? targetWorld, int? entityId, bool clearEntityId = false, String? direction, bool clearDirection = false, bool? cancelled, }) => BellRingEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, entityId: clearEntityId ? null : (entityId ?? this.entityId), direction: clearDirection ? null : (direction ?? this.direction), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BellRingEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockBrushEventData {
   final BlockPos blockPos;
@@ -39221,6 +40147,8 @@ final class BlockBrushEventData {
   final bool cancelled;
   const BlockBrushEventData({required this.blockPos, required this.targetWorld, required this.player, required this.item, required this.cancelled, });
   BlockBrushEventData copyWith({BlockPos? blockPos, World? targetWorld, Player? player, ItemStack? item, bool? cancelled, }) => BlockBrushEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, player: player ?? this.player, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockBrushEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockCookEventData {
   final BlockPos blockPos;
@@ -39230,6 +40158,8 @@ final class BlockCookEventData {
   final bool cancelled;
   const BlockCookEventData({required this.blockPos, required this.targetWorld, required this.source, required this.result, required this.cancelled, });
   BlockCookEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? source, ItemStack? result, bool? cancelled, }) => BlockCookEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, source: source ?? this.source, result: result ?? this.result, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockCookEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockDamageAbortEventData {
   final Player player;
@@ -39247,6 +40177,8 @@ final class BlockDispenseArmorEventData {
   final bool cancelled;
   const BlockDispenseArmorEventData({required this.blockPos, required this.targetWorld, required this.targetEntityId, required this.item, required this.cancelled, });
   BlockDispenseArmorEventData copyWith({BlockPos? blockPos, World? targetWorld, int? targetEntityId, ItemStack? item, bool? cancelled, }) => BlockDispenseArmorEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, targetEntityId: targetEntityId ?? this.targetEntityId, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockDispenseArmorEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockDispenseLootEventData {
   final BlockPos blockPos;
@@ -39255,6 +40187,8 @@ final class BlockDispenseLootEventData {
   final bool cancelled;
   const BlockDispenseLootEventData({required this.blockPos, required this.targetWorld, required this.items, required this.cancelled, });
   BlockDispenseLootEventData copyWith({BlockPos? blockPos, World? targetWorld, List<ItemStack>? items, bool? cancelled, }) => BlockDispenseLootEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, items: items ?? this.items, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockDispenseLootEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockDropItemEventData {
   final BlockPos blockPos;
@@ -39264,6 +40198,8 @@ final class BlockDropItemEventData {
   final bool cancelled;
   const BlockDropItemEventData({required this.blockPos, required this.targetWorld, required this.player, required this.items, required this.cancelled, });
   BlockDropItemEventData copyWith({BlockPos? blockPos, World? targetWorld, Player? player, bool clearPlayer = false, List<ItemStack>? items, bool? cancelled, }) => BlockDropItemEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, player: clearPlayer ? null : (player ?? this.player), items: items ?? this.items, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockDropItemEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockExpEventData {
   final BlockPos blockPos;
@@ -39280,6 +40216,8 @@ final class BlockFertilizeEventData {
   final bool cancelled;
   const BlockFertilizeEventData({required this.blockPos, required this.targetWorld, required this.player, required this.changedBlocks, required this.cancelled, });
   BlockFertilizeEventData copyWith({BlockPos? blockPos, World? targetWorld, Player? player, bool clearPlayer = false, List<(BlockPos, int, )>? changedBlocks, bool? cancelled, }) => BlockFertilizeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, player: clearPlayer ? null : (player ?? this.player), changedBlocks: changedBlocks ?? this.changedBlocks, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockFertilizeEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockMultiPlaceEventData {
   final Player player;
@@ -39288,6 +40226,8 @@ final class BlockMultiPlaceEventData {
   final bool cancelled;
   const BlockMultiPlaceEventData({required this.player, required this.targetWorld, required this.placedBlocks, required this.cancelled, });
   BlockMultiPlaceEventData copyWith({Player? player, World? targetWorld, List<(BlockPos, int, )>? placedBlocks, bool? cancelled, }) => BlockMultiPlaceEventData(player: player ?? this.player, targetWorld: targetWorld ?? this.targetWorld, placedBlocks: placedBlocks ?? this.placedBlocks, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockMultiPlaceEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockReceiveGameEventData {
   final BlockPos blockPos;
@@ -39297,6 +40237,8 @@ final class BlockReceiveGameEventData {
   final bool cancelled;
   const BlockReceiveGameEventData({required this.blockPos, required this.targetWorld, required this.gameEvent, required this.sourceEntityId, required this.cancelled, });
   BlockReceiveGameEventData copyWith({BlockPos? blockPos, World? targetWorld, String? gameEvent, int? sourceEntityId, bool clearSourceEntityId = false, bool? cancelled, }) => BlockReceiveGameEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, gameEvent: gameEvent ?? this.gameEvent, sourceEntityId: clearSourceEntityId ? null : (sourceEntityId ?? this.sourceEntityId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockReceiveGameEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockShearEntityEventData {
   final BlockPos blockPos;
@@ -39306,6 +40248,8 @@ final class BlockShearEntityEventData {
   final bool cancelled;
   const BlockShearEntityEventData({required this.blockPos, required this.targetWorld, required this.targetEntityId, required this.item, required this.cancelled, });
   BlockShearEntityEventData copyWith({BlockPos? blockPos, World? targetWorld, int? targetEntityId, ItemStack? item, bool? cancelled, }) => BlockShearEntityEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, targetEntityId: targetEntityId ?? this.targetEntityId, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockShearEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class BlockSpreadEventData {
   final BlockPos sourcePos;
@@ -39315,6 +40259,8 @@ final class BlockSpreadEventData {
   final bool cancelled;
   const BlockSpreadEventData({required this.sourcePos, required this.targetPos, required this.targetWorld, required this.newStateId, required this.cancelled, });
   BlockSpreadEventData copyWith({BlockPos? sourcePos, BlockPos? targetPos, World? targetWorld, int? newStateId, bool? cancelled, }) => BlockSpreadEventData(sourcePos: sourcePos ?? this.sourcePos, targetPos: targetPos ?? this.targetPos, targetWorld: targetWorld ?? this.targetWorld, newStateId: newStateId ?? this.newStateId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BlockSpreadEventData cancel() => copyWith(cancelled: true);
 }
 final class BrewingStartEventData {
   final BlockPos blockPos;
@@ -39323,6 +40269,8 @@ final class BrewingStartEventData {
   final bool cancelled;
   const BrewingStartEventData({required this.blockPos, required this.targetWorld, required this.brewingTime, required this.cancelled, });
   BrewingStartEventData copyWith({BlockPos? blockPos, World? targetWorld, int? brewingTime, bool? cancelled, }) => BrewingStartEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, brewingTime: brewingTime ?? this.brewingTime, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BrewingStartEventData cancel() => copyWith(cancelled: true);
 }
 final class CampfireStartEventData {
   final BlockPos blockPos;
@@ -39333,6 +40281,8 @@ final class CampfireStartEventData {
   final bool cancelled;
   const CampfireStartEventData({required this.blockPos, required this.targetWorld, required this.item, required this.slot, required this.cookingTime, required this.cancelled, });
   CampfireStartEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? item, int? slot, int? cookingTime, bool? cancelled, }) => CampfireStartEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, item: item ?? this.item, slot: slot ?? this.slot, cookingTime: cookingTime ?? this.cookingTime, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  CampfireStartEventData cancel() => copyWith(cancelled: true);
 }
 final class CauldronLevelChangeEventData {
   final BlockPos blockPos;
@@ -39344,6 +40294,8 @@ final class CauldronLevelChangeEventData {
   final bool cancelled;
   const CauldronLevelChangeEventData({required this.blockPos, required this.targetWorld, required this.oldLevel, required this.newLevel, required this.reason, required this.entityId, required this.cancelled, });
   CauldronLevelChangeEventData copyWith({BlockPos? blockPos, World? targetWorld, int? oldLevel, int? newLevel, String? reason, int? entityId, bool clearEntityId = false, bool? cancelled, }) => CauldronLevelChangeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, oldLevel: oldLevel ?? this.oldLevel, newLevel: newLevel ?? this.newLevel, reason: reason ?? this.reason, entityId: clearEntityId ? null : (entityId ?? this.entityId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  CauldronLevelChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class CrafterCraftEventData {
   final BlockPos blockPos;
@@ -39352,6 +40304,8 @@ final class CrafterCraftEventData {
   final bool cancelled;
   const CrafterCraftEventData({required this.blockPos, required this.targetWorld, required this.result, required this.cancelled, });
   CrafterCraftEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? result, bool? cancelled, }) => CrafterCraftEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, result: result ?? this.result, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  CrafterCraftEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityBlockFormEventData {
   final int entityId;
@@ -39361,6 +40315,8 @@ final class EntityBlockFormEventData {
   final bool cancelled;
   const EntityBlockFormEventData({required this.entityId, required this.blockPos, required this.targetWorld, required this.newStateId, required this.cancelled, });
   EntityBlockFormEventData copyWith({int? entityId, BlockPos? blockPos, World? targetWorld, int? newStateId, bool? cancelled, }) => EntityBlockFormEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, newStateId: newStateId ?? this.newStateId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityBlockFormEventData cancel() => copyWith(cancelled: true);
 }
 final class FluidLevelChangeEventData {
   final BlockPos blockPos;
@@ -39369,6 +40325,8 @@ final class FluidLevelChangeEventData {
   final bool cancelled;
   const FluidLevelChangeEventData({required this.blockPos, required this.targetWorld, required this.newStateId, required this.cancelled, });
   FluidLevelChangeEventData copyWith({BlockPos? blockPos, World? targetWorld, int? newStateId, bool? cancelled, }) => FluidLevelChangeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, newStateId: newStateId ?? this.newStateId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  FluidLevelChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class InventoryBlockStartEventData {
   final BlockPos blockPos;
@@ -39382,6 +40340,8 @@ final class LeavesDecayEventData {
   final bool cancelled;
   const LeavesDecayEventData({required this.blockPos, required this.targetWorld, required this.cancelled, });
   LeavesDecayEventData copyWith({BlockPos? blockPos, World? targetWorld, bool? cancelled, }) => LeavesDecayEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  LeavesDecayEventData cancel() => copyWith(cancelled: true);
 }
 final class MoistureChangeEventData {
   final BlockPos blockPos;
@@ -39390,6 +40350,8 @@ final class MoistureChangeEventData {
   final bool cancelled;
   const MoistureChangeEventData({required this.blockPos, required this.targetWorld, required this.newMoisture, required this.cancelled, });
   MoistureChangeEventData copyWith({BlockPos? blockPos, World? targetWorld, int? newMoisture, bool? cancelled, }) => MoistureChangeEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, newMoisture: newMoisture ?? this.newMoisture, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  MoistureChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class SculkBloomEventData {
   final BlockPos blockPos;
@@ -39398,6 +40360,8 @@ final class SculkBloomEventData {
   final bool cancelled;
   const SculkBloomEventData({required this.blockPos, required this.targetWorld, required this.charge, required this.cancelled, });
   SculkBloomEventData copyWith({BlockPos? blockPos, World? targetWorld, int? charge, bool? cancelled, }) => SculkBloomEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, charge: charge ?? this.charge, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SculkBloomEventData cancel() => copyWith(cancelled: true);
 }
 final class VaultDisplayItemEventData {
   final BlockPos blockPos;
@@ -39406,6 +40370,8 @@ final class VaultDisplayItemEventData {
   final bool cancelled;
   const VaultDisplayItemEventData({required this.blockPos, required this.targetWorld, required this.item, required this.cancelled, });
   VaultDisplayItemEventData copyWith({BlockPos? blockPos, World? targetWorld, ItemStack? item, bool? cancelled, }) => VaultDisplayItemEventData(blockPos: blockPos ?? this.blockPos, targetWorld: targetWorld ?? this.targetWorld, item: item ?? this.item, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VaultDisplayItemEventData cancel() => copyWith(cancelled: true);
 }
 final class CreatureSpawnEventData {
   final int entityId;
@@ -39417,6 +40383,8 @@ final class CreatureSpawnEventData {
   final bool cancelled;
   const CreatureSpawnEventData({required this.entityId, required this.entityType, required this.position, required this.targetWorld, required this.spawnReason, required this.player, required this.cancelled, });
   CreatureSpawnEventData copyWith({int? entityId, String? entityType, (double, double, double, )? position, World? targetWorld, String? spawnReason, Player? player, bool clearPlayer = false, bool? cancelled, }) => CreatureSpawnEventData(entityId: entityId ?? this.entityId, entityType: entityType ?? this.entityType, position: position ?? this.position, targetWorld: targetWorld ?? this.targetWorld, spawnReason: spawnReason ?? this.spawnReason, player: clearPlayer ? null : (player ?? this.player), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  CreatureSpawnEventData cancel() => copyWith(cancelled: true);
 }
 final class EnderDragonChangePhaseEventData {
   final int entityId;
@@ -39425,6 +40393,8 @@ final class EnderDragonChangePhaseEventData {
   final bool cancelled;
   const EnderDragonChangePhaseEventData({required this.entityId, required this.currentPhase, required this.newPhase, required this.cancelled, });
   EnderDragonChangePhaseEventData copyWith({int? entityId, String? currentPhase, String? newPhase, bool? cancelled, }) => EnderDragonChangePhaseEventData(entityId: entityId ?? this.entityId, currentPhase: currentPhase ?? this.currentPhase, newPhase: newPhase ?? this.newPhase, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EnderDragonChangePhaseEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityBreakDoorEventData {
   final int entityId;
@@ -39432,6 +40402,8 @@ final class EntityBreakDoorEventData {
   final bool cancelled;
   const EntityBreakDoorEventData({required this.entityId, required this.blockPos, required this.cancelled, });
   EntityBreakDoorEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityBreakDoorEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityBreakDoorEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityChangeBlockEventData {
   final int entityId;
@@ -39440,6 +40412,8 @@ final class EntityChangeBlockEventData {
   final bool cancelled;
   const EntityChangeBlockEventData({required this.entityId, required this.blockPos, required this.newBlock, required this.cancelled, });
   EntityChangeBlockEventData copyWith({int? entityId, BlockPos? blockPos, String? newBlock, bool? cancelled, }) => EntityChangeBlockEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, newBlock: newBlock ?? this.newBlock, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityChangeBlockEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityDamageByBlockEventData {
   final int entityId;
@@ -39449,6 +40423,8 @@ final class EntityDamageByBlockEventData {
   final bool cancelled;
   const EntityDamageByBlockEventData({required this.entityId, required this.damagerPos, required this.damage, required this.cause, required this.cancelled, });
   EntityDamageByBlockEventData copyWith({int? entityId, BlockPos? damagerPos, bool clearDamagerPos = false, double? damage, String? cause, bool? cancelled, }) => EntityDamageByBlockEventData(entityId: entityId ?? this.entityId, damagerPos: clearDamagerPos ? null : (damagerPos ?? this.damagerPos), damage: damage ?? this.damage, cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityDamageByBlockEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityDamageByEntityEventData {
   final int entityId;
@@ -39458,6 +40434,8 @@ final class EntityDamageByEntityEventData {
   final bool cancelled;
   const EntityDamageByEntityEventData({required this.entityId, required this.damagerId, required this.damage, required this.cause, required this.cancelled, });
   EntityDamageByEntityEventData copyWith({int? entityId, int? damagerId, double? damage, String? cause, bool? cancelled, }) => EntityDamageByEntityEventData(entityId: entityId ?? this.entityId, damagerId: damagerId ?? this.damagerId, damage: damage ?? this.damage, cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityDamageByEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityDropItemEventData {
   final int entityId;
@@ -39466,6 +40444,8 @@ final class EntityDropItemEventData {
   final bool cancelled;
   const EntityDropItemEventData({required this.entityId, required this.itemName, required this.count, required this.cancelled, });
   EntityDropItemEventData copyWith({int? entityId, String? itemName, int? count, bool? cancelled, }) => EntityDropItemEventData(entityId: entityId ?? this.entityId, itemName: itemName ?? this.itemName, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityDropItemEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityEnterBlockEventData {
   final int entityId;
@@ -39473,6 +40453,8 @@ final class EntityEnterBlockEventData {
   final bool cancelled;
   const EntityEnterBlockEventData({required this.entityId, required this.blockPos, required this.cancelled, });
   EntityEnterBlockEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityEnterBlockEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityEnterBlockEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityExhaustionEventData {
   final int entityId;
@@ -39480,6 +40462,8 @@ final class EntityExhaustionEventData {
   final bool cancelled;
   const EntityExhaustionEventData({required this.entityId, required this.exhaustion, required this.cancelled, });
   EntityExhaustionEventData copyWith({int? entityId, double? exhaustion, bool? cancelled, }) => EntityExhaustionEventData(entityId: entityId ?? this.entityId, exhaustion: exhaustion ?? this.exhaustion, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityExhaustionEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityInteractEventData {
   final int entityId;
@@ -39487,6 +40471,8 @@ final class EntityInteractEventData {
   final bool cancelled;
   const EntityInteractEventData({required this.entityId, required this.blockPos, required this.cancelled, });
   EntityInteractEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityInteractEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityInteractEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityKnockbackEventData {
   final int entityId;
@@ -39495,6 +40481,8 @@ final class EntityKnockbackEventData {
   final bool cancelled;
   const EntityKnockbackEventData({required this.entityId, required this.hitById, required this.knockback, required this.cancelled, });
   EntityKnockbackEventData copyWith({int? entityId, int? hitById, bool clearHitById = false, (double, double, double, )? knockback, bool? cancelled, }) => EntityKnockbackEventData(entityId: entityId ?? this.entityId, hitById: clearHitById ? null : (hitById ?? this.hitById), knockback: knockback ?? this.knockback, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityKnockbackEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityPlaceEventData {
   final int entityId;
@@ -39503,6 +40491,8 @@ final class EntityPlaceEventData {
   final bool cancelled;
   const EntityPlaceEventData({required this.entityId, required this.blockPos, required this.blockName, required this.cancelled, });
   EntityPlaceEventData copyWith({int? entityId, BlockPos? blockPos, String? blockName, bool? cancelled, }) => EntityPlaceEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, blockName: blockName ?? this.blockName, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityPlaceEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityPoseChangeEventData {
   final int entityId;
@@ -39510,6 +40500,8 @@ final class EntityPoseChangeEventData {
   final bool cancelled;
   const EntityPoseChangeEventData({required this.entityId, required this.pose, required this.cancelled, });
   EntityPoseChangeEventData copyWith({int? entityId, String? pose, bool? cancelled, }) => EntityPoseChangeEventData(entityId: entityId ?? this.entityId, pose: pose ?? this.pose, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityPoseChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityPotionEffectEventData {
   final int entityId;
@@ -39519,6 +40511,8 @@ final class EntityPotionEffectEventData {
   final bool cancelled;
   const EntityPotionEffectEventData({required this.entityId, required this.effectName, required this.duration, required this.amplifier, required this.cancelled, });
   EntityPotionEffectEventData copyWith({int? entityId, String? effectName, int? duration, int? amplifier, bool? cancelled, }) => EntityPotionEffectEventData(entityId: entityId ?? this.entityId, effectName: effectName ?? this.effectName, duration: duration ?? this.duration, amplifier: amplifier ?? this.amplifier, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityPotionEffectEventData cancel() => copyWith(cancelled: true);
 }
 final class EntitySpellCastEventData {
   final int entityId;
@@ -39526,6 +40520,8 @@ final class EntitySpellCastEventData {
   final bool cancelled;
   const EntitySpellCastEventData({required this.entityId, required this.spell, required this.cancelled, });
   EntitySpellCastEventData copyWith({int? entityId, String? spell, bool? cancelled, }) => EntitySpellCastEventData(entityId: entityId ?? this.entityId, spell: spell ?? this.spell, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntitySpellCastEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityTargetLivingEntityEventData {
   final int entityId;
@@ -39534,6 +40530,8 @@ final class EntityTargetLivingEntityEventData {
   final bool cancelled;
   const EntityTargetLivingEntityEventData({required this.entityId, required this.targetId, required this.reason, required this.cancelled, });
   EntityTargetLivingEntityEventData copyWith({int? entityId, int? targetId, bool clearTargetId = false, String? reason, bool? cancelled, }) => EntityTargetLivingEntityEventData(entityId: entityId ?? this.entityId, targetId: clearTargetId ? null : (targetId ?? this.targetId), reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityTargetLivingEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityToggleSwimEventData {
   final int entityId;
@@ -39541,6 +40539,8 @@ final class EntityToggleSwimEventData {
   final bool cancelled;
   const EntityToggleSwimEventData({required this.entityId, required this.isSwimming, required this.cancelled, });
   EntityToggleSwimEventData copyWith({int? entityId, bool? isSwimming, bool? cancelled, }) => EntityToggleSwimEventData(entityId: entityId ?? this.entityId, isSwimming: isSwimming ?? this.isSwimming, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityToggleSwimEventData cancel() => copyWith(cancelled: true);
 }
 final class ExplosionPrimeEventData {
   final int entityId;
@@ -39549,12 +40549,16 @@ final class ExplosionPrimeEventData {
   final bool cancelled;
   const ExplosionPrimeEventData({required this.entityId, required this.radius, required this.fire, required this.cancelled, });
   ExplosionPrimeEventData copyWith({int? entityId, double? radius, bool? fire, bool? cancelled, }) => ExplosionPrimeEventData(entityId: entityId ?? this.entityId, radius: radius ?? this.radius, fire: fire ?? this.fire, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ExplosionPrimeEventData cancel() => copyWith(cancelled: true);
 }
 final class FireworkExplodeEventData {
   final int entityId;
   final bool cancelled;
   const FireworkExplodeEventData({required this.entityId, required this.cancelled, });
   FireworkExplodeEventData copyWith({int? entityId, bool? cancelled, }) => FireworkExplodeEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  FireworkExplodeEventData cancel() => copyWith(cancelled: true);
 }
 final class FoodLevelChangeEventData {
   final int entityId;
@@ -39562,12 +40566,16 @@ final class FoodLevelChangeEventData {
   final bool cancelled;
   const FoodLevelChangeEventData({required this.entityId, required this.foodLevel, required this.cancelled, });
   FoodLevelChangeEventData copyWith({int? entityId, int? foodLevel, bool? cancelled, }) => FoodLevelChangeEventData(entityId: entityId ?? this.entityId, foodLevel: foodLevel ?? this.foodLevel, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  FoodLevelChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class ItemDespawnEventData {
   final int entityId;
   final bool cancelled;
   const ItemDespawnEventData({required this.entityId, required this.cancelled, });
   ItemDespawnEventData copyWith({int? entityId, bool? cancelled, }) => ItemDespawnEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ItemDespawnEventData cancel() => copyWith(cancelled: true);
 }
 final class ItemMergeEventData {
   final int entityId;
@@ -39575,6 +40583,8 @@ final class ItemMergeEventData {
   final bool cancelled;
   const ItemMergeEventData({required this.entityId, required this.targetId, required this.cancelled, });
   ItemMergeEventData copyWith({int? entityId, int? targetId, bool? cancelled, }) => ItemMergeEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ItemMergeEventData cancel() => copyWith(cancelled: true);
 }
 final class ItemSpawnEventData {
   final int entityId;
@@ -39583,6 +40593,8 @@ final class ItemSpawnEventData {
   final bool cancelled;
   const ItemSpawnEventData({required this.entityId, required this.position, required this.itemName, required this.cancelled, });
   ItemSpawnEventData copyWith({int? entityId, (double, double, double, )? position, String? itemName, bool? cancelled, }) => ItemSpawnEventData(entityId: entityId ?? this.entityId, position: position ?? this.position, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ItemSpawnEventData cancel() => copyWith(cancelled: true);
 }
 final class PiglinBarterEventData {
   final int entityId;
@@ -39591,6 +40603,8 @@ final class PiglinBarterEventData {
   final bool cancelled;
   const PiglinBarterEventData({required this.entityId, required this.inputItem, required this.outcome, required this.cancelled, });
   PiglinBarterEventData copyWith({int? entityId, ItemStack? inputItem, List<ItemStack>? outcome, bool? cancelled, }) => PiglinBarterEventData(entityId: entityId ?? this.entityId, inputItem: inputItem ?? this.inputItem, outcome: outcome ?? this.outcome, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PiglinBarterEventData cancel() => copyWith(cancelled: true);
 }
 final class ProjectileHitEventData {
   final int entityId;
@@ -39599,6 +40613,8 @@ final class ProjectileHitEventData {
   final bool cancelled;
   const ProjectileHitEventData({required this.entityId, required this.hitPosition, required this.hitEntityId, required this.cancelled, });
   ProjectileHitEventData copyWith({int? entityId, (double, double, double, )? hitPosition, int? hitEntityId, bool clearHitEntityId = false, bool? cancelled, }) => ProjectileHitEventData(entityId: entityId ?? this.entityId, hitPosition: hitPosition ?? this.hitPosition, hitEntityId: clearHitEntityId ? null : (hitEntityId ?? this.hitEntityId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ProjectileHitEventData cancel() => copyWith(cancelled: true);
 }
 final class ProjectileLaunchEventData {
   final int entityId;
@@ -39606,6 +40622,8 @@ final class ProjectileLaunchEventData {
   final bool cancelled;
   const ProjectileLaunchEventData({required this.entityId, required this.shooterId, required this.cancelled, });
   ProjectileLaunchEventData copyWith({int? entityId, int? shooterId, bool clearShooterId = false, bool? cancelled, }) => ProjectileLaunchEventData(entityId: entityId ?? this.entityId, shooterId: clearShooterId ? null : (shooterId ?? this.shooterId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ProjectileLaunchEventData cancel() => copyWith(cancelled: true);
 }
 final class SheepDyeWoolEventData {
   final int entityId;
@@ -39614,12 +40632,16 @@ final class SheepDyeWoolEventData {
   final bool cancelled;
   const SheepDyeWoolEventData({required this.entityId, required this.dyeColor, required this.playerId, required this.cancelled, });
   SheepDyeWoolEventData copyWith({int? entityId, int? dyeColor, int? playerId, bool clearPlayerId = false, bool? cancelled, }) => SheepDyeWoolEventData(entityId: entityId ?? this.entityId, dyeColor: dyeColor ?? this.dyeColor, playerId: clearPlayerId ? null : (playerId ?? this.playerId), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SheepDyeWoolEventData cancel() => copyWith(cancelled: true);
 }
 final class SheepRegrowWoolEventData {
   final int entityId;
   final bool cancelled;
   const SheepRegrowWoolEventData({required this.entityId, required this.cancelled, });
   SheepRegrowWoolEventData copyWith({int? entityId, bool? cancelled, }) => SheepRegrowWoolEventData(entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SheepRegrowWoolEventData cancel() => copyWith(cancelled: true);
 }
 final class SlimeSplitEventData {
   final int entityId;
@@ -39627,6 +40649,8 @@ final class SlimeSplitEventData {
   final bool cancelled;
   const SlimeSplitEventData({required this.entityId, required this.count, required this.cancelled, });
   SlimeSplitEventData copyWith({int? entityId, int? count, bool? cancelled, }) => SlimeSplitEventData(entityId: entityId ?? this.entityId, count: count ?? this.count, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SlimeSplitEventData cancel() => copyWith(cancelled: true);
 }
 final class StriderTemperatureChangeEventData {
   final int entityId;
@@ -39634,6 +40658,8 @@ final class StriderTemperatureChangeEventData {
   final bool cancelled;
   const StriderTemperatureChangeEventData({required this.entityId, required this.isShivering, required this.cancelled, });
   StriderTemperatureChangeEventData copyWith({int? entityId, bool? isShivering, bool? cancelled, }) => StriderTemperatureChangeEventData(entityId: entityId ?? this.entityId, isShivering: isShivering ?? this.isShivering, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  StriderTemperatureChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class VillagerAcquireTradeEventData {
   final int entityId;
@@ -39641,6 +40667,8 @@ final class VillagerAcquireTradeEventData {
   final bool cancelled;
   const VillagerAcquireTradeEventData({required this.entityId, required this.recipeIndex, required this.cancelled, });
   VillagerAcquireTradeEventData copyWith({int? entityId, int? recipeIndex, bool? cancelled, }) => VillagerAcquireTradeEventData(entityId: entityId ?? this.entityId, recipeIndex: recipeIndex ?? this.recipeIndex, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VillagerAcquireTradeEventData cancel() => copyWith(cancelled: true);
 }
 final class VillagerCareerChangeEventData {
   final int entityId;
@@ -39649,6 +40677,8 @@ final class VillagerCareerChangeEventData {
   final bool cancelled;
   const VillagerCareerChangeEventData({required this.entityId, required this.profession, required this.reason, required this.cancelled, });
   VillagerCareerChangeEventData copyWith({int? entityId, String? profession, String? reason, bool? cancelled, }) => VillagerCareerChangeEventData(entityId: entityId ?? this.entityId, profession: profession ?? this.profession, reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VillagerCareerChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class VillagerReplenishTradeEventData {
   final int entityId;
@@ -39656,6 +40686,8 @@ final class VillagerReplenishTradeEventData {
   final bool cancelled;
   const VillagerReplenishTradeEventData({required this.entityId, required this.restockQuantity, required this.cancelled, });
   VillagerReplenishTradeEventData copyWith({int? entityId, int? restockQuantity, bool? cancelled, }) => VillagerReplenishTradeEventData(entityId: entityId ?? this.entityId, restockQuantity: restockQuantity ?? this.restockQuantity, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VillagerReplenishTradeEventData cancel() => copyWith(cancelled: true);
 }
 final class WardenAngerChangeEventData {
   final int entityId;
@@ -39665,6 +40697,8 @@ final class WardenAngerChangeEventData {
   final bool cancelled;
   const WardenAngerChangeEventData({required this.entityId, required this.targetId, required this.oldAnger, required this.newAnger, required this.cancelled, });
   WardenAngerChangeEventData copyWith({int? entityId, int? targetId, int? oldAnger, int? newAnger, bool? cancelled, }) => WardenAngerChangeEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, oldAnger: oldAnger ?? this.oldAnger, newAnger: newAnger ?? this.newAnger, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  WardenAngerChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class AreaEffectCloudApplyEventData {
   final int entityId;
@@ -39672,6 +40706,8 @@ final class AreaEffectCloudApplyEventData {
   final bool cancelled;
   const AreaEffectCloudApplyEventData({required this.entityId, required this.affectedEntities, required this.cancelled, });
   AreaEffectCloudApplyEventData copyWith({int? entityId, List<int>? affectedEntities, bool? cancelled, }) => AreaEffectCloudApplyEventData(entityId: entityId ?? this.entityId, affectedEntities: affectedEntities ?? this.affectedEntities, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  AreaEffectCloudApplyEventData cancel() => copyWith(cancelled: true);
 }
 final class ArrowBodyCountChangeEventData {
   final int entityId;
@@ -39680,6 +40716,8 @@ final class ArrowBodyCountChangeEventData {
   final bool cancelled;
   const ArrowBodyCountChangeEventData({required this.entityId, required this.oldAmount, required this.newAmount, required this.cancelled, });
   ArrowBodyCountChangeEventData copyWith({int? entityId, int? oldAmount, int? newAmount, bool? cancelled, }) => ArrowBodyCountChangeEventData(entityId: entityId ?? this.entityId, oldAmount: oldAmount ?? this.oldAmount, newAmount: newAmount ?? this.newAmount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ArrowBodyCountChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class BatToggleSleepEventData {
   final int entityId;
@@ -39687,6 +40725,8 @@ final class BatToggleSleepEventData {
   final bool cancelled;
   const BatToggleSleepEventData({required this.entityId, required this.isAwake, required this.cancelled, });
   BatToggleSleepEventData copyWith({int? entityId, bool? isAwake, bool? cancelled, }) => BatToggleSleepEventData(entityId: entityId ?? this.entityId, isAwake: isAwake ?? this.isAwake, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  BatToggleSleepEventData cancel() => copyWith(cancelled: true);
 }
 final class CreeperPowerEventData {
   final int entityId;
@@ -39695,6 +40735,8 @@ final class CreeperPowerEventData {
   final bool cancelled;
   const CreeperPowerEventData({required this.entityId, required this.lightningId, required this.cause, required this.cancelled, });
   CreeperPowerEventData copyWith({int? entityId, int? lightningId, bool clearLightningId = false, String? cause, bool? cancelled, }) => CreeperPowerEventData(entityId: entityId ?? this.entityId, lightningId: clearLightningId ? null : (lightningId ?? this.lightningId), cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  CreeperPowerEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityCombustByBlockEventData {
   final int entityId;
@@ -39703,6 +40745,8 @@ final class EntityCombustByBlockEventData {
   final bool cancelled;
   const EntityCombustByBlockEventData({required this.entityId, required this.combuster, required this.duration, required this.cancelled, });
   EntityCombustByBlockEventData copyWith({int? entityId, BlockPos? combuster, double? duration, bool? cancelled, }) => EntityCombustByBlockEventData(entityId: entityId ?? this.entityId, combuster: combuster ?? this.combuster, duration: duration ?? this.duration, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityCombustByBlockEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityCombustByEntityEventData {
   final int entityId;
@@ -39711,6 +40755,8 @@ final class EntityCombustByEntityEventData {
   final bool cancelled;
   const EntityCombustByEntityEventData({required this.entityId, required this.combusterId, required this.duration, required this.cancelled, });
   EntityCombustByEntityEventData copyWith({int? entityId, int? combusterId, double? duration, bool? cancelled, }) => EntityCombustByEntityEventData(entityId: entityId ?? this.entityId, combusterId: combusterId ?? this.combusterId, duration: duration ?? this.duration, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityCombustByEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityKnockbackByEntityEventData {
   final int entityId;
@@ -39721,6 +40767,8 @@ final class EntityKnockbackByEntityEventData {
   final bool cancelled;
   const EntityKnockbackByEntityEventData({required this.entityId, required this.hitById, required this.force, required this.x, required this.z, required this.cancelled, });
   EntityKnockbackByEntityEventData copyWith({int? entityId, int? hitById, double? force, double? x, double? z, bool? cancelled, }) => EntityKnockbackByEntityEventData(entityId: entityId ?? this.entityId, hitById: hitById ?? this.hitById, force: force ?? this.force, x: x ?? this.x, z: z ?? this.z, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityKnockbackByEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityPortalEnterEventData {
   final int entityId;
@@ -39728,6 +40776,8 @@ final class EntityPortalEnterEventData {
   final bool cancelled;
   const EntityPortalEnterEventData({required this.entityId, required this.location, required this.cancelled, });
   EntityPortalEnterEventData copyWith({int? entityId, BlockPos? location, bool? cancelled, }) => EntityPortalEnterEventData(entityId: entityId ?? this.entityId, location: location ?? this.location, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityPortalEnterEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityPortalExitEventData {
   final int entityId;
@@ -39736,6 +40786,8 @@ final class EntityPortalExitEventData {
   final bool cancelled;
   const EntityPortalExitEventData({required this.entityId, required this.fromPos, required this.toPos, required this.cancelled, });
   EntityPortalExitEventData copyWith({int? entityId, BlockPos? fromPos, BlockPos? toPos, bool clearToPos = false, bool? cancelled, }) => EntityPortalExitEventData(entityId: entityId ?? this.entityId, fromPos: fromPos ?? this.fromPos, toPos: clearToPos ? null : (toPos ?? this.toPos), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityPortalExitEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityRemoveEventData {
   final int entityId;
@@ -39743,6 +40795,8 @@ final class EntityRemoveEventData {
   final bool cancelled;
   const EntityRemoveEventData({required this.entityId, required this.cause, required this.cancelled, });
   EntityRemoveEventData copyWith({int? entityId, String? cause, bool? cancelled, }) => EntityRemoveEventData(entityId: entityId ?? this.entityId, cause: cause ?? this.cause, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityRemoveEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityTargetBlockEventData {
   final int entityId;
@@ -39750,6 +40804,8 @@ final class EntityTargetBlockEventData {
   final bool cancelled;
   const EntityTargetBlockEventData({required this.entityId, required this.blockPos, required this.cancelled, });
   EntityTargetBlockEventData copyWith({int? entityId, BlockPos? blockPos, bool? cancelled, }) => EntityTargetBlockEventData(entityId: entityId ?? this.entityId, blockPos: blockPos ?? this.blockPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityTargetBlockEventData cancel() => copyWith(cancelled: true);
 }
 final class EntityUnleashEventData {
   final int entityId;
@@ -39757,6 +40813,8 @@ final class EntityUnleashEventData {
   final bool cancelled;
   const EntityUnleashEventData({required this.entityId, required this.reason, required this.cancelled, });
   EntityUnleashEventData copyWith({int? entityId, String? reason, bool? cancelled, }) => EntityUnleashEventData(entityId: entityId ?? this.entityId, reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  EntityUnleashEventData cancel() => copyWith(cancelled: true);
 }
 final class ExpBottleEventData {
   final int entityId;
@@ -39766,6 +40824,8 @@ final class ExpBottleEventData {
   final bool cancelled;
   const ExpBottleEventData({required this.entityId, required this.experience, required this.location, required this.showEffect, required this.cancelled, });
   ExpBottleEventData copyWith({int? entityId, int? experience, BlockPos? location, bool? showEffect, bool? cancelled, }) => ExpBottleEventData(entityId: entityId ?? this.entityId, experience: experience ?? this.experience, location: location ?? this.location, showEffect: showEffect ?? this.showEffect, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  ExpBottleEventData cancel() => copyWith(cancelled: true);
 }
 final class HorseJumpEventData {
   final int entityId;
@@ -39773,6 +40833,8 @@ final class HorseJumpEventData {
   final bool cancelled;
   const HorseJumpEventData({required this.entityId, required this.power, required this.cancelled, });
   HorseJumpEventData copyWith({int? entityId, double? power, bool? cancelled, }) => HorseJumpEventData(entityId: entityId ?? this.entityId, power: power ?? this.power, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  HorseJumpEventData cancel() => copyWith(cancelled: true);
 }
 final class LingeringPotionSplashEventData {
   final int entityId;
@@ -39781,6 +40843,8 @@ final class LingeringPotionSplashEventData {
   final bool cancelled;
   const LingeringPotionSplashEventData({required this.entityId, required this.location, required this.potionItem, required this.cancelled, });
   LingeringPotionSplashEventData copyWith({int? entityId, BlockPos? location, String? potionItem, bool? cancelled, }) => LingeringPotionSplashEventData(entityId: entityId ?? this.entityId, location: location ?? this.location, potionItem: potionItem ?? this.potionItem, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  LingeringPotionSplashEventData cancel() => copyWith(cancelled: true);
 }
 final class PigZapEventData {
   final int entityId;
@@ -39789,6 +40853,8 @@ final class PigZapEventData {
   final bool cancelled;
   const PigZapEventData({required this.entityId, required this.lightningId, required this.pigZombieId, required this.cancelled, });
   PigZapEventData copyWith({int? entityId, int? lightningId, int? pigZombieId, bool? cancelled, }) => PigZapEventData(entityId: entityId ?? this.entityId, lightningId: lightningId ?? this.lightningId, pigZombieId: pigZombieId ?? this.pigZombieId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PigZapEventData cancel() => copyWith(cancelled: true);
 }
 final class PigZombieAngerEventData {
   final int entityId;
@@ -39797,6 +40863,8 @@ final class PigZombieAngerEventData {
   final bool cancelled;
   const PigZombieAngerEventData({required this.entityId, required this.targetId, required this.newAnger, required this.cancelled, });
   PigZombieAngerEventData copyWith({int? entityId, int? targetId, bool clearTargetId = false, int? newAnger, bool? cancelled, }) => PigZombieAngerEventData(entityId: entityId ?? this.entityId, targetId: clearTargetId ? null : (targetId ?? this.targetId), newAnger: newAnger ?? this.newAnger, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PigZombieAngerEventData cancel() => copyWith(cancelled: true);
 }
 final class PotionSplashEventData {
   final int entityId;
@@ -39806,6 +40874,8 @@ final class PotionSplashEventData {
   final bool cancelled;
   const PotionSplashEventData({required this.entityId, required this.location, required this.potionItem, required this.affectedEntities, required this.cancelled, });
   PotionSplashEventData copyWith({int? entityId, BlockPos? location, String? potionItem, List<int>? affectedEntities, bool? cancelled, }) => PotionSplashEventData(entityId: entityId ?? this.entityId, location: location ?? this.location, potionItem: potionItem ?? this.potionItem, affectedEntities: affectedEntities ?? this.affectedEntities, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PotionSplashEventData cancel() => copyWith(cancelled: true);
 }
 final class SpawnerSpawnEventData {
   final int entityId;
@@ -39813,6 +40883,8 @@ final class SpawnerSpawnEventData {
   final bool cancelled;
   const SpawnerSpawnEventData({required this.entityId, required this.spawnerPos, required this.cancelled, });
   SpawnerSpawnEventData copyWith({int? entityId, BlockPos? spawnerPos, bool? cancelled, }) => SpawnerSpawnEventData(entityId: entityId ?? this.entityId, spawnerPos: spawnerPos ?? this.spawnerPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  SpawnerSpawnEventData cancel() => copyWith(cancelled: true);
 }
 final class TrialSpawnerSpawnEventData {
   final int entityId;
@@ -39820,6 +40892,8 @@ final class TrialSpawnerSpawnEventData {
   final bool cancelled;
   const TrialSpawnerSpawnEventData({required this.entityId, required this.spawnerPos, required this.cancelled, });
   TrialSpawnerSpawnEventData copyWith({int? entityId, BlockPos? spawnerPos, bool? cancelled, }) => TrialSpawnerSpawnEventData(entityId: entityId ?? this.entityId, spawnerPos: spawnerPos ?? this.spawnerPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  TrialSpawnerSpawnEventData cancel() => copyWith(cancelled: true);
 }
 final class VillagerReputationChangeEventData {
   final int entityId;
@@ -39828,6 +40902,8 @@ final class VillagerReputationChangeEventData {
   final bool cancelled;
   const VillagerReputationChangeEventData({required this.entityId, required this.targetId, required this.reputationChange, required this.cancelled, });
   VillagerReputationChangeEventData copyWith({int? entityId, int? targetId, int? reputationChange, bool? cancelled, }) => VillagerReputationChangeEventData(entityId: entityId ?? this.entityId, targetId: targetId ?? this.targetId, reputationChange: reputationChange ?? this.reputationChange, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  VillagerReputationChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class AsyncPlayerChatEventData {
   final Player player;
@@ -39836,6 +40912,8 @@ final class AsyncPlayerChatEventData {
   final bool cancelled;
   const AsyncPlayerChatEventData({required this.player, required this.message, required this.format, required this.cancelled, });
   AsyncPlayerChatEventData copyWith({Player? player, String? message, TextComponent? format, bool? cancelled, }) => AsyncPlayerChatEventData(player: player ?? this.player, message: message ?? this.message, format: format ?? this.format, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  AsyncPlayerChatEventData cancel() => copyWith(cancelled: true);
 }
 final class AsyncPlayerPreLoginEventData {
   final String playerName;
@@ -39845,6 +40923,8 @@ final class AsyncPlayerPreLoginEventData {
   final bool cancelled;
   const AsyncPlayerPreLoginEventData({required this.playerName, required this.playerUuid, required this.ipAddress, required this.kickMessage, required this.cancelled, });
   AsyncPlayerPreLoginEventData copyWith({String? playerName, String? playerUuid, String? ipAddress, TextComponent? kickMessage, bool? cancelled, }) => AsyncPlayerPreLoginEventData(playerName: playerName ?? this.playerName, playerUuid: playerUuid ?? this.playerUuid, ipAddress: ipAddress ?? this.ipAddress, kickMessage: kickMessage ?? this.kickMessage, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  AsyncPlayerPreLoginEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerAdvancementDoneEventData {
   final Player player;
@@ -39852,6 +40932,8 @@ final class PlayerAdvancementDoneEventData {
   final bool cancelled;
   const PlayerAdvancementDoneEventData({required this.player, required this.advancementId, required this.cancelled, });
   PlayerAdvancementDoneEventData copyWith({Player? player, String? advancementId, bool? cancelled, }) => PlayerAdvancementDoneEventData(player: player ?? this.player, advancementId: advancementId ?? this.advancementId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerAdvancementDoneEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerAnimationEventData {
   final Player player;
@@ -39859,6 +40941,8 @@ final class PlayerAnimationEventData {
   final bool cancelled;
   const PlayerAnimationEventData({required this.player, required this.animationType, required this.cancelled, });
   PlayerAnimationEventData copyWith({Player? player, String? animationType, bool? cancelled, }) => PlayerAnimationEventData(player: player ?? this.player, animationType: animationType ?? this.animationType, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerAnimationEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerArmorStandManipulateEventData {
   final Player player;
@@ -39867,6 +40951,8 @@ final class PlayerArmorStandManipulateEventData {
   final bool cancelled;
   const PlayerArmorStandManipulateEventData({required this.player, required this.armorStandId, required this.slot, required this.cancelled, });
   PlayerArmorStandManipulateEventData copyWith({Player? player, int? armorStandId, int? slot, bool? cancelled, }) => PlayerArmorStandManipulateEventData(player: player ?? this.player, armorStandId: armorStandId ?? this.armorStandId, slot: slot ?? this.slot, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerArmorStandManipulateEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerBucketEntityEventData {
   final Player player;
@@ -39875,6 +40961,8 @@ final class PlayerBucketEntityEventData {
   final bool cancelled;
   const PlayerBucketEntityEventData({required this.player, required this.entityId, required this.bucketItem, required this.cancelled, });
   PlayerBucketEntityEventData copyWith({Player? player, int? entityId, String? bucketItem, bool? cancelled, }) => PlayerBucketEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, bucketItem: bucketItem ?? this.bucketItem, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerBucketEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerChangedWorldEventData {
   final Player player;
@@ -39883,6 +40971,8 @@ final class PlayerChangedWorldEventData {
   final bool cancelled;
   const PlayerChangedWorldEventData({required this.player, required this.fromWorld, required this.toWorld, required this.cancelled, });
   PlayerChangedWorldEventData copyWith({Player? player, World? fromWorld, World? toWorld, bool? cancelled, }) => PlayerChangedWorldEventData(player: player ?? this.player, fromWorld: fromWorld ?? this.fromWorld, toWorld: toWorld ?? this.toWorld, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerChangedWorldEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerChannelEventData {
   final Player player;
@@ -39890,6 +40980,8 @@ final class PlayerChannelEventData {
   final bool cancelled;
   const PlayerChannelEventData({required this.player, required this.channel, required this.cancelled, });
   PlayerChannelEventData copyWith({Player? player, String? channel, bool? cancelled, }) => PlayerChannelEventData(player: player ?? this.player, channel: channel ?? this.channel, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerChannelEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerCommandPreprocessEventData {
   final Player player;
@@ -39897,6 +40989,8 @@ final class PlayerCommandPreprocessEventData {
   final bool cancelled;
   const PlayerCommandPreprocessEventData({required this.player, required this.command, required this.cancelled, });
   PlayerCommandPreprocessEventData copyWith({Player? player, String? command, bool? cancelled, }) => PlayerCommandPreprocessEventData(player: player ?? this.player, command: command ?? this.command, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerCommandPreprocessEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerEditBookEventData {
   final Player player;
@@ -39907,6 +41001,8 @@ final class PlayerEditBookEventData {
   final bool cancelled;
   const PlayerEditBookEventData({required this.player, required this.slot, required this.pages, required this.title, required this.signing, required this.cancelled, });
   PlayerEditBookEventData copyWith({Player? player, int? slot, List<String>? pages, String? title, bool clearTitle = false, bool? signing, bool? cancelled, }) => PlayerEditBookEventData(player: player ?? this.player, slot: slot ?? this.slot, pages: pages ?? this.pages, title: clearTitle ? null : (title ?? this.title), signing: signing ?? this.signing, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerEditBookEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerElytraBoostEventData {
   final Player player;
@@ -39914,6 +41010,8 @@ final class PlayerElytraBoostEventData {
   final bool cancelled;
   const PlayerElytraBoostEventData({required this.player, required this.fireworkId, required this.cancelled, });
   PlayerElytraBoostEventData copyWith({Player? player, int? fireworkId, bool? cancelled, }) => PlayerElytraBoostEventData(player: player ?? this.player, fireworkId: fireworkId ?? this.fireworkId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerElytraBoostEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerExpCooldownChangeEventData {
   final Player player;
@@ -39921,6 +41019,8 @@ final class PlayerExpCooldownChangeEventData {
   final bool cancelled;
   const PlayerExpCooldownChangeEventData({required this.player, required this.newCooldown, required this.cancelled, });
   PlayerExpCooldownChangeEventData copyWith({Player? player, int? newCooldown, bool? cancelled, }) => PlayerExpCooldownChangeEventData(player: player ?? this.player, newCooldown: newCooldown ?? this.newCooldown, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerExpCooldownChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerHarvestBlockEventData {
   final Player player;
@@ -39929,6 +41029,8 @@ final class PlayerHarvestBlockEventData {
   final bool cancelled;
   const PlayerHarvestBlockEventData({required this.player, required this.blockPos, required this.harvestedItems, required this.cancelled, });
   PlayerHarvestBlockEventData copyWith({Player? player, BlockPos? blockPos, List<ItemStack>? harvestedItems, bool? cancelled, }) => PlayerHarvestBlockEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, harvestedItems: harvestedItems ?? this.harvestedItems, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerHarvestBlockEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerHideEntityEventData {
   final Player player;
@@ -39936,6 +41038,8 @@ final class PlayerHideEntityEventData {
   final bool cancelled;
   const PlayerHideEntityEventData({required this.player, required this.entityId, required this.cancelled, });
   PlayerHideEntityEventData copyWith({Player? player, int? entityId, bool? cancelled, }) => PlayerHideEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerHideEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerItemBreakEventData {
   final Player player;
@@ -39951,6 +41055,8 @@ final class PlayerItemMendEventData {
   final bool cancelled;
   const PlayerItemMendEventData({required this.player, required this.itemName, required this.repairAmount, required this.expConsumed, required this.cancelled, });
   PlayerItemMendEventData copyWith({Player? player, String? itemName, int? repairAmount, int? expConsumed, bool? cancelled, }) => PlayerItemMendEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, repairAmount: repairAmount ?? this.repairAmount, expConsumed: expConsumed ?? this.expConsumed, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerItemMendEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerKickEventData {
   final Player player;
@@ -39958,6 +41064,8 @@ final class PlayerKickEventData {
   final bool cancelled;
   const PlayerKickEventData({required this.player, required this.reason, required this.cancelled, });
   PlayerKickEventData copyWith({Player? player, String? reason, bool? cancelled, }) => PlayerKickEventData(player: player ?? this.player, reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerKickEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerLeashEntityEventData {
   final Player player;
@@ -39966,6 +41074,8 @@ final class PlayerLeashEntityEventData {
   final bool cancelled;
   const PlayerLeashEntityEventData({required this.player, required this.entityId, required this.holderId, required this.cancelled, });
   PlayerLeashEntityEventData copyWith({Player? player, int? entityId, int? holderId, bool? cancelled, }) => PlayerLeashEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, holderId: holderId ?? this.holderId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerLeashEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerLevelChangeEventData {
   final Player player;
@@ -39980,6 +41090,8 @@ final class PlayerLocaleChangeEventData {
   final bool cancelled;
   const PlayerLocaleChangeEventData({required this.player, required this.newLocale, required this.cancelled, });
   PlayerLocaleChangeEventData copyWith({Player? player, String? newLocale, bool? cancelled, }) => PlayerLocaleChangeEventData(player: player ?? this.player, newLocale: newLocale ?? this.newLocale, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerLocaleChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerNameEntityEventData {
   final Player player;
@@ -39988,6 +41100,8 @@ final class PlayerNameEntityEventData {
   final bool cancelled;
   const PlayerNameEntityEventData({required this.player, required this.entityId, required this.name, required this.cancelled, });
   PlayerNameEntityEventData copyWith({Player? player, int? entityId, TextComponent? name, bool? cancelled, }) => PlayerNameEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, name: name ?? this.name, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerNameEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerOpenSignEventData {
   final Player player;
@@ -39996,6 +41110,8 @@ final class PlayerOpenSignEventData {
   final bool cancelled;
   const PlayerOpenSignEventData({required this.player, required this.blockPos, required this.isFront, required this.cancelled, });
   PlayerOpenSignEventData copyWith({Player? player, BlockPos? blockPos, bool? isFront, bool? cancelled, }) => PlayerOpenSignEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, isFront: isFront ?? this.isFront, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerOpenSignEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerPortalEventData {
   final Player player;
@@ -40004,6 +41120,8 @@ final class PlayerPortalEventData {
   final bool cancelled;
   const PlayerPortalEventData({required this.player, required this.fromPos, required this.toPos, required this.cancelled, });
   PlayerPortalEventData copyWith({Player? player, BlockPos? fromPos, BlockPos? toPos, bool clearToPos = false, bool? cancelled, }) => PlayerPortalEventData(player: player ?? this.player, fromPos: fromPos ?? this.fromPos, toPos: clearToPos ? null : (toPos ?? this.toPos), cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerPortalEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerPreLoginEventData {
   final String playerName;
@@ -40013,6 +41131,8 @@ final class PlayerPreLoginEventData {
   final bool cancelled;
   const PlayerPreLoginEventData({required this.playerName, required this.playerUuid, required this.ipAddress, required this.kickMessage, required this.cancelled, });
   PlayerPreLoginEventData copyWith({String? playerName, String? playerUuid, String? ipAddress, TextComponent? kickMessage, bool? cancelled, }) => PlayerPreLoginEventData(playerName: playerName ?? this.playerName, playerUuid: playerUuid ?? this.playerUuid, ipAddress: ipAddress ?? this.ipAddress, kickMessage: kickMessage ?? this.kickMessage, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerPreLoginEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerRiptideEventData {
   final Player player;
@@ -40020,6 +41140,8 @@ final class PlayerRiptideEventData {
   final bool cancelled;
   const PlayerRiptideEventData({required this.player, required this.itemName, required this.cancelled, });
   PlayerRiptideEventData copyWith({Player? player, String? itemName, bool? cancelled, }) => PlayerRiptideEventData(player: player ?? this.player, itemName: itemName ?? this.itemName, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerRiptideEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerShearEntityEventData {
   final Player player;
@@ -40028,6 +41150,8 @@ final class PlayerShearEntityEventData {
   final bool cancelled;
   const PlayerShearEntityEventData({required this.player, required this.entityId, required this.hand, required this.cancelled, });
   PlayerShearEntityEventData copyWith({Player? player, int? entityId, int? hand, bool? cancelled, }) => PlayerShearEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, hand: hand ?? this.hand, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerShearEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerShowEntityEventData {
   final Player player;
@@ -40035,6 +41159,8 @@ final class PlayerShowEntityEventData {
   final bool cancelled;
   const PlayerShowEntityEventData({required this.player, required this.entityId, required this.cancelled, });
   PlayerShowEntityEventData copyWith({Player? player, int? entityId, bool? cancelled, }) => PlayerShowEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerShowEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerSpawnChangeEventData {
   final Player player;
@@ -40043,6 +41169,8 @@ final class PlayerSpawnChangeEventData {
   final bool cancelled;
   const PlayerSpawnChangeEventData({required this.player, required this.newSpawn, required this.forced, required this.cancelled, });
   PlayerSpawnChangeEventData copyWith({Player? player, BlockPos? newSpawn, bool clearNewSpawn = false, bool? forced, bool? cancelled, }) => PlayerSpawnChangeEventData(player: player ?? this.player, newSpawn: clearNewSpawn ? null : (newSpawn ?? this.newSpawn), forced: forced ?? this.forced, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerSpawnChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerStatisticIncrementEventData {
   final Player player;
@@ -40051,12 +41179,16 @@ final class PlayerStatisticIncrementEventData {
   final bool cancelled;
   const PlayerStatisticIncrementEventData({required this.player, required this.statisticId, required this.amount, required this.cancelled, });
   PlayerStatisticIncrementEventData copyWith({Player? player, String? statisticId, int? amount, bool? cancelled, }) => PlayerStatisticIncrementEventData(player: player ?? this.player, statisticId: statisticId ?? this.statisticId, amount: amount ?? this.amount, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerStatisticIncrementEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerSwapHandsEventData {
   final Player player;
   final bool cancelled;
   const PlayerSwapHandsEventData({required this.player, required this.cancelled, });
   PlayerSwapHandsEventData copyWith({Player? player, bool? cancelled, }) => PlayerSwapHandsEventData(player: player ?? this.player, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerSwapHandsEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerTakeLecternBookEventData {
   final Player player;
@@ -40065,6 +41197,8 @@ final class PlayerTakeLecternBookEventData {
   final bool cancelled;
   const PlayerTakeLecternBookEventData({required this.player, required this.blockPos, required this.book, required this.cancelled, });
   PlayerTakeLecternBookEventData copyWith({Player? player, BlockPos? blockPos, ItemStack? book, bool? cancelled, }) => PlayerTakeLecternBookEventData(player: player ?? this.player, blockPos: blockPos ?? this.blockPos, book: book ?? this.book, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerTakeLecternBookEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerUnleashEntityEventData {
   final Player player;
@@ -40072,6 +41206,8 @@ final class PlayerUnleashEntityEventData {
   final bool cancelled;
   const PlayerUnleashEntityEventData({required this.player, required this.entityId, required this.cancelled, });
   PlayerUnleashEntityEventData copyWith({Player? player, int? entityId, bool? cancelled, }) => PlayerUnleashEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerUnleashEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerVelocityEventData {
   final Player player;
@@ -40079,6 +41215,8 @@ final class PlayerVelocityEventData {
   final bool cancelled;
   const PlayerVelocityEventData({required this.player, required this.velocity, required this.cancelled, });
   PlayerVelocityEventData copyWith({Player? player, (double, double, double, )? velocity, bool? cancelled, }) => PlayerVelocityEventData(player: player ?? this.player, velocity: velocity ?? this.velocity, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerVelocityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerInputEventData {
   final Player player;
@@ -40086,6 +41224,8 @@ final class PlayerInputEventData {
   final bool cancelled;
   const PlayerInputEventData({required this.player, required this.input, required this.cancelled, });
   PlayerInputEventData copyWith({Player? player, String? input, bool? cancelled, }) => PlayerInputEventData(player: player ?? this.player, input: input ?? this.input, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerInputEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerInteractAtEntityEventData {
   final Player player;
@@ -40097,6 +41237,8 @@ final class PlayerInteractAtEntityEventData {
   final bool cancelled;
   const PlayerInteractAtEntityEventData({required this.player, required this.entityId, required this.clickedX, required this.clickedY, required this.clickedZ, required this.hand, required this.cancelled, });
   PlayerInteractAtEntityEventData copyWith({Player? player, int? entityId, double? clickedX, double? clickedY, double? clickedZ, int? hand, bool? cancelled, }) => PlayerInteractAtEntityEventData(player: player ?? this.player, entityId: entityId ?? this.entityId, clickedX: clickedX ?? this.clickedX, clickedY: clickedY ?? this.clickedY, clickedZ: clickedZ ?? this.clickedZ, hand: hand ?? this.hand, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerInteractAtEntityEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerLinksSendEventData {
   final Player player;
@@ -40104,6 +41246,8 @@ final class PlayerLinksSendEventData {
   final bool cancelled;
   const PlayerLinksSendEventData({required this.player, required this.links, required this.cancelled, });
   PlayerLinksSendEventData copyWith({Player? player, List<String>? links, bool? cancelled, }) => PlayerLinksSendEventData(player: player ?? this.player, links: links ?? this.links, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerLinksSendEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerPickupArrowEventData {
   final Player player;
@@ -40111,6 +41255,8 @@ final class PlayerPickupArrowEventData {
   final bool cancelled;
   const PlayerPickupArrowEventData({required this.player, required this.arrowId, required this.cancelled, });
   PlayerPickupArrowEventData copyWith({Player? player, int? arrowId, bool? cancelled, }) => PlayerPickupArrowEventData(player: player ?? this.player, arrowId: arrowId ?? this.arrowId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerPickupArrowEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerRecipeBookClickEventData {
   final Player player;
@@ -40119,6 +41265,8 @@ final class PlayerRecipeBookClickEventData {
   final bool cancelled;
   const PlayerRecipeBookClickEventData({required this.player, required this.recipeId, required this.makeAll, required this.cancelled, });
   PlayerRecipeBookClickEventData copyWith({Player? player, String? recipeId, bool? makeAll, bool? cancelled, }) => PlayerRecipeBookClickEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, makeAll: makeAll ?? this.makeAll, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerRecipeBookClickEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerRecipeBookSettingsChangeEventData {
   final Player player;
@@ -40128,6 +41276,8 @@ final class PlayerRecipeBookSettingsChangeEventData {
   final bool cancelled;
   const PlayerRecipeBookSettingsChangeEventData({required this.player, required this.bookType, required this.isOpen, required this.isFiltering, required this.cancelled, });
   PlayerRecipeBookSettingsChangeEventData copyWith({Player? player, String? bookType, bool? isOpen, bool? isFiltering, bool? cancelled, }) => PlayerRecipeBookSettingsChangeEventData(player: player ?? this.player, bookType: bookType ?? this.bookType, isOpen: isOpen ?? this.isOpen, isFiltering: isFiltering ?? this.isFiltering, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerRecipeBookSettingsChangeEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerRecipeDiscoverEventData {
   final Player player;
@@ -40135,6 +41285,8 @@ final class PlayerRecipeDiscoverEventData {
   final bool cancelled;
   const PlayerRecipeDiscoverEventData({required this.player, required this.recipeId, required this.cancelled, });
   PlayerRecipeDiscoverEventData copyWith({Player? player, String? recipeId, bool? cancelled, }) => PlayerRecipeDiscoverEventData(player: player ?? this.player, recipeId: recipeId ?? this.recipeId, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerRecipeDiscoverEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerRegisterChannelEventData {
   final Player player;
@@ -40142,6 +41294,8 @@ final class PlayerRegisterChannelEventData {
   final bool cancelled;
   const PlayerRegisterChannelEventData({required this.player, required this.channel, required this.cancelled, });
   PlayerRegisterChannelEventData copyWith({Player? player, String? channel, bool? cancelled, }) => PlayerRegisterChannelEventData(player: player ?? this.player, channel: channel ?? this.channel, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerRegisterChannelEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerResourcePackStatusEventData {
   final Player player;
@@ -40150,6 +41304,8 @@ final class PlayerResourcePackStatusEventData {
   final bool cancelled;
   const PlayerResourcePackStatusEventData({required this.player, required this.packId, required this.status, required this.cancelled, });
   PlayerResourcePackStatusEventData copyWith({Player? player, String? packId, String? status, bool? cancelled, }) => PlayerResourcePackStatusEventData(player: player ?? this.player, packId: packId ?? this.packId, status: status ?? this.status, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerResourcePackStatusEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerSpawnLocationEventData {
   final Player player;
@@ -40157,6 +41313,8 @@ final class PlayerSpawnLocationEventData {
   final bool cancelled;
   const PlayerSpawnLocationEventData({required this.player, required this.spawnPos, required this.cancelled, });
   PlayerSpawnLocationEventData copyWith({Player? player, (double, double, double, )? spawnPos, bool? cancelled, }) => PlayerSpawnLocationEventData(player: player ?? this.player, spawnPos: spawnPos ?? this.spawnPos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerSpawnLocationEventData cancel() => copyWith(cancelled: true);
 }
 final class PlayerUnregisterChannelEventData {
   final Player player;
@@ -40164,12 +41322,16 @@ final class PlayerUnregisterChannelEventData {
   final bool cancelled;
   const PlayerUnregisterChannelEventData({required this.player, required this.channel, required this.cancelled, });
   PlayerUnregisterChannelEventData copyWith({Player? player, String? channel, bool? cancelled, }) => PlayerUnregisterChannelEventData(player: player ?? this.player, channel: channel ?? this.channel, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  PlayerUnregisterChannelEventData cancel() => copyWith(cancelled: true);
 }
 final class RaidFinishEventData {
   final bool victory;
   final bool cancelled;
   const RaidFinishEventData({required this.victory, required this.cancelled, });
   RaidFinishEventData copyWith({bool? victory, bool? cancelled, }) => RaidFinishEventData(victory: victory ?? this.victory, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  RaidFinishEventData cancel() => copyWith(cancelled: true);
 }
 final class RaidSpawnWaveEventData {
   final int wave;
@@ -40177,18 +41339,24 @@ final class RaidSpawnWaveEventData {
   final bool cancelled;
   const RaidSpawnWaveEventData({required this.wave, required this.pos, required this.cancelled, });
   RaidSpawnWaveEventData copyWith({int? wave, BlockPos? pos, bool? cancelled, }) => RaidSpawnWaveEventData(wave: wave ?? this.wave, pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  RaidSpawnWaveEventData cancel() => copyWith(cancelled: true);
 }
 final class RaidStopEventData {
   final String reason;
   final bool cancelled;
   const RaidStopEventData({required this.reason, required this.cancelled, });
   RaidStopEventData copyWith({String? reason, bool? cancelled, }) => RaidStopEventData(reason: reason ?? this.reason, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  RaidStopEventData cancel() => copyWith(cancelled: true);
 }
 final class RaidTriggerEventData {
   final BlockPos pos;
   final bool cancelled;
   const RaidTriggerEventData({required this.pos, required this.cancelled, });
   RaidTriggerEventData copyWith({BlockPos? pos, bool? cancelled, }) => RaidTriggerEventData(pos: pos ?? this.pos, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  RaidTriggerEventData cancel() => copyWith(cancelled: true);
 }
 final class LightningStrikeEventData {
   final (double, double, double, ) position;
@@ -40196,6 +41364,8 @@ final class LightningStrikeEventData {
   final bool cancelled;
   const LightningStrikeEventData({required this.position, required this.isEffect, required this.cancelled, });
   LightningStrikeEventData copyWith({(double, double, double, )? position, bool? isEffect, bool? cancelled, }) => LightningStrikeEventData(position: position ?? this.position, isEffect: isEffect ?? this.isEffect, cancelled: cancelled ?? this.cancelled, );
+  /// This event, cancelled.
+  LightningStrikeEventData cancel() => copyWith(cancelled: true);
 }
 sealed class Event {
   const Event();
@@ -41332,10 +42502,16 @@ final class SuggestionRequest {
 }
 /// Generation phase for custom chunk generation.
 enum GenerationPhase {
-  biomes,
-  noise,
-  surface,
-  features,
+  biomes('biomes'),
+  noise('noise'),
+  surface('surface'),
+  features('features');
+  const GenerationPhase(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static GenerationPhase? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, GenerationPhase> _byWireName = {for (final value in values) value.wireName: value};
 }
 /// The world's exported functions. Implement this and pass an instance to
 /// [definePlugin] from `main()`.

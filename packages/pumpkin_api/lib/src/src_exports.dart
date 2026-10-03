@@ -7,3 +7,5 @@ export 'logger.dart' show logger;
 export 'permissions.dart' show Permissions;
 export 'ai.dart' show aiGoals, AiGoal;
 export 'worldgen.dart' show chunkGenerators;
+export 'ipc.dart' show handleIpc;
+export 'lifecycle.dart' show runUnloadHooks;

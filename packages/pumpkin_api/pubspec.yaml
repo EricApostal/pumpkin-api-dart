@@ -11,3 +11,6 @@ dependencies:
   hooks: ^2.0.2
   wasm_components:
   wasm_tools:
+
+dev_dependencies:
+  test: ^1.31.1

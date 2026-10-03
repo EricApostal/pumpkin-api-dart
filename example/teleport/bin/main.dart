@@ -1,7 +1,7 @@
 import 'package:dart_mappable/dart_mappable.dart' show MapperException;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../lib/src/model.dart';
+import 'package:teleport/src/model.dart';
 
 /// Permission nodes. Everything is allowed by default except what changes the
 /// server's shared places, which is for operators.

@@ -92,7 +92,7 @@ can be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
 (`RegExp`, `double` formatting, `jsonDecode`, ...), and
 [docs/architecture.md](docs/architecture.md) shows how everything fits together.
 
-See [`example/hello_plugin`](example/hello_plugin) for a complete plugin.
+See [`example/teleport`](example/teleport) for a complete plugin: homes, warps, spawn and teleport requests, with permissions, files and `dart_mappable`.
 
 ## Repository layout
 
@@ -106,14 +106,15 @@ See [`example/hello_plugin`](example/hello_plugin) for a complete plugin.
 | `packages/wasm_components` | Runtime support for components in Dart. |
 | `native/wit_bindgen_dart` | Rust WIT-to-Dart binding generator (maintainers only). |
 | `native/runtime_helpers` | Rust allocator and math helpers linked into every plugin (maintainers only). |
-| `example/hello_plugin` | Example plugin. |
+| `example/teleport` | Example plugin: homes, warps, spawn, `/tpa`. |
+| `tool/runtime_check` | A plugin that checks the Dart core libraries inside a server (`tool/runtime_check.sh`). |
 
 ## Working on this repository
 
 ```sh
 git clone --recurse-submodules <this repo>
 dart pub get
-cd example/hello_plugin && dart run pumpkin_tools build
+cd example/teleport && dart run pumpkin_tools build
 ```
 
 Regenerate the bindings and the typed `Events` after the WIT changes (needs Rust):

@@ -2,8 +2,13 @@
 /// server so that it can be tested on the Dart VM.
 library;
 
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'model.mapper.dart';
+
 /// A place a player can be sent to.
-final class Location {
+@MappableClass()
+class Location with LocationMappable {
   /// The world's name, like `minecraft:overworld`.
   final String world;
   final double x;
@@ -21,24 +26,6 @@ final class Location {
     this.pitch = 0,
   });
 
-  factory Location.fromJson(Map<String, Object?> json) => Location(
-    world: json['world'] as String,
-    x: (json['x'] as num).toDouble(),
-    y: (json['y'] as num).toDouble(),
-    z: (json['z'] as num).toDouble(),
-    yaw: (json['yaw'] as num? ?? 0).toDouble(),
-    pitch: (json['pitch'] as num? ?? 0).toDouble(),
-  );
-
-  Map<String, Object?> toJson() => {
-    'world': world,
-    'x': x,
-    'y': y,
-    'z': z,
-    'yaw': yaw,
-    'pitch': pitch,
-  };
-
   /// A short description like `overworld 10, 64, -3`.
   String describe() {
     final name = world.startsWith('minecraft:') ? world.substring(10) : world;
@@ -47,44 +34,54 @@ final class Location {
 }
 
 /// Settings from `config.json`. Missing values use the defaults.
-final class TeleportConfig {
+@MappableClass()
+class TeleportConfig with TeleportConfigMappable {
   /// How many homes a player may have.
   final int maxHomes;
 
-  /// How long a teleport request stays open.
-  final Duration requestTimeout;
+  /// How long a teleport request stays open, in seconds.
+  final int requestTimeoutSeconds;
 
-  /// The pause a player has to wait between teleports.
-  final Duration cooldown;
+  /// The pause a player has to wait between teleports, in seconds.
+  final int cooldownSeconds;
 
   const TeleportConfig({
     this.maxHomes = 3,
-    this.requestTimeout = const Duration(seconds: 60),
-    this.cooldown = const Duration(seconds: 5),
+    this.requestTimeoutSeconds = 60,
+    this.cooldownSeconds = 5,
   });
 
-  factory TeleportConfig.fromJson(Map<String, Object?> json) {
-    const defaults = TeleportConfig();
-    return TeleportConfig(
-      maxHomes: (json['maxHomes'] as num?)?.toInt() ?? defaults.maxHomes,
-      requestTimeout: Duration(
-        seconds:
-            (json['requestTimeoutSeconds'] as num?)?.toInt() ??
-            defaults.requestTimeout.inSeconds,
-      ),
-      cooldown: Duration(
-        seconds:
-            (json['cooldownSeconds'] as num?)?.toInt() ??
-            defaults.cooldown.inSeconds,
-      ),
-    );
-  }
+  Duration get requestTimeout => Duration(seconds: requestTimeoutSeconds);
 
-  Map<String, Object?> toJson() => {
-    'maxHomes': maxHomes,
-    'requestTimeoutSeconds': requestTimeout.inSeconds,
-    'cooldownSeconds': cooldown.inSeconds,
-  };
+  Duration get cooldown => Duration(seconds: cooldownSeconds);
+}
+
+/// One player's homes as stored in `homes.json`.
+@MappableClass()
+class PlayerHomes with PlayerHomesMappable {
+  /// The player's name when they last set a home, to keep the file readable.
+  final String name;
+
+  /// The homes by (lower case) name.
+  final Map<String, Location> homes;
+
+  const PlayerHomes({required this.name, required this.homes});
+}
+
+/// The content of `homes.json`: every player's homes, by player UUID.
+@MappableClass()
+class HomesFile with HomesFileMappable {
+  final Map<String, PlayerHomes> players;
+
+  const HomesFile({this.players = const {}});
+}
+
+/// The content of `warps.json`.
+@MappableClass()
+class WarpsFile with WarpsFileMappable {
+  final Map<String, Location> warps;
+
+  const WarpsFile({this.warps = const {}});
 }
 
 final _validName = RegExp(r'^[A-Za-z0-9_-]{1,32}$');
@@ -101,32 +98,19 @@ final class HomeBook {
 
   HomeBook([Map<String, Map<String, Location>>? homes]) : _homes = homes ?? {};
 
-  factory HomeBook.fromJson(Map<String, Object?> json) {
-    final homes = <String, Map<String, Location>>{};
-    for (final MapEntry(key: uuid, value: entry) in json.entries) {
-      final byName = <String, Location>{};
-      final raw = (entry as Map<String, Object?>)['homes'] as Map<String, Object?>;
-      for (final MapEntry(key: name, value: location) in raw.entries) {
-        byName[name] = Location.fromJson(location as Map<String, Object?>);
-      }
-      homes[uuid] = byName;
-    }
-    return HomeBook(homes);
-  }
+  factory HomeBook.fromFile(HomesFile file) => HomeBook({
+    for (final MapEntry(key: uuid, value: player) in file.players.entries)
+      uuid: Map.of(player.homes),
+  });
 
-  /// Serialized with the players' [names] (last seen), to make the file
-  /// readable.
-  Map<String, Object?> toJson(Map<String, String> names) => {
-    for (final MapEntry(key: uuid, value: byName) in _homes.entries)
-      if (byName.isNotEmpty)
-        uuid: {
-          'name': names[uuid] ?? '',
-          'homes': {
-            for (final MapEntry(key: name, value: location) in byName.entries)
-              name: location.toJson(),
-          },
-        },
-  };
+  /// The file content, with the players' [names] (last seen).
+  HomesFile toFile(Map<String, String> names) => HomesFile(
+    players: {
+      for (final MapEntry(key: uuid, value: byName) in _homes.entries)
+        if (byName.isNotEmpty)
+          uuid: PlayerHomes(name: names[uuid] ?? '', homes: Map.of(byName)),
+    },
+  );
 
   /// The player's homes, by name.
   Map<String, Location> of(String uuid) =>
@@ -153,15 +137,9 @@ final class WarpBook {
 
   WarpBook([Map<String, Location>? warps]) : _warps = warps ?? {};
 
-  factory WarpBook.fromJson(Map<String, Object?> json) => WarpBook({
-    for (final MapEntry(key: name, value: location) in json.entries)
-      name: Location.fromJson(location as Map<String, Object?>),
-  });
+  factory WarpBook.fromFile(WarpsFile file) => WarpBook(Map.of(file.warps));
 
-  Map<String, Object?> toJson() => {
-    for (final MapEntry(key: name, value: location) in _warps.entries)
-      name: location.toJson(),
-  };
+  WarpsFile toFile() => WarpsFile(warps: Map.of(_warps));
 
   List<String> get names => (_warps.keys.toList()..sort());
 

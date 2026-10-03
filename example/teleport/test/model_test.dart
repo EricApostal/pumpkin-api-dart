@@ -1,4 +1,5 @@
-import '../lib/src/model.dart';
+import 'package:dart_mappable/dart_mappable.dart' show MapperException;
+import 'package:teleport/src/model.dart';
 
 import 'package:test/test.dart';
 
@@ -12,7 +13,7 @@ const home = Location(
 
 void main() {
   test('locations round trip through JSON', () {
-    final copy = Location.fromJson(home.toJson());
+    final copy = LocationMapper.fromJson(home.toJson());
     expect(copy.world, home.world);
     expect(copy.x, 10.5);
     expect(copy.yaw, 90);
@@ -20,10 +21,18 @@ void main() {
   });
 
   test('config uses defaults for missing values', () {
-    final config = TeleportConfig.fromJson({'maxHomes': 5});
+    final config = TeleportConfigMapper.fromJson('{"maxHomes": 5}');
     expect(config.maxHomes, 5);
     expect(config.cooldown, const Duration(seconds: 5));
-    expect(TeleportConfig.fromJson(config.toJson()).maxHomes, 5);
+    expect(config.requestTimeout, const Duration(seconds: 60));
+    expect(TeleportConfigMapper.fromJson(config.toJson()).maxHomes, 5);
+  });
+
+  test('a config of the wrong type is rejected', () {
+    expect(
+      () => TeleportConfigMapper.fromJson('{"maxHomes": "many"}'),
+      throwsA(isA<MapperException>()),
+    );
   });
 
   test('names', () {
@@ -58,16 +67,17 @@ void main() {
         ..set('a', 'one', home)
         ..set('a', 'two', home)
         ..set('b', 'x', home);
-      final copy = HomeBook.fromJson(book.toJson({'a': 'Steve'}));
+      final json = book.toFile({'a': 'Steve'}).toJson();
+      final copy = HomeBook.fromFile(HomesFileMapper.fromJson(json));
       expect(copy.count('a'), 2);
       expect(copy.get('b', 'x')!.x, 10.5);
-      expect(book.toJson({'a': 'Steve'})['a'], containsPair('name', 'Steve'));
+      expect(HomesFileMapper.fromJson(json).players['a']!.name, 'Steve');
     });
 
     test('players without homes are not written', () {
       final book = HomeBook()..set('a', 'x', home);
       book.remove('a', 'x');
-      expect(book.toJson({}), isEmpty);
+      expect(book.toFile({}).players, isEmpty);
     });
   });
 
@@ -77,7 +87,7 @@ void main() {
       ..set('arena', home);
     expect(warps.names, ['arena', 'shop']);
     expect(warps.get('SHOP'), isNotNull);
-    final copy = WarpBook.fromJson(warps.toJson());
+    final copy = WarpBook.fromFile(WarpsFileMapper.fromJson(warps.toFile().toJson()));
     expect(copy.names, ['arena', 'shop']);
     expect(warps.remove('shop'), isTrue);
     expect(warps.get('shop'), isNull);

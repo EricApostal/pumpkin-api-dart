@@ -1,3 +1,4 @@
+import 'package:dart_mappable/dart_mappable.dart' show MapperException;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../lib/src/model.dart';
@@ -59,7 +60,8 @@ final class TeleportPlugin extends Plugin {
       _requests.removeAllFor(_uuidOf(event.player));
     });
     logger.info(
-      'Teleport loaded: ${_warps.names.length} warps, '
+      'Teleport loaded: max ${_config.maxHomes} homes, '
+      '${_warps.names.length} warps, '
       '${_spawn == null ? 'no' : 'a'} custom spawn.',
     );
   }
@@ -68,48 +70,49 @@ final class TeleportPlugin extends Plugin {
   // Storage
   // ---------------------------------------------------------------------------
 
-  Map<String, Object?>? _read(String file) {
+  /// Reads [file] and decodes it with [decode], or returns `null` if it
+  /// doesn't exist or can't be used.
+  T? _read<T>(String file, T Function(String json) decode) {
     try {
-      return _files.readJson(file) as Map<String, Object?>;
+      return decode(_files.readAsString(file));
     } on FileException catch (e) {
       if (!e.isNotFound) logger.error('Could not read $file: $e');
-    } catch (e) {
+    } on MapperException catch (e) {
       logger.error('$file is not valid, ignoring it: $e');
     }
     return null;
   }
 
-  void _write(String file, Object? json) {
+  void _write(String file, String json) {
     try {
-      _files.writeJson(file, json);
+      _files.writeAsString(file, json);
     } on FileException catch (e) {
       logger.error('Could not save $file: $e');
     }
   }
 
   void _loadData() {
-    final config = _read('config.json');
+    final config = _read('config.json', TeleportConfigMapper.fromJson);
     if (config == null) {
       _write('config.json', _config.toJson());
     } else {
-      _config = TeleportConfig.fromJson(config);
+      _config = config;
     }
 
-    final homes = _read('homes.json');
+    final homes = _read('homes.json', HomesFileMapper.fromJson);
     if (homes != null) {
-      _homes = HomeBook.fromJson(homes);
-      for (final MapEntry(key: uuid, value: entry) in homes.entries) {
-        _names[uuid] = (entry as Map<String, Object?>)['name'] as String? ?? '';
+      _homes = HomeBook.fromFile(homes);
+      for (final MapEntry(key: uuid, value: player) in homes.players.entries) {
+        _names[uuid] = player.name;
       }
     }
-    final warps = _read('warps.json');
-    if (warps != null) _warps = WarpBook.fromJson(warps);
-    final spawn = _read('spawn.json');
-    if (spawn != null) _spawn = Location.fromJson(spawn);
+    final warps = _read('warps.json', WarpsFileMapper.fromJson);
+    if (warps != null) _warps = WarpBook.fromFile(warps);
+    _spawn = _read('spawn.json', LocationMapper.fromJson);
   }
 
-  void _saveHomes() => _write('homes.json', _homes.toJson(_names));
-  void _saveWarps() => _write('warps.json', _warps.toJson());
+  void _saveHomes() => _write('homes.json', _homes.toFile(_names).toJson());
+  void _saveWarps() => _write('warps.json', _warps.toFile().toJson());
 
   // ---------------------------------------------------------------------------
   // Helpers

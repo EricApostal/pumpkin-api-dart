@@ -33,6 +33,13 @@ if [ -n "$ALLOW_PERMISSIONS" ]; then
   sed -i.bak "s/^allowed_permissions = .*/allowed_permissions = [${LIST%, }]/" "$DIR/pumpkin.toml"
 fi
 
+# SEED_DATA=<dir> SEED_PLUGIN=<name> copies a directory into the plugin's data
+# folder before the server starts, to test loading existing files.
+if [ -n "$SEED_DATA" ]; then
+  mkdir -p "$DIR/plugins/data/$SEED_PLUGIN"
+  cp -R "$SEED_DATA"/. "$DIR/plugins/data/$SEED_PLUGIN/"
+fi
+
 cd "$DIR"
 (
   sleep "$STARTUP_SECONDS"
@@ -44,5 +51,7 @@ cd "$DIR"
 # SHOW_FILES=1 lists what the plugins left under plugins/data.
 if [ -n "$SHOW_FILES" ]; then
   echo "--- files under plugins/data:"
-  (cd "$DIR/plugins" && find data -type f 2>/dev/null | sort) || true
+  (cd "$DIR/plugins" && find data -type f 2>/dev/null | sort | while read -r file; do
+    echo "$file:"; head -c 600 "$file"; echo
+  done) || true
 fi

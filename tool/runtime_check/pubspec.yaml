@@ -1,0 +1,10 @@
+name: runtime_check
+description: Checks the Dart core libraries inside a Pumpkin plugin, see tool/runtime_check.sh.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  pumpkin_api:

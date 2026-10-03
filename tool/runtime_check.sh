@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds example/hello_plugin/bin/runtime_check.dart and runs every `t <name>`
+# Builds tool/runtime_check/bin/runtime_check.dart and runs every `t <name>`
 # check on a throwaway Pumpkin server, failing if any check fails or traps.
 #
 # Usage: PUMPKIN_BIN=/path/to/pumpkin [DART="puro dart"] tool/runtime_check.sh
@@ -11,9 +11,9 @@ DART="${DART:-dart}"
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 
-(cd example/hello_plugin && $DART run pumpkin_tools build bin/runtime_check.dart -o "$OUT/runtime_check.wasm")
+(cd tool/runtime_check && $DART run pumpkin_tools build bin/runtime_check.dart -o "$OUT/runtime_check.wasm")
 
-CHECKS=$(grep -oE "^  '[A-Za-z_0-9]+':" example/hello_plugin/bin/runtime_check.dart | tr -d " ':")
+CHECKS=$(grep -oE "^  '[A-Za-z_0-9]+':" tool/runtime_check/bin/runtime_check.dart | tr -d " ':")
 set --
 for check in $CHECKS; do set -- "$@" "t $check"; done
 

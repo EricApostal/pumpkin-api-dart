@@ -20,19 +20,29 @@ jobs:
       - run: dart pub get
       - name: Analyze
         run: |
-          dart analyze packages/pumpkin_api packages/pumpkin_tools packages/wasm_tools packages/wasm_components example/teleport tool/runtime_check --fatal-warnings
+          dart analyze packages/pumpkin_api packages/pumpkin_tools packages/wasm_tools packages/wasm_components example/teleport example/commons tool/runtime_check --fatal-warnings
       - name: Unit tests
         run: |
           dart test packages/wasm_components
           dart test example/teleport
+          dart test example/commons
       - name: Build the example plugin (needs the checked-in dart_mappable output)
         working-directory: example/teleport
+        run: dart run pumpkin_tools build
+      - name: Build the commons plugin
+        working-directory: example/commons
         run: dart run pumpkin_tools build
       - name: Validate the component
         run: >
           wasmtime compile
           -W component-model=y,gc=y,function-references=y,exceptions=y,component-model-async=y
           -o /tmp/teleport.cwasm example/teleport/build/teleport.wasm
+
+      - name: Validate the commons component
+        run: >
+          wasmtime compile
+          -W component-model=y,gc=y,function-references=y,exceptions=y,component-model-async=y
+          -o /tmp/commons.cwasm example/commons/build/commons.wasm
 
   bindings:
     # The checked-in bindings must match what the generator produces.

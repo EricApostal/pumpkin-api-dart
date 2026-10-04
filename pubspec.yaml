@@ -10,6 +10,7 @@ workspace:
   - packages/wasm_components
   - packages/wasm_tools
   - example/teleport
+  - example/commons
   - tool/runtime_check
 
 dev_dependencies:

@@ -1,0 +1,50 @@
+/// Default texts of the economy module. Server owners can change them in
+/// `messages/economy.json`; `{name}` marks a value filled in at runtime.
+const economyMessages = <String, String>{
+  'balance.self': '&7Your balance: &a{balance}',
+  'balance.other': '&7Balance of &f{player}&7: &a{balance}',
+  'history.header': '&6Recent transactions of &e{player}&6:',
+  'history.line': '&8{age} ago &r{change} &7{detail}',
+  'history.empty': '&7{player} has no transactions yet.',
+  'history.deposit': 'deposit',
+  'history.withdraw': 'withdrawal',
+  'history.transferIn': 'from {other}',
+  'history.transferOut': 'to {other}',
+  'history.set': 'balance set',
+  'pay.sent':
+      '&aYou paid &e{amount}&a to &e{player}&a. You have &e{balance}&a left.',
+  'pay.received':
+      '&e{player}&a paid you &e{amount}&a. Your balance: &e{balance}',
+  'pay.received.bar': '&a+{amount} &7from &e{player}',
+  'pay.confirm':
+      '&ePay &6{amount}&e to &6{player}&e? Confirm within {seconds}s.',
+  'pay.button.confirm': '[Confirm]',
+  'pay.button.cancel': '[Cancel]',
+  'pay.hover.confirm': 'Send {amount} to {player}',
+  'pay.cancelled': '&7Payment cancelled.',
+  'pay.nothing': 'You have no payment to confirm. It may have expired.',
+  'pay.self': 'You cannot pay yourself.',
+  'pay.minimum': 'The smallest payment is {minimum}.',
+  'pay.insufficient': 'You only have {balance}.',
+  'pay.full': '{player} cannot hold that much money.',
+  'pay.failed': 'The payment could not be made.',
+  'eco.give': '&aGave &e{amount}&a to &e{player}&a. Their balance: &e{balance}',
+  'eco.take':
+      '&aTook &e{amount}&a from &e{player}&a. Their balance: &e{balance}',
+  'eco.set': '&aSet the balance of &e{player}&a to &e{balance}&a.',
+  'eco.reset': '&aReset the balance of &e{player}&a to &e{balance}&a.',
+  'eco.notify.give': '&aAn administrator gave you &e{amount}&a.',
+  'eco.notify.take': '&cAn administrator took &e{amount}&c from you.',
+  'eco.notify.set': '&7An administrator set your balance to &e{balance}&7.',
+  'eco.insufficient': '{player} only has {balance}.',
+  'eco.tooMuch':
+      '{player} cannot hold that much. The maximum balance is {max}.',
+  'eco.failed': 'The balance of {player} could not be changed.',
+  'baltop.title': 'Richest players',
+  'baltop.line': '&7{rank}. &f{player} &8- &a{balance}',
+  'baltop.you': '&7You are number &e{rank}&7 with &a{balance}&7.',
+  'baltop.total': '&7Money in circulation: &a{total}',
+  'baltop.empty': '&7Nobody has any money yet.',
+  'player.unknown': 'No player called "{player}" is known. They have to join the server once.',
+  'console.needsPlayer': 'Name a player: /{command} <player>',
+};

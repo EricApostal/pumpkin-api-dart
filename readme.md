@@ -93,7 +93,7 @@ can be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
 (`RegExp`, `double` formatting, `jsonDecode`, ...), and
 [docs/architecture.md](docs/architecture.md) shows how everything fits together.
 
-See [`example/teleport`](example/teleport) for a complete plugin: homes, warps, spawn and teleport requests, with permissions, files and `dart_mappable`.
+See [`example/teleport`](example/teleport) for a complete plugin: homes, warps, spawn and teleport requests, with permissions, files and `dart_mappable`. [`example/commons`](example/commons) is a larger, multi-module plugin that shows how to structure one.
 
 ## Repository layout
 
@@ -108,6 +108,7 @@ See [`example/teleport`](example/teleport) for a complete plugin: homes, warps, 
 | `native/wit_bindgen_dart` | Rust WIT-to-Dart binding generator (maintainers only). |
 | `native/runtime_helpers` | Rust allocator and math helpers linked into every plugin (maintainers only). |
 | `example/teleport` | Example plugin: homes, warps, spawn, `/tpa`. |
+| `example/commons` | A larger example: economy, shop, kits, rewards, mail, chat, announcements and moderation as separate modules. |
 | `tool/runtime_check` | A plugin that checks the Dart core libraries inside a server (`tool/runtime_check.sh`). |
 
 ## Working on this repository

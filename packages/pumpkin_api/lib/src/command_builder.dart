@@ -566,8 +566,8 @@ extension CommandBuilderContext on Context {
     if (help) commandRegistry.add(root);
   }
 
-  /// Registers [permission] with the server. Already registered nodes only
-  /// log a warning. Returns whether it is registered now.
+  /// Registers [permission] with the server. A node that is already
+  /// registered (by the plugin or an earlier command) counts as registered. Returns whether it is registered now.
   bool registerCommandPermission(CommandPermission permission) {
     if (!permission.node.contains(':')) {
       logger.warn(
@@ -586,6 +586,9 @@ extension CommandBuilderContext on Context {
       ),
     );
     if (result case ErrorResult(:final value)) {
+      // A plugin may register its nodes up front (to document them in one
+      // place); the command then finds the node already there.
+      if (value.toString().contains('already registered')) return true;
       logger.warn('Could not register permission ${permission.node}: $value');
       return false;
     }

@@ -358,6 +358,8 @@ extension MessageCatalogFiles on DataFolder {
     if (exists(path)) json = readAsString(path);
     final catalog = MessageCatalog.fromJson(defaults, json, prefix: prefix);
     if (json == null || catalog.missingKeys.isNotEmpty) {
+      final slash = path.lastIndexOf('/');
+      if (slash > 0) createDirectory(path.substring(0, slash));
       writeAsString(path, catalog.toJson());
     }
     return catalog;

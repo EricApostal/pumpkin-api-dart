@@ -159,7 +159,7 @@ Outcome<T> runCallback<T>(String what, FutureOr<T> Function() body) {
     activity.bodyDone = true;
     drainEventLoop();
     if (activity.pendingTimers > 0) activity.hold();
-    return Outcome.completed(result as T);
+    return Outcome.completed(result);
   }
   final Future<T> future = result;
 

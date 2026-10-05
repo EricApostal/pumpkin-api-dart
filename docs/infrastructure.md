@@ -75,6 +75,21 @@ Only Java players receive payloads (`send` throws `UnsupportedError` for
 Bedrock). `registeredPlayers` is built from the register, unregister and leave
 events seen after `listen`.
 
+`TypedChannel<T>` does the same with values: a `PayloadCodec<T>` converts them to
+bytes, and `PacketWriter`/`PacketReader` (Minecraft's VarInt, string, UUID, ...
+primitives) build codecs. Payloads that fail to decode are logged and dropped.
+
+```dart
+final ping = TypedChannel<int>('myplugin:ping', PayloadCodec<int>.buffer(
+  write: (w, nonce) => w.writeVarInt(nonce),
+  read: (r) => r.readVarInt(),
+));
+ping.listen(context, (player, nonce) => ping.send(player, nonce + 1));
+```
+
+Handshakes that happen before a player exists (the configuration phase) are
+covered in [configuration.md](configuration.md).
+
 ## Permission nodes (`permission_nodes.dart`)
 
 ```dart

@@ -87,6 +87,9 @@ callback that received them returns; call `keep()` to hold on to one. Callbacks
 can be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
 [docs/lifetimes.md](docs/lifetimes.md) and [docs/async.md](docs/async.md).
 [docs/events-and-time.md](docs/events-and-time.md) covers events, `context.next`, `Duration` scheduling and enum names.
+[docs/configuration.md](docs/configuration.md) covers custom handshakes with client mods in the configuration phase.
+[docs/item-registry.md](docs/item-registry.md) covers registering custom items (and encoding their data components).
+[docs/block-registry.md](docs/block-registry.md) covers registering custom blocks (block states, connect rules, tags) and the "Dart side" wrapper.
 [docs/files.md](docs/files.md) covers reading and writing files with `context.files`.
 [docs/generated-api.md](docs/generated-api.md) explains how WIT maps to Dart (`T?`, properties, mob views).
 [docs/runtime.md](docs/runtime.md) lists what the Dart core libraries support
@@ -109,6 +112,8 @@ See [`example/teleport`](example/teleport) for a complete plugin: homes, warps, 
 | `native/runtime_helpers` | Rust allocator and math helpers linked into every plugin (maintainers only). |
 | `example/teleport` | Example plugin: homes, warps, spawn, `/tpa`. |
 | `example/commons` | A larger example: economy, shop, kits, rewards, mail, chat, announcements and moderation as separate modules. |
+| `example/lonsdaleite` | The server side of a NeoForge mod: registers its items and tags and answers the NeoForge registry sync, so a client with the mod can join ([README](example/lonsdaleite/README.md)). |
+| `packages/pumpkin_neoforge` | NeoForge's network negotiation and registry sync for plugins. |
 | `tool/runtime_check` | A plugin that checks the Dart core libraries inside a server (`tool/runtime_check.sh`). |
 
 ## Working on this repository
@@ -124,6 +129,14 @@ Regenerate the bindings and the typed `Events` after the WIT changes (needs Rust
 ```sh
 git submodule update --remote wit
 tool/generate_bindings.sh v0.2
+```
+
+To generate from WIT that is not in the submodule yet (say a branch of the
+Pumpkin repository), point `WIT_DIR` at the directory with the version's `.wit`
+files; it replaces `wit/<version>`:
+
+```sh
+WIT_DIR=~/src/Pumpkin/crates/pumpkin-plugin-wit/v0.2 tool/generate_bindings.sh v0.2
 ```
 
 `tool/build_runtime_helpers.sh` rebuilds `runtime_helpers.wasm` and needs

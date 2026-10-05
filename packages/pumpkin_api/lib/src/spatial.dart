@@ -1,4 +1,4 @@
-import 'bindings.g.dart';
+import 'bindings.g.dart' hide BlockRegistry;
 import 'blocks.dart';
 import 'geometry.dart';
 

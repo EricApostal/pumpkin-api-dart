@@ -1,0 +1,62 @@
+{
+ "mod_id": "lonsdaleite",
+ "version": "2.3.0",
+ "display_name": "Lonsdaleite Tools",
+ "registries": {
+  "minecraft:block": [
+   "lonsdaleite:lonsdaleite_wardframe"
+  ],
+  "minecraft:item": [
+   "lonsdaleite:lonsdaleite_wardframe",
+   "lonsdaleite:raw_lonsdaleite",
+   "lonsdaleite:prepared_lonsdaleite",
+   "lonsdaleite:refined_lonsdaleite",
+   "lonsdaleite:perfect_lonsdaleite",
+   "lonsdaleite:lonsdaleite_pickaxe",
+   "lonsdaleite:perfect_lonsdaleite_pickaxe",
+   "lonsdaleite:lonsdaleite_axe",
+   "lonsdaleite:perfect_lonsdaleite_axe",
+   "lonsdaleite:lonsdaleite_shovel",
+   "lonsdaleite:perfect_lonsdaleite_shovel",
+   "lonsdaleite:lonsdaleite_hoe",
+   "lonsdaleite:perfect_lonsdaleite_hoe",
+   "lonsdaleite:lonsdaleite_omnitool",
+   "lonsdaleite:perfect_lonsdaleite_omnitool",
+   "lonsdaleite:lonsdaleite_sword",
+   "lonsdaleite:perfect_lonsdaleite_sword",
+   "lonsdaleite:lonsdaleite_short_sword",
+   "lonsdaleite:perfect_lonsdaleite_short_sword",
+   "lonsdaleite:lonsdaleite_war_axe",
+   "lonsdaleite:perfect_lonsdaleite_war_axe",
+   "lonsdaleite:lonsdaleite_spear",
+   "lonsdaleite:perfect_lonsdaleite_spear",
+   "lonsdaleite:lonsdaleite_mace",
+   "lonsdaleite:lonsdaleite_helmet",
+   "lonsdaleite:lonsdaleite_chestplate",
+   "lonsdaleite:lonsdaleite_leggings",
+   "lonsdaleite:lonsdaleite_boots",
+   "lonsdaleite:perfect_lonsdaleite_helmet",
+   "lonsdaleite:perfect_lonsdaleite_chestplate",
+   "lonsdaleite:perfect_lonsdaleite_leggings",
+   "lonsdaleite:perfect_lonsdaleite_boots"
+  ],
+  "minecraft:creative_mode_tab": [
+   "lonsdaleite:lonsdaleite"
+  ]
+ },
+ "block_states": {
+  "lonsdaleite:lonsdaleite_wardframe": {
+   "properties": {
+    "north": ["true", "false"],
+    "south": ["true", "false"],
+    "east": ["true", "false"],
+    "west": ["true", "false"],
+    "up": ["true", "false"],
+    "down": ["true", "false"]
+   }
+  }
+ },
+ "payloads": [],
+ "feature_flags": [],
+ "extended_enums": []
+}

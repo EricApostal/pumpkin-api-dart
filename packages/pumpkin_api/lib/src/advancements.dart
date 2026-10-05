@@ -1,5 +1,3 @@
-import 'package:wasm_components/wasm_components.dart' as wc;
-
 import 'bindings.g.dart';
 
 /// Conveniences for [AdvancementProgress].

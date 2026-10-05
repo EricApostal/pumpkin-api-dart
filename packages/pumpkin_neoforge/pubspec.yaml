@@ -1,0 +1,14 @@
+name: pumpkin_neoforge
+description: Server side of NeoForge's network negotiation and registry synchronisation for Pumpkin plugins, so a NeoForge client with mods can join.
+version: 0.1.0-preview.0
+resolution: workspace
+repository: https://github.com/EricApostal/pumpkin-api-dart
+
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  pumpkin_api:
+
+dev_dependencies:
+  test: ^1.31.1

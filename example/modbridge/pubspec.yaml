@@ -1,0 +1,13 @@
+name: modbridge
+description: Example plugin implementing the server side of a mod's custom protocol, including a handshake in the configuration phase.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  pumpkin_api:
+
+dev_dependencies:
+  test: ^1.25.6

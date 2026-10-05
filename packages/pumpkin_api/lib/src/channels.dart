@@ -4,6 +4,8 @@ import 'bindings.g.dart';
 import 'events.dart';
 import 'events.g.dart';
 import 'infra_core.dart';
+import 'logger.dart';
+import 'packet_buffer.dart';
 import 'uuid_ext.dart';
 
 /// Plain data about a player, safe to keep after the callback returns.
@@ -77,7 +79,8 @@ final class PluginChannel {
   }
 
   /// Sends [text] as UTF-8.
-  void sendString(Player player, String text) => send(player, utf8.encode(text));
+  void sendString(Player player, String text) =>
+      send(player, utf8.encode(text));
 
   /// Sends [value] encoded as JSON text.
   void sendJson(Player player, Object? value) =>
@@ -113,5 +116,85 @@ final class PluginChannel {
     context.listen(Events.playerLeave, (server, event) {
       _registered.remove(event.player.getId().asString);
     });
+  }
+}
+
+/// A [PluginChannel] whose payloads are values of type [T], converted by a
+/// [PayloadCodec]. Payloads that do not decode (a client sent garbage) are
+/// logged and dropped instead of reaching the handler.
+///
+/// ```dart
+/// final ping = TypedChannel<int>(
+///   'myplugin:ping',
+///   PayloadCodec<int>.buffer(
+///     write: (w, nonce) => w.writeVarInt(nonce),
+///     read: (r) => r.readVarInt(),
+///   ),
+/// );
+///
+/// ping.listen(context, (player, nonce) => ping.send(player, nonce));
+/// ```
+final class TypedChannel<T> {
+  /// The underlying channel with the raw bytes.
+  final PluginChannel raw;
+
+  /// Converts between [T] and the payload bytes.
+  final PayloadCodec<T> codec;
+
+  /// Throws [ArgumentError] unless [name] looks like `namespace:path`.
+  TypedChannel(String name, this.codec) : raw = PluginChannel(name);
+
+  /// The channel name, `namespace:path`.
+  String get name => raw.name;
+
+  /// See [PluginChannel.registeredPlayers].
+  List<ChannelPlayer> get registeredPlayers => raw.registeredPlayers;
+
+  /// See [PluginChannel.isRegistered].
+  bool isRegistered(Player player) => raw.isRegistered(player);
+
+  /// Sends [value] to [player]. Throws [UnsupportedError] for Bedrock players.
+  void send(Player player, T value) => raw.send(player, codec.encode(value));
+
+  /// Calls [handler] with the values clients send, see [PluginChannel.listen].
+  /// [onInvalid] is told about payloads that failed to decode (by default
+  /// they are logged as warnings).
+  Subscription listen(
+    Context context,
+    void Function(Player player, T value) handler, {
+    void Function(Player player, Object error)? onInvalid,
+  }) {
+    return raw.listen(context, (player, data) {
+      final T value;
+      try {
+        value = codec.decode(data);
+      } catch (e) {
+        if (onInvalid != null) {
+          onInvalid(player, e);
+        } else {
+          logger.warn('Invalid payload on $name from ${player.getName()}: $e');
+        }
+        return;
+      }
+      handler(player, value);
+    });
+  }
+}
+
+extension PlayerChannelAnnouncement on Player {
+  /// Tells this player's client which custom payload channels the server
+  /// receives (a `minecraft:register` payload), see [encodeChannelList].
+  /// Do it when the player joins, before the mod has to send on them.
+  void announceChannels(Iterable<String> channels) {
+    final java = asJava();
+    if (java == null) return;
+    try {
+      java.sendCustomPayload(
+        channel: registerChannel,
+        data: encodeChannelList(channels),
+      );
+    } finally {
+      java.dispose();
+    }
   }
 }

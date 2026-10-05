@@ -1,0 +1,29 @@
+name: cc_tweaked
+description: "Server side of CC: Tweaked for Pumpkin, running CraftOS on a pure Dart Lua VM."
+publish_to: none
+
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  crypto: ^3.0.7
+  pumpkin_api:
+    path: ../../packages/pumpkin_api
+  pumpkin_neoforge:
+    path: ../../packages/pumpkin_neoforge
+
+# This package is deliberately not part of the repository's pub workspace, so
+# the workspace-relative dependencies of the packages above are redirected here.
+dependency_overrides:
+  pumpkin_api:
+    path: ../../packages/pumpkin_api
+  wasm_components:
+    path: ../../packages/wasm_components
+  wasm_tools:
+    path: ../../packages/wasm_tools
+  package_config: ^3.0.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  pumpkin_tools:
+    path: ../../packages/pumpkin_tools

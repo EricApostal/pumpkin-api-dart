@@ -65,7 +65,7 @@ void main() {
       hooks.add(() => order.add('last-added'));
       final errors = <String>[];
       final result = hooks.run(errors.add);
-      expect(result, isA<Future>());
+      expect(result, isA<Future<void>>());
       await result;
       expect(order, ['last-added', 'async', 'first-added']);
       expect(errors, hasLength(1));

@@ -57,4 +57,25 @@ abstract final class Permissions {
 
   /// Read OS information.
   static const sysInfoOs = 'sys.info.os';
+
+  /// Register custom items and item tags (`ItemRegistries.host`). Only
+  /// possible while the server loads, before players can connect.
+  static const registryItems = 'registry.items';
+
+  /// Register custom blocks and block tags (`BlockRegistries.host`). Only
+  /// possible while the server loads, before players can connect.
+  static const registryBlocks = 'registry.blocks';
+
+  /// Register block entity types (`BlockEntityRegistries.host`) and use the
+  /// block entities of plugin blocks. Only possible while the server loads,
+  /// before players can connect.
+  static const registryBlockEntities = 'registry.block-entities';
+
+  /// Register menu types (`MenuRegistries.host`) and open plugin menus. Only
+  /// possible while the server loads, before players can connect.
+  static const registryMenus = 'registry.menus';
+
+  /// Register custom data component types (`ComponentTypeRegistries.host`).
+  /// Only possible while the server loads, before players can connect.
+  static const registryComponents = 'registry.components';
 }

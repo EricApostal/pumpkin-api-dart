@@ -1,0 +1,179 @@
+// Generates lib/src/registry_ids.g.dart: the vanilla registry entries that data
+// component values refer to by numeric id (items, blocks, sound events,
+// attributes, mob effects, entity types, damage types, enchantments), in the
+// order of the ids Pumpkin's host reads and writes.
+//
+//   puro dart run tool/generate_registry_ids.dart [--assets <Pumpkin>/assets]
+//
+// The ids come from the same files Pumpkin's code generator reads
+// (tools/pumpkin-codegen), so they are the ids the host uses on the wire:
+//
+//   items          assets/items.json            "id" field
+//   blocks         assets/blocks.json           "id" field of "blocks"
+//   sound events   assets/sounds.json           list order (`Sound::NAMES`)
+//   attributes     assets/attributes.json       "id" field
+//   mob effects    assets/effect.json           "id" field
+//   entity types   assets/entities.json         "id" field
+//   damage types   assets/datapack/data/minecraft/damage_type/*.json
+//                  sorted by name (`BTreeMap`, id = index)
+//   enchantments   assets/datapack/data/minecraft/enchantment/*.json
+//                  sorted by file path (id = index)
+//   data components assets/data_component.json  value = id
+//
+// The output is checked in; run this only when Pumpkin's assets change.
+import 'dart:convert';
+import 'dart:io';
+
+const defaultAssets =
+    '/Users/eric/Documents/development/languages/rust/Pumpkin/assets';
+
+void main(List<String> args) {
+  var assets = Platform.environment['PUMPKIN_ASSETS'] ?? defaultAssets;
+  for (var i = 0; i < args.length; i++) {
+    if (args[i] == '--assets' && i + 1 < args.length) assets = args[++i];
+  }
+  if (!Directory(assets).existsSync()) {
+    stderr.writeln('Pumpkin assets not found: $assets (use --assets <dir>)');
+    exit(2);
+  }
+
+  Object json(String name) =>
+      jsonDecode(File('$assets/$name').readAsStringSync()) as Object;
+
+  List<String> byId(String file, Map<String, int> ids) {
+    final byIndex = <int, String>{};
+    for (final e in ids.entries) {
+      if (byIndex.containsKey(e.value)) {
+        stderr.writeln('$file: duplicate id ${e.value}');
+        exit(3);
+      }
+      byIndex[e.value] = e.key;
+    }
+    for (var i = 0; i < byIndex.length; i++) {
+      if (!byIndex.containsKey(i)) {
+        stderr.writeln('$file: ids are not contiguous (missing $i)');
+        exit(3);
+      }
+    }
+    return [for (var i = 0; i < byIndex.length; i++) byIndex[i]!];
+  }
+
+  List<String> byIdField(String file) {
+    final map = (json(file) as Map).cast<String, dynamic>();
+    return byId(file, {
+      for (final e in map.entries) e.key: (e.value as Map)['id'] as int,
+    });
+  }
+
+  List<String> directoryStems(String dir, {required bool byPath}) {
+    final files = Directory('$assets/$dir')
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.json'))
+        .map((f) => f.uri.pathSegments.last)
+        .toList();
+    // Rust sorts `PathBuf`s for enchantments (by file name, extension
+    // included) and a `BTreeMap` keyed by the stem for damage types.
+    final stems = [for (final f in files) f.substring(0, f.length - 5)];
+    if (byPath) {
+      files.sort();
+      return [for (final f in files) f.substring(0, f.length - 5)];
+    }
+    stems.sort();
+    return stems;
+  }
+
+  List<String> byValue(String file) {
+    final map = (json(file) as Map).cast<String, dynamic>();
+    return byId(file, {for (final e in map.entries) e.key: e.value as int});
+  }
+
+  final blocks = (json('blocks.json') as Map).cast<String, dynamic>();
+  final registries = <String, List<String>>{
+    'item': byIdField('items.json'),
+    'block': byId('blocks.json', {
+      for (final b in (blocks['blocks'] as List).cast<Map<String, dynamic>>())
+        b['name'] as String: b['id'] as int,
+    }),
+    'sound_event': [for (final s in json('sounds.json') as List) s as String],
+    'attribute': byIdField('attributes.json'),
+    'mob_effect': byIdField('effect.json'),
+    'entity_type': byIdField('entities.json'),
+    'data_component_type': byValue('data_component.json'),
+    'damage_type': directoryStems(
+      'datapack/data/minecraft/damage_type',
+      byPath: false,
+    ),
+    'enchantment': directoryStems(
+      'datapack/data/minecraft/enchantment',
+      byPath: true,
+    ),
+  };
+
+  final names = <String, List<String>>{
+    for (final e in registries.entries)
+      e.key: [
+        for (final n in e.value)
+          n.startsWith('minecraft:') ? n.substring('minecraft:'.length) : n,
+      ],
+  };
+  for (final e in names.entries) {
+    if (e.value.toSet().length != e.value.length) {
+      stderr.writeln('${e.key} has duplicate names');
+      exit(3);
+    }
+    if (e.value.any((n) => n.contains(':') || n.contains('\n'))) {
+      stderr.writeln('${e.key} has a name outside the minecraft: namespace');
+      exit(3);
+    }
+  }
+
+  final out = StringBuffer()
+    ..writeln('// GENERATED by tool/generate_registry_ids.dart from the assets')
+    ..writeln('// of Pumpkin ($assets). Do not edit.')
+    ..writeln('//')
+    ..writeln('// Names of vanilla registry entries in the order of the ids')
+    ..writeln('// Pumpkin uses (index = id), without the `minecraft:` prefix,')
+    ..writeln('// one per line.')
+    ..writeln('// ignore_for_file: lines_longer_than_80_chars')
+    ..writeln();
+  for (final e in names.entries) {
+    out
+      ..writeln('const String ${_constName(e.key)} =')
+      ..writeln("    '${e.value.join(r'\n')}';")
+      ..writeln();
+  }
+  out
+    ..writeln('/// The registries with a generated list.')
+    ..writeln('const List<String> generatedRegistryNames = [');
+  for (final key in names.keys) {
+    out.writeln("  '$key',");
+  }
+  out
+    ..writeln('];')
+    ..writeln()
+    ..writeln('/// The packed list of [registry] (see above), or null.')
+    ..writeln('String? generatedRegistryPacked(String registry) {')
+    ..writeln('  switch (registry) {');
+  for (final key in names.keys) {
+    out
+      ..writeln("    case '$key':")
+      ..writeln('      return ${_constName(key)};');
+  }
+  out
+    ..writeln('    default:')
+    ..writeln('      return null;')
+    ..writeln('  }')
+    ..writeln('}');
+  final here = File.fromUri(Platform.script).parent.parent.path;
+  File('$here/lib/src/registry_ids.g.dart').writeAsStringSync('$out');
+
+  for (final e in names.entries) {
+    stdout.writeln('${e.key}: ${e.value.length} entries');
+  }
+}
+
+String _constName(String key) {
+  final parts = key.split('_');
+  return 'generated${parts.map((p) => p[0].toUpperCase() + p.substring(1)).join()}Packed';
+}

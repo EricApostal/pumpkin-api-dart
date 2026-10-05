@@ -95,6 +95,22 @@ abstract final class Events {
   static final packetReceived = EventKind<PacketReceivedEventData>(EventType.packetReceivedEvent, (event) => (event as EventPacketReceivedEvent).value, EventPacketReceivedEvent.new);
   /// `packet-sent-event`.
   static final packetSent = EventKind<PacketSentEventData>(EventType.packetSentEvent, (event) => (event as EventPacketSentEvent).value, EventPacketSentEvent.new);
+  /// `configuration-pre-brand-event`.
+  static final configurationPreBrand = EventKind<ConfigurationPreBrandEventData>(EventType.configurationPreBrandEvent, (event) => (event as EventConfigurationPreBrandEvent).value, EventConfigurationPreBrandEvent.new);
+  /// `configuration-start-event`.
+  static final configurationStart = EventKind<ConfigurationStartEventData>(EventType.configurationStartEvent, (event) => (event as EventConfigurationStartEvent).value, EventConfigurationStartEvent.new);
+  /// `configuration-payload-event`.
+  static final configurationPayload = EventKind<ConfigurationPayloadEventData>(EventType.configurationPayloadEvent, (event) => (event as EventConfigurationPayloadEvent).value, EventConfigurationPayloadEvent.new);
+  /// `configuration-end-event`.
+  static final configurationEnd = EventKind<ConfigurationEndEventData>(EventType.configurationEndEvent, (event) => (event as EventConfigurationEndEvent).value, EventConfigurationEndEvent.new);
+  /// `configuration-packet-received-event`.
+  static final configurationPacketReceived = EventKind<ConfigurationPacketReceivedEventData>(EventType.configurationPacketReceivedEvent, (event) => (event as EventConfigurationPacketReceivedEvent).value, EventConfigurationPacketReceivedEvent.new);
+  /// `configuration-finish-event`.
+  static final configurationFinish = EventKind<ConfigurationFinishEventData>(EventType.configurationFinishEvent, (event) => (event as EventConfigurationFinishEvent).value, EventConfigurationFinishEvent.new);
+  /// `login-start-event`.
+  static final loginStart = EventKind<LoginStartEventData>(EventType.loginStartEvent, (event) => (event as EventLoginStartEvent).value, EventLoginStartEvent.new);
+  /// `login-query-answer-event`.
+  static final loginQueryAnswer = EventKind<LoginQueryAnswerEventData>(EventType.loginQueryAnswerEvent, (event) => (event as EventLoginQueryAnswerEvent).value, EventLoginQueryAnswerEvent.new);
   /// `chunk-load-event`.
   static final chunkLoad = EventKind<ChunkLoadEventData>(EventType.chunkLoadEvent, (event) => (event as EventChunkLoadEvent).value, EventChunkLoadEvent.new);
   /// `chunk-save-event`.
@@ -553,4 +569,16 @@ abstract final class Events {
   static final raidTrigger = EventKind<RaidTriggerEventData>(EventType.raidTriggerEvent, (event) => (event as EventRaidTriggerEvent).value, EventRaidTriggerEvent.new);
   /// `lightning-strike-event`.
   static final lightningStrike = EventKind<LightningStrikeEventData>(EventType.lightningStrikeEvent, (event) => (event as EventLightningStrikeEvent).value, EventLightningStrikeEvent.new);
+  /// `player-use-item-event`.
+  static final playerUseItem = EventKind<PlayerUseItemEventData>(EventType.playerUseItemEvent, (event) => (event as EventPlayerUseItemEvent).value, EventPlayerUseItemEvent.new);
+  /// `player-use-block-event`.
+  static final playerUseBlock = EventKind<PlayerUseBlockEventData>(EventType.playerUseBlockEvent, (event) => (event as EventPlayerUseBlockEvent).value, EventPlayerUseBlockEvent.new);
+  /// `menu-click-event`.
+  static final menuClick = EventKind<MenuClickEventData>(EventType.menuClickEvent, (event) => (event as EventMenuClickEvent).value, EventMenuClickEvent.new);
+  /// `menu-closed-event`.
+  static final menuClosed = EventKind<MenuClosedEventData>(EventType.menuClosedEvent, (event) => (event as EventMenuClosedEvent).value, EventMenuClosedEvent.new);
+  /// `block-entity-load-event`.
+  static final blockEntityLoad = EventKind<BlockEntityLoadEventData>(EventType.blockEntityLoadEvent, (event) => (event as EventBlockEntityLoadEvent).value, EventBlockEntityLoadEvent.new);
+  /// `block-entity-unload-event`.
+  static final blockEntityUnload = EventKind<BlockEntityUnloadEventData>(EventType.blockEntityUnloadEvent, (event) => (event as EventBlockEntityUnloadEvent).value, EventBlockEntityUnloadEvent.new);
 }

@@ -7,10 +7,13 @@ environment:
 workspace:
   - packages/pumpkin_api
   - packages/pumpkin_tools
+  - packages/pumpkin_neoforge
   - packages/wasm_components
   - packages/wasm_tools
   - example/teleport
   - example/commons
+  - example/modbridge
+  - example/lonsdaleite
   - tool/runtime_check
 
 dev_dependencies:

@@ -1,0 +1,912 @@
+{
+ "diamond_chestplate": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 8.0,
+     "id": "minecraft:armor.chestplate",
+     "operation": "add_value",
+     "slot": "chest",
+     "type": "minecraft:armor"
+    },
+    {
+     "amount": 2.0,
+     "id": "minecraft:armor.chestplate",
+     "operation": "add_value",
+     "slot": "chest",
+     "type": "minecraft:armor_toughness"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:enchantable": {
+    "value": 10
+   },
+   "minecraft:enchantments": {},
+   "minecraft:equippable": {
+    "asset_id": "minecraft:diamond",
+    "equip_sound": "minecraft:item.armor.equip_diamond",
+    "slot": "chest"
+   },
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:diamond_chestplate",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.diamond_chestplate"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 528,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:repairs_diamond_armor"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1085
+ },
+ "flint": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:flint",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.flint"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_stack_size": 64,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1096
+ },
+ "golden_helmet": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 2.0,
+     "id": "minecraft:armor.helmet",
+     "operation": "add_value",
+     "slot": "head",
+     "type": "minecraft:armor"
+    },
+    {
+     "amount": 0.0,
+     "id": "minecraft:armor.helmet",
+     "operation": "add_value",
+     "slot": "head",
+     "type": "minecraft:armor_toughness"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:enchantable": {
+    "value": 25
+   },
+   "minecraft:enchantments": {},
+   "minecraft:equippable": {
+    "asset_id": "minecraft:gold",
+    "equip_sound": "minecraft:item.armor.equip_gold",
+    "slot": "head"
+   },
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:golden_helmet",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.golden_helmet"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 77,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:repairs_gold_armor"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1088
+ },
+ "mace": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 5.0,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": -3.4000000953674316,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:mace",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.mace"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 500,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "epic",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "minecraft:breeze_rod"
+   },
+   "minecraft:tool": {
+    "can_destroy_blocks_in_creative": false,
+    "damage_per_block": 2,
+    "rules": []
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {},
+   "minecraft:weapon": {}
+  },
+  "id": 1374
+ },
+ "netherite_axe": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 9.0,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": -3.0,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:block_transformer": "minecraft:axe",
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_axe",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_axe"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 2031,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:netherite_tool_materials"
+   },
+   "minecraft:tool": {
+    "rules": [
+     {
+      "blocks": "#minecraft:incorrect_for_netherite_tool",
+      "correct_for_drops": false
+     },
+     {
+      "blocks": "#minecraft:mineable/axe",
+      "correct_for_drops": true,
+      "speed": 9.0
+     }
+    ]
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {},
+   "minecraft:weapon": {
+    "disable_blocking_for_seconds": 5.0,
+    "item_damage_per_attack": 2
+   }
+  },
+  "id": 1058
+ },
+ "netherite_boots": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 3.0,
+     "id": "minecraft:armor.boots",
+     "operation": "add_value",
+     "slot": "feet",
+     "type": "minecraft:armor"
+    },
+    {
+     "amount": 3.0,
+     "id": "minecraft:armor.boots",
+     "operation": "add_value",
+     "slot": "feet",
+     "type": "minecraft:armor_toughness"
+    },
+    {
+     "amount": 0.10000000149011612,
+     "id": "minecraft:armor.boots",
+     "operation": "add_value",
+     "slot": "feet",
+     "type": "minecraft:knockback_resistance"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:equippable": {
+    "asset_id": "minecraft:netherite",
+    "equip_sound": "minecraft:item.armor.equip_netherite",
+    "slot": "feet"
+   },
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_boots",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_boots"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 481,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:repairs_netherite_armor"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1095
+ },
+ "netherite_chestplate": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 8.0,
+     "id": "minecraft:armor.chestplate",
+     "operation": "add_value",
+     "slot": "chest",
+     "type": "minecraft:armor"
+    },
+    {
+     "amount": 3.0,
+     "id": "minecraft:armor.chestplate",
+     "operation": "add_value",
+     "slot": "chest",
+     "type": "minecraft:armor_toughness"
+    },
+    {
+     "amount": 0.10000000149011612,
+     "id": "minecraft:armor.chestplate",
+     "operation": "add_value",
+     "slot": "chest",
+     "type": "minecraft:knockback_resistance"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:equippable": {
+    "asset_id": "minecraft:netherite",
+    "equip_sound": "minecraft:item.armor.equip_netherite",
+    "slot": "chest"
+   },
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_chestplate",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_chestplate"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 592,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:repairs_netherite_armor"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1093
+ },
+ "netherite_helmet": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 3.0,
+     "id": "minecraft:armor.helmet",
+     "operation": "add_value",
+     "slot": "head",
+     "type": "minecraft:armor"
+    },
+    {
+     "amount": 3.0,
+     "id": "minecraft:armor.helmet",
+     "operation": "add_value",
+     "slot": "head",
+     "type": "minecraft:armor_toughness"
+    },
+    {
+     "amount": 0.10000000149011612,
+     "id": "minecraft:armor.helmet",
+     "operation": "add_value",
+     "slot": "head",
+     "type": "minecraft:knockback_resistance"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:equippable": {
+    "asset_id": "minecraft:netherite",
+    "equip_sound": "minecraft:item.armor.equip_netherite",
+    "slot": "head"
+   },
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_helmet",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_helmet"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 407,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:repairs_netherite_armor"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1092
+ },
+ "netherite_hoe": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 0.0,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": 0.0,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:block_transformer": "minecraft:hoe",
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_hoe",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_hoe"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 2031,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:netherite_tool_materials"
+   },
+   "minecraft:tool": {
+    "rules": [
+     {
+      "blocks": "#minecraft:incorrect_for_netherite_tool",
+      "correct_for_drops": false
+     },
+     {
+      "blocks": "#minecraft:mineable/hoe",
+      "correct_for_drops": true,
+      "speed": 9.0
+     }
+    ]
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {},
+   "minecraft:weapon": {
+    "item_damage_per_attack": 2
+   }
+  },
+  "id": 1059
+ },
+ "netherite_leggings": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 6.0,
+     "id": "minecraft:armor.leggings",
+     "operation": "add_value",
+     "slot": "legs",
+     "type": "minecraft:armor"
+    },
+    {
+     "amount": 3.0,
+     "id": "minecraft:armor.leggings",
+     "operation": "add_value",
+     "slot": "legs",
+     "type": "minecraft:armor_toughness"
+    },
+    {
+     "amount": 0.10000000149011612,
+     "id": "minecraft:armor.leggings",
+     "operation": "add_value",
+     "slot": "legs",
+     "type": "minecraft:knockback_resistance"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:equippable": {
+    "asset_id": "minecraft:netherite",
+    "equip_sound": "minecraft:item.armor.equip_netherite",
+    "slot": "legs"
+   },
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_leggings",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_leggings"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 555,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:repairs_netherite_armor"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1094
+ },
+ "netherite_pickaxe": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 5.0,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": -2.799999952316284,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_pickaxe",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_pickaxe"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 2031,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:netherite_tool_materials"
+   },
+   "minecraft:tool": {
+    "rules": [
+     {
+      "blocks": "#minecraft:incorrect_for_netherite_tool",
+      "correct_for_drops": false
+     },
+     {
+      "blocks": "#minecraft:mineable/pickaxe",
+      "correct_for_drops": true,
+      "speed": 9.0
+     }
+    ]
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {},
+   "minecraft:weapon": {
+    "item_damage_per_attack": 2
+   }
+  },
+  "id": 1057
+ },
+ "netherite_shovel": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 5.5,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": -3.0,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:block_transformer": "minecraft:shovel",
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_shovel",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_shovel"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 2031,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:netherite_tool_materials"
+   },
+   "minecraft:tool": {
+    "rules": [
+     {
+      "blocks": "#minecraft:incorrect_for_netherite_tool",
+      "correct_for_drops": false
+     },
+     {
+      "blocks": "#minecraft:mineable/shovel",
+      "correct_for_drops": true,
+      "speed": 9.0
+     }
+    ]
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {},
+   "minecraft:weapon": {
+    "item_damage_per_attack": 2
+   }
+  },
+  "id": 1056
+ },
+ "netherite_spear": {
+  "components": {
+   "minecraft:attack_animation": {
+    "duration": 23,
+    "type": "stab"
+   },
+   "minecraft:attack_range": {
+    "hitbox_margin": 0.125,
+    "max_creative_reach": 6.5,
+    "max_reach": 4.5,
+    "min_creative_reach": 2.0,
+    "min_reach": 2.0,
+    "mob_factor": 0.5
+   },
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 4.0,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": -3.13043475151062,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:damage_type": "minecraft:spear",
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_spear",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_spear"
+   },
+   "minecraft:kinetic_weapon": {
+    "damage_conditions": {
+     "max_duration_ticks": 175,
+     "min_relative_speed": 4.6
+    },
+    "damage_multiplier": 1.2,
+    "delay_ticks": 8,
+    "dismount_conditions": {
+     "max_duration_ticks": 50,
+     "min_speed": 9.0
+    },
+    "forward_movement": 0.38,
+    "hit_sound": "minecraft:item.spear.hit",
+    "knockback_conditions": {
+     "max_duration_ticks": 110,
+     "min_speed": 5.1
+    },
+    "sound": "minecraft:item.spear.use"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 2031,
+   "minecraft:max_stack_size": 1,
+   "minecraft:minimum_attack_charge": 1.0,
+   "minecraft:piercing_weapon": {
+    "hit_sound": "minecraft:item.spear.hit",
+    "sound": "minecraft:item.spear.attack"
+   },
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:netherite_tool_materials"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {
+    "can_sprint": true,
+    "interact_vibrations": false,
+    "speed_multiplier": 1.0
+   },
+   "minecraft:weapon": {}
+  },
+  "id": 1453
+ },
+ "netherite_sword": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 7.0,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": -2.4000000953674316,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:damage": 0,
+   "minecraft:damage_resistant": {
+    "types": "#minecraft:is_fire"
+   },
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:netherite_sword",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.netherite_sword"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 2031,
+   "minecraft:max_stack_size": 1,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:netherite_tool_materials"
+   },
+   "minecraft:tool": {
+    "can_destroy_blocks_in_creative": false,
+    "damage_per_block": 2,
+    "rules": [
+     {
+      "blocks": "minecraft:cobweb",
+      "correct_for_drops": true,
+      "speed": 15.0
+     },
+     {
+      "blocks": "#minecraft:sword_instantly_mines",
+      "speed": 3.4028235e+38
+     },
+     {
+      "blocks": "#minecraft:sword_efficient",
+      "speed": 1.5
+     }
+    ]
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {},
+   "minecraft:weapon": {}
+  },
+  "id": 1055
+ },
+ "stone": {
+  "components": {
+   "minecraft:attack_animation": {},
+   "minecraft:attribute_modifiers": [],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:stone",
+   "minecraft:item_name": {
+    "translate": "block.minecraft.stone"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_stack_size": 64,
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {}
+  },
+  "id": 1
+ },
+ "wooden_spear": {
+  "components": {
+   "minecraft:attack_animation": {
+    "duration": 13,
+    "type": "stab"
+   },
+   "minecraft:attack_range": {
+    "hitbox_margin": 0.125,
+    "max_creative_reach": 6.5,
+    "max_reach": 4.5,
+    "min_creative_reach": 2.0,
+    "min_reach": 2.0,
+    "mob_factor": 0.5
+   },
+   "minecraft:attribute_modifiers": [
+    {
+     "amount": 0.0,
+     "id": "minecraft:base_attack_damage",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_damage"
+    },
+    {
+     "amount": -2.4615384340286255,
+     "id": "minecraft:base_attack_speed",
+     "operation": "add_value",
+     "slot": "mainhand",
+     "type": "minecraft:attack_speed"
+    }
+   ],
+   "minecraft:break_sound": "minecraft:entity.item.break",
+   "minecraft:cooking_fuel": {
+    "burn_time": "minecraft:cooking/time_wood_items_large",
+    "speed_multiplier": "minecraft:cooking/speed_default"
+   },
+   "minecraft:damage": 0,
+   "minecraft:damage_type": "minecraft:spear",
+   "minecraft:enchantable": {
+    "value": 15
+   },
+   "minecraft:enchantments": {},
+   "minecraft:interact_animation": {},
+   "minecraft:item_model": "minecraft:wooden_spear",
+   "minecraft:item_name": {
+    "translate": "item.minecraft.wooden_spear"
+   },
+   "minecraft:kinetic_weapon": {
+    "damage_conditions": {
+     "max_duration_ticks": 300,
+     "min_relative_speed": 4.6
+    },
+    "damage_multiplier": 0.7,
+    "delay_ticks": 15,
+    "dismount_conditions": {
+     "max_duration_ticks": 100,
+     "min_speed": 14.0
+    },
+    "forward_movement": 0.38,
+    "hit_sound": "minecraft:item.spear_wood.hit",
+    "knockback_conditions": {
+     "max_duration_ticks": 200,
+     "min_speed": 5.1
+    },
+    "sound": "minecraft:item.spear_wood.use"
+   },
+   "minecraft:lore": [],
+   "minecraft:max_damage": 59,
+   "minecraft:max_stack_size": 1,
+   "minecraft:minimum_attack_charge": 1.0,
+   "minecraft:piercing_weapon": {
+    "hit_sound": "minecraft:item.spear_wood.hit",
+    "sound": "minecraft:item.spear_wood.attack"
+   },
+   "minecraft:rarity": "common",
+   "minecraft:repair_cost": 0,
+   "minecraft:repairable": {
+    "items": "#minecraft:wooden_tool_materials"
+   },
+   "minecraft:tooltip_display": {},
+   "minecraft:use_effects": {
+    "can_sprint": true,
+    "interact_vibrations": false,
+    "speed_multiplier": 1.0
+   },
+   "minecraft:weapon": {}
+  },
+  "id": 1447
+ }
+}

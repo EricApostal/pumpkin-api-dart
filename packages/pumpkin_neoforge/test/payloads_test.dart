@@ -1,0 +1,576 @@
+// Byte-level tests of the NeoForge payload codecs. The golden vectors in
+// golden/neoforge_codecs.txt were produced by tool/golden/Golden.java, an
+// independent Java implementation of the same NeoForge codecs on Minecraft's
+// own codec primitives (see the file header there).
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart';
+// ignore: implementation_imports
+import 'package:pumpkin_api/src/packet_buffer.dart';
+import 'package:test/test.dart';
+
+Map<String, String> _golden() {
+  final file = File('test/golden/neoforge_codecs.txt');
+  final result = <String, String>{};
+  for (final line in file.readAsLinesSync()) {
+    final eq = line.indexOf('=');
+    if (eq < 0 || line.startsWith('ordinals ')) continue;
+    result[line.substring(0, eq)] = line.substring(eq + 1);
+  }
+  return result;
+}
+
+void main() {
+  final golden = _golden();
+
+  String hex(List<int> bytes) => toHex(bytes);
+
+  group('golden vectors (encode)', () {
+    test('neoforge:register', () {
+      expect(
+        hex(
+          ModdedNetworkQuery({
+            NetworkPhase.configuration: [
+              QueryComponent(
+                id: 'neoforge:frozen_registry_sync_completed',
+                version: '1',
+                optional: true,
+              ),
+            ],
+          }).encode(),
+        ),
+        golden['query_config_bidirectional'],
+      );
+      expect(
+        hex(
+          ModdedNetworkQuery({
+            NetworkPhase.play: [
+              QueryComponent(
+                id: 'neoforge:recipe_content',
+                version: '1',
+                flow: PacketFlow.clientbound,
+                optional: true,
+              ),
+            ],
+          }).encode(),
+        ),
+        golden['query_play_clientbound'],
+      );
+      expect(hex(ModdedNetworkQuery.empty.encode()), golden['query_empty']);
+      expect(
+        hex(
+          ModdedNetworkQuery({
+            NetworkPhase.configuration: [
+              QueryComponent(
+                id: 'mymod:x',
+                version: '2',
+                flow: PacketFlow.serverbound,
+              ),
+            ],
+          }).encode(),
+        ),
+        golden['query_config_serverbound_required'],
+      );
+    });
+
+    test('neoforge:network', () {
+      expect(
+        hex(
+          const ModdedNetworkSetup({
+            NetworkPhase.configuration: {'neoforge:frozen_registry': '1'},
+          }).encode(),
+        ),
+        golden['network_config_one'],
+      );
+      expect(
+        hex(const ModdedNetworkSetup({NetworkPhase.play: {}}).encode()),
+        golden['network_play_empty'],
+      );
+    });
+
+    test('c:version and c:register', () {
+      expect(hex(CommonVersion.supported.encode()), golden['common_version']);
+      expect(
+        hex(const CommonVersion([1, 300]).encode()),
+        golden['common_version_two'],
+      );
+      expect(
+        hex(
+          CommonRegister(
+            phase: NetworkPhase.play,
+            channels: ['c:foo'],
+          ).encode(),
+        ),
+        golden['common_register_play_one'],
+      );
+    });
+
+    test('registry sync', () {
+      expect(
+        hex(
+          FrozenRegistrySyncStart(['minecraft:item', 'minecraft:block'])
+              .encode(),
+        ),
+        golden['sync_start'],
+      );
+      expect(
+        hex(
+          FrozenRegistry(
+            'minecraft:item',
+            RegistrySnapshot({
+              0: 'minecraft:air',
+              1: 'minecraft:stone',
+              300: 'lonsdaleite:raw_lonsdaleite',
+            }),
+          ).encode(),
+        ),
+        golden['frozen_registry_item'],
+      );
+      expect(
+        hex(
+          FrozenRegistry(
+            'minecraft:block',
+            RegistrySnapshot(
+              {0: 'minecraft:air'},
+              {'old:thing': 'minecraft:stone'},
+            ),
+          ).encode(),
+        ),
+        golden['frozen_registry_with_alias'],
+      );
+    });
+
+    test('data maps', () {
+      expect(
+        hex(
+          KnownRegistryDataMaps({
+            'minecraft:item': [
+              KnownDataMap('neoforge:villager_compostables'),
+              KnownDataMap('mymod:tiers', mandatory: true),
+            ],
+          }).encode(),
+        ),
+        golden['known_data_maps'],
+      );
+      expect(
+        hex(
+          const KnownRegistryDataMapsReply({
+            'minecraft:item': ['neoforge:villager_compostables'],
+          }).encode(),
+        ),
+        golden['known_data_maps_reply'],
+      );
+    });
+
+    test('extensible enums and feature flags', () {
+      expect(
+        hex(
+          const ExtensibleEnumData([
+            EnumEntry(
+              'net.minecraft.world.item.Rarity',
+              EnumNetworkCheck.bidirectional,
+            ),
+          ]).encode(),
+        ),
+        golden['enum_data_plain'],
+      );
+      expect(
+        hex(
+          const ExtensibleEnumData([
+            EnumEntry(
+              'x.Y',
+              EnumNetworkCheck.clientbound,
+              EnumExtension(2, 4, ['A', 'B']),
+            ),
+          ]).encode(),
+        ),
+        golden['enum_data_extended'],
+      );
+      expect(
+        hex(const ExtensibleEnumData([]).encode()),
+        golden['enum_data_empty'],
+      );
+      expect(
+        hex(FeatureFlagData(['mymod:flag']).encode()),
+        golden['feature_flags_one'],
+      );
+      expect(hex(FeatureFlagData([]).encode()), golden['feature_flags_empty']);
+    });
+
+    test('config file', () {
+      expect(
+        hex(ConfigFile('neoforge-server.toml', 'a=1'.codeUnits).encode()),
+        golden['config_file'],
+      );
+    });
+  });
+
+  group('golden vectors (decode)', () {
+    test('every golden vector decodes and re-encodes to itself', () {
+      // Single-entry vectors have one canonical encoding.
+      for (final name in [
+        'query_config_bidirectional',
+        'query_play_clientbound',
+        'query_empty',
+        'query_config_serverbound_required',
+      ]) {
+        final bytes = fromHex(golden[name]!);
+        expect(
+          hex(ModdedNetworkQuery.decode(bytes).encode()),
+          golden[name],
+          reason: name,
+        );
+      }
+      for (final name in ['network_config_one', 'network_play_empty']) {
+        final bytes = fromHex(golden[name]!);
+        expect(
+          hex(ModdedNetworkSetup.decode(bytes).encode()),
+          golden[name],
+          reason: name,
+        );
+      }
+      for (final name in ['common_version', 'common_version_two']) {
+        expect(
+          hex(CommonVersion.decode(fromHex(golden[name]!)).encode()),
+          golden[name],
+        );
+      }
+      expect(
+        hex(
+          CommonRegister.decode(fromHex(golden['common_register_play_one']!))
+              .encode(),
+        ),
+        golden['common_register_play_one'],
+      );
+      expect(
+        hex(
+          FrozenRegistrySyncStart.decode(fromHex(golden['sync_start']!))
+              .encode(),
+        ),
+        golden['sync_start'],
+      );
+      for (final name in [
+        'frozen_registry_item',
+        'frozen_registry_with_alias',
+      ]) {
+        expect(
+          hex(FrozenRegistry.decode(fromHex(golden[name]!)).encode()),
+          golden[name],
+        );
+      }
+      expect(
+        hex(
+          KnownRegistryDataMaps.decode(fromHex(golden['known_data_maps']!))
+              .encode(),
+        ),
+        golden['known_data_maps'],
+      );
+      expect(
+        hex(
+          KnownRegistryDataMapsReply.decode(
+            fromHex(golden['known_data_maps_reply']!),
+          ).encode(),
+        ),
+        golden['known_data_maps_reply'],
+      );
+      for (final name in [
+        'enum_data_plain',
+        'enum_data_extended',
+        'enum_data_empty',
+      ]) {
+        expect(
+          hex(ExtensibleEnumData.decode(fromHex(golden[name]!)).encode()),
+          golden[name],
+        );
+      }
+      for (final name in ['feature_flags_one', 'feature_flags_empty']) {
+        expect(
+          hex(FeatureFlagData.decode(fromHex(golden[name]!)).encode()),
+          golden[name],
+        );
+      }
+      expect(
+        hex(ConfigFile.decode(fromHex(golden['config_file']!)).encode()),
+        golden['config_file'],
+      );
+    });
+
+    test('decoded values', () {
+      final query = ModdedNetworkQuery.decode(
+        fromHex(golden['query_play_clientbound']!),
+      );
+      final component = query.components[NetworkPhase.play]!.single;
+      expect(component.id, 'neoforge:recipe_content');
+      expect(component.version, '1');
+      expect(component.flow, PacketFlow.clientbound);
+      expect(component.optional, isTrue);
+
+      final frozen = FrozenRegistry.decode(
+        fromHex(golden['frozen_registry_item']!),
+      );
+      expect(frozen.registry, 'minecraft:item');
+      expect(frozen.snapshot.ids[300], 'lonsdaleite:raw_lonsdaleite');
+      expect(frozen.snapshot.isContiguous, isFalse);
+
+      final reg = CommonRegister.decode(
+        fromHex(golden['common_register_play_one']!),
+      );
+      expect(reg.version, 1);
+      expect(reg.phase, NetworkPhase.play);
+      expect(reg.channels, ['c:foo']);
+    });
+  });
+
+  group('multi-entry payloads (order is free on the wire)', () {
+    test('query with both protocols decodes in any order', () {
+      // PLAY entry then CONFIGURATION entry, hand-assembled.
+      final w = PacketWriter()
+        ..writeVarInt(2)
+        ..writeVarInt(1) // play
+        ..writeVarInt(1)
+        ..writeString('neoforge:split')
+        ..writeString('1')
+        ..writeBool(false)
+        ..writeBool(true)
+        ..writeVarInt(4) // configuration
+        ..writeVarInt(0);
+      final query = ModdedNetworkQuery.decode(w.toBytes());
+      expect(query.components[NetworkPhase.play]!.single.id, 'neoforge:split');
+      expect(query.components[NetworkPhase.play]!.single.flow, isNull);
+      expect(query.components[NetworkPhase.configuration], isEmpty);
+    });
+
+    test('encode is deterministic (sorted by protocol)', () {
+      final a = ModdedNetworkQuery({
+        NetworkPhase.configuration: [],
+        NetworkPhase.play: [],
+      });
+      final b = ModdedNetworkQuery({
+        NetworkPhase.play: [],
+        NetworkPhase.configuration: [],
+      });
+      expect(hex(a.encode()), hex(b.encode()));
+      expect(
+        hex(a.encode()),
+        '0201'
+        '00'
+        '0400',
+      );
+    });
+  });
+
+  group('minecraft:register', () {
+    test('NUL separated names, no length prefix', () {
+      expect(
+        hex(encodeRegisterChannels(['minecraft:register', 'c:version'])),
+        '${hex('minecraft:register'.codeUnits)}00${hex('c:version'.codeUnits)}00',
+      );
+    });
+
+    test('decodes, drops duplicates and invalid names', () {
+      final data = [
+        ...'a:b'.codeUnits,
+        0,
+        ...'a:b'.codeUnits,
+        0,
+        ...'Bad Name'.codeUnits,
+        0,
+        ...'plain'.codeUnits, 0, 0, 0, ...'x:y'.codeUnits, // no trailing NUL
+      ];
+      expect(decodeRegisterChannels(data), ['a:b', 'minecraft:plain', 'x:y']);
+    });
+
+    test('empty payload is no channels', () {
+      expect(decodeRegisterChannels([]), isEmpty);
+      expect(encodeRegisterChannels([]), isEmpty);
+    });
+
+    test('rejects invalid names when encoding', () {
+      expect(
+        () => encodeRegisterChannels(['UPPER:case']),
+        throwsFormatException,
+      );
+    });
+  });
+
+  group('text components', () {
+    test('literal is a bare string tag', () {
+      expect(
+        hex(const NbtText.literal('hi').encode()),
+        '08'
+        '0002'
+        '6869',
+      );
+    });
+
+    test('translatable is a compound with a list of compounds', () {
+      const text = NbtText.translatable('k', [NbtText.literal('a')]);
+      final bytes = text.encode();
+      expect(NbtText.decode(bytes), text);
+      expect(
+        hex(bytes),
+        '0a' // compound
+        '08'
+        '0009'
+        '${hex('translate'.codeUnits)}'
+        '0001'
+        '6b'
+        '09'
+        '0004'
+        '${hex('with'.codeUnits)}'
+        '0a'
+        '00000001'
+        '08'
+        '0004'
+        '${hex('text'.codeUnits)}'
+        '0001'
+        '61'
+        '00' // arg compound
+        '00', // end
+      );
+    });
+
+    test('modified UTF-8 round trip', () {
+      const s = 'a\u0000é€\u{1F600}';
+      expect(decodeModifiedUtf8(encodeModifiedUtf8(s)), s);
+      expect(encodeModifiedUtf8('\u0000'), [0xC0, 0x80]);
+      expect(encodeModifiedUtf8('\u{1F600}'), hasLength(6));
+    });
+
+    test('setup failed carries components per channel', () {
+      const failed = ModdedNetworkSetupFailed({
+        'mymod:x': NbtText.translatable(
+          'neoforge.network.negotiation.failure.mod',
+          [
+            NbtText.literal('My Mod'),
+            NbtText.translatable(
+              'neoforge.network.negotiation.failure.missing.client.server',
+            ),
+          ],
+        ),
+      });
+      expect(
+        ModdedNetworkSetupFailed.decode(failed.encode()).reasons,
+        failed.reasons,
+      );
+    });
+  });
+
+  group('malformed input', () {
+    test('truncated payloads throw PacketUnderflowException', () {
+      final full = fromHex(golden['frozen_registry_item']!);
+      for (var cut = 0; cut < full.length; cut++) {
+        expect(
+          () => FrozenRegistry.decode(Uint8List.sublistView(full, 0, cut)),
+          throwsA(isA<PacketException>()),
+          reason: 'cut at $cut',
+        );
+      }
+    });
+
+    test('trailing bytes are rejected', () {
+      expect(
+        () => CommonVersion.decode([...fromHex(golden['common_version']!), 0]),
+        throwsA(isA<PacketException>()),
+      );
+    });
+
+    test('unknown protocol and flow ordinals', () {
+      final badProtocol = PacketWriter()
+        ..writeVarInt(1)
+        ..writeVarInt(9)
+        ..writeVarInt(0);
+      expect(
+        () => ModdedNetworkQuery.decode(badProtocol.toBytes()),
+        throwsA(isA<PacketException>()),
+      );
+      final badFlow = PacketWriter()
+        ..writeVarInt(1)
+        ..writeVarInt(4)
+        ..writeVarInt(1)
+        ..writeString('a:b')
+        ..writeString('1')
+        ..writeBool(true)
+        ..writeVarInt(7)
+        ..writeBool(false);
+      expect(
+        () => ModdedNetworkQuery.decode(badFlow.toBytes()),
+        throwsA(isA<PacketException>()),
+      );
+    });
+
+    test('invalid identifiers are rejected', () {
+      final w = PacketWriter()
+        ..writeVarInt(1)
+        ..writeString('Not Valid');
+      expect(
+        () => FrozenRegistrySyncStart.decode(w.toBytes()),
+        throwsFormatException,
+      );
+    });
+
+    test('huge counts do not allocate', () {
+      final w = PacketWriter()
+        ..writeVarInt(1)
+        ..writeVarInt(4)
+        ..writeVarInt(0x7FFFFFF0);
+      expect(
+        () => ModdedNetworkQuery.decode(w.toBytes()),
+        throwsA(isA<PacketException>()),
+      );
+    });
+
+    test('common register with an unknown protocol', () {
+      final w = PacketWriter()
+        ..writeVarInt(1)
+        ..writeString('nope')
+        ..writeVarInt(0);
+      expect(
+        () => CommonRegister.decode(w.toBytes()),
+        throwsA(isA<PacketException>()),
+      );
+    });
+
+    test('setup channel whose inner id differs', () {
+      final w = PacketWriter()
+        ..writeVarInt(1)
+        ..writeVarInt(4)
+        ..writeVarInt(1)
+        ..writeString('a:b')
+        ..writeString('a:c')
+        ..writeString('1');
+      expect(
+        () => ModdedNetworkSetup.decode(w.toBytes()),
+        throwsA(isA<PacketException>()),
+      );
+    });
+
+    test('unknown NetworkCheck', () {
+      final w = PacketWriter()
+        ..writeVarInt(1)
+        ..writeString('x.Y')
+        ..writeString('SIDEWAYS')
+        ..writeBool(false);
+      expect(
+        () => ExtensibleEnumData.decode(w.toBytes()),
+        throwsA(isA<PacketException>()),
+      );
+    });
+  });
+
+  group('registry snapshots', () {
+    test('ordered snapshot uses indexes as ids', () {
+      final s = RegistrySnapshot.ordered(['a:b', 'c:d']);
+      expect(s.ids, {0: 'a:b', 1: 'c:d'});
+      expect(s.isContiguous, isTrue);
+      expect(s.orderedEntries, ['a:b', 'c:d']);
+    });
+
+    test('ids are written in increasing order whatever the map order', () {
+      final s = RegistrySnapshot({5: 'a:e', 2: 'a:b'});
+      final decoded = FrozenRegistry.decode(FrozenRegistry('a:r', s).encode());
+      expect(decoded.snapshot.ids.keys.toList(), [2, 5]);
+    });
+  });
+}

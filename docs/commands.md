@@ -49,7 +49,8 @@ cascade-friendly `void` method:
   argument with `ctx.stringOrNull(...)`.
 * **Handlers** return `void` (success, result `1`) or an `int` result code, and
   may be `async`. The async rules of [async.md](async.md) apply: `ctx`,
-  `ctx.sender` and `ctx.server` are only valid until the first `await`.
+  `ctx.sender` and `ctx.server` stay valid while the handler awaits host calls,
+  but not after it has waited for a timer.
 * Nodes are configured fully before the tree is handed over to the host, which
   consumes them (see [lifetimes](lifetimes.md)); you never touch a node.
 * `aliases` of a subcommand build the subtree once per word.
@@ -60,7 +61,7 @@ cascade-friendly `void` method:
 
 * sender: `senderName`, `isPlayer`, `isConsole`, `player` (throws
   `Only players can use this command.`; owned by the callback, `keep()` it to
-  hold on), `playerOrNull`, `hasPermission(node)`
+  hold on), `playerOrNull`, `await hasPermission(node)`
 * replies: `reply(text)`, `replyLines(lines)`, `replyError(text)`
 * failing: `fail(message)` throws a `CommandException`; `usage` is the usage
   text; `failUsage([problem])` throws a `UsageException` that prints it
@@ -88,7 +89,8 @@ function you can also use directly (`parseDuration('1h30m')`).
 
 Tab completion: `suggests: ['a', 'b']` is a fixed list, `suggestsWith: (s) =>
 ...` gets a `SuggestionContext` (`sender`, `senderName`, `player`, `typed`,
-`hasPermission`). Matches are filtered by what was typed, ignoring case.
+`hasPermission`, which is async). Matches are filtered by what was typed,
+ignoring case.
 
 ## Permissions
 

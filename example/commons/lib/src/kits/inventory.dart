@@ -10,12 +10,18 @@ const _slots = 36;
 /// throw-away stack is asked).
 final Map<String, int> _maxStacks = {};
 
-int _maxStackOf(String key) => _maxStacks.putIfAbsent(key, () {
+Future<int> _maxStackOf(String key) async {
+  final known = _maxStacks[key];
+  if (known != null) return known;
   final probe = ItemStack.create(registryKey: key, count: 1);
-  final max = probe.getMaxCount();
-  probe.dispose();
-  return max < 1 ? 1 : max;
-});
+  final int max;
+  try {
+    max = await probe.getMaxCount();
+  } finally {
+    probe.dispose();
+  }
+  return _maxStacks[key] = max < 1 ? 1 : max;
+}
 
 /// The spec of one stack of [item]: its name, lore and enchantments.
 ItemSpec _spec(KitItem item, int count) => ItemSpec(
@@ -32,15 +38,17 @@ ItemSpec _spec(KitItem item, int count) => ItemSpec(
 
 /// How [item] looks as a single icon, for previews: the count is limited to
 /// a stack.
-ItemSpec previewSpec(KitItem item) =>
-    _spec(item, item.count.clamp(1, _maxStackOf(normalizeItemKey(item.item))));
+Future<ItemSpec> previewSpec(KitItem item) async => _spec(
+  item,
+  item.count.clamp(1, await _maxStackOf(normalizeItemKey(item.item))),
+);
 
 /// The stacks [items] turn into, splitting counts above the max stack size.
-List<ItemSpec> stacksOf(List<KitItem> items) => [
+Future<List<ItemSpec>> stacksOf(List<KitItem> items) async => [
   for (final item in items)
     ..._split(
       item.count,
-      _maxStackOf(normalizeItemKey(item.item)),
+      await _maxStackOf(normalizeItemKey(item.item)),
     ).map((n) => _spec(item, n)),
 ];
 
@@ -65,7 +73,7 @@ final class PlayerKitRecipient implements KitRecipient {
       name = player.getName();
 
   @override
-  bool hasPermission(String node) => _player.hasPermission(node: node);
+  Future<bool> hasPermission(String node) => _player.hasPermission(node: node);
 
   List<int> _emptySlots(Inventory inv) {
     final all = inv.getAllItems();
@@ -78,27 +86,40 @@ final class PlayerKitRecipient implements KitRecipient {
   /// Kits go into empty slots only: they never merge into stacks the player
   /// already has, so named and enchanted items stay as they are.
   @override
-  bool canFit(List<KitItem> items) =>
-      stacksOf(items).length <=
+  Future<bool> canFit(List<KitItem> items) async =>
+      (await stacksOf(items)).length <=
       _emptySlots(_player.getInventory().storage).length;
 
   @override
-  void give(List<KitItem> items) {
+  Future<void> give(List<KitItem> items) async {
     final inv = _player.getInventory().storage;
-    final stacks = stacksOf(items);
+    // Build the stacks first: the slots are looked at right before they are
+    // written, so the player can't move items into them in between.
+    final stacks = [
+      for (final spec in await stacksOf(items)) await spec.build(),
+    ];
     final empty = _emptySlots(inv);
     if (stacks.length > empty.length) {
+      for (final stack in stacks) {
+        stack.dispose();
+      }
       throw StateError('Not enough room for ${stacks.length} stacks');
     }
     final placed = <int>[];
     try {
       for (var i = 0; i < stacks.length; i++) {
-        inv.setItem(slot: empty[i], item: stacks[i].build());
+        if (inv.getItem(slot: empty[i]) != null) {
+          throw StateError('Slot ${empty[i]} was taken');
+        }
+        await inv.setItem(slot: empty[i], item: stacks[i]);
         placed.add(empty[i]);
       }
     } catch (_) {
+      for (var i = placed.length + 1; i < stacks.length; i++) {
+        stacks[i].dispose();
+      }
       for (final slot in placed) {
-        inv.setItem(slot: slot, item: null);
+        await inv.setItem(slot: slot, item: null);
       }
       rethrow;
     }
@@ -107,7 +128,7 @@ final class PlayerKitRecipient implements KitRecipient {
   /// What the player carries (the 36 hotbar and storage slots) as kit items,
   /// for `/kit create`. Names and lore are copied as plain text: the host
   /// does not tell their colors, edit `kits.json` to add them.
-  List<KitItem> capture() {
+  Future<List<KitItem>> capture() async {
     final inv = _player.getInventory().storage;
     final items = <KitItem>[];
     for (var slot = 0; slot < _slots; slot++) {
@@ -115,12 +136,12 @@ final class PlayerKitRecipient implements KitRecipient {
       if (stack == null) continue;
       items.add(
         KitItem(
-          item: stack.getRegistryKey(),
-          count: stack.getCount(),
-          name: stack.getCustomName()?.getText(),
-          lore: [for (final line in stack.getLore()) line.getText()],
+          item: await stack.getRegistryKey(),
+          count: await stack.getCount(),
+          name: (await stack.getCustomName())?.getText(),
+          lore: [for (final line in await stack.getLore()) line.getText()],
           enchantments: {
-            for (final e in stack.getEnchantments())
+            for (final e in await stack.getEnchantments())
               RegistryKeys.path(e.enchantment.registryKey): e.level,
           },
         ),

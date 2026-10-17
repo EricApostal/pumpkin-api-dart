@@ -101,6 +101,12 @@ final class ModuleTransformer {
             case 'canon.waitable-set.drop':
               primitive = (linker) =>
                   linker.builder.linker.addCanonPrimitive(WaitableSetDrop.new);
+            case 'canon.waitable.join':
+              primitive = (linker) =>
+                  linker.builder.linker.addCanonPrimitive(WaitableJoin.new);
+            case 'canon.subtask.drop':
+              primitive = (linker) =>
+                  linker.builder.linker.addCanonPrimitive(SubtaskDrop.new);
             default:
               throw UnsupportedError('Unsupported canon ${import.name}');
           }

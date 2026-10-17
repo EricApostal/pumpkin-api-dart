@@ -15,6 +15,7 @@ import '../machine/peripheral.dart';
 import '../machine/peripherals.dart';
 import '../machine/side.dart';
 import '../machine/zip.dart';
+import '../turtle/brain.dart';
 import '../lua/lua.dart' show ProtoCache;
 import 'config.dart';
 import 'records.dart';
@@ -175,8 +176,15 @@ final class CcService implements ComputerServices {
     logger.info('Loaded ${_records.length} computer(s)$suffix');
   }
 
-  Computer _instantiate(ComputerRecord record) {
-    final computer = manager.create(record.id, record.family, label: record.label);
+  Computer _instantiate(ComputerRecord record, {TurtleBrain? turtle}) {
+    final computer = manager.create(
+      record.id,
+      record.family,
+      label: record.label,
+      terminalWidth: turtle == null ? null : turtleTerminalWidth,
+      terminalHeight: turtle == null ? null : turtleTerminalHeight,
+      turtle: turtle,
+    );
     computer.onChanged = () => _recordChanged(record, computer);
     for (final entry in record.peripherals.entries) {
       final side = ComputerSide.parse(entry.key);
@@ -214,11 +222,13 @@ final class CcService implements ComputerServices {
 
   int countOwnedBy(String owner) => _records.values.where((r) => r.owner == owner).length;
 
-  /// Creates a new computer with the next id.
+  /// Creates a new computer with the next id. A turtle passes its [turtle]
+  /// brain: its computer has the turtle terminal and API.
   Computer create({
     required ComputerFamily family,
     required String owner,
     required String ownerName,
+    TurtleBrain? turtle,
   }) {
     final record = ComputerRecord(
       id: _nextId++,
@@ -227,7 +237,7 @@ final class CcService implements ComputerServices {
       ownerName: ownerName,
     );
     _records[record.id] = record;
-    final computer = _instantiate(record);
+    final computer = _instantiate(record, turtle: turtle);
     save();
     return computer;
   }
@@ -245,6 +255,7 @@ final class CcService implements ComputerServices {
     String ownerName = 'unknown',
     String? label,
     bool? on,
+    TurtleBrain? turtle,
   }) {
     var record = _records[id];
     if (record == null) {
@@ -256,8 +267,12 @@ final class CcService implements ComputerServices {
     if (on != null) record.on = on;
     _dirty = true;
     final existing = manager[id];
-    if (existing != null) return existing;
-    final computer = _instantiate(record);
+    if (existing != null) {
+      // A turtle that was moved keeps its machine; make sure it is wired to the brain.
+      if (turtle != null && !identical(existing.turtle, turtle)) existing.turtle = turtle;
+      return existing;
+    }
+    final computer = _instantiate(record, turtle: turtle);
     if (record.on) computer.turnOn();
     return computer;
   }

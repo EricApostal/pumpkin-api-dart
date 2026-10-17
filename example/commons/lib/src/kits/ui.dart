@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import 'inventory.dart';
@@ -21,42 +23,50 @@ final class KitsUi {
   KitsUi(this.kits, this.texts, this.log);
 
   /// Opens the kit list for [player].
-  void open(Player player) => _list(player).open(player);
+  Future<void> open(Player player) async => (await _list(player)).open(player);
 
   /// Opens a read-only look into [kit].
-  void preview(Player player, Kit kit) => _preview(player, kit).open(player);
+  Future<void> preview(Player player, Kit kit) async =>
+      (await _preview(player, kit)).open(player);
 
   /// What a menu needs to know about a player, as plain data. Player handles
   /// are only valid inside the callback that received them, but a menu is
   /// drawn again later (page changes, refreshes).
-  _Viewer _viewer(Player player) {
+  Future<_Viewer> _viewer(Player player) async {
     final nodes = [
       KitPerms.bypass.node,
       for (final kit in kits.kits) kit.permission,
     ];
-    return _Viewer(player.asEntity().getUuid().asString, {
-      for (final node in nodes)
-        if (player.hasPermission(node: node)) node,
-    });
+    final granted = <String>{};
+    for (final node in nodes) {
+      if (await player.hasPermission(node: node)) granted.add(node);
+    }
+    return _Viewer(player.asEntity().getUuid().asString, granted);
   }
 
-  Menu _list(Player player) {
-    final viewer = _viewer(player);
+  Future<Menu> _list(Player player) async {
+    final viewer = await _viewer(player);
     final menu = PagedMenu<Kit>(
       title: texts.plain('menu.title'),
       rows: 4,
       items: () => kits.kits,
       render: (kit) => _kitItem(viewer, kit),
-      onSelect: (click, kit) => _guard(click.player, () {
-        if (click.isLeft) {
-          final result = kits.claim(PlayerKitRecipient(click.player), kit.name);
-          _report(click.player, result);
-          // The kit's lore shows the new cooldown.
-          click.refresh();
-        } else if (click.isRight) {
-          click.open(_preview(click.player, kit));
-        }
-      }),
+      // Clicks don't wait for their handler, so the work runs on its own.
+      onSelect: (click, kit) => unawaited(
+        _guard(click.player, () async {
+          if (click.isLeft) {
+            final result = await kits.claim(
+              PlayerKitRecipient(click.player),
+              kit.name,
+            );
+            _report(click.player, result);
+            // The kit's lore shows the new cooldown.
+            click.refresh();
+          } else if (click.isRight) {
+            click.open(await _preview(click.player, kit));
+          }
+        }),
+      ),
     );
     if (kits.kits.isEmpty) {
       menu.button(
@@ -69,7 +79,12 @@ final class KitsUi {
   }
 
   ItemSpec _kitItem(_Viewer viewer, Kit kit) {
-    final status = kits.status(viewer.uuid, kit, viewer.granted.contains);
+    final status = kits.statusWith(
+      viewer.uuid,
+      kit,
+      permitted: viewer.granted.contains(kit.permission),
+      bypass: viewer.granted.contains(KitPerms.bypass.node),
+    );
     return ItemSpec(
       kit.icon,
       name: kit.title,
@@ -82,7 +97,7 @@ final class KitsUi {
     );
   }
 
-  Menu _preview(Player player, Kit kit) {
+  Future<Menu> _preview(Player player, Kit kit) async {
     final rows = ((kit.items.length + 8) ~/ 9 + 1).clamp(2, 6);
     final menu = Menu(
       title: texts.plain('menu.preview_title', {
@@ -91,7 +106,7 @@ final class KitsUi {
       rows: rows,
     );
     for (var i = 0; i < kit.items.length; i++) {
-      menu.set(i, previewSpec(kit.items[i]));
+      menu.set(i, await previewSpec(kit.items[i]));
     }
     final bottom = (rows - 1) * menuColumns;
     for (var column = 0; column < menuColumns; column++) {
@@ -104,9 +119,11 @@ final class KitsUi {
     menu.button(
       slot: bottom + 5,
       item: ItemSpec('arrow', name: texts.plain('menu.back')),
-      onClick: (click) => _guard(click.player, () {
-        click.open(_list(click.player));
-      }),
+      onClick: (click) => unawaited(
+        _guard(click.player, () async {
+          click.open(await _list(click.player));
+        }),
+      ),
     );
     return menu;
   }
@@ -128,9 +145,9 @@ final class KitsUi {
 
   /// Runs a click handler so that a failure is logged and shown to the
   /// player instead of reaching the server.
-  void _guard(Player player, void Function() body) {
+  Future<void> _guard(Player player, Future<void> Function() body) async {
     try {
-      body();
+      await body();
     } catch (e, s) {
       log.error('Kit menu action failed', error: e, stackTrace: s);
       try {

@@ -63,6 +63,10 @@ pub struct DartFunctionGenerator<'a> {
     /// import with indirect params and a non-flat result needs two: one to
     /// pass the arguments in and one for the result.
     extra_return_areas: Vec<(Rc<String>, ArchitectureSize, Alignment)>,
+    /// Set while generating the completion callback of an async import, which
+    /// runs once the host call has produced its results. The closing of the
+    /// callback is written by the `Return` that ends the function.
+    in_async_completion: bool,
 }
 
 /// Stands in for the current list element until the enclosing `ListLower`
@@ -83,6 +87,7 @@ pub struct ImportedFunctionMode<'a> {
 
 pub struct ExportedFunctionMode<'a> {
     pub instance: &'a mut ExportedInstance,
+    pub is_async: bool,
     pub async_return_name: &'a str,
     pub async_return_params: &'a mut Option<Vec<WasmType>>,
 }
@@ -93,6 +98,7 @@ pub struct ExportedFunctionMode<'a> {
 /// to the generated `define<World>` function.
 pub struct ExportedFuncMode<'a> {
     pub field_name: &'a str,
+    pub is_async: bool,
     pub async_return_name: &'a str,
     pub async_return_params: &'a mut Option<Vec<WasmType>>,
 }
@@ -120,6 +126,7 @@ impl<'a> DartFunctionGenerator<'a> {
             needs_cleanup_list: false,
             return_area: None,
             extra_return_areas: Vec::new(),
+            in_async_completion: false,
         }
     }
 
@@ -231,6 +238,19 @@ impl<'a> DartFunctionGenerator<'a> {
         }
     }
 
+    /// Whether buffers allocated while lowering are released by the generated
+    /// function itself, right after the host call (imports) or `task.return`
+    /// (async exports). Sync exports hand them to the host, which releases them
+    /// through the post-return function.
+    fn frees_lowered_buffers(&self) -> bool {
+        match &self.mode {
+            FunctionMode::Imported(_) => true,
+            FunctionMode::Exported(m) => m.is_async,
+            FunctionMode::ExportedFunc(m) => m.is_async,
+            FunctionMode::PostReturn(_) => false,
+        }
+    }
+
     pub fn write_cleanup(&mut self) {
         let cleanup = self.cleanup_stack.last_mut().unwrap();
         if !cleanup.is_empty() {
@@ -291,15 +311,40 @@ impl<'a> Bindgen for DartFunctionGenerator<'a> {
                 }
                 uwriteln!(self.definition, ");");
 
+                let async_import = matches!(
+                    &self.mode,
+                    FunctionMode::Imported(i) if i.function.kind.is_async()
+                );
+                if async_import {
+                    // The status word says whether the host already read the
+                    // arguments. The runtime frees the buffers then.
+                    self.options.async_lower = true;
+                    self.needs_cleanup_list = true;
+                }
+
                 // The host has copied all lowered arguments by the time the
                 // call returns, so the buffers registered during lowering can
                 // be released now (before the results are lifted).
-                if self.needs_cleanup_list {
+                if self.needs_cleanup_list && !async_import {
                     uwriteln!(
                         self.definition,
                         "for (final cleanup in _cleanups) {{ cleanup(); }}"
                     );
                 }
+            }
+            Instruction::AsyncImportAwait { .. } => {
+                let status = operands.pop().unwrap();
+                uwrite!(self.definition, "return ");
+                self.definition.imported_identifier(
+                    self.dart,
+                    KnownDartUri::PkgWasmComponents,
+                    "awaitSubtask",
+                );
+                uwriteln!(
+                    self.definition,
+                    "({status}.toIntUnsigned(), _cleanups, () {{"
+                );
+                self.in_async_completion = true;
             }
             Instruction::CallInterface { func, async_ } => {
                 if func.result.is_some() {
@@ -397,6 +442,9 @@ impl<'a> Bindgen for DartFunctionGenerator<'a> {
                 } else {
                     todo!("Returning multiple parameters")
                 }
+                if mem::take(&mut self.in_async_completion) {
+                    uwriteln!(self.definition, "}});");
+                }
             }
             Instruction::StringLower { realloc: _ } => {
                 self.options.use_memory = true;
@@ -414,7 +462,7 @@ impl<'a> Bindgen for DartFunctionGenerator<'a> {
                     ".allocateUtf16({});",
                     operands.pop().unwrap()
                 );
-                if let FunctionMode::Imported(_) = self.mode {
+                if self.frees_lowered_buffers() {
                     // The caller owns lowered arguments until the host call
                     // returns, so defer the free to after `CallWasm` (via the
                     // function-level `_cleanups` list, which stays in scope
@@ -1007,6 +1055,16 @@ if ({has_value}.toBool()) {{
                     "{resource_name}.{constructor}({value}.toIntUnsigned())"
                 )));
             }
+            Instruction::FutureLift { payload, ty: _ } => {
+                // Futures are not usable from Dart yet: the readable end is kept as an opaque
+                // handle.
+                assert!(payload.is_none(), "futures with a payload are not supported");
+                let value = operands.pop().unwrap();
+                let import = self.dart.import(KnownDartUri::PkgWasmComponents);
+                results.push(Rc::new(format!(
+                    "{import}.ComponentFuture<void>({value}.toIntUnsigned())"
+                )));
+            }
             Instruction::DropHandle { ty: _ } => {
                 // The Dart-side resource wrapper doesn't hold any native
                 // resources of its own (the host owns the underlying
@@ -1107,7 +1165,7 @@ if ({has_value}.toBool()) {{
                 let wasm = self.dart_wasm_import();
                 uwriteln!(self.definition, "final {wasm_len} = {wasm}.WasmI32.fromInt({len});");
 
-                if let FunctionMode::Imported(_) = self.mode {
+                if self.frees_lowered_buffers() {
                     // The caller owns the lowered list buffer until the call
                     // returns; element payloads (e.g. strings) register their
                     // own cleanups from within the loop body above.
@@ -1245,11 +1303,42 @@ if ({has_value}.toBool()) {{
                     _ => panic!("AsyncTaskReturn only works in export mode"),
                 };
 
+                // The host gets the result once the task is over: its handles are
+                // dropped and the host calls it started have finished by then, like
+                // for a Rust plugin. The values are lowered already, only calling
+                // `task.return` and the cleanup wait.
+                uwriteln!(self.definition, "_task.complete(() {{");
                 uwrite!(self.definition, "{name}(");
                 for arg in args {
                     uwrite!(self.definition, "{arg},");
                 }
-                uwrite!(self.definition, ");");
+                uwriteln!(self.definition, ");");
+
+                // The host copied the results during `task.return`, release what was
+                // allocated to lower them.
+                if self.needs_cleanup_list {
+                    uwriteln!(
+                        self.definition,
+                        "for (final cleanup in _cleanups) {{ cleanup(); }}"
+                    );
+                }
+                if let (Some(area), Some((size, align))) =
+                    (self.return_area.take(), self.allocated_return_value)
+                {
+                    self.definition.imported_identifier(
+                        self.dart,
+                        KnownDartUri::PkgWasmComponents,
+                        "dartFree",
+                    );
+                    let wasm = self.dart_wasm_import();
+                    uwriteln!(
+                        self.definition,
+                        "({area}, const {wasm}.WasmI32({}), const {wasm}.WasmI32({}));",
+                        size.size_wasm32(),
+                        align.align_wasm32(),
+                    );
+                }
+                uwriteln!(self.definition, "}});");
             }
             Instruction::Flush { amt } => {
                 let operands = operands.split_off(operands.len() - *amt);

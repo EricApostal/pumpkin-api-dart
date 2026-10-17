@@ -24,9 +24,9 @@ final class ShopModule extends Module {
   List<PermNode> get permissions => ShopPerms.all;
 
   @override
-  void onLoad(ModuleHost host) {
+  Future<void> onLoad(ModuleHost host) async {
     final docs = host.docs;
-    final service = ShopService(
+    final service = await ShopService.create(
       economy: host.services.require<Economy>(),
       clock: host.clock,
       catalog: docs.open(
@@ -83,11 +83,15 @@ final class ShopModule extends Module {
   /// Whether the server knows an item called [key]. The host has no registry
   /// lookup: asking for an unknown item gives air, so the key that comes back
   /// tells.
-  bool _isKnownItem(String key) {
+  Future<bool> _isKnownItem(String key) async {
     try {
       final stack = ItemStack.create(registryKey: key, count: 1);
-      final actual = stack.getRegistryKey();
-      stack.dispose();
+      final String actual;
+      try {
+        actual = await stack.getRegistryKey();
+      } finally {
+        stack.dispose();
+      }
       return registryKeysMatch(actual, key);
     } catch (_) {
       return false;

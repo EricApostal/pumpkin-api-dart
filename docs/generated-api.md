@@ -9,6 +9,7 @@ like Dart:
 | `option<T>` | `T?` (only `option<option<T>>` keeps the `Option` wrapper, since `T??` collapses) |
 | `get-foo` / `set-foo(x)` on a resource | a `foo` property next to the `getFoo()` / `setFoo()` methods (skipped if the types differ or the name is taken) |
 | `get-x-data` / `set-x-data(variant)`, a variant whose cases hold records | one *view* per case: the resource known to be of that kind, with the record's fields as properties, plus `asKind()` casts (`entity.asZombie()`) |
+| `async func` | a method returning a `Future`, see [async.md](async.md). No property is generated for an async `get-foo`/`set-foo` |
 | `record` | an immutable class with `copyWith` |
 | `own<T>` / `borrow<T>` | a `Resource`, released when the callback returns, see [lifetimes](lifetimes.md) |
 

@@ -36,7 +36,7 @@ final class PermissionDefaultKind {
 ///     description: 'Use /home', defaultValue: PermissionDefaultKind.allow);
 ///
 /// context.registerPermissions([home]);
-/// if (player.can(home)) { ... }
+/// if (await player.can(home)) { ... }
 /// ```
 final class PermissionNode {
   final String node;
@@ -95,12 +95,11 @@ extension PermissionNodesApi on Context {
 /// Permission checks with typed nodes.
 extension PlayerPermissionCheck on Player {
   /// Whether this player has [node] (explicit setting, else its default).
-  bool can(PermissionNode node) => hasPermission(node: node.node);
+  Future<bool> can(PermissionNode node) => hasPermission(node: node.node);
 }
 
 /// Permission checks for command senders (players and the console).
 extension SenderPermissionCheck on CommandSender {
-  /// Whether this sender has [node]. Needs the [server] the command runs on.
-  bool can(Server server, PermissionNode node) =>
-      hasPermission(server: server, node: node.node);
+  /// Whether this sender has [node].
+  Future<bool> can(PermissionNode node) => hasPermission(node: node.node);
 }

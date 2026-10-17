@@ -71,8 +71,9 @@ extension EventApi on Context {
   }
 
   /// Calls [handler] when the server fires an [event]. The server waits for
-  /// the handler, and uses the data it returns. This is how events get
-  /// cancelled or modified:
+  /// the handler, and uses the data it returns. The handler may be `async`; the
+  /// server waits for the host calls it awaits, but not for timers. This is
+  /// how events get cancelled or modified:
   ///
   /// ```dart
   /// context.intercept(Events.playerChat, (server, event) {
@@ -84,11 +85,13 @@ extension EventApi on Context {
   /// Events with a `cancelled` field have a `cancel()` method.
   EventSubscription intercept<D>(
     EventKind<D> event,
-    D Function(Server server, D data) handler, {
+    FutureOr<D> Function(Server server, D data) handler, {
     EventPriority priority = EventPriority.normal,
   }) {
     final id = eventHandlers.add((server, raw) {
-      return event.wrap(handler(server, event.unwrap(raw)));
+      final result = handler(server, event.unwrap(raw));
+      if (result is Future<D>) return result.then(event.wrap);
+      return event.wrap(result);
     });
     registerEvent(
       handlerId: id,
@@ -128,8 +131,8 @@ extension EventApi on Context {
   /// ```
   ///
   /// Fails with a [TimeoutException] if [timeout] passes first. The event's
-  /// resources (like its `player`) are only valid until your code first
-  /// `await`s again, so read what you need right away.
+  /// resources (like its `player`) are only valid until the handler that
+  /// received it has returned, so read what you need right away.
   Future<D> next<D>(
     EventKind<D> event, {
     bool Function(D data)? where,

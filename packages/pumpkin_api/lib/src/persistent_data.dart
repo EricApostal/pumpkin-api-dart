@@ -188,15 +188,84 @@ final class PersistentData {
 }
 
 
+/// Persistent data of an item stack. Unlike [PersistentData], reading it takes
+/// a call to the host that finishes later, so everything returns a future.
+final class ItemPersistentData {
+  final ItemStack _stack;
+
+  /// The namespace all keys of this container live in.
+  final String namespace;
+
+  ItemPersistentData._(this._stack, this.namespace);
+
+  /// Whether [key] has a value.
+  Future<bool> has(String key) =>
+      _stack.hasCustomData(namespace: namespace, key: key);
+
+  /// Deletes the value of [key].
+  Future<void> remove(String key) =>
+      _stack.removeCustomData(namespace: namespace, key: key);
+
+  /// The raw NBT stored under [key].
+  Future<NbtTree?> getTree(String key) =>
+      _stack.getCustomData(namespace: namespace, key: key);
+
+  /// Stores raw NBT under [key].
+  Future<void> setTree(String key, NbtTree value) =>
+      _stack.setCustomData(namespace: namespace, key: key, value: value);
+
+  /// Stores a string.
+  Future<void> setString(String key, String value) =>
+      setTree(key, NbtTrees.string(value));
+
+  /// The string under [key].
+  Future<String?> getString(String key) async =>
+      switch ((await getTree(key))?.rootTag) {
+        NbtTagStringTag(:final value) => value,
+        _ => null,
+      };
+
+  /// Stores a 64-bit integer.
+  Future<void> setLong(String key, int value) =>
+      setTree(key, NbtTrees.int64(value));
+
+  /// The integer under [key] (stored as byte, short, int or long).
+  Future<int?> getLong(String key) async =>
+      switch ((await getTree(key))?.rootTag) {
+        NbtTagLong(:final value) ||
+        NbtTagInt(:final value) ||
+        NbtTagShort(:final value) ||
+        NbtTagByte(:final value) => value,
+        _ => null,
+      };
+
+  /// Stores a boolean, as a byte.
+  Future<void> setBool(String key, bool value) =>
+      setTree(key, NbtTrees.boolean(value));
+
+  /// The boolean under [key] (a byte that is not 0).
+  Future<bool?> getBool(String key) async =>
+      switch ((await getTree(key))?.rootTag) {
+        NbtTagByte(:final value) => value != 0,
+        _ => null,
+      };
+
+  /// Stores a 64-bit float.
+  Future<void> setDouble(String key, double value) =>
+      setTree(key, NbtTrees.float64(value));
+
+  /// The number under [key] (stored as float or double).
+  Future<double?> getDouble(String key) async =>
+      switch ((await getTree(key))?.rootTag) {
+        NbtTagDouble(:final value) || NbtTagFloat(:final value) => value,
+        _ => null,
+      };
+}
+
 extension ItemStackPersistentData on ItemStack {
   /// Persistent data of this item in [namespace].
-  PersistentData persistentData(String namespace) => PersistentData._(
-    namespace,
-    (ns, key, value) => setCustomData(namespace: ns, key: key, value: value),
-    (ns, key) => getCustomData(namespace: ns, key: key),
-    (ns, key) => removeCustomData(namespace: ns, key: key),
-    (ns, key) => hasCustomData(namespace: ns, key: key),
-  );
+  ItemPersistentData persistentData(String namespace) =>
+      ItemPersistentData._(this, namespace);
 }
 
 extension EntityPersistentData on Entity {

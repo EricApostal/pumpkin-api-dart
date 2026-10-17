@@ -156,6 +156,8 @@ final class DartProgramAbi {
             return TaskReturn(idx, result);
           });
           linker.applyOptions(options, taskReturn);
+          // `task.return` only passes values on, it never allocates.
+          taskReturn.realloc = null;
 
           return taskReturn;
         });
@@ -195,6 +197,8 @@ final class DartProgramAbi {
             return TaskReturn(idx, result);
           });
           linker.applyOptions(options, taskReturn);
+          // `task.return` only passes values on, it never allocates.
+          taskReturn.realloc = null;
 
           return taskReturn;
         });
@@ -208,6 +212,10 @@ final class FunctionOptions {
   final bool usesStrings;
   final bool needsRealloc;
   final bool usesCallback;
+
+  /// Whether an import is lowered with the `async` option: calling it returns a
+  /// status word right away, and the results arrive later.
+  final bool asyncLower;
   final String? postReturn;
   final String? returnImport;
 
@@ -216,6 +224,7 @@ final class FunctionOptions {
     required this.usesStrings,
     this.needsRealloc = false,
     this.usesCallback = false,
+    this.asyncLower = false,
     this.postReturn,
     this.returnImport,
   });
@@ -226,6 +235,7 @@ final class FunctionOptions {
       usesStrings: json['uses_strings'] as bool,
       needsRealloc: json['needs_realloc'] as bool? ?? false,
       usesCallback: json['uses_callback'] as bool? ?? false,
+      asyncLower: json['async_lower'] as bool? ?? false,
       postReturn: json['post_return'] as String?,
       returnImport: json['task_return_import'] as String?,
     );

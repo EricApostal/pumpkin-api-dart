@@ -20,8 +20,8 @@ and the rest still run. `Subscription` is the handle for anything cancellable
 (`cancel()`, `isCancelled`); it is also a `Disposable`.
 
 The dispatcher must call `runUnloadHooks()` from its `onUnload` export. It
-returns a `Future` only if some hook is async. The host does not wait for work
-after the first `await` (see async.md), so keep unload hooks synchronous.
+returns a `Future` only if some hook is async. The host waits for the host calls
+a hook awaits but not for timers (see async.md).
 
 ## Loggers (`logger.dart`)
 
@@ -39,12 +39,12 @@ final n = log.time('load', () => loadAll()); // debug: "load took 12ms"; awaits 
 
 ## Typed IPC (`ipc.dart`)
 
-The host call is synchronous: the recipient runs before the call returns.
+The host call is async: await the reply of the recipient.
 
 ```dart
-final reply = ipc.requestJson('economy', {'op': 'balance'});   // decoded JSON
-ipc.sendJson('economy', {'op': 'ping'});                       // reply ignored
-final bytes = ipc.request('economy', utf8.encode('raw'));      // raw bytes
+final reply = await ipc.requestJson('economy', {'op': 'balance'});   // decoded JSON
+await ipc.sendJson('economy', {'op': 'ping'});                       // reply ignored
+final bytes = await ipc.request('economy', utf8.encode('raw'));      // raw bytes
 ```
 
 Failures throw `IpcException` with a `reason`: `pluginNotFound`, `rejected`
@@ -96,8 +96,8 @@ covered in [configuration.md](configuration.md).
 const home = PermissionNode('teleport:command.home',
     description: 'Use /home', defaultValue: PermissionDefaultKind.allow);
 context.registerPermissions([home]);     // returns how many were new
-if (player.can(home)) { ... }            // Player.hasPermission
-if (sender.can(server, home)) { ... }    // CommandSender.hasPermission
+if (await player.can(home)) { ... }      // Player.hasPermission
+if (await sender.can(home)) { ... }      // CommandSender.hasPermission
 ```
 
 Defaults: `PermissionDefaultKind.allow`, `.deny`, `const PermissionDefaultKind.op(level)`.

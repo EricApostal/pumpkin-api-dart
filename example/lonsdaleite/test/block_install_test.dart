@@ -171,7 +171,6 @@ void main() {
       expect(d.soundType, 'amethyst');
       expect(d.luminance, 7);
       expect(d.canOcclude, isFalse);
-      expect(d.suffocating, isFalse);
       expect(d.replaceable, isFalse);
       expect(d.collisionShape, isA<FullCubeShape>());
       expect(d.selectionShape, isA<FullCubeShape>());

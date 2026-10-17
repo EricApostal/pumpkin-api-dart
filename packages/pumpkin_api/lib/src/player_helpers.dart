@@ -59,8 +59,8 @@ extension PlayerHelpers on Player {
   void healFully() => setHealth(health: getMaxHealth());
 
   /// Fills food level (20) and saturation.
-  void feedFully() {
-    setFoodLevel(foodLevel: 20);
+  Future<void> feedFully() async {
+    await setFoodLevel(foodLevel: 20);
     setSaturation(saturation: 20);
   }
 
@@ -74,39 +74,47 @@ extension PlayerHelpers on Player {
   /// with existing stacks). Returns null when placed ([stack] is then
   /// consumed), or [stack] itself when the inventory is full (still usable).
   /// There is no item-entity API, so overflow cannot be dropped.
-  ItemStack? give(ItemStack stack) =>
-      getInventory().storage.give(stack) ? null : stack;
+  Future<ItemStack?> give(ItemStack stack) async =>
+      await getInventory().storage.give(stack) ? null : stack;
 
   /// Gives [count] of the item [key] (`diamond`), topping up existing plain
   /// stacks (no name, lore or enchantments) first, then using empty slots.
   /// Returns the number that did not fit.
-  int giveItem(String key, {int count = 1}) {
+  Future<int> giveItem(String key, {int count = 1}) async {
     final id = normalizeRegistryKey(key);
     final inv = getInventory().storage;
     var left = count;
     final probe = ItemStack.create(registryKey: id, count: 1);
-    final max = probe.getMaxCount();
+    final max = await probe.getMaxCount();
     probe.dispose();
     for (var slot = 0; slot < 36 && left > 0; slot++) {
       final s = inv.getItem(slot: slot);
       if (s == null) continue;
-      if (s.getRegistryKey() == id &&
-          s.getCustomName() == null &&
-          s.getLore().isEmpty &&
-          s.getEnchantments().isEmpty &&
-          s.getCount() < max) {
-        final add = (max - s.getCount()) < left ? max - s.getCount() : left;
-        s.setCount(count: s.getCount() + add);
-        inv.setItem(slot: slot, item: s);
+      final have = await s.getCount();
+      if (await s.getRegistryKey() == id &&
+          await s.getCustomName() == null &&
+          (await s.getLore()).isEmpty &&
+          (await s.getEnchantments()).isEmpty &&
+          have < max) {
+        final add = (max - have) < left ? max - have : left;
+        await s.setCount(count: have + add);
+        await inv.setItem(slot: slot, item: s);
         left -= add;
       } else {
         s.dispose();
       }
     }
     for (var slot = 0; slot < 36 && left > 0; slot++) {
-      if (inv.getItem(slot: slot) != null) continue;
+      final existing = inv.getItem(slot: slot);
+      if (existing != null) {
+        existing.dispose();
+        continue;
+      }
       final n = left < max ? left : max;
-      inv.setItem(slot: slot, item: ItemStack.create(registryKey: id, count: n));
+      await inv.setItem(
+        slot: slot,
+        item: ItemStack.create(registryKey: id, count: n),
+      );
       left -= n;
     }
     return left;
@@ -117,7 +125,7 @@ extension PlayerHelpers on Player {
   /// Named `applyEffect` because `addEffect` is the raw generated method.
   /// `removeEffect(effect:)`, `hasEffect(effect:)` and `clearEffects()` are
   /// generated already.
-  void applyEffect(
+  Future<void> applyEffect(
     StatusEffectType type, {
     Duration duration = const Duration(seconds: 30),
     int amplifier = 0,
@@ -125,7 +133,7 @@ extension PlayerHelpers on Player {
     bool showParticles = true,
     bool showIcon = true,
   }) {
-    addEffect(
+    return addEffect(
       effect: StatusEffectInstance(
         effectType: type,
         duration: durationToTicks(duration),

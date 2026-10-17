@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/api.dart';
@@ -74,19 +76,21 @@ final class RewardsModule extends Module {
       final uuid = event.player.asEntity().getUuid().asString;
       playtime.join(uuid);
       // Let the join messages scroll by before talking to the player.
-      server.after(const Duration(seconds: 3), (server) {
-        _withPlayer(server, uuid, ui.welcome);
-      });
+      // Tasks don't wait for their callback, so the work runs on its own.
+      server.after(
+        const Duration(seconds: 3),
+        (server) => unawaited(_withPlayer(server, uuid, ui.welcome)),
+      );
     });
     context.listen(Events.playerLeave, (server, event) {
       playtime.leave(event.player.asEntity().getUuid().asString);
     });
 
-    void tick(Server server) {
+    Future<void> tick(Server server) async {
       final online = server.getAllPlayers();
       final payouts = playtime.tick([for (final p in online) uuidOf(p)]);
       for (final payout in payouts) {
-        _withPlayer(server, payout.uuid, (player) {
+        await _withPlayer(server, payout.uuid, (player) {
           ui.milestone(player, payout, playtime.playtime(payout.uuid));
         });
         host.log.info(
@@ -95,9 +99,15 @@ final class RewardsModule extends Module {
       }
     }
 
-    context.every(Duration(seconds: playtime.config.tickSeconds), tick);
+    context.every(
+      Duration(seconds: playtime.config.tickSeconds),
+      (server) => unawaited(tick(server)),
+    );
     // Start counting whoever is online already (the plugin was reloaded).
-    context.after(const Duration(seconds: 1), tick);
+    context.after(
+      const Duration(seconds: 1),
+      (server) => unawaited(tick(server)),
+    );
     host.log.info(
       'Daily rewards ${daily.config.enabled ? 'on' : 'off'}, '
       '${daily.config.milestones.length} streak and '
@@ -108,12 +118,12 @@ final class RewardsModule extends Module {
   @override
   void onUnload() => _playtime?.flush();
 
-  void _withPlayer(
+  Future<void> _withPlayer(
     Server server,
     String uuid,
-    void Function(Player player) use,
-  ) {
+    FutureOr<void> Function(Player player) use,
+  ) async {
     final player = server.getPlayerByUuid(id: Uuids.parse(uuid));
-    if (player != null) use(player);
+    if (player != null) await use(player);
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/api.dart';
@@ -35,7 +37,7 @@ final class RewardsUi {
   // -- Claiming ---------------------------------------------------------------
 
   /// `/daily`: claims the reward, or says when the next one is due.
-  void claim(Player player) {
+  Future<void> claim(Player player) async {
     final uuid = uuidOf(player);
     final result = _daily.claim(uuid);
     switch (result.failure) {
@@ -51,12 +53,12 @@ final class RewardsUi {
           'amount': _economy.format(status.nextReward),
         });
       case null:
-        _celebrate(player, result);
+        await _celebrate(player, result);
     }
-    deliverPending(player);
+    await deliverPending(player);
   }
 
-  void _celebrate(Player player, ClaimResult result) {
+  Future<void> _celebrate(Player player, ClaimResult result) async {
     final amount = _economy.format(result.currency);
     player.title(
       messages['daily.title'].format(),
@@ -85,16 +87,16 @@ final class RewardsUi {
         'label': MessageFormat.escape(milestone.label),
         'bonus': _economy.format(result.bonus),
       });
-      _daily.stash(uuidOf(player), _give(player, result.items));
+      _daily.stash(uuidOf(player), await _give(player, result.items));
     }
   }
 
   /// Puts [items] into the player's inventory and returns what did not fit.
-  List<ItemReward> _give(Player player, List<ItemReward> items) {
+  Future<List<ItemReward>> _give(Player player, List<ItemReward> items) async {
     final delivered = <ItemReward>[];
     final leftover = <ItemReward>[];
     for (final item in items) {
-      final notFitting = player.giveItem(item.item, count: item.count);
+      final notFitting = await player.giveItem(item.item, count: item.count);
       if (notFitting < item.count) {
         delivered.add(ItemReward(item.item, count: item.count - notFitting));
       }
@@ -111,11 +113,11 @@ final class RewardsUi {
   }
 
   /// Hands over reward items that did not fit earlier, as far as they fit now.
-  void deliverPending(Player player) {
+  Future<void> deliverPending(Player player) async {
     final uuid = uuidOf(player);
     final waiting = _daily.takePending(uuid);
     if (waiting.isEmpty) return;
-    final leftover = _give(player, waiting);
+    final leftover = await _give(player, waiting);
     if (leftover.isEmpty) return;
     _daily.stash(uuid, leftover);
     player.sendTemplate(messages, 'items.waiting', {
@@ -124,8 +126,8 @@ final class RewardsUi {
   }
 
   /// Tells a player who joined about waiting items and an unclaimed reward.
-  void welcome(Player player) {
-    deliverPending(player);
+  Future<void> welcome(Player player) async {
+    await deliverPending(player);
     if (!_daily.config.joinReminder || !_daily.canClaimDaily(uuidOf(player))) {
       return;
     }
@@ -159,9 +161,12 @@ final class RewardsUi {
 
   /// Opens the calendar on the page of [page] (0-based), by default the one
   /// with the day the player claims next.
-  void openCalendar(Player player, {int? page}) {
+  Future<void> openCalendar(Player player, {int? page}) {
     final uuid = uuidOf(player);
-    _calendar(uuid, page ?? _daily.currentCalendarPage(uuid)).open(player);
+    return _calendar(
+      uuid,
+      page ?? _daily.currentCalendarPage(uuid),
+    ).open(player);
   }
 
   Menu _calendar(String uuid, int page) {
@@ -176,10 +181,8 @@ final class RewardsUi {
         column: 1 + i % 7,
         item: _dayItem(day, status),
         onClick: day.state == CalendarState.available
-            ? (click) {
-                claim(click.player);
-                click.open(_calendar(click.playerId, page));
-              }
+            // Clicks don't wait for their handler, so the work runs on its own.
+            ? (click) => unawaited(_claimDay(click, page))
             : null,
       );
     }
@@ -221,6 +224,12 @@ final class RewardsUi {
     );
     menu.fill(const ItemSpec('gray_stained_glass_pane', name: ' '));
     return menu;
+  }
+
+  /// A click on an available day: claims it and shows the calendar again.
+  Future<void> _claimDay(MenuClick click, int page) async {
+    await claim(click.player);
+    click.open(_calendar(click.playerId, page));
   }
 
   ItemSpec _dayItem(CalendarDay day, DailyStatus status) {

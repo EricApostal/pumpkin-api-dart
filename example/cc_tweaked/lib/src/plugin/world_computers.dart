@@ -97,6 +97,9 @@ final class CcWorldComputers {
   final Map<String, int> _lastPocketOpen = {};
   int _tick = 0;
 
+  /// Whether a [tick] is still waiting for the host.
+  bool _ticking = false;
+
   CcWorldComputers(this._service, this._network, this._states);
 
   /// Number of computer blocks with an entity the plugin tracks.
@@ -120,7 +123,7 @@ final class CcWorldComputers {
 
   // -- The right click on a computer ------------------------------------------------
 
-  PlayerUseBlockEventData _onUseBlock(Server server, PlayerUseBlockEventData event) {
+  Future<PlayerUseBlockEventData> _onUseBlock(Server server, PlayerUseBlockEventData event) async {
     // `AbstractComputerBlock.useWithoutItem`: `!player.isCrouching()`.
     if (event.sneaking || !_computerBlocks.containsKey(event.block)) return event;
     final player = event.player;
@@ -131,7 +134,7 @@ final class CcWorldComputers {
       if (placed == null) {
         player.send('&cThis computer has no block entity and could not get one.');
       } else {
-        _open(server, player, placed);
+        await _open(server, player, placed);
       }
     } finally {
       world.dispose();
@@ -157,12 +160,12 @@ final class CcWorldComputers {
 
   /// `useWithoutItem` for a computer: makes sure there is a computer, turns it
   /// on and opens the menu.
-  void _open(Server server, Player player, _Placed placed) {
+  Future<void> _open(Server server, Player player, _Placed placed) async {
     if (placed.blockKey == 'computercraft:computer_command') {
       player.send('&eCommand computers are not supported yet (no `commands` API).');
       return;
     }
-    final computer = _ensureComputer(server, player, placed);
+    final computer = await _ensureComputer(server, player, placed);
     if (computer == null) return;
     final containerId = _network.open(
       player,
@@ -177,7 +180,7 @@ final class CcWorldComputers {
 
   /// The machine of a computer block, created with the next free id when the
   /// block has none yet (the id is written to the entity).
-  Computer? _ensureComputer(Server server, Player player, _Placed placed) {
+  Future<Computer?> _ensureComputer(Server server, Player player, _Placed placed) async {
     final id = placed.computerId;
     if (id != null) {
       return _service.computer(id) ??
@@ -185,7 +188,7 @@ final class CcWorldComputers {
     }
     final owner = player.getId().asString;
     final limit = _service.pluginConfig.maxComputersPerPlayer;
-    if (limit > 0 && _service.countOwnedBy(owner) >= limit && !player.hasPermission(node: CcPermissions.admin)) {
+    if (limit > 0 && _service.countOwnedBy(owner) >= limit && !await player.hasPermission(node: CcPermissions.admin)) {
       player.send('&cYou can own at most $limit computers.');
       return null;
     }
@@ -198,17 +201,17 @@ final class CcWorldComputers {
 
   // -- Pocket computers (`PocketComputerItem.use`) ----------------------------------
 
-  PlayerUseItemEventData _onUseItem(Server server, PlayerUseItemEventData event) {
-    final key = event.item.getRegistryKey();
+  Future<PlayerUseItemEventData> _onUseItem(Server server, PlayerUseItemEventData event) async {
+    final key = await event.item.getRegistryKey();
     final family = _pocketItems[key];
     if (family != null) {
-      _usePocket(server, event, key, family);
+      await _usePocket(server, event, key, family);
       return event.cancel();
     }
     // A computer block item that is about to be placed: remember its component.
     if (event.clickedPos != null && _computerBlocks.containsKey(key)) {
       final bytes = event.item.customComponent(CcComponents.computerId);
-      final label = event.item.getCustomName()?.getText();
+      final label = (await event.item.getCustomName())?.getText();
       _pending[event.player.getId().asString] = _PendingPlacement(
         key,
         bytes == null ? null : _tryId(bytes),
@@ -230,7 +233,7 @@ final class CcWorldComputers {
   /// Right click with a pocket computer: gets (or creates) its computer, turns
   /// it on and opens the menu. The item keeps the id in its `computer_id`
   /// component.
-  void _usePocket(Server server, PlayerUseItemEventData event, String itemKey, ComputerFamily family) {
+  Future<void> _usePocket(Server server, PlayerUseItemEventData event, String itemKey, ComputerFamily family) async {
     final player = event.player;
     // A click on a block is followed by a use in the air that the host reports as
     // a second event: do not reopen the GUI the first one just opened.
@@ -243,7 +246,7 @@ final class CcWorldComputers {
     if (computer == null) {
       final owner = player.getId().asString;
       final limit = _service.pluginConfig.maxComputersPerPlayer;
-      if (limit > 0 && _service.countOwnedBy(owner) >= limit && !player.hasPermission(node: CcPermissions.admin)) {
+      if (limit > 0 && _service.countOwnedBy(owner) >= limit && !await player.hasPermission(node: CcPermissions.admin)) {
         player.send('&cYou can own at most $limit computers.');
         return;
       }
@@ -253,7 +256,7 @@ final class CcWorldComputers {
       final held = player.getItemInHand(hand: event.hand);
       if (held != null) {
         held.setCustomComponent(CcComponents.computerId, CcComponents.encodeComputerId(id));
-        player.setItemInHand(hand: event.hand, stack: held);
+        await player.setItemInHand(hand: event.hand, stack: held);
       }
     }
     _lastPocketOpen[uuid] = _tick;
@@ -397,7 +400,7 @@ final class CcWorldComputers {
   /// and the vanilla drop is cancelled. With a full inventory, an explosion
   /// or another source without a player, the plain item drops and the id is
   /// lost (the computer's disk stays under its id).
-  BlockDropItemEventData _onDropItem(Server server, BlockDropItemEventData event) {
+  Future<BlockDropItemEventData> _onDropItem(Server server, BlockDropItemEventData event) async {
     final player = event.player;
     if (player == null) return event;
     final world = event.targetWorld;
@@ -411,20 +414,20 @@ final class CcWorldComputers {
     final stack = ItemStack.create(registryKey: blockKey, count: 1);
     stack.setCustomComponent(CcComponents.computerId, CcComponents.encodeComputerId(id));
     final label = placed?.label ?? removed?.label;
-    if (label != null) stack.setCustomName(name: Text(label).build());
-    if (!_give(player, stack)) return event;
+    if (label != null) await stack.setCustomName(name: Text(label).build());
+    if (!await _give(player, stack)) return event;
     _removed.remove(key);
     return event.cancel();
   }
 
   /// Puts [stack] into the first empty slot of the main inventory (the host
   /// has no call to drop an item entity with components).
-  bool _give(Player player, ItemStack stack) {
+  Future<bool> _give(Player player, ItemStack stack) async {
     final inventory = player.getInventory().asInventory();
     // Main inventory first (9 to 35), then the hotbar.
     for (final slot in [for (var i = 9; i < 36; i++) i, for (var i = 0; i < 9; i++) i]) {
       if (inventory.getItem(slot: slot) == null) {
-        inventory.setItem(slot: slot, item: stack);
+        await inventory.setItem(slot: slot, item: stack);
         return true;
       }
     }
@@ -435,30 +438,39 @@ final class CcWorldComputers {
 
   /// Writes the power state and label to the entity and the block state
   /// (`serverTick`: `updateBlockState`) when they change, and forgets old
-  /// removals.
-  void tick(Server server) {
+  /// removals. A tick that comes while the previous one still waits for the host
+  /// only counts as a tick of the clock and is otherwise skipped.
+  Future<void> tick(Server server) async {
     _tick++;
-    if (_removed.isNotEmpty && _tick % 40 == 0) {
-      _removed.removeWhere((_, r) => _tick - r.tick > 40);
-    }
-    if (_pending.isNotEmpty && _tick % 40 == 0) {
-      _pending.removeWhere((_, p) => _tick - p.tick > 40);
-    }
-    for (final placed in _placed.values.toList()) {
-      final id = placed.computerId;
-      if (id == null) continue;
-      final computer = _service.computer(id);
-      if (computer == null) continue;
-      if (computer.state != placed.shown) _applyState(server, placed, computer.state);
-      if (computer.isOn != placed.on || computer.label != placed.label) {
-        placed.on = computer.isOn;
-        placed.label = computer.label;
-        _writeEntity(server, placed);
+    if (_ticking) return;
+    _ticking = true;
+    try {
+      if (_removed.isNotEmpty && _tick % 40 == 0) {
+        _removed.removeWhere((_, r) => _tick - r.tick > 40);
       }
+      if (_pending.isNotEmpty && _tick % 40 == 0) {
+        _pending.removeWhere((_, p) => _tick - p.tick > 40);
+      }
+      for (final placed in _placed.values.toList()) {
+        final id = placed.computerId;
+        if (id == null) continue;
+        final computer = _service.computer(id);
+        if (computer == null) continue;
+        if (computer.state != placed.shown) await _applyState(server, placed, computer.state);
+        if (computer.isOn != placed.on || computer.label != placed.label) {
+          placed.on = computer.isOn;
+          placed.label = computer.label;
+          _writeEntity(server, placed);
+        }
+      }
+    } catch (e, s) {
+      logger.error('The computer block tick failed: $e\n$s');
+    } finally {
+      _ticking = false;
     }
   }
 
-  void _applyState(Server server, _Placed placed, ComputerState state) {
+  Future<void> _applyState(Server server, _Placed placed, ComputerState state) async {
     final world = server.getWorldByName(name: placed.location.world);
     if (world == null) return;
     try {
@@ -468,7 +480,7 @@ final class CcWorldComputers {
       final next = _states.withValues(current, {'state': state.name});
       if (next == null) return;
       if (next != current) {
-        world.setBlockState(pos: pos, state: next, updateFlags: const {BlockFlagsFlag.notifyListeners});
+        await world.setBlockState(pos: pos, state: next, updateFlags: const {BlockFlagsFlag.notifyListeners});
       }
       placed.shown = state;
     } finally {

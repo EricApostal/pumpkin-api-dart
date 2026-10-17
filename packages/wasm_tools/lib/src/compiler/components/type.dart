@@ -389,7 +389,8 @@ final class BorrowType implements ValueType {
 }
 
 final class StreamType implements ValueType {
-  final ValueType element;
+  /// The type of the elements, `null` for `stream` without one.
+  final ValueType? element;
 
   StreamType(this.element);
 
@@ -400,7 +401,8 @@ final class StreamType implements ValueType {
 }
 
 final class FutureType implements ValueType {
-  final ValueType element;
+  /// The type of the value the future delivers, `null` for `future` without one.
+  final ValueType? element;
 
   FutureType(this.element);
 

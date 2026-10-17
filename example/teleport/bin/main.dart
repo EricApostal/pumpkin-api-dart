@@ -181,9 +181,9 @@ final class TeleportPlugin extends Plugin {
   }
 
   /// Fails with a message if [player] has to wait before teleporting again.
-  void _checkCooldown(CommandSender sender, Server server, Player player) {
+  Future<void> _checkCooldown(CommandSender sender, Player player) async {
     if (_config.cooldown == Duration.zero) return;
-    if (sender.hasPermission(server: server, node: Perm.bypassCooldown)) return;
+    if (await sender.hasPermission(node: Perm.bypassCooldown)) return;
     final left = _cooldowns.remaining(_uuidOf(player), _config.cooldown);
     if (left != null) {
       final seconds = (left.inMilliseconds / 1000).ceil();
@@ -193,12 +193,12 @@ final class TeleportPlugin extends Plugin {
     }
   }
 
-  void _teleport(Server server, Player player, Location target) {
+  Future<void> _teleport(Server server, Player player, Location target) async {
     final world = server.getWorldByName(name: target.world);
     if (world == null) {
       throw CommandException('The world ${target.world} is not loaded.');
     }
-    player.teleport(
+    await player.teleport(
       position: (target.x, target.y, target.z),
       yaw: target.yaw,
       pitch: target.pitch,
@@ -333,16 +333,13 @@ final class TeleportPlugin extends Plugin {
     );
   }
 
-  int _setHome(CommandSender sender, Server server, String name) {
+  Future<int> _setHome(CommandSender sender, Server server, String name) async {
     final player = _playerOf(sender);
     final uuid = _uuidOf(player);
     _validName(name);
 
     final replacing = _homes.has(uuid, name);
-    final unlimited = sender.hasPermission(
-      server: server,
-      node: Perm.unlimitedHomes,
-    );
+    final unlimited = await sender.hasPermission(node: Perm.unlimitedHomes);
     if (!replacing && !unlimited && _homes.count(uuid) >= _config.maxHomes) {
       throw CommandException(
         'You can only have ${_config.maxHomes} homes. Delete one with /delhome.',
@@ -356,7 +353,7 @@ final class TeleportPlugin extends Plugin {
     return 1;
   }
 
-  int _goHome(CommandSender sender, Server server, String? name) {
+  Future<int> _goHome(CommandSender sender, Server server, String? name) async {
     final player = _playerOf(sender);
     final uuid = _uuidOf(player);
     final homes = _homes.of(uuid);
@@ -381,8 +378,8 @@ final class TeleportPlugin extends Plugin {
     if (target == null) {
       throw CommandException('You have no home called $chosen.');
     }
-    _checkCooldown(sender, server, player);
-    _teleport(server, player, target);
+    await _checkCooldown(sender, player);
+    await _teleport(server, player, target);
     _say(sender, '§aTeleported to home §f$chosen§a.');
     return 1;
   }
@@ -400,14 +397,14 @@ final class TeleportPlugin extends Plugin {
       description: 'Teleports you to a warp',
       permission: Perm.warp,
       argument: 'name',
-      runWithArgument: (sender, server, args) {
+      runWithArgument: (sender, server, args) async {
         final player = _playerOf(sender);
         final name = args.string('name');
         final target = _warps.get(name);
         if (target == null)
           throw CommandException('There is no warp called $name.');
-        _checkCooldown(sender, server, player);
-        _teleport(server, player, target);
+        await _checkCooldown(sender, player);
+        await _teleport(server, player, target);
         _say(sender, '§aWarped to §f$name§a.');
         return 1;
       },
@@ -478,10 +475,10 @@ final class TeleportPlugin extends Plugin {
       names: ['spawn'],
       description: 'Teleports you to the spawn',
       permission: Perm.spawn,
-      run: (sender, server, args) {
+      run: (sender, server, args) async {
         final player = _playerOf(sender);
-        _checkCooldown(sender, server, player);
-        _teleport(server, player, _spawnLocation(server));
+        await _checkCooldown(sender, player);
+        await _teleport(server, player, _spawnLocation(server));
         _say(sender, '§aTeleported to the spawn.');
         return 1;
       },
@@ -639,7 +636,7 @@ final class TeleportPlugin extends Plugin {
     return request;
   }
 
-  int _accept(CommandSender sender, Server server, String? fromName) {
+  Future<int> _accept(CommandSender sender, Server server, String? fromName) async {
     final player = _playerOf(sender);
     final request = _pendingFor(player, fromName);
     final requester = server.getPlayerByUuid(id: Uuids.parse(request.fromUuid));
@@ -651,7 +648,7 @@ final class TeleportPlugin extends Plugin {
     // The player who moves is the one who has to wait.
     final mover = request.kind == TpaKind.to ? requester : player;
     final destination = request.kind == TpaKind.to ? player : requester;
-    if (!sender.hasPermission(server: server, node: Perm.bypassCooldown)) {
+    if (!await sender.hasPermission(node: Perm.bypassCooldown)) {
       final left = _cooldowns.remaining(_uuidOf(mover), _config.cooldown);
       if (left != null) {
         _tell(
@@ -664,7 +661,7 @@ final class TeleportPlugin extends Plugin {
       }
     }
 
-    _teleport(server, mover, _locationOf(destination));
+    await _teleport(server, mover, _locationOf(destination));
     _say(sender, '§aTeleport request accepted.');
     _tell(requester, '§f${player.getName()} §aaccepted your request.');
     return 1;

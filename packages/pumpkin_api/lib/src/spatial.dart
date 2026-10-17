@@ -20,18 +20,19 @@ extension CuboidBlocks on Cuboid {
 }
 
 /// Bulk block changes over a [Cuboid]. The WIT has no bulk call for arbitrary
-/// regions, so these loop over the blocks synchronously: keep regions modest.
+/// regions, so these loop over the blocks, one host call each: keep regions
+/// modest.
 extension WorldFill on World {
   /// Sets every block of [region] to the block state [stateId]. Returns the
   /// number of blocks set. [flags] default to notifying clients.
-  int fill(
+  Future<int> fill(
     Cuboid region,
     int stateId, {
     Set<BlockFlagsFlag> flags = const {BlockFlagsFlag.notifyListeners},
-  }) {
+  }) async {
     var n = 0;
     for (final pos in region.blocks) {
-      setBlockState(pos: pos, state: stateId, updateFlags: flags);
+      await setBlockState(pos: pos, state: stateId, updateFlags: flags);
       n++;
     }
     return n;
@@ -39,29 +40,29 @@ extension WorldFill on World {
 
   /// Fills [region] with the block [key] (`stone`, `minecraft:stone`) using
   /// its default state. Returns false (and changes nothing) if unknown.
-  bool fillBlock(
+  Future<bool> fillBlock(
     Cuboid region,
     String key, {
     Set<BlockFlagsFlag> flags = const {BlockFlagsFlag.notifyListeners},
-  }) {
+  }) async {
     final id = BlockRegistry.resolveState(key);
     if (id == null) return false;
-    fill(region, id, flags: flags);
+    await fill(region, id, flags: flags);
     return true;
   }
 
   /// Replaces blocks in state [from] by [to] inside [region]. Returns the
   /// number replaced.
-  int replace(
+  Future<int> replace(
     Cuboid region,
     int from,
     int to, {
     Set<BlockFlagsFlag> flags = const {BlockFlagsFlag.notifyListeners},
-  }) {
+  }) async {
     var n = 0;
     for (final pos in region.blocks) {
       if (getBlockStateId(pos: pos) == from) {
-        setBlockState(pos: pos, state: to, updateFlags: flags);
+        await setBlockState(pos: pos, state: to, updateFlags: flags);
         n++;
       }
     }

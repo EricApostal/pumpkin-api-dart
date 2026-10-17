@@ -26,10 +26,9 @@ extension IpcApi on Ipc {
   /// Sends raw [message] to [recipient] and returns its reply.
   ///
   /// Throws [IpcException] with [IpcFailure.pluginNotFound] if the plugin is
-  /// not loaded, or [IpcFailure.rejected] if it threw. IPC is synchronous: the
-  /// recipient runs before this returns.
-  List<int> request(String recipient, List<int> message) {
-    final outer = sendIpcMessage(recipient: recipient, message: message);
+  /// not loaded, or [IpcFailure.rejected] if it threw.
+  Future<List<int>> request(String recipient, List<int> message) async {
+    final outer = await sendIpcMessage(recipient: recipient, message: message);
     switch (outer) {
       case ErrorResult():
         throw IpcException(
@@ -53,13 +52,13 @@ extension IpcApi on Ipc {
 
   /// Sends [value] (anything `jsonEncode` accepts) to [recipient] as JSON and
   /// returns the decoded reply (null for an empty reply).
-  Object? requestJson(String recipient, Object? value) =>
-      decodeJsonPayload(request(recipient, encodeJsonPayload(value)));
+  Future<Object?> requestJson(String recipient, Object? value) async =>
+      decodeJsonPayload(await request(recipient, encodeJsonPayload(value)));
 
   /// Like [requestJson], ignoring the reply. Still throws if the recipient is
   /// missing or fails.
-  void sendJson(String recipient, Object? value) {
-    request(recipient, encodeJsonPayload(value));
+  Future<void> sendJson(String recipient, Object? value) async {
+    await request(recipient, encodeJsonPayload(value));
   }
 }
 
@@ -94,21 +93,24 @@ final class IpcChannel<T> {
 
   /// Sends [message] to [recipient] and returns the raw decoded reply.
   /// Throws [IpcException].
-  Object? request(String recipient, T message) {
-    final bytes = ipc.request(recipient, encodeEnvelope(name, _encode(message)));
+  Future<Object?> request(String recipient, T message) async {
+    final bytes = await ipc.request(
+      recipient,
+      encodeEnvelope(name, _encode(message)),
+    );
     return decodeJsonPayload(bytes);
   }
 
   /// Like [request] but converts the reply with [decodeReply].
-  R requestAs<R>(
+  Future<R> requestAs<R>(
     String recipient,
     T message,
     R Function(Object? json) decodeReply,
-  ) => decodeReply(request(recipient, message));
+  ) async => decodeReply(await request(recipient, message));
 
   /// Sends [message], ignoring the reply.
-  void send(String recipient, T message) {
-    request(recipient, message);
+  Future<void> send(String recipient, T message) async {
+    await request(recipient, message);
   }
 
   /// Handles incoming messages of this type. The returned value (JSON

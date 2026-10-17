@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/api.dart';
@@ -26,21 +28,26 @@ final class AnnouncementDisplay {
   ModerationApi? get _moderation => _services.find<ModerationApi>();
 
   /// Whether [player] sees [announcement].
-  bool isVisible(Announcement announcement, Player player) => isVisibleTo(
-    announcement,
-    hasPermission: (node) => player.hasPermission(node: node),
-    worldName: player.getWorld().getName(),
-  );
+  Future<bool> isVisible(Announcement announcement, Player player) =>
+      isVisibleTo(
+        announcement,
+        hasPermission: (node) => player.hasPermission(node: node),
+        worldName: player.getWorld().getName(),
+      );
 
   /// Whether any online player sees [announcement].
-  bool hasAudience(Server server, Announcement announcement) =>
-      server.getAllPlayers().any((p) => isVisible(announcement, p));
+  Future<bool> hasAudience(Server server, Announcement announcement) async {
+    for (final p in server.getAllPlayers()) {
+      if (await isVisible(announcement, p)) return true;
+    }
+    return false;
+  }
 
   /// Shows [announcement] to everybody who may see it.
-  void show(Server server, Announcement announcement) {
+  Future<void> show(Server server, Announcement announcement) async {
     final audience = [
       for (final p in server.getAllPlayers())
-        if (isVisible(announcement, p)) p.uuidString,
+        if (await isVisible(announcement, p)) p.uuidString,
     ];
     if (audience.isEmpty) return;
     final text = _format(server, announcement.text);
@@ -59,7 +66,7 @@ final class AnnouncementDisplay {
           );
         }
       case AnnouncementMode.bossbar:
-        _bossBar(server, announcement, audience, text);
+        await _bossBar(server, announcement, audience, text);
     }
   }
 
@@ -67,26 +74,34 @@ final class AnnouncementDisplay {
   /// to them too. They are looked up again after a moment, because the
   /// join event's player handle must not be given away.
   void playerJoined(Server server, String uuid) {
-    server.after(const Duration(seconds: 1), (server) {
-      final bar = _bar;
-      final announcement = _barAnnouncement;
-      final id = Uuids.tryParse(uuid);
-      if (bar == null || announcement == null || bar.isRemoved || id == null) {
-        return;
-      }
-      final player = server.getPlayerByUuid(id: id);
-      if (player == null || !isVisible(announcement, player)) return;
-      bar.addPlayerById(server, id);
-    });
+    server.after(
+      const Duration(seconds: 1),
+      // Tasks don't wait for their callback, so the work runs on its own.
+      (server) => unawaited(_showBarToJoined(server, uuid)),
+    );
+  }
+
+  Future<void> _showBarToJoined(Server server, String uuid) async {
+    final bar = _bar;
+    final announcement = _barAnnouncement;
+    final id = Uuids.tryParse(uuid);
+    if (bar == null || announcement == null || bar.isRemoved || id == null) {
+      return;
+    }
+    final player = server.getPlayerByUuid(id: id);
+    if (player == null || !await isVisible(announcement, player)) return;
+    if (bar.isRemoved) return;
+    await bar.addPlayerById(server, id);
   }
 
   /// Removes the boss bar and stops repeating action bar messages.
-  void dispose() {
-    _removeBar();
+  Future<void> dispose() async {
+    final removed = _removeBar();
     for (final task in _tasks) {
       task.cancel();
     }
     _tasks.clear();
+    await removed;
   }
 
   // -- Modes -----------------------------------------------------------------
@@ -134,25 +149,28 @@ final class AnnouncementDisplay {
   }
 
   /// One boss bar at a time: a new one replaces the one still showing.
-  void _bossBar(
+  Future<void> _bossBar(
     Server server,
     Announcement announcement,
     List<String> audience,
     String text,
-  ) {
-    _removeBar();
+  ) async {
+    await _removeBar();
     final bar = ManagedBossBar(
       text,
       color:
           BossBarColor.fromWireName(_config.bossBarColor.toLowerCase()) ??
           BossBarColor.yellow,
     );
-    for (final uuid in audience) {
-      final id = Uuids.tryParse(uuid);
-      if (id != null) bar.addPlayerById(server, id);
-    }
     _bar = bar;
     _barAnnouncement = announcement;
+    for (final uuid in audience) {
+      final id = Uuids.tryParse(uuid);
+      // Another announcement may have replaced this bar in the meantime.
+      if (bar.isRemoved) return;
+      if (id != null) await bar.addPlayerById(server, id);
+    }
+    if (bar.isRemoved) return;
     bar.countdown(
       _config.displayTime,
       onFinish: (finished) {
@@ -164,10 +182,11 @@ final class AnnouncementDisplay {
     );
   }
 
-  void _removeBar() {
-    _bar?.remove();
+  Future<void> _removeBar() async {
+    final bar = _bar;
     _bar = null;
     _barAnnouncement = null;
+    await bar?.remove();
   }
 
   // -- Helpers ---------------------------------------------------------------

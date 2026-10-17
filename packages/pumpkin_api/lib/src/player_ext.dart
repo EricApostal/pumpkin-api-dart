@@ -87,11 +87,11 @@ extension PlayerEnderChest on Player {
   /// Fills the ender chest from [items] (null clears a slot; extra items are
   /// ignored, missing ones leave their slot unchanged). The stacks are
   /// consumed: do not use them afterwards.
-  void setEnderChestItems(Iterable<ItemStack?> items) {
+  Future<void> setEnderChestItems(Iterable<ItemStack?> items) async {
     var slot = 0;
     for (final item in items) {
       if (slot >= enderChestSize) break;
-      setEnderChestItem(slot: slot++, stack: item);
+      await setEnderChestItem(slot: slot++, stack: item);
     }
   }
 }

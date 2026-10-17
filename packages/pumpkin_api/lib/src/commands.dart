@@ -12,11 +12,10 @@ export 'command_help.dart' show CommandException, UsageException;
 /// for success by convention, or throw a [CommandException] to report a
 /// failure to the sender.
 ///
-/// The handler may be `async`. The server can't wait for it though, so a
-/// handler that is still running after its first `await` reports success
-/// right away, and any error it hits later is logged. Don't use [sender] or
-/// [server] after an `await`: they are only valid until the handler first
-/// yields.
+/// The handler may be `async`, and the server waits for the host calls it
+/// awaits. It can't wait for a timer though: a handler that is still waiting
+/// for one reports success right away, and any error it hits later is logged.
+/// Don't use [sender] or [server] after such a wait.
 typedef CommandHandler =
     FutureOr<int> Function(
       CommandSender sender,
@@ -26,7 +25,7 @@ typedef CommandHandler =
 
 /// Computes tab completions for an argument.
 typedef SuggestionHandler =
-    CommandSuggestions Function(
+    FutureOr<CommandSuggestions> Function(
       CommandSender sender,
       Server server,
       SuggestionRequest request,

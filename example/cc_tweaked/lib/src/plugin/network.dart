@@ -29,8 +29,9 @@ final class ComputerSession {
   final ComputerInput input;
 
   /// The block the computer stands in: the menu closes when the player walks
-  /// away from it (`stillValid`). `null` for a pocket computer.
-  final ComputerLocation? at;
+  /// away from it (`stillValid`). `null` for a pocket computer. A turtle's
+  /// moves update it ([CcNetwork.relocate]).
+  ComputerLocation? at;
 
   final UploadAssembler uploads = UploadAssembler();
   TerminalState? lastSent;
@@ -56,6 +57,9 @@ final class CcNetwork {
   final CcRegistryIds _ids = CcRegistryIds();
   final List<(String, int)> _pendingConsumed = [];
   int _ticks = 0;
+
+  /// Whether a [tick] is still waiting for the host.
+  bool _ticking = false;
 
   /// Whether a player's connection can open CC's GUI: it answered the
   /// NeoForge handshake and registered CC's channels. The plugin sets it when
@@ -140,9 +144,9 @@ final class CcNetwork {
       final session = _sessionFor(player, message.containerId);
       session?.input.paste(String.fromCharCodes(message.text));
     });
-    _upload.listen(context, (player, message) {
+    _upload.listen(context, (player, message) async {
       final session = _sessionFor(player, message.containerId);
-      if (session != null) _receiveUpload(player, session, message);
+      if (session != null) await _receiveUpload(player, session, message);
     });
     context.listen(Events.menuClosed, (server, event) {
       final uuid = event.player.getId().asString;
@@ -161,13 +165,13 @@ final class CcNetwork {
 
   // -- Uploads (`ServerInputState.startUpload` / `finishUpload`) ------------------
 
-  void _receiveUpload(Player player, ComputerSession session, UploadFileMessage message) {
+  Future<void> _receiveUpload(Player player, ComputerSession session, UploadFileMessage message) async {
     final List<UploadedFile>? files;
     try {
       files = session.uploads.accept(message);
     } on StateError catch (e) {
       logger.warn('${player.getName()}: upload rejected: ${e.message}');
-      _sendUploadResult(
+      await _sendUploadResult(
         player,
         UploadResultMessage(
           session.containerId,
@@ -186,12 +190,12 @@ final class CcNetwork {
         () => _pendingConsumed.add((uuid, containerId)),
       ),
     ]);
-    _sendUploadResult(player, UploadResultMessage(containerId, UploadResultKind.queued));
+    await _sendUploadResult(player, UploadResultMessage(containerId, UploadResultKind.queued));
   }
 
-  void _sendUploadResult(Player player, UploadResultMessage message) {
+  Future<void> _sendUploadResult(Player player, UploadResultMessage message) async {
     try {
-      _uploadResult.send(player, message);
+      await _uploadResult.send(player, message);
     } on UnsupportedError {
       // A Bedrock player: nothing to tell.
     }
@@ -207,7 +211,7 @@ final class CcNetwork {
 
   /// The stack `ComputerContainerData` carries (what `collectSafeComponents`
   /// of the block entity gives): the item with the computer's id and label.
-  WireItemStack displayStack(String itemName, Computer computer) {
+  WireItemStack displayStack(String itemName, Computer computer, [List<ComponentEntry> extra = const []]) {
     final customName = VanillaRegistries.require('minecraft:data_component_type').indexOf('minecraft:custom_name');
     final label = computer.label;
     return WireItemStack(
@@ -215,9 +219,13 @@ final class CcNetwork {
       components: [
         ComponentEntry.varInt(_ids.idOf('minecraft:data_component_type', 'computer_id'), computer.id),
         if (label != null && customName >= 0) ComponentEntry.text(customName, NbtText.literal(label)),
+        ...extra,
       ],
     );
   }
+
+  /// The numeric id of CC's data component type [name] (`left_turtle_upgrade`).
+  int componentTypeId(String name) => _ids.idOf('minecraft:data_component_type', name);
 
   /// Opens the GUI of [computer] for [player] and returns the container id, or
   /// `null` when the player's connection cannot show it.
@@ -230,7 +238,9 @@ final class CcNetwork {
   ///
   /// [itemName] names the item of the display stack (`computer_advanced`,
   /// `pocket_computer_normal`, ...), [menu] the menu type key, [at] the block
-  /// the player must stay near.
+  /// the player must stay near. A menu with slots of its own (the turtle's)
+  /// passes [slots] (the number the host tracks) and [extraComponents] for the
+  /// display stack.
   int? open(
     Player player,
     Computer computer, {
@@ -239,6 +249,8 @@ final class CcNetwork {
     String? titleKey,
     ComputerLocation? at,
     bool turnOn = true,
+    int slots = 0,
+    List<ComponentEntry> extraComponents = const [],
   }) {
     if (!canOpenGui(player)) return null;
     final uuid = player.getId().asString;
@@ -249,10 +261,10 @@ final class CcNetwork {
     final data = ComputerContainerData(
       family: advanced ? WireFamily.advanced : WireFamily.normal,
       terminal: terminal,
-      displayStack: displayStack(item, computer),
+      displayStack: displayStack(item, computer, extraComponents),
     );
     final key = titleKey ?? (item.startsWith('pocket_') ? 'item.computercraft.$item' : 'block.computercraft.$item');
-    final containerId = player.openPluginMenu(menu, titleOf(computer.label, key), extraData: data.encode());
+    final containerId = player.openPluginMenu(menu, titleOf(computer.label, key), extraData: data.encode(), slots: slots);
     final session = ComputerSession(
       uuid,
       computer,
@@ -282,6 +294,13 @@ final class CcNetwork {
     _sessions.remove(playerUuid)?.input.releaseInputs();
   }
 
+  /// A turtle moved: its open GUIs now need the player near [location].
+  void relocate(int computerId, ComputerLocation location) {
+    for (final session in _sessions.values) {
+      if (session.computer.id == computerId && session.at != null) session.at = location;
+    }
+  }
+
   /// Closes the menus of every player that has [computerId] open (its block
   /// was removed or its chunk unloaded).
   void closeAllFor(Server server, int computerId) {
@@ -302,27 +321,38 @@ final class CcNetwork {
 
   /// Sends changed terminals and the power state to the players looking at them
   /// (every other tick), and closes menus that are no longer valid.
-  void tick(Server server) {
-    if (_sessions.isEmpty) return;
-    if (_pendingConsumed.isNotEmpty) _flushConsumed(server);
-    if (++_ticks % 2 != 0) return;
-    for (final session in _sessions.values.toList()) {
-      final player = server.getPlayerByUuid(id: Uuids.parse(session.playerUuid));
-      if (player == null) {
-        close(session.playerUuid);
-        continue;
+  ///
+  /// The sends wait for the host: a tick that comes while the previous one is
+  /// still sending is skipped.
+  Future<void> tick(Server server) async {
+    if (_sessions.isEmpty || _ticking) return;
+    _ticking = true;
+    try {
+      if (_pendingConsumed.isNotEmpty) await _flushConsumed(server);
+      if (++_ticks % 2 != 0) return;
+      for (final session in _sessions.values.toList()) {
+        final player = server.getPlayerByUuid(id: Uuids.parse(session.playerUuid));
+        if (player == null) {
+          close(session.playerUuid);
+          continue;
+        }
+        try {
+          await _tickSession(player, session);
+        } on UnsupportedError {
+          close(session.playerUuid);
+        } finally {
+          player.dispose();
+        }
       }
-      try {
-        _tickSession(player, session);
-      } on UnsupportedError {
-        close(session.playerUuid);
-      } finally {
-        player.dispose();
-      }
+    } catch (e, s) {
+      // Nobody awaits the tick (see plugin.dart): log instead of losing the error.
+      logger.error('The network tick failed: $e\n$s');
+    } finally {
+      _ticking = false;
     }
   }
 
-  void _tickSession(Player player, ComputerSession session) {
+  Future<void> _tickSession(Player player, ComputerSession session) async {
     // The menu is only valid while the computer exists and the player is near.
     final at = session.at;
     var valid = !session.computer.isClosed;
@@ -347,20 +377,20 @@ final class CcNetwork {
     final state = TerminalState.of(session.computer.terminal);
     final last = session.lastSent;
     if (last == null || !last.sameAs(state)) {
-      _terminal.send(player, ComputerTerminalMessage(session.containerId, state));
+      await _terminal.send(player, ComputerTerminalMessage(session.containerId, state));
       session.lastSent = state;
     }
     if (session.lastOn != session.computer.isOn) _sendOn(player, session);
   }
 
-  void _flushConsumed(Server server) {
+  Future<void> _flushConsumed(Server server) async {
     final pending = List.of(_pendingConsumed);
     _pendingConsumed.clear();
     for (final (uuid, containerId) in pending) {
       final player = server.getPlayerByUuid(id: Uuids.parse(uuid));
       if (player == null) continue;
       try {
-        _sendUploadResult(player, UploadResultMessage(containerId, UploadResultKind.consumed));
+        await _sendUploadResult(player, UploadResultMessage(containerId, UploadResultKind.consumed));
       } finally {
         player.dispose();
       }

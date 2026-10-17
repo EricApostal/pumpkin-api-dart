@@ -65,15 +65,15 @@ String normalizeWorld(String name) {
 }
 
 /// Whether a player with [hasPermission] in [worldName] sees [announcement].
-bool isVisibleTo(
+Future<bool> isVisibleTo(
   Announcement announcement, {
-  required bool Function(String node) hasPermission,
+  required Future<bool> Function(String node) hasPermission,
   required String worldName,
-}) {
+}) async {
   final permission = announcement.permission;
   if (permission != null &&
       permission.isNotEmpty &&
-      !hasPermission(permission)) {
+      !await hasPermission(permission)) {
     return false;
   }
   final world = announcement.world;
@@ -153,7 +153,9 @@ final class AnnouncementService {
   /// The announcement to show now if one is due, otherwise `null`.
   /// [hasAudience] says whether anybody would see an entry, so entries nobody
   /// can see are skipped. A due turn with nobody to show is used up.
-  Announcement? poll({required bool Function(Announcement) hasAudience}) {
+  Future<Announcement?> poll({
+    required Future<bool> Function(Announcement) hasAudience,
+  }) async {
     if (!_config.enabled || _config.messages.isEmpty) return null;
     final now = _clock.now();
     if (now.difference(_lastRun) < _config.interval) return null;
@@ -163,18 +165,23 @@ final class AnnouncementService {
 
   /// The next announcement right now, for `/announcements next`. The timer
   /// starts over.
-  Announcement? next({required bool Function(Announcement) hasAudience}) {
+  Future<Announcement?> next({
+    required Future<bool> Function(Announcement) hasAudience,
+  }) async {
     if (_config.messages.isEmpty) return null;
     _lastRun = _clock.now();
     return _pick(hasAudience);
   }
 
-  Announcement? _pick(bool Function(Announcement) hasAudience) {
+  Future<Announcement?> _pick(
+    Future<bool> Function(Announcement) hasAudience,
+  ) async {
     final messages = _config.messages;
+    final audience = [for (final m in messages) await hasAudience(m)];
     final index = _rotation.next(
       messages.length,
       shuffle: _config.random,
-      eligible: (i) => hasAudience(messages[i]),
+      eligible: (i) => audience[i],
     );
     return index == null ? null : messages[index];
   }

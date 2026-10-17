@@ -1,3 +1,4 @@
+import 'dart:async';
 // Binding-free building blocks of the command API: the command tree model,
 // usage and help text, argument parsers, suggestion filtering and the cooldown
 // tracker. Nothing here imports the WIT bindings, so it runs (and is tested)
@@ -220,12 +221,12 @@ final class CommandRegistry {
 ///
 /// [command] limits it to one command. [canUse] decides whether the sender
 /// may see a line, given the permission nodes along its path.
-List<String> helpLines(
+Future<List<String>> helpLines(
   CommandRegistry registry, {
   String? command,
-  bool Function(List<String> permissions)? canUse,
+  FutureOr<bool> Function(List<String> permissions)? canUse,
   Set<String> hidden = const {},
-}) {
+}) async {
   final roots = [
     for (final root in registry.roots)
       if (!hidden.contains(root.name) &&
@@ -235,7 +236,7 @@ List<String> helpLines(
   final lines = <String>[];
   for (final root in roots) {
     for (final path in commandPaths(root)) {
-      if (canUse != null && !canUse(path.permissions)) continue;
+      if (canUse != null && !await canUse(path.permissions)) continue;
       final description = path.description;
       lines.add(
         description == null || description.isEmpty

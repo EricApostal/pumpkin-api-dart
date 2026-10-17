@@ -2,6 +2,7 @@ import 'package:dart_mappable/dart_mappable.dart' show MapperException;
 
 import '../core/api.dart';
 import '../core/clock.dart';
+import '../core/lock.dart';
 import '../core/storage.dart';
 import 'catalog.dart';
 import 'model.dart';
@@ -18,24 +19,24 @@ const ledgerPath = 'shop/ledger.json';
 /// durability damage are never sold, and only plain stacks are topped up.
 abstract interface class ItemBag {
   /// How many more items of [key] fit.
-  int spaceFor(String key);
+  Future<int> spaceFor(String key);
 
   /// How many sellable items of [key] there are.
-  int countOf(String key);
+  Future<int> countOf(String key);
 
   /// Puts [count] items of [key] in, returns how many did **not** fit.
-  int add(String key, int count);
+  Future<int> add(String key, int count);
 
   /// Takes up to [count] sellable items of [key] out, returns how many were
   /// taken.
-  int remove(String key, int count);
+  Future<int> remove(String key, int count);
 }
 
 /// A player doing business with the shop.
 abstract interface class Shopper {
   String get uuid;
   String get name;
-  bool hasPermission(String node);
+  Future<bool> hasPermission(String node);
   ItemBag get bag;
 }
 
@@ -169,13 +170,17 @@ final class ShopService {
   final JsonDocument<ShopCatalog> _catalogDoc;
   final JsonDocument<ShopConfig> _configDoc;
   final JsonDocument<Ledger> _ledgerDoc;
-  final bool Function(String key) isKnownItem;
+  final Future<bool> Function(String key) isKnownItem;
   final LogSink _warn;
+
+  /// Trades of one player run one after another, so two quick clicks can not
+  /// both pass the checks before the first has been paid.
+  final KeyedLock _tradeLock = KeyedLock();
 
   Catalog _catalog = Catalog(const []);
   List<String> _problems = const [];
 
-  ShopService({
+  ShopService._({
     required this.economy,
     required this.clock,
     required JsonDocument<ShopCatalog> catalog,
@@ -186,8 +191,29 @@ final class ShopService {
   }) : _catalogDoc = catalog,
        _configDoc = config,
        _ledgerDoc = ledger,
-       _warn = warn ?? ((_) {}) {
-    _rebuild();
+       _warn = warn ?? ((_) {});
+
+  /// Creates the service and validates the catalog.
+  static Future<ShopService> create({
+    required Economy economy,
+    required Clock clock,
+    required JsonDocument<ShopCatalog> catalog,
+    required JsonDocument<ShopConfig> config,
+    required JsonDocument<Ledger> ledger,
+    required Future<bool> Function(String key) isKnownItem,
+    LogSink? warn,
+  }) async {
+    final service = ShopService._(
+      economy: economy,
+      clock: clock,
+      catalog: catalog,
+      config: config,
+      ledger: ledger,
+      isKnownItem: isKnownItem,
+      warn: warn,
+    );
+    await service._rebuild();
+    return service;
   }
 
   Catalog get catalog => _catalog;
@@ -198,8 +224,11 @@ final class ShopService {
 
   List<LedgerEntry> get ledger => _ledgerDoc.value.entries;
 
-  void _rebuild() {
-    final report = validateCatalog(_catalogDoc.value, isKnownItem: isKnownItem);
+  Future<void> _rebuild() async {
+    final report = await validateCatalog(
+      _catalogDoc.value,
+      isKnownItem: isKnownItem,
+    );
     _catalog = report.catalog;
     _problems = report.problems;
   }
@@ -234,12 +263,22 @@ final class ShopService {
   /// Sells [amount] of [entry] to [who]. With [expectedCost] the purchase is
   /// refused if it would cost something else (the price changed while the
   /// player was confirming).
-  TradeResult buy(
+  Future<TradeResult> buy(
     Shopper who,
     ShopEntry entry,
     int amount, {
     int? expectedCost,
-  }) {
+  }) => _tradeLock.run(
+    who.uuid,
+    () => _buy(who, entry, amount, expectedCost: expectedCost),
+  );
+
+  Future<TradeResult> _buy(
+    Shopper who,
+    ShopEntry entry,
+    int amount, {
+    int? expectedCost,
+  }) async {
     TradeResult fail(TradeFailure failure, {int detail = 0}) =>
         TradeResult.failed(
           TradeKind.buy,
@@ -253,14 +292,14 @@ final class ShopService {
       return fail(TradeFailure.invalidAmount);
     }
     final permission = entry.permission;
-    if (permission != null && !who.hasPermission(permission)) {
+    if (permission != null && !await who.hasPermission(permission)) {
       return fail(TradeFailure.noPermission);
     }
     final cost = buyCost(entry, amount);
     if (expectedCost != null && expectedCost != cost) {
       return fail(TradeFailure.priceChanged);
     }
-    final room = who.bag.spaceFor(entry.item);
+    final room = await who.bag.spaceFor(entry.item);
     if (room < amount) return fail(TradeFailure.noSpace, detail: room);
 
     final paid = economy.withdraw(
@@ -276,7 +315,7 @@ final class ShopService {
 
     var notDelivered = amount;
     try {
-      notDelivered = who.bag.add(entry.item, amount);
+      notDelivered = await who.bag.add(entry.item, amount);
     } catch (e) {
       _warn('Could not give ${entry.item} x$amount to ${who.name}: $e');
     }
@@ -307,7 +346,10 @@ final class ShopService {
   }
 
   /// Buys [amount] of [entry] from [who].
-  TradeResult sell(Shopper who, ShopEntry entry, int amount) {
+  Future<TradeResult> sell(Shopper who, ShopEntry entry, int amount) =>
+      _tradeLock.run(who.uuid, () => _sell(who, entry, amount));
+
+  Future<TradeResult> _sell(Shopper who, ShopEntry entry, int amount) async {
     TradeResult fail(TradeFailure failure, {int detail = 0}) =>
         TradeResult.failed(
           TradeKind.sell,
@@ -321,21 +363,21 @@ final class ShopService {
       return fail(TradeFailure.invalidAmount);
     }
     final permission = entry.permission;
-    if (permission != null && !who.hasPermission(permission)) {
+    if (permission != null && !await who.hasPermission(permission)) {
       return fail(TradeFailure.noPermission);
     }
     final price = sellPriceOf(entry);
     if (price == null) return fail(TradeFailure.notForSale);
-    final have = who.bag.countOf(entry.item);
+    final have = await who.bag.countOf(entry.item);
     if (have < amount) return fail(TradeFailure.nothingToSell, detail: have);
 
     var removed = 0;
     try {
-      removed = who.bag.remove(entry.item, amount);
+      removed = await who.bag.remove(entry.item, amount);
     } catch (e) {
       _warn('Could not take ${entry.item} x$amount from ${who.name}: $e');
       // Pay for whatever really left the inventory.
-      removed = have - who.bag.countOf(entry.item);
+      removed = have - await who.bag.countOf(entry.item);
     }
     if (removed <= 0) return fail(TradeFailure.deliveryFailed);
 
@@ -359,19 +401,22 @@ final class ShopService {
   }
 
   /// Sells everything [who] carries that the shop buys.
-  BulkSale sellAll(Shopper who) {
+  Future<BulkSale> sellAll(Shopper who) =>
+      _tradeLock.run(who.uuid, () => _sellAll(who));
+
+  Future<BulkSale> _sellAll(Shopper who) async {
     final sales = <TradeResult>[];
     var skipped = 0;
     final seen = <String>{};
     for (final category in catalog.categories) {
       for (final entry in category.entries) {
         if (!seen.add(entry.item)) continue;
-        final have = who.bag.countOf(entry.item);
+        final have = await who.bag.countOf(entry.item);
         if (have == 0) continue;
         // A single trade is capped, so large piles are sold in several.
         var left = have;
         while (left > 0) {
-          final result = sell(who, entry, left.clamp(1, maxTradeAmount));
+          final result = await _sell(who, entry, left.clamp(1, maxTradeAmount));
           if (!result.isOk) {
             skipped++;
             break;
@@ -414,7 +459,7 @@ final class ShopService {
 
   /// Re-reads the catalog and the config from [backend]. A file that can not
   /// be parsed is reported and the shop keeps what it had.
-  ReloadReport reload(StorageBackend backend) {
+  Future<ReloadReport> reload(StorageBackend backend) async {
     try {
       final catalogText = backend.read(catalogPath);
       final configText = backend.read(configPath);
@@ -431,7 +476,7 @@ final class ShopService {
     } on FormatException catch (e) {
       return ReloadReport.failed('A shop file is not valid JSON: $e');
     }
-    _rebuild();
+    await _rebuild();
     return ReloadReport.ok(
       _catalog.categories.length,
       _catalog.entryCount,
@@ -441,13 +486,13 @@ final class ShopService {
 
   /// Sets the buy price of [item] in every category it is listed in. [sell]
   /// replaces the sell price when given (`0` stops the shop buying it).
-  void setPrice(String item, int buy, {int? sell}) {
+  Future<void> setPrice(String item, int buy, {int? sell}) async {
     if (buy < 1) throw const ShopException('The buy price must be at least 1.');
     if (sell != null && sell < 0) {
       throw const ShopException('The sell price can not be negative.');
     }
     final key = normalizeItemKey(item);
-    final changed = _editEntries(
+    final changed = await _editEntries(
       key,
       (entry) => entry.copyWith(buy: buy, sell: sell ?? entry.sell),
     );
@@ -457,10 +502,15 @@ final class ShopService {
   }
 
   /// Lists [item] in the category [categoryId].
-  void addItem(String categoryId, String item, int buy, {int? sell}) {
+  Future<void> addItem(
+    String categoryId,
+    String item,
+    int buy, {
+    int? sell,
+  }) async {
     final key = normalizeItemKey(item);
     final entry = ShopEntry(item: shortItemKey(key), buy: buy, sell: sell);
-    final problem = entryProblem(entry, isKnownItem);
+    final problem = await entryProblem(entry, isKnownItem);
     if (problem != null) {
       throw ShopException('Can not add ${shortItemKey(key)}: $problem.');
     }
@@ -482,20 +532,23 @@ final class ShopService {
       categories: [...categories]
         ..[index] = category.copyWith(entries: [...category.entries, entry]),
     );
-    _commit();
+    await _commit();
   }
 
   /// Removes [item] from every category.
-  void removeItem(String item) {
+  Future<void> removeItem(String item) async {
     final key = normalizeItemKey(item);
-    if (_editEntries(key, (_) => null) == 0) {
+    if (await _editEntries(key, (_) => null) == 0) {
       throw ShopException('${shortItemKey(key)} is not in the shop.');
     }
   }
 
   /// Replaces every entry of the item [key] with `change(entry)` (or removes
   /// it when that is `null`) and returns how many entries matched.
-  int _editEntries(String key, ShopEntry? Function(ShopEntry entry) change) {
+  Future<int> _editEntries(
+    String key,
+    ShopEntry? Function(ShopEntry entry) change,
+  ) async {
     var matched = 0;
     final categories = <ShopCategory>[];
     for (final category in _catalogDoc.value.categories) {
@@ -513,15 +566,15 @@ final class ShopService {
     }
     if (matched > 0) {
       _catalogDoc.value = ShopCatalog(categories: categories);
-      _commit();
+      await _commit();
     }
     return matched;
   }
 
   /// Rebuilds the catalog and writes the change to disk: an admin edit should
   /// survive a crash.
-  void _commit() {
-    _rebuild();
+  Future<void> _commit() async {
+    await _rebuild();
     _catalogDoc.save();
   }
 }

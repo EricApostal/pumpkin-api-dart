@@ -32,6 +32,10 @@ pub struct FunctionOptions {
     /// through `realloc`.
     pub needs_realloc: bool,
     pub uses_callback: bool,
+    /// An import that is lowered with the `async` canonical option: it returns a
+    /// status word and completes later.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub async_lower: bool,
     /// Only set on lifted (export) functions, a function to clean up temporary values allocated by
     /// this function.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -935,6 +939,7 @@ impl WorldGenerator for DartWorldGenerator {
                     &mut self.main,
                     FunctionMode::Exported(ExportedFunctionMode {
                         instance: &mut export,
+                        is_async,
                         async_return_name: &async_return_name,
                         async_return_params: &mut async_return_params,
                     }),
@@ -951,17 +956,19 @@ impl WorldGenerator for DartWorldGenerator {
 
                 if is_async {
                     let components = generator.dart.import(KnownDartUri::PkgWasmComponents);
+                    let cleanups = if generator.needs_cleanup_list {
+                        "final _cleanups = <void Function()>[];"
+                    } else {
+                        ""
+                    };
 
                     uwriteln!(
                         def,
                         "{{
-final task = {components}.Task.spawn(
-  run: () async {{
-    {body}
-  }},
-  debugName: '{name}',
-);
-return task.finishEventLoopIteration().toWasmI32();
+return {components}.spawnAsyncExport('{name}', (_task) async {{
+{cleanups}
+{body}
+}});
 }}"
                     );
                 } else {
@@ -994,7 +1001,7 @@ return task.finishEventLoopIteration().toWasmI32();
                     uwrite!(def, ";")
                 }
 
-                if guest_export_needs_post_return(resolve, function) {
+                if !is_async && guest_export_needs_post_return(resolve, function) {
                     let mut generator = DartFunctionGenerator::new(
                         &self.size_align,
                         &mut self.main,
@@ -1078,6 +1085,7 @@ return task.finishEventLoopIteration().toWasmI32();
                 &mut self.main,
                 FunctionMode::ExportedFunc(ExportedFuncMode {
                     field_name: &pending.field_name,
+                    is_async,
                     async_return_name: &async_return_name,
                     async_return_params: &mut async_return_params,
                 }),
@@ -1094,17 +1102,19 @@ return task.finishEventLoopIteration().toWasmI32();
 
             if is_async {
                 let components = generator.dart.import(KnownDartUri::PkgWasmComponents);
+                let cleanups = if generator.needs_cleanup_list {
+                    "final _cleanups = <void Function()>[];"
+                } else {
+                    ""
+                };
 
                 uwriteln!(
                     def,
                     "{{
-final task = {components}.Task.spawn(
-  run: () async {{
-    {body}
-  }},
-  debugName: '{}',
-);
-return task.finishEventLoopIteration().toWasmI32();
+return {components}.spawnAsyncExport('{}', (_task) async {{
+{cleanups}
+{body}
+}});
 }}",
                     function.name
                 );
@@ -1138,7 +1148,7 @@ return task.finishEventLoopIteration().toWasmI32();
                 uwrite!(def, ";")
             }
 
-            if guest_export_needs_post_return(resolve, function) {
+            if !is_async && guest_export_needs_post_return(resolve, function) {
                 let mut generator = DartFunctionGenerator::new(
                     &self.size_align,
                     &mut self.main,

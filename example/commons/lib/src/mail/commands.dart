@@ -209,7 +209,7 @@ final class MailCommands {
 
   // -- Sending ---------------------------------------------------------------
 
-  void _send(CommandContext ctx) {
+  Future<void> _send(CommandContext ctx) async {
     final from = ctx.player;
     final name = ctx.string('player');
     final to =
@@ -221,7 +221,7 @@ final class MailCommands {
       toUuid: to.uuid,
       toName: to.name,
       text: ctx.string('message'),
-      bypassCooldown: ctx.hasPermission(MailPerms.bypass.node),
+      bypassCooldown: await ctx.hasPermission(MailPerms.bypass.node),
     );
     final mail = result.message;
     if (mail == null) ctx.fail(_failureText(result, to.name));

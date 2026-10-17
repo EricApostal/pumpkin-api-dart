@@ -15,7 +15,6 @@ BlockDefinition wardframe([String key = 'lonsdaleite:lonsdaleite_wardframe']) =>
       soundType: 'amethyst',
       luminance: 7,
       canOcclude: false,
-      suffocating: false,
       connectRules: [
         for (final s in _sides)
           ConnectRule(

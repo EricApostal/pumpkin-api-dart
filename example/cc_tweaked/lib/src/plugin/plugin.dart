@@ -1,17 +1,22 @@
 // The Pumpkin plugin: loads the service, installs the command, the network
 // side and the optional NeoForge handshake, and drives the computers from the
 // server tick.
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:pumpkin_neoforge/pumpkin_neoforge.dart';
 
+import '../protocol/datapack_registries.dart';
 import '../protocol/registries.dart';
 import 'block_install.dart';
 import 'block_states.dart';
 import 'commands.dart';
+import 'neoforge_install.dart';
 import 'network.dart';
 import 'registry_install.dart';
 import 'service.dart';
 import 'world_computers.dart';
+import 'world_turtles.dart';
 
 /// How often the in-game clock is read from the world, in ticks.
 const int _timeSyncInterval = 100;
@@ -29,8 +34,9 @@ const Set<String> _singleItems = {
 
 final class CcTweakedPlugin extends Plugin {
   late CcService _service;
-  NeoForgeServer? _neoForge;
+  CcNeoForgeServer? _neoForge;
   CcWorldComputers? _world;
+  CcWorldTurtles? _turtles;
   int _tick = 0;
 
   @override
@@ -53,7 +59,17 @@ final class CcTweakedPlugin extends Plugin {
     _service = CcService.load(context.files);
     final network = CcNetwork()..install(context);
     registerCommands(context, _service, network);
-    _installNeoForge(context);
+    // The datapack registries of the mod (turtle and pocket upgrades) come from the
+    // jar's data pack; the client's creative tab and the turtles' ids need them.
+    final datapack = CcDatapackRegistries.load(_service.image.archive);
+    for (final note in datapack.notes) {
+      logger.warn('CC datapack registries: $note');
+    }
+    logger.info(
+      'Datapack registries: ${datapack.turtleUpgrades.entries.length} turtle upgrades, '
+      '${datapack.pocketUpgrades.entries.length} pocket upgrades.',
+    );
+    _installNeoForge(context, datapack);
     final neoForge = _neoForge;
     if (neoForge != null) {
       network.canOpenGui = (player) {
@@ -69,15 +85,20 @@ final class CcTweakedPlugin extends Plugin {
       _registerItems();
       final blocks = _registerBlocks();
       _registerRegistries();
-      final world = CcWorldComputers(_service, network, CcBlockStates(blocks))..install(context);
+      final states = CcBlockStates(blocks);
+      final world = CcWorldComputers(_service, network, states)..install(context);
       _world = world;
+      _turtles = CcWorldTurtles(_service, network, states, datapack)..install(context);
     }
 
     context.runRepeating(1, (server) {
       if (_tick++ % _timeSyncInterval == 0) _syncWorldTime(server);
       _service.tick();
-      _world?.tick(server);
-      network.tick(server);
+      // These ticks wait for the host and skip a tick that comes while one still
+      // runs, so they are not awaited here: the rest of the tick goes on.
+      unawaited(_world?.tick(server));
+      unawaited(_turtles?.tick(server));
+      unawaited(network.tick(server));
     });
     context.onUnload(_service.shutdown);
     logger.info('CC: Tweaked server side loaded.');
@@ -195,7 +216,7 @@ final class CcTweakedPlugin extends Plugin {
   /// Only one plugin per server may do this: a server that also runs another
   /// NeoForge mod's plugin (Lonsdaleite) needs one plugin that owns the spec
   /// of both (README.md, "Combining with other NeoForge plugins").
-  void _installNeoForge(Context context) {
+  void _installNeoForge(Context context, CcDatapackRegistries datapack) {
     if (!_service.pluginConfig.neoForge) return;
     final version = _service.image.modVersion;
     if (version == null) {
@@ -204,8 +225,9 @@ final class CcTweakedPlugin extends Plugin {
         '(the version string of its network channels) is unknown, using 1.120.3.',
       );
     }
-    final server = NeoForgeServer(
+    final server = CcNeoForgeServer(
       CcRegistries.serverSpec(version ?? '1.120.3'),
+      datapack,
       options: const NeoForgeServerOptions(
         negotiation: NeoForgeNegotiation.full,
         nonNeoForge: NonNeoForgePolicy.allow,

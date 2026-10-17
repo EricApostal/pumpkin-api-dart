@@ -93,17 +93,15 @@ final class ChatCommands {
 
   // -- Tab completion --------------------------------------------------------
 
-  /// Players that are online, without the sender, and without vanished ones
-  /// unless the sender may see them.
-  Iterable<String> _onlineNames(SuggestionContext s) {
-    final seeVanished = s.hasPermission(ChatPerms.seeVanished.node);
-    return [
-      for (final p in s.server.getAllPlayers())
-        if (p.getName() != s.senderName &&
-            (seeVanished || !_isVanished(p.uuidString)))
-          p.getName(),
-    ];
-  }
+  /// Players that are online, without the sender and without vanished ones.
+  /// Suggestions are synchronous and the permission check is not, so staff
+  /// who may see vanished players don't get them suggested (the command
+  /// still accepts them).
+  Iterable<String> _onlineNames(SuggestionContext s) => [
+    for (final p in s.server.getAllPlayers())
+      if (p.getName() != s.senderName && !_isVanished(p.uuidString))
+        p.getName(),
+  ];
 
   Iterable<String> _knownNames(SuggestionContext s) =>
       _players.names.where((name) => name != s.senderName);
@@ -112,17 +110,17 @@ final class ChatCommands {
 
   // -- Private messages ------------------------------------------------------
 
-  void _message(CommandContext ctx) {
+  Future<void> _message(CommandContext ctx) async {
     final name = ctx.string('player');
-    final seeVanished = ctx.hasPermission(ChatPerms.seeVanished.node);
+    final seeVanished = await ctx.hasPermission(ChatPerms.seeVanished.node);
     final target = onlinePlayerByName(ctx.server, name);
     if (target == null || (!seeVanished && _isVanished(target.uuidString))) {
       ctx.fail(_messages['error.offline'].format({'name': name}));
     }
-    _deliver(ctx, target, ctx.string('message'));
+    await _deliver(ctx, target, ctx.string('message'));
   }
 
-  void _reply(CommandContext ctx) {
+  Future<void> _reply(CommandContext ctx) async {
     final partner =
         _service.conversations.lastPartner(ctx.player.uuidString) ??
         ctx.fail(_messages['error.noReply'].format());
@@ -133,14 +131,14 @@ final class ChatCommands {
             'name': _players.nameOf(partner) ?? 'That player',
           }),
         );
-    _deliver(ctx, target, ctx.string('message'));
+    await _deliver(ctx, target, ctx.string('message'));
   }
 
   /// Sends [rawText] from the command's sender to [to], and tells spies.
   ///
   /// A player who ignores the sender is not told: the sender sees the message
   /// as sent (so nobody can tell they are ignored) but it never arrives.
-  void _deliver(CommandContext ctx, Player to, String rawText) {
+  Future<void> _deliver(CommandContext ctx, Player to, String rawText) async {
     final from = ctx.player;
     final fromUuid = from.uuidString;
     final toUuid = to.uuidString;
@@ -157,7 +155,7 @@ final class ChatCommands {
     final text = cleanText(rawText);
     if (text.isEmpty) ctx.fail(_messages['error.empty'].format());
 
-    final body = from.hasPermission(node: ChatPerms.color.node)
+    final body = await from.hasPermission(node: ChatPerms.color.node)
         ? text
         : escapeLegacy(text);
     final fromName = from.getName();
@@ -166,7 +164,7 @@ final class ChatCommands {
     final delivered = _service.canSee(
       viewer: toUuid,
       sender: fromUuid,
-      exempt: from.hasPermission(node: ChatPerms.ignoreExempt.node),
+      exempt: await from.hasPermission(node: ChatPerms.ignoreExempt.node),
     );
 
     from.send(
@@ -191,16 +189,16 @@ final class ChatCommands {
     } else {
       _service.conversations.recordOneWay(fromUuid, toUuid);
     }
-    _tellSpies(ctx.server, {fromUuid, toUuid}, fromName, toName, body);
+    await _tellSpies(ctx.server, {fromUuid, toUuid}, fromName, toName, body);
   }
 
-  void _tellSpies(
+  Future<void> _tellSpies(
     Server server,
     Set<String> participants,
     String fromName,
     String toName,
     String body,
-  ) {
+  ) async {
     if (_service.spies.isEmpty) return;
     final line = MessageFormat.format(_service.config.spyFormat, {
       'from': MessageFormat.escape(fromName),
@@ -211,7 +209,7 @@ final class ChatCommands {
       final uuid = player.uuidString;
       if (_service.isSpying(uuid) &&
           !participants.contains(uuid) &&
-          player.hasPermission(node: ChatPerms.spy.node)) {
+          await player.hasPermission(node: ChatPerms.spy.node)) {
         player.send(line);
       }
     }
@@ -219,7 +217,7 @@ final class ChatCommands {
 
   // -- Ignoring --------------------------------------------------------------
 
-  void _ignore(CommandContext ctx) {
+  Future<void> _ignore(CommandContext ctx) async {
     final me = ctx.player.uuidString;
     final name = ctx.string('player');
     final target =
@@ -231,7 +229,7 @@ final class ChatCommands {
     if (ignoring) {
       final online = onlinePlayer(ctx.server, target.uuid);
       if (online != null &&
-          online.hasPermission(node: ChatPerms.ignoreExempt.node)) {
+          await online.hasPermission(node: ChatPerms.ignoreExempt.node)) {
         ctx.fail(_messages['error.exempt'].format({'name': target.name}));
       }
     }

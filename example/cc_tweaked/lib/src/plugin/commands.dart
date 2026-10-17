@@ -188,22 +188,22 @@ final class _Commands {
 
   String _owner(CommandContext ctx) => ctx.isPlayer ? ctx.player.getId().asString : 'console';
 
-  bool _isAdmin(CommandContext ctx) => ctx.hasPermission(CcPermissions.admin);
+  Future<bool> _isAdmin(CommandContext ctx) => ctx.hasPermission(CcPermissions.admin);
 
-  Computer _computer(CommandContext ctx) {
+  Future<Computer> _computer(CommandContext ctx) async {
     final id = ctx.integer('id');
     final record = service.record(id);
     // A computer in an unloaded chunk has no machine: bring it up for the command.
     final computer = service.computer(id) ?? service.resume(id);
     if (record == null || computer == null) ctx.fail('There is no computer #$id.');
-    if (!_isAdmin(ctx) && ctx.isPlayer && record.owner != _owner(ctx)) {
+    if (!await _isAdmin(ctx) && ctx.isPlayer && record.owner != _owner(ctx)) {
       ctx.fail('Computer #$id belongs to ${record.ownerName}.');
     }
     return computer;
   }
 
-  Computer _runningComputer(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<Computer> _runningComputer(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     if (!computer.isOn) ctx.fail('Computer #${computer.id} is off. Turn it on with /cc on ${computer.id}.');
     return computer;
   }
@@ -234,10 +234,10 @@ final class _Commands {
     }
   }
 
-  void _new(CommandContext ctx) {
+  Future<void> _new(CommandContext ctx) async {
     final owner = _owner(ctx);
     final limit = service.pluginConfig.maxComputersPerPlayer;
-    if (ctx.isPlayer && limit > 0 && !_isAdmin(ctx) && service.countOwnedBy(owner) >= limit) {
+    if (ctx.isPlayer && limit > 0 && !await _isAdmin(ctx) && service.countOwnedBy(owner) >= limit) {
       ctx.fail('You can own at most $limit computers.');
     }
     final family = ctx.stringOrNull('kind') == 'normal' ? ComputerFamily.normal : ComputerFamily.advanced;
@@ -250,9 +250,10 @@ final class _Commands {
     }
   }
 
-  void _list(CommandContext ctx) {
+  Future<void> _list(CommandContext ctx) async {
+    final admin = await _isAdmin(ctx);
     final all = service.records
-        .where((r) => _isAdmin(ctx) || !ctx.isPlayer || r.owner == _owner(ctx))
+        .where((r) => admin || !ctx.isPlayer || r.owner == _owner(ctx))
         .toList();
     if (all.isEmpty) {
       _say(ctx, '&eNo computers. Create one with /cc new.');
@@ -260,7 +261,7 @@ final class _Commands {
     }
     for (final record in all) {
       final computer = service.computer(record.id);
-      final owner = _isAdmin(ctx) ? ' &7(${record.ownerName})' : '';
+      final owner = admin ? ' &7(${record.ownerName})' : '';
       final where = record.location == null ? '' : ' at ${record.location}';
       if (computer == null) {
         _say(ctx, '&f#${record.id}${record.label == null ? '' : ' "${MessageFormat.escape(record.label!)}"'} &7- ${record.family.name}, not loaded$where$owner');
@@ -270,8 +271,8 @@ final class _Commands {
     }
   }
 
-  void _info(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _info(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     final record = service.record(computer.id)!;
     _say(ctx, '&6Computer ${_describe(computer)}');
     _say(ctx, '&7Family: &f${computer.family.name} &7State: &f${computer.state.name} &7Owner: &f${record.ownerName}');
@@ -286,31 +287,31 @@ final class _Commands {
     if (attached.isNotEmpty) _say(ctx, '&7Peripherals: &f${attached.join(', ')}');
   }
 
-  void _on(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _on(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     computer.turnOn();
     _say(ctx, '&aTurning on ${_describe(computer)}.');
   }
 
-  void _off(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _off(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     computer.shutdown();
     _say(ctx, '&eShutting down ${_describe(computer)}.');
   }
 
-  void _reboot(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _reboot(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     computer.reboot();
     _say(ctx, '&eRebooting ${_describe(computer)}.');
   }
 
-  void _terminate(CommandContext ctx) {
-    _runningComputer(ctx).queueEvent('terminate', const []);
+  Future<void> _terminate(CommandContext ctx) async {
+    (await _runningComputer(ctx)).queueEvent('terminate', const []);
     _say(ctx, '&eSent the terminate event.');
   }
 
-  void _term(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _term(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     _say(ctx, '&8--- &7Computer ${_describe(computer)} &8(${computer.state.name}) ---');
     for (final line in renderTerminal(computer.terminal)) {
       _say(ctx, line.isEmpty ? '&r ' : line);
@@ -318,8 +319,8 @@ final class _Commands {
     _say(ctx, '&8---');
   }
 
-  void _type(CommandContext ctx, {required bool enter}) {
-    final computer = _runningComputer(ctx);
+  Future<void> _type(CommandContext ctx, {required bool enter}) async {
+    final computer = await _runningComputer(ctx);
     final input = computer.createInput();
     for (final unit in ctx.string('text').codeUnits) {
       input.charTyped(unit > 255 ? 63 : unit);
@@ -331,8 +332,8 @@ final class _Commands {
     }
   }
 
-  void _key(CommandContext ctx) {
-    final computer = _runningComputer(ctx);
+  Future<void> _key(CommandContext ctx) async {
+    final computer = await _runningComputer(ctx);
     final name = ctx.string('key');
     final code = keyCodeOf(name);
     if (code == null) ctx.fail('Unknown key "$name".');
@@ -341,8 +342,8 @@ final class _Commands {
       ..keyUp(code);
   }
 
-  void _label(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _label(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     final text = ctx.stringOrNull('label');
     if (text != null) {
       computer.label = text.isEmpty ? null : text;
@@ -352,23 +353,23 @@ final class _Commands {
     _say(ctx, label == null ? '&7No label.' : '&7Label: &f${MessageFormat.escape(label)}');
   }
 
-  void _remove(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _remove(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     final id = computer.id;
     network.close(ctx.isPlayer ? ctx.player.getId().asString : '');
     service.remove(id);
     _say(ctx, '&eRemoved computer #$id and its files.');
   }
 
-  void _redstone(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _redstone(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     final level = ctx.integer('level');
     computer.redstone.setInput(_side(ctx), level, 0);
     _say(ctx, '&aSet the ${ctx.string('side')} input of ${_describe(computer)} to $level.');
   }
 
-  void _attachMonitor(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _attachMonitor(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     service.attach(
       computer.id,
       _side(ctx),
@@ -377,20 +378,20 @@ final class _Commands {
     _say(ctx, '&aAttached a monitor to the ${ctx.string('side')} of ${_describe(computer)}.');
   }
 
-  void _attachModem(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _attachModem(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     service.attach(computer.id, _side(ctx), const PeripheralSpec('modem'));
     _say(ctx, '&aAttached a wireless modem to the ${ctx.string('side')} of ${_describe(computer)}.');
   }
 
-  void _detach(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _detach(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     service.detach(computer.id, _side(ctx));
     _say(ctx, '&eDetached the ${ctx.string('side')} of ${_describe(computer)}.');
   }
 
-  void _monitor(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _monitor(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     final peripheral = service.peripheral(computer.id, _side(ctx));
     if (peripheral is! MonitorPeripheral) {
       ctx.fail('There is no monitor on the ${ctx.string('side')} of that computer.');
@@ -401,8 +402,8 @@ final class _Commands {
     }
   }
 
-  void _open(CommandContext ctx) {
-    final computer = _computer(ctx);
+  Future<void> _open(CommandContext ctx) async {
+    final computer = await _computer(ctx);
     if (!service.pluginConfig.neoForge) {
       ctx.fail(
         'The CC: Tweaked GUI needs the NeoForge handshake: set "neoforge": true in config.json '

@@ -20,7 +20,7 @@ const _items = {
 };
 const _enchantments = {'efficiency', 'unbreaking'};
 
-bool knownItem(String key) => _items.contains(key);
+Future<bool> knownItem(String key) async => _items.contains(key);
 bool knownEnchantment(String key) => _enchantments.contains(key);
 
 /// A player with [slots] free slots who can be made to fail.
@@ -42,13 +42,13 @@ final class FakeRecipient implements KitRecipient {
   });
 
   @override
-  bool hasPermission(String node) => permissions.contains(node);
+  Future<bool> hasPermission(String node) async => permissions.contains(node);
 
   @override
-  bool canFit(List<KitItem> items) => items.length <= slots;
+  Future<bool> canFit(List<KitItem> items) async => items.length <= slots;
 
   @override
-  void give(List<KitItem> items) {
+  Future<void> give(List<KitItem> items) async {
     if (giveThrows) throw StateError('player left');
     slots -= items.length;
     received.add(items);
@@ -59,14 +59,14 @@ String _node(String kit) => kitPermission(kit);
 
 void main() {
   group('validateKits', () {
-    KitReport validate(List<Kit> kits) => validateKits(
+    Future<KitReport> validate(List<Kit> kits) => validateKits(
       KitCatalog(kits: kits),
       isKnownItem: knownItem,
       isKnownEnchantment: knownEnchantment,
     );
 
-    test('keeps good kits and normalises item keys', () {
-      final report = validate([
+    test('keeps good kits and normalises item keys', () async {
+      final report = await validate([
         const Kit(
           name: 'a',
           icon: 'Diamond',
@@ -87,8 +87,8 @@ void main() {
       expect(kit.permission, 'commons:kits.kit.a');
     });
 
-    test('drops a kit with a bad item instead of giving less', () {
-      final report = validate([
+    test('drops a kit with a bad item instead of giving less', () async {
+      final report = await validate([
         const Kit(
           name: 'a',
           items: [
@@ -105,8 +105,8 @@ void main() {
       expect(report.problems.single, contains('unobtainium'));
     });
 
-    test('checks names, numbers, enchantments and emptiness', () {
-      final report = validate([
+    test('checks names, numbers, enchantments and emptiness', () async {
+      final report = await validate([
         const Kit(
           name: 'Bad Name',
           items: [KitItem(item: 'bread')],
@@ -155,8 +155,8 @@ void main() {
       expect(report.problems, hasLength(9));
     });
 
-    test('replaces an unknown icon', () {
-      final report = validate([
+    test('replaces an unknown icon', () async {
+      final report = await validate([
         const Kit(
           name: 'a',
           icon: 'nope',
@@ -169,10 +169,10 @@ void main() {
   });
 
   group('defaults', () {
-    test('are valid when every item and enchantment exists', () {
-      final report = validateKits(
+    test('are valid when every item and enchantment exists', () async {
+      final report = await validateKits(
         defaultKits(),
-        isKnownItem: (_) => true,
+        isKnownItem: (_) async => true,
         isKnownEnchantment: (_) => true,
       );
       expect(report.problems, isEmpty);
@@ -201,9 +201,9 @@ void main() {
     late KitService kits;
     late FakeRecipient steve;
 
-    KitService build({KitCatalog? catalog, KitsConfig? config}) {
+    Future<KitService> build({KitCatalog? catalog, KitsConfig? config}) {
       docs = Documents(backend, clock: clock);
-      return KitService(
+      return KitService.create(
         economy: economy,
         clock: clock,
         catalog: docs.open(
@@ -278,11 +278,11 @@ void main() {
           },
         );
 
-    setUp(() {
+    setUp(() async {
       backend = MemoryBackend();
       clock = FakeClock();
       economy = FakeEconomy()..balances['u1'] = 500;
-      kits = build();
+      kits = await build();
       steve = player('u1');
     });
 
@@ -299,260 +299,288 @@ void main() {
     });
 
     group('one-time kits', () {
-      test('can be claimed once, ever', () {
-        expect(kits.claim(steve, 'starter').isOk, isTrue);
+      test('can be claimed once, ever', () async {
+        expect((await kits.claim(steve, 'starter')).isOk, isTrue);
         expect(steve.received.single, hasLength(2));
         clock.advance(const Duration(days: 365));
-        final again = kits.claim(steve, 'starter');
+        final again = await kits.claim(steve, 'starter');
         expect(again.failure, ClaimFailure.alreadyClaimed);
         expect(steve.received, hasLength(1));
       });
 
-      test('are per player', () {
-        kits.claim(steve, 'starter');
-        expect(kits.claim(player('u2'), 'starter').isOk, isTrue);
+      test('are per player', () async {
+        await kits.claim(steve, 'starter');
+        expect((await kits.claim(player('u2'), 'starter')).isOk, isTrue);
       });
     });
 
     group('cooldowns', () {
-      test('block until they run out, across clock advances', () {
-        expect(kits.claim(steve, 'daily').isOk, isTrue);
+      test('block until they run out, across clock advances', () async {
+        expect((await kits.claim(steve, 'daily')).isOk, isTrue);
 
         clock.advance(const Duration(minutes: 20));
-        var r = kits.claim(steve, 'daily');
+        var r = await kits.claim(steve, 'daily');
         expect(r.failure, ClaimFailure.onCooldown);
         expect(r.remaining, const Duration(minutes: 40));
 
         clock.advance(const Duration(minutes: 39, seconds: 59));
-        r = kits.claim(steve, 'daily');
+        r = await kits.claim(steve, 'daily');
         expect(r.failure, ClaimFailure.onCooldown);
         expect(r.remaining, const Duration(seconds: 1));
 
         clock.advance(const Duration(seconds: 1));
-        expect(kits.claim(steve, 'daily').isOk, isTrue);
+        expect((await kits.claim(steve, 'daily')).isOk, isTrue);
         expect(kits.claimOf('u1', 'daily')!.count, 2);
         expect(steve.received, hasLength(2));
       });
 
-      test('a failed claim does not restart the cooldown', () {
-        kits.claim(steve, 'daily');
+      test('a failed claim does not restart the cooldown', () async {
+        await kits.claim(steve, 'daily');
         clock.advance(const Duration(minutes: 30));
-        kits.claim(steve, 'daily');
+        await kits.claim(steve, 'daily');
         clock.advance(const Duration(minutes: 30));
-        expect(kits.claim(steve, 'daily').isOk, isTrue);
+        expect((await kits.claim(steve, 'daily')).isOk, isTrue);
       });
 
-      test('a kit without cooldown can be claimed again and again', () {
-        expect(kits.claim(steve, 'free').isOk, isTrue);
-        expect(kits.claim(steve, 'free').isOk, isTrue);
+      test('a kit without cooldown can be claimed again and again', () async {
+        expect((await kits.claim(steve, 'free')).isOk, isTrue);
+        expect((await kits.claim(steve, 'free')).isOk, isTrue);
       });
 
-      test('a clock that went back does not lock a player out for longer', () {
-        kits.claim(steve, 'daily');
-        clock.advance(const Duration(days: -2));
-        final r = kits.claim(steve, 'daily');
-        expect(r.failure, ClaimFailure.onCooldown);
-        expect(r.remaining, const Duration(hours: 1));
-      });
+      test(
+        'a clock that went back does not lock a player out for longer',
+        () async {
+          await kits.claim(steve, 'daily');
+          clock.advance(const Duration(days: -2));
+          final r = await kits.claim(steve, 'daily');
+          expect(r.failure, ClaimFailure.onCooldown);
+          expect(r.remaining, const Duration(hours: 1));
+        },
+      );
     });
 
     group('permissions', () {
-      test('a restricted kit needs its node', () {
-        expect(kits.claim(steve, 'vip').failure, ClaimFailure.noPermission);
+      test('a restricted kit needs its node', () async {
+        expect(
+          (await kits.claim(steve, 'vip')).failure,
+          ClaimFailure.noPermission,
+        );
         final vip = player('u3', extra: {_node('vip')});
-        expect(kits.claim(vip, 'vip').isOk, isTrue);
+        expect((await kits.claim(vip, 'vip')).isOk, isTrue);
       });
 
-      test('the status says locked', () {
+      test('the status says locked', () async {
         final vip = kits.kit('vip')!;
         expect(
-          kits.status('u1', vip, steve.hasPermission).state,
+          (await kits.status('u1', vip, steve.hasPermission)).state,
           KitState.locked,
         );
       });
 
-      test('bypass ignores cooldowns and the one-time limit', () {
+      test('bypass ignores cooldowns and the one-time limit', () async {
         final admin = player('u4', extra: {KitPerms.bypass.node});
-        expect(kits.claim(admin, 'starter').isOk, isTrue);
-        expect(kits.claim(admin, 'starter').isOk, isTrue);
-        expect(kits.claim(admin, 'daily').isOk, isTrue);
-        expect(kits.claim(admin, 'daily').isOk, isTrue);
+        expect((await kits.claim(admin, 'starter')).isOk, isTrue);
+        expect((await kits.claim(admin, 'starter')).isOk, isTrue);
+        expect((await kits.claim(admin, 'daily')).isOk, isTrue);
+        expect((await kits.claim(admin, 'daily')).isOk, isTrue);
         // The permission of the kit itself still counts.
-        expect(kits.claim(admin, 'vip').failure, ClaimFailure.noPermission);
+        expect(
+          (await kits.claim(admin, 'vip')).failure,
+          ClaimFailure.noPermission,
+        );
       });
     });
 
     group('price', () {
-      test('is charged on a successful claim', () {
-        final r = kits.claim(steve, 'paid');
+      test('is charged on a successful claim', () async {
+        final r = await kits.claim(steve, 'paid');
         expect(r.isOk, isTrue);
         expect(r.charged, 100);
         expect(r.balance, 400);
         expect(economy.balance('u1'), 400);
       });
 
-      test('a player who cannot pay gets nothing and no cooldown', () {
+      test('a player who cannot pay gets nothing and no cooldown', () async {
         economy.balances['u1'] = 30;
-        final r = kits.claim(steve, 'paid');
+        final r = await kits.claim(steve, 'paid');
         expect(r.failure, ClaimFailure.insufficientFunds);
         expect(r.missing, 70);
         expect(steve.received, isEmpty);
         expect(kits.claimOf('u1', 'paid'), isNull);
         economy.balances['u1'] = 100;
-        expect(kits.claim(steve, 'paid').isOk, isTrue);
+        expect((await kits.claim(steve, 'paid')).isOk, isTrue);
         expect(economy.balance('u1'), 0);
       });
 
-      test('free kits never touch the economy', () {
-        kits.claim(steve, 'free');
+      test('free kits never touch the economy', () async {
+        await kits.claim(steve, 'free');
         expect(economy.log, isEmpty);
       });
 
-      test('the cooldown is checked before anything is charged', () {
-        kits.claim(steve, 'paid');
-        final r = kits.claim(steve, 'paid');
+      test('the cooldown is checked before anything is charged', () async {
+        await kits.claim(steve, 'paid');
+        final r = await kits.claim(steve, 'paid');
         expect(r.failure, ClaimFailure.onCooldown);
         expect(economy.balance('u1'), 400);
       });
     });
 
     group('never half-applies', () {
-      test('a full inventory charges nothing and records nothing', () {
+      test('a full inventory charges nothing and records nothing', () async {
         steve.slots = 0;
-        final r = kits.claim(steve, 'paid');
+        final r = await kits.claim(steve, 'paid');
         expect(r.failure, ClaimFailure.noSpace);
         expect(economy.balance('u1'), 500);
         expect(economy.log, isEmpty);
         expect(kits.claimOf('u1', 'paid'), isNull);
       });
 
-      test('a failing hand-over refunds the price and records nothing', () {
-        steve.giveThrows = true;
-        final warnings = <String>[];
-        kits = KitService(
-          economy: economy,
-          clock: clock,
-          catalog: docs.open(
-            'k2.json',
-            decode: KitCatalogMapper.fromJson,
-            encode: (v) => v.toJson(),
-            create: () => const KitCatalog(
-              kits: [
-                Kit(
-                  name: 'paid',
-                  price: 100,
-                  items: [KitItem(item: 'diamond')],
-                ),
-              ],
+      test(
+        'a failing hand-over refunds the price and records nothing',
+        () async {
+          steve.giveThrows = true;
+          final warnings = <String>[];
+          kits = await KitService.create(
+            economy: economy,
+            clock: clock,
+            catalog: docs.open(
+              'k2.json',
+              decode: KitCatalogMapper.fromJson,
+              encode: (v) => v.toJson(),
+              create: () => const KitCatalog(
+                kits: [
+                  Kit(
+                    name: 'paid',
+                    price: 100,
+                    items: [KitItem(item: 'diamond')],
+                  ),
+                ],
+              ),
             ),
-          ),
-          config: docs.open(
-            'c2.json',
-            decode: KitsConfigMapper.fromJson,
-            encode: (v) => v.toJson(),
-            create: KitsConfig.new,
-          ),
-          claims: docs.open(
-            'cl2.json',
-            decode: KitClaimsMapper.fromJson,
-            encode: (v) => v.toJson(),
-            create: KitClaims.new,
-          ),
-          isKnownItem: knownItem,
-          isKnownEnchantment: knownEnchantment,
-          warn: warnings.add,
-        );
-        final r = kits.claim(steve, 'paid');
-        expect(r.failure, ClaimFailure.deliveryFailed);
-        expect(economy.balance('u1'), 500);
-        expect(kits.claimOf('u1', 'paid'), isNull);
-        expect(warnings, hasLength(1));
-        // The player can simply try again.
-        steve.giveThrows = false;
-        expect(kits.claim(steve, 'paid').isOk, isTrue);
-      });
+            config: docs.open(
+              'c2.json',
+              decode: KitsConfigMapper.fromJson,
+              encode: (v) => v.toJson(),
+              create: KitsConfig.new,
+            ),
+            claims: docs.open(
+              'cl2.json',
+              decode: KitClaimsMapper.fromJson,
+              encode: (v) => v.toJson(),
+              create: KitClaims.new,
+            ),
+            isKnownItem: knownItem,
+            isKnownEnchantment: knownEnchantment,
+            warn: warnings.add,
+          );
+          final r = await kits.claim(steve, 'paid');
+          expect(r.failure, ClaimFailure.deliveryFailed);
+          expect(economy.balance('u1'), 500);
+          expect(kits.claimOf('u1', 'paid'), isNull);
+          expect(warnings, hasLength(1));
+          // The player can simply try again.
+          steve.giveThrows = false;
+          expect((await kits.claim(steve, 'paid')).isOk, isTrue);
+        },
+      );
 
-      test('an unknown kit fails cleanly', () {
-        final r = kits.claim(steve, 'nope');
+      test('an unknown kit fails cleanly', () async {
+        final r = await kits.claim(steve, 'nope');
         expect(r.failure, ClaimFailure.unknownKit);
         expect(r.requested, 'nope');
       });
     });
 
     group('claims', () {
-      test('are saved right away and survive a restart', () {
-        kits.claim(steve, 'starter');
+      test('two claims at the same time give a one-time kit once', () async {
+        final results = await Future.wait([
+          kits.claim(steve, 'starter'),
+          kits.claim(steve, 'starter'),
+        ]);
+        expect(results.where((r) => r.isOk), hasLength(1));
+        expect(
+          results.singleWhere((r) => !r.isOk).failure,
+          ClaimFailure.alreadyClaimed,
+        );
+        expect(steve.received, hasLength(1));
+      });
+
+      test('are saved right away and survive a restart', () async {
+        await kits.claim(steve, 'starter');
         clock.advance(const Duration(minutes: 5));
-        kits.claim(steve, 'daily');
+        await kits.claim(steve, 'daily');
 
         // No saveDirty: claims are written immediately.
-        final reloaded = build();
+        final reloaded = await build();
         expect(reloaded.hasClaimed('u1', 'starter'), isTrue);
         expect(reloaded.claimOf('u1', 'daily')!.count, 1);
         expect(reloaded.claimOf('u1', 'daily')!.lastClaimed, clock.now());
         final fresh = player('u1');
         expect(
-          reloaded.claim(fresh, 'starter').failure,
+          (await reloaded.claim(fresh, 'starter')).failure,
           ClaimFailure.alreadyClaimed,
         );
-        expect(reloaded.claim(fresh, 'daily').failure, ClaimFailure.onCooldown);
+        expect(
+          (await reloaded.claim(fresh, 'daily')).failure,
+          ClaimFailure.onCooldown,
+        );
       });
 
-      test('the file has the documented shape', () {
-        kits.claim(steve, 'starter');
+      test('the file has the documented shape', () async {
+        await kits.claim(steve, 'starter');
         final decoded = KitClaimsMapper.fromJson(backend.files[claimsPath]!);
         expect(decoded.players['u1']!['starter']!.count, 1);
       });
 
-      test('are kept when a kit is deleted and created again', () {
-        kits.claim(steve, 'starter');
-        kits.deleteKit('starter');
-        kits.createKit('starter', [const KitItem(item: 'bread')]);
+      test('are kept when a kit is deleted and created again', () async {
+        await kits.claim(steve, 'starter');
+        await kits.deleteKit('starter');
+        await kits.createKit('starter', [const KitItem(item: 'bread')]);
         // Re-created kits are plain (not one-time), but the history stays.
         expect(kits.hasClaimed('u1', 'starter'), isTrue);
       });
     });
 
     group('first join', () {
-      test('gives the starter kit to a new player once', () {
-        final r = kits.grantStarterKit(steve, isNewPlayer: true);
+      test('gives the starter kit to a new player once', () async {
+        final r = await kits.grantStarterKit(steve, isNewPlayer: true);
         expect(r!.isOk, isTrue);
-        expect(kits.grantStarterKit(steve, isNewPlayer: true), isNull);
+        expect(await kits.grantStarterKit(steve, isNewPlayer: true), isNull);
         expect(steve.received, hasLength(1));
       });
 
-      test('not to a returning player', () {
-        expect(kits.grantStarterKit(steve, isNewPlayer: false), isNull);
+      test('not to a returning player', () async {
+        expect(await kits.grantStarterKit(steve, isNewPlayer: false), isNull);
         expect(steve.received, isEmpty);
       });
 
-      test('can be switched off', () {
-        kits = build(config: const KitsConfig(giveStarterKit: false));
-        expect(kits.grantStarterKit(steve, isNewPlayer: true), isNull);
+      test('can be switched off', () async {
+        kits = await build(config: const KitsConfig(giveStarterKit: false));
+        expect(await kits.grantStarterKit(steve, isNewPlayer: true), isNull);
       });
 
-      test('does nothing for a missing or paid starter kit', () {
-        kits = build(config: const KitsConfig(starterKit: 'ghost'));
-        expect(kits.grantStarterKit(steve, isNewPlayer: true), isNull);
-        kits = build(config: const KitsConfig(starterKit: 'paid'));
-        expect(kits.grantStarterKit(steve, isNewPlayer: true), isNull);
+      test('does nothing for a missing or paid starter kit', () async {
+        kits = await build(config: const KitsConfig(starterKit: 'ghost'));
+        expect(await kits.grantStarterKit(steve, isNewPlayer: true), isNull);
+        kits = await build(config: const KitsConfig(starterKit: 'paid'));
+        expect(await kits.grantStarterKit(steve, isNewPlayer: true), isNull);
         expect(economy.balance('u1'), 500);
       });
 
-      test('a full inventory leaves the kit claimable later', () {
+      test('a full inventory leaves the kit claimable later', () async {
         steve.slots = 0;
         expect(
-          kits.grantStarterKit(steve, isNewPlayer: true)!.failure,
+          (await kits.grantStarterKit(steve, isNewPlayer: true))!.failure,
           ClaimFailure.noSpace,
         );
         steve.slots = 36;
-        expect(kits.claim(steve, 'starter').isOk, isTrue);
+        expect((await kits.claim(steve, 'starter')).isOk, isTrue);
       });
     });
 
     group('admin', () {
-      test('createKit adds a kit and saves the file', () {
-        final replaced = kits.createKit('Tools', [
+      test('createKit adds a kit and saves the file', () async {
+        final replaced = await kits.createKit('Tools', [
           const KitItem(
             item: 'diamond_pickaxe',
             enchantments: {'efficiency': 3},
@@ -569,8 +597,8 @@ void main() {
         );
       });
 
-      test('createKit replaces the items and keeps the settings', () {
-        final replaced = kits.createKit('daily', [
+      test('createKit replaces the items and keeps the settings', () async {
+        final replaced = await kits.createKit('daily', [
           const KitItem(item: 'diamond'),
         ]);
         expect(replaced, isTrue);
@@ -579,51 +607,54 @@ void main() {
         expect(daily.cooldownSeconds, 3600);
       });
 
-      test('createKit validates', () {
-        expect(
-          () => kits.createKit('bad name', [const KitItem(item: 'bread')]),
+      test('createKit validates', () async {
+        await expectLater(
+          kits.createKit('bad name', [const KitItem(item: 'bread')]),
           throwsA(isA<KitException>()),
         );
-        expect(
-          () => kits.createKit('empty', const []),
+        await expectLater(
+          kits.createKit('empty', const []),
           throwsA(isA<KitException>()),
         );
-        expect(
-          () => kits.createKit('x', [const KitItem(item: 'nonsense')]),
+        await expectLater(
+          kits.createKit('x', [const KitItem(item: 'nonsense')]),
           throwsA(isA<KitException>()),
         );
       });
 
-      test('deleteKit', () {
-        kits.deleteKit('free');
+      test('deleteKit', () async {
+        await kits.deleteKit('free');
         expect(kits.kit('free'), isNull);
-        expect(() => kits.deleteKit('free'), throwsA(isA<KitException>()));
+        await expectLater(kits.deleteKit('free'), throwsA(isA<KitException>()));
       });
 
-      test('reload picks up edits and keeps the old kits on a broken file', () {
-        backend.files[kitsPath] = const KitCatalog(
-          kits: [
-            Kit(
-              name: 'only',
-              items: [KitItem(item: 'bread')],
-            ),
-            Kit(
-              name: 'broken',
-              items: [KitItem(item: 'nonsense')],
-            ),
-          ],
-        ).toJson();
-        final report = kits.reload(backend);
-        expect(report.ok, isTrue);
-        expect(report.kits, 1);
-        expect(report.problems, hasLength(1));
-        expect(kits.kits.single.name, 'only');
+      test(
+        'reload picks up edits and keeps the old kits on a broken file',
+        () async {
+          backend.files[kitsPath] = const KitCatalog(
+            kits: [
+              Kit(
+                name: 'only',
+                items: [KitItem(item: 'bread')],
+              ),
+              Kit(
+                name: 'broken',
+                items: [KitItem(item: 'nonsense')],
+              ),
+            ],
+          ).toJson();
+          final report = await kits.reload(backend);
+          expect(report.ok, isTrue);
+          expect(report.kits, 1);
+          expect(report.problems, hasLength(1));
+          expect(kits.kits.single.name, 'only');
 
-        backend.files[kitsPath] = '{nope';
-        final bad = kits.reload(backend);
-        expect(bad.ok, isFalse);
-        expect(kits.kits.single.name, 'only');
-      });
+          backend.files[kitsPath] = '{nope';
+          final bad = await kits.reload(backend);
+          expect(bad.ok, isFalse);
+          expect(kits.kits.single.name, 'only');
+        },
+      );
     });
   });
 

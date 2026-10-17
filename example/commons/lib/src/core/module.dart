@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import 'clock.dart';
@@ -30,10 +32,11 @@ abstract base class Module {
   /// Registered with the server before [onLoad].
   List<PermNode> get permissions => const [];
 
-  void onLoad(ModuleHost host);
+  /// May be `async`: modules are loaded one after another.
+  FutureOr<void> onLoad(ModuleHost host);
 
   /// The plugin is unloading. Documents are saved right after all modules.
-  void onUnload() {}
+  FutureOr<void> onUnload() {}
 }
 
 /// What a module gets to work with.

@@ -13,10 +13,11 @@ final class DatapackException implements Exception {
   String toString() => 'DatapackException: $message';
 }
 
-T _unwrap<T>(Result<T, String> result) => switch (result) {
-  OkResult(:final value) => value,
-  ErrorResult(:final value) => throw DatapackException(value),
-};
+Future<T> _unwrap<T>(Future<Result<T, String>> pending) async =>
+    switch (await pending) {
+      OkResult(:final value) => value,
+      ErrorResult(:final value) => throw DatapackException(value),
+    };
 
 /// Conveniences for [Server].
 extension ServerDatapacks on Server {
@@ -47,21 +48,21 @@ extension DatapackManagerHelpers on DatapackManager {
 
   /// Enables the datapack [name] at [position], last by default. Throws a
   /// [DatapackException] if that fails. Call [reloadPacks] to apply it.
-  void enable(
+  Future<void> enable(
     String name, {
     EnablePosition position = const EnablePositionLast(),
   }) => _unwrap(enablePack(name: name, position: position));
 
   /// Disables the datapack [name]. Throws a [DatapackException] if that fails.
-  void disable(String name) => _unwrap(disablePack(name: name));
+  Future<void> disable(String name) => _unwrap(disablePack(name: name));
 
   /// Reloads the enabled datapacks. Throws a [DatapackException] if that
   /// fails.
-  void reloadPacks() => _unwrap(reload());
+  Future<void> reloadPacks() => _unwrap(reload());
 
   /// Runs a datapack function (`namespace:fn`) or function tag
   /// (`#namespace:tag`) and returns how many commands ran. Throws a
   /// [DatapackException] if that fails.
-  int runFunction(String name) =>
+  Future<int> runFunction(String name) =>
       _unwrap(executeFunction(name: name));
 }

@@ -21,7 +21,8 @@ typedef CommandMiddleware =
     FutureOr<int> Function(CommandContext ctx, FutureOr<int> Function() next);
 
 /// Computes tab completions from a [SuggestionContext].
-typedef SuggestionSource = Iterable<String> Function(SuggestionContext ctx);
+typedef SuggestionSource =
+    FutureOr<Iterable<String>> Function(SuggestionContext ctx);
 
 /// The namespace (plugin name) used for the permission node of a command
 /// registered without an explicit `permission:`, giving
@@ -88,8 +89,8 @@ abstract final class Guards {
 
   /// Only senders with the permission [node] may run it (the console always
   /// may).
-  static CommandMiddleware requirePermission(String node) => (ctx, next) {
-    if (!ctx.hasPermission(node)) {
+  static CommandMiddleware requirePermission(String node) => (ctx, next) async {
+    if (!await ctx.hasPermission(node)) {
       throw CommandException("You don't have permission to do that.");
     }
     return next();
@@ -106,8 +107,8 @@ abstract final class Guards {
     CooldownTracker? tracker,
   }) {
     final cooldowns = tracker ?? CooldownTracker();
-    return (ctx, next) {
-      if (ctx.isConsole || (bypass != null && ctx.hasPermission(bypass))) {
+    return (ctx, next) async {
+      if (ctx.isConsole || (bypass != null && await ctx.hasPermission(bypass))) {
         return next();
       }
       final key = ctx.senderName;
@@ -459,7 +460,7 @@ SuggestionHandler _suggestionHandler(
   List<String> fixed,
   SuggestionSource? source,
 ) {
-  return (sender, server, request) {
+  return (sender, server, request) async {
     final ctx = SuggestionContext(
       sender: sender,
       server: server,
@@ -467,7 +468,7 @@ SuggestionHandler _suggestionHandler(
     );
     final matches = filterSuggestions([
       ...fixed,
-      ...?source?.call(ctx),
+      ...?await source?.call(ctx),
     ], request.remaining);
     return CommandSuggestions(
       start: request.start,
@@ -612,15 +613,20 @@ extension CommandBuilderContext on Context {
     Object? permission,
     String? title,
   }) {
-    FutureOr<void> show(CommandContext ctx) {
+    Future<void> show(CommandContext ctx) async {
       final wanted = ctx.stringOrNull('command');
-      final lines = helpLines(
+      final lines = await helpLines(
         commandRegistry,
         command: wanted,
         hidden: {name, ...aliases},
-        canUse: (nodes) => nodes.every(
-          (node) => !node.contains(':') || ctx.hasPermission(node),
-        ),
+        canUse: (nodes) async {
+          for (final node in nodes) {
+            if (node.contains(':') && !await ctx.hasPermission(node)) {
+              return false;
+            }
+          }
+          return true;
+        },
       );
       if (lines.isEmpty) {
         ctx.reply(

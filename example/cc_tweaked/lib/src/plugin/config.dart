@@ -43,6 +43,13 @@ final class PluginConfig {
   /// NeoForge query before the brand; see docs/host-requirements.md.
   final bool neoForge;
 
+  /// Whether turtles need fuel to move (CC: `turtlesNeedFuel`), and the fuel
+  /// limits of normal and advanced turtles (`turtleFuelLimit` 20000,
+  /// `advancedTurtleFuelLimit` 100000).
+  final bool turtlesNeedFuel;
+  final int turtleFuelLimit;
+  final int advancedTurtleFuelLimit;
+
   const PluginConfig({
     this.jar = '',
     this.sliceMs = 3,
@@ -56,6 +63,9 @@ final class PluginConfig {
     this.maxComputersPerPlayer = 5,
     this.defaultSettings = '',
     this.neoForge = false,
+    this.turtlesNeedFuel = true,
+    this.turtleFuelLimit = 20000,
+    this.advancedTurtleFuelLimit = 100000,
   });
 
   factory PluginConfig.fromJson(Object? json) {
@@ -92,6 +102,9 @@ final class PluginConfig {
       maxComputersPerPlayer: whole('max_computers_per_player', defaults.maxComputersPerPlayer, 0, 100000),
       defaultSettings: text('default_computer_settings', defaults.defaultSettings),
       neoForge: neoForge is bool ? neoForge : defaults.neoForge,
+      turtlesNeedFuel: json['turtles_need_fuel'] is bool ? json['turtles_need_fuel']! as bool : defaults.turtlesNeedFuel,
+      turtleFuelLimit: whole('turtle_fuel_limit', defaults.turtleFuelLimit, 0, 1 << 30),
+      advancedTurtleFuelLimit: whole('advanced_turtle_fuel_limit', defaults.advancedTurtleFuelLimit, 0, 1 << 30),
     );
   }
 
@@ -108,6 +121,9 @@ final class PluginConfig {
     'max_computers_per_player': maxComputersPerPlayer,
     'default_computer_settings': defaultSettings,
     'neoforge': neoForge,
+    'turtles_need_fuel': turtlesNeedFuel,
+    'turtle_fuel_limit': turtleFuelLimit,
+    'advanced_turtle_fuel_limit': advancedTurtleFuelLimit,
   };
 
   String toJsonText() => const JsonEncoder.withIndent('  ').convert(toJson());

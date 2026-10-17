@@ -150,6 +150,19 @@ Yielding from a `table.sort` comparator or a `string.gsub` callback raises
 "attempt to yield across a C-call boundary" (real Lua 5.1 does the same;
 Cobalt allows it).
 
+### Natives that wait: the `turtle` API
+
+A native function cannot yield (yield is handled inside the VM), but CC's turtle
+commands wait for a `turtle_response` event. The `turtle` global is therefore
+built per machine (`LuaMachine.create(vmApis:)`, `machine/api/turtle_api.dart`)
+as a small Lua layer over natives: `native.queue(name, ...)` checks the
+arguments (errors carry the position of the program's call, `vm.where(2)`) and
+queues the command on the `TurtleBrain`; the Lua wrapper then does
+`coroutine.yield("turtle_response")` until the event with its command id
+arrives (and turns `terminate` into the error `Terminated`). The yielded string
+is the machine's event filter, exactly like `os.pullEventRaw`. The reading
+functions (`getFuelLevel`, `getItemCount`, ...) are plain natives.
+
 ## Sandbox and limits
 
 * The VM has no I/O: the only way out is the native functions the machine

@@ -85,24 +85,32 @@ void main() {
   });
 
   group('visibility', () {
-    bool allow(String node) => node == 'vip';
+    Future<bool> allow(String node) async => node == 'vip';
 
-    test('permission and world filters', () {
-      bool visible(Announcement a, {String world = 'minecraft:overworld'}) =>
-          isVisibleTo(a, hasPermission: allow, worldName: world);
+    test('permission and world filters', () async {
+      Future<bool> visible(
+        Announcement a, {
+        String world = 'minecraft:overworld',
+      }) => isVisibleTo(a, hasPermission: allow, worldName: world);
 
-      expect(visible(entry('x')), isTrue);
-      expect(visible(entry('x', permission: '')), isTrue);
-      expect(visible(entry('x', permission: 'vip')), isTrue);
-      expect(visible(entry('x', permission: 'admin')), isFalse);
-      expect(visible(entry('x', world: 'overworld')), isTrue);
-      expect(visible(entry('x', world: 'Minecraft:Overworld')), isTrue);
-      expect(visible(entry('x', world: 'the_nether')), isFalse);
+      expect(await visible(entry('x')), isTrue);
+      expect(await visible(entry('x', permission: '')), isTrue);
+      expect(await visible(entry('x', permission: 'vip')), isTrue);
+      expect(await visible(entry('x', permission: 'admin')), isFalse);
+      expect(await visible(entry('x', world: 'overworld')), isTrue);
+      expect(await visible(entry('x', world: 'Minecraft:Overworld')), isTrue);
+      expect(await visible(entry('x', world: 'the_nether')), isFalse);
       expect(
-        visible(entry('x', world: 'the_nether'), world: 'minecraft:the_nether'),
+        await visible(
+          entry('x', world: 'the_nether'),
+          world: 'minecraft:the_nether',
+        ),
         isTrue,
       );
-      expect(visible(entry('x', permission: 'vip', world: 'the_end')), isFalse);
+      expect(
+        await visible(entry('x', permission: 'vip', world: 'the_end')),
+        isFalse,
+      );
     });
 
     test('normalizeWorld', () {
@@ -167,69 +175,73 @@ void main() {
     AnnouncementService service([AnnouncementsConfig c = config]) =>
         AnnouncementService(clock, c);
 
-    bool everyone(Announcement a) => true;
+    Future<bool> everyone(Announcement a) async => true;
 
     setUp(() => clock = FakeClock());
 
-    test('announces once per interval, in order', () {
+    test('announces once per interval, in order', () async {
       final s = service();
-      expect(s.poll(hasAudience: everyone), isNull);
+      expect(await s.poll(hasAudience: everyone), isNull);
       clock.advance(const Duration(seconds: 59));
-      expect(s.poll(hasAudience: everyone), isNull);
+      expect(await s.poll(hasAudience: everyone), isNull);
       clock.advance(const Duration(seconds: 1));
-      expect(s.poll(hasAudience: everyone)!.text, 'a');
-      expect(s.poll(hasAudience: everyone), isNull);
+      expect((await s.poll(hasAudience: everyone))!.text, 'a');
+      expect(await s.poll(hasAudience: everyone), isNull);
       clock.advance(const Duration(seconds: 60));
-      expect(s.poll(hasAudience: everyone)!.text, 'b');
+      expect((await s.poll(hasAudience: everyone))!.text, 'b');
       clock.advance(const Duration(seconds: 60));
-      expect(s.poll(hasAudience: everyone)!.text, 'a');
+      expect((await s.poll(hasAudience: everyone))!.text, 'a');
     });
 
     test(
       'skips entries nobody can see, and uses up a turn with no audience',
-      () {
+      () async {
         final s = service();
         clock.advance(const Duration(seconds: 60));
-        expect(s.poll(hasAudience: (a) => a.text == 'b')!.text, 'b');
+        expect(
+          (await s.poll(hasAudience: (a) async => a.text == 'b'))!.text,
+          'b',
+        );
         clock.advance(const Duration(seconds: 60));
-        expect(s.poll(hasAudience: (a) => false), isNull);
+        expect(await s.poll(hasAudience: (a) async => false), isNull);
         clock.advance(const Duration(seconds: 59));
-        expect(s.poll(hasAudience: everyone), isNull);
+        expect(await s.poll(hasAudience: everyone), isNull);
         clock.advance(const Duration(seconds: 1));
-        expect(s.poll(hasAudience: everyone)!.text, 'a');
+        expect((await s.poll(hasAudience: everyone))!.text, 'a');
       },
     );
 
-    test('does nothing when disabled or empty', () {
+    test('does nothing when disabled or empty', () async {
       clock.advance(const Duration(hours: 1));
       expect(
-        service(config.copyWith(enabled: false)).poll(hasAudience: everyone),
+        await service(config.copyWith(enabled: false))
+            .poll(hasAudience: everyone),
         isNull,
       );
       final empty = service(const AnnouncementsConfig(messages: []));
-      expect(empty.poll(hasAudience: everyone), isNull);
-      expect(empty.next(hasAudience: everyone), isNull);
+      expect(await empty.poll(hasAudience: everyone), isNull);
+      expect(await empty.next(hasAudience: everyone), isNull);
     });
 
-    test('next shows one now and restarts the timer', () {
+    test('next shows one now and restarts the timer', () async {
       final s = service();
       clock.advance(const Duration(seconds: 50));
-      expect(s.next(hasAudience: everyone)!.text, 'a');
+      expect((await s.next(hasAudience: everyone))!.text, 'a');
       clock.advance(const Duration(seconds: 59));
-      expect(s.poll(hasAudience: everyone), isNull);
+      expect(await s.poll(hasAudience: everyone), isNull);
       clock.advance(const Duration(seconds: 1));
-      expect(s.poll(hasAudience: everyone)!.text, 'b');
+      expect((await s.poll(hasAudience: everyone))!.text, 'b');
     });
 
-    test('next works while disabled', () {
+    test('next works while disabled', () async {
       final s = service(config.copyWith(enabled: false));
-      expect(s.next(hasAudience: everyone)!.text, 'a');
+      expect((await s.next(hasAudience: everyone))!.text, 'a');
     });
 
-    test('a new configuration starts the rotation over', () {
+    test('a new configuration starts the rotation over', () async {
       final s = service();
       clock.advance(const Duration(seconds: 60));
-      s.poll(hasAudience: everyone);
+      (await s.poll(hasAudience: everyone));
 
       s.config = const AnnouncementsConfig(
         intervalSeconds: 10,
@@ -238,12 +250,12 @@ void main() {
           Announcement(text: 'y'),
         ],
       );
-      expect(s.poll(hasAudience: everyone), isNull);
+      expect(await s.poll(hasAudience: everyone), isNull);
       clock.advance(const Duration(seconds: 10));
-      expect(s.poll(hasAudience: everyone)!.text, 'x');
+      expect((await s.poll(hasAudience: everyone))!.text, 'x');
     });
 
-    test('random order never repeats immediately', () {
+    test('random order never repeats immediately', () async {
       final s = AnnouncementService(
         clock,
         const AnnouncementsConfig(
@@ -260,7 +272,7 @@ void main() {
       String? last;
       for (var i = 0; i < 100; i++) {
         clock.advance(const Duration(seconds: 5));
-        final text = s.poll(hasAudience: everyone)!.text;
+        final text = (await s.poll(hasAudience: everyone))!.text;
         expect(text, isNot(last));
         last = text;
       }

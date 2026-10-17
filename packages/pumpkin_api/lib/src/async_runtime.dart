@@ -1,41 +1,34 @@
 // Makes `async`/`await`, `Future.delayed` and `Timer` work in plugins.
 //
-// Standalone dart2wasm has no event loop, so scheduling anything outside of a
-// component async task throws. Instead, every callback from the host runs in a
-// zone (below) that:
+// Calls from the host run as tasks of the async component model (see
+// `package:wasm_components`): a callback can await host calls, and the host
+// keeps the task alive until they have finished. Standalone dart2wasm has no
+// event loop of its own, so scheduling anything outside of a task throws.
+// Every callback from the host runs in a zone (below) that:
 //
-//  * collects microtasks, and runs them before the host call returns, so
-//    `await` on completed futures just works,
+//  * lets the task run microtasks, so `await` on completed futures just works,
 //  * implements timers on top of the server's tick scheduler (20 ticks per
 //    second, so timers have a resolution of 50ms),
 //  * keeps the resources received by the callback alive for as long as the
 //    asynchronous work it started is running.
 //
-// A future that is waiting on a timer continues in a later tick, from the
-// `handle-task` callback of the scheduler.
+// The host waits for a callback until it has nothing left to await but a timer
+// or a future that something else completes. It is then given a fallback result,
+// and the work continues in a later tick, from the `handle-task` callback of the
+// scheduler.
 import 'dart:async';
 import 'dart:collection';
 
 import 'bindings.g.dart' as wit;
 import 'bindings.g.dart' show Server;
-import 'package:wasm_components/wasm_components.dart' show ResourceScope;
+import 'package:wasm_components/wasm_components.dart'
+    show AsyncTask, ResourceScope, drainMicrotasks, onDrain;
 
 import 'logger.dart';
 import 'registry.dart';
 
 /// Milliseconds in one server tick.
 const millisecondsPerTick = 50;
-
-/// What a plugin callback did when it returned to the host.
-final class Outcome<T> {
-  /// Whether [value] is set. If not, the callback is still waiting for a timer
-  /// or another future, and will continue in a later tick.
-  final bool completed;
-  final T? value;
-
-  const Outcome.completed(this.value) : completed = true;
-  const Outcome.pending() : value = null, completed = false;
-}
 
 typedef TaskHandler = void Function(Server server);
 
@@ -71,15 +64,12 @@ final class _Entry {
   _Entry(this.zone, this.callback);
 }
 
-final Queue<_Entry> _microtasks = Queue();
+/// Zero-delay timers, which run right after the microtasks.
 final Queue<_Entry> _immediate = Queue();
 
 final _activityKey = Object();
 
 final _zoneSpecification = ZoneSpecification(
-  scheduleMicrotask: (self, parent, zone, f) {
-    _microtasks.add(_Entry(zone, f));
-  },
   createTimer: (self, parent, zone, duration, f) {
     return _PluginTimer(
       zone[_activityKey] as _Activity?,
@@ -119,28 +109,41 @@ final _zoneSpecification = ZoneSpecification(
   },
 );
 
-/// Runs microtasks (and zero-delay timers) until nothing is left to do.
-void drainEventLoop() {
-  while (true) {
-    final _Entry entry;
-    if (_microtasks.isNotEmpty) {
-      entry = _microtasks.removeFirst();
-    } else if (_immediate.isNotEmpty) {
-      entry = _immediate.removeFirst();
-    } else {
-      return;
-    }
-    entry.zone.runGuarded(entry.callback);
-  }
+/// Runs one zero-delay timer. The task runtime calls this whenever the
+/// microtasks are done.
+bool _runImmediate() {
+  if (_immediate.isEmpty) return false;
+  final entry = _immediate.removeFirst();
+  entry.zone.runGuarded(entry.callback);
+  return true;
 }
 
-/// Runs [body] in a fresh plugin zone, as a callback from the host.
+var _hooked = false;
+
+/// Connects the timers to the task runtime. Done once, by the first callback.
+void _hook() {
+  if (_hooked) return;
+  _hooked = true;
+  onDrain = _runImmediate;
+}
+
+/// Runs [body] in a fresh plugin zone, as a callback from the host, and
+/// completes with its result.
 ///
-/// Errors thrown synchronously are rethrown. If the body returns a future that
-/// completes later, its error is logged instead.
-Outcome<T> runCallback<T>(String what, FutureOr<T> Function() body) {
+/// If the body still waits for something that is not a host call (a timer, or
+/// a future another callback completes) once everything else is done, the
+/// result is [fallback] instead, so the host doesn't wait for it. The body
+/// carries on in a later tick, and its failures are logged.
+///
+/// Failures of the body complete the future with an error.
+Future<T> runCallback<T>(
+  String what,
+  FutureOr<T> Function() body, {
+  required T Function() fallback,
+}) {
+  _hook();
   final activity = _Activity(ResourceScope.current);
-  final zone = Zone.root.fork(
+  final zone = Zone.current.fork(
     specification: _zoneSpecification,
     zoneValues: {_activityKey: activity},
   );
@@ -148,66 +151,55 @@ Outcome<T> runCallback<T>(String what, FutureOr<T> Function() body) {
   final FutureOr<T> result;
   try {
     result = zone.run(body);
-  } catch (_) {
+  } catch (e, s) {
     activity.bodyDone = true;
-    drainEventLoop();
+    drainMicrotasks();
     activity.maybeFinish();
-    rethrow;
+    return Future<T>.error(e, s);
   }
 
   if (result is! Future<T>) {
     activity.bodyDone = true;
-    drainEventLoop();
+    drainMicrotasks();
     if (activity.pendingTimers > 0) activity.hold();
-    return Outcome.completed(result);
+    return Future<T>.value(result);
   }
   final Future<T> future = result;
 
-  var done = false;
-  T? value;
-  Object? error;
-  StackTrace? stack;
+  final completer = Completer<T>();
   zone.run(() {
     future.then<void>(
-      (T v) {
-        done = true;
-        value = v;
+      (T value) {
         activity.bodyDone = true;
+        if (!completer.isCompleted) completer.complete(value);
         activity.maybeFinish();
       },
-      onError: (Object e, StackTrace s) {
-        done = true;
-        error = e;
-        stack = s;
+      onError: (Object error, StackTrace stack) {
         activity.bodyDone = true;
+        if (completer.isCompleted) {
+          logger.error('Uncaught error in $what: $error\n$stack');
+        } else {
+          completer.completeError(error, stack);
+        }
         activity.maybeFinish();
       },
     );
   });
-  drainEventLoop();
 
-  if (done) {
-    if (activity.pendingTimers > 0) activity.hold();
-    if (error != null) Error.throwWithStackTrace(error!, stack!);
-    return Outcome.completed(value);
-  }
-
-  // Still waiting: keep the resources alive, and report failures when they
-  // happen since nobody is waiting for the result anymore.
-  activity.hold();
-  future.then<void>((_) {}, onError: (Object e, StackTrace s) {
-    logger.error('Uncaught error in $what: $e\n$s');
+  AsyncTask.current?.onIdle(() {
+    if (completer.isCompleted) return false;
+    // Keep the resources alive for the work that carries on.
+    activity.hold();
+    completer.complete(fallback());
+    return true;
   });
-  return Outcome.pending();
+  return completer.future;
 }
 
 /// Runs a scheduled task and everything it unblocked.
-void runTask(TaskHandler task, Server server) {
-  try {
-    task(server);
-  } finally {
-    drainEventLoop();
-  }
+Future<void> runTask(TaskHandler task, Server server) async {
+  _hook();
+  task(server);
 }
 
 /// A timer backed by the server's tick scheduler.

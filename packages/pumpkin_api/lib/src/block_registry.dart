@@ -132,7 +132,6 @@ final class HostBlockRegistry implements BlockRegistryBackend {
         soundType: b.soundType,
         luminance: b.luminance,
         canOcclude: b.canOcclude,
-        suffocating: b.suffocating,
         replaceable: b.replaceable,
         mapColor: b.mapColor,
         collisionShape: _shape(b.collisionShape),

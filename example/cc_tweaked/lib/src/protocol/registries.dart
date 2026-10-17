@@ -148,16 +148,20 @@ abstract final class CcRegistries {
   /// `neoforge:frozen_registry` sync: the client receives them as ordinary
   /// `minecraft:registry_data` during configuration (with network codecs
   /// registered through `NewDatapackRegistryEvent`).
+  ///
+  /// In the order of a Java server (`Identifier` order: path, then namespace),
+  /// which is the order of the ids the client numbers them with; the loader in
+  /// `datapack_registries.dart` computes it again from the jar.
   static const List<String> turtleUpgrades = [
-    'computercraft:speaker',
-    'computercraft:wireless_modem_advanced',
-    'computercraft:wireless_modem_normal',
     'minecraft:crafting_table',
     'minecraft:diamond_axe',
     'minecraft:diamond_hoe',
     'minecraft:diamond_pickaxe',
     'minecraft:diamond_shovel',
     'minecraft:diamond_sword',
+    'computercraft:speaker',
+    'computercraft:wireless_modem_advanced',
+    'computercraft:wireless_modem_normal',
   ];
 
   static const List<String> pocketUpgrades = [

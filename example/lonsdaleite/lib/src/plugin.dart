@@ -104,10 +104,11 @@ final class LonsdaleitePlugin extends Plugin {
     final omnitools = {
       for (final item in manifest.itemsOfKind(ItemKind.omnitool)) item.id,
     };
-    context.intercept(Events.playerInteract, (server, event) {
+    context.intercept(Events.playerInteract, (server, event) async {
       if (event.action != InteractAction.rightClickBlock) return event;
       final held = event.player.getItemInHand(hand: Hand.right);
-      if (held == null || !omnitools.contains(_qualified(held.registryKey))) {
+      if (held == null ||
+          !omnitools.contains(_qualified(await held.getRegistryKey()))) {
         return event;
       }
       try {

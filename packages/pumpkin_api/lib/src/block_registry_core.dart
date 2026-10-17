@@ -297,10 +297,6 @@ final class BlockDefinition {
   /// Vanilla `canOcclude`, false for `noOcclusion()`.
   final bool canOcclude;
 
-  /// Vanilla `isSuffocating`: a full block that is suffocating hurts an entity
-  /// whose head is inside it.
-  final bool suffocating;
-
   /// Whether a block placed against it replaces it, like grass does.
   final bool replaceable;
 
@@ -326,7 +322,6 @@ final class BlockDefinition {
     this.soundType = 'stone',
     this.luminance = 0,
     this.canOcclude = true,
-    this.suffocating = true,
     this.replaceable = false,
     this.mapColor = 0,
     this.collisionShape = BlockShape.fullCube,

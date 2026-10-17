@@ -95,7 +95,7 @@ final class ResolvedWitDefinitions {
       case 'u8':
         return PrimitiveType.u8;
       case 'u16':
-        return PrimitiveType.u8;
+        return PrimitiveType.u16;
       case 'u32':
         return PrimitiveType.u32;
       case 'u64':
@@ -103,7 +103,7 @@ final class ResolvedWitDefinitions {
       case 's8':
         return PrimitiveType.s8;
       case 's16':
-        return PrimitiveType.s8;
+        return PrimitiveType.s16;
       case 's32':
         return PrimitiveType.s32;
       case 's64':
@@ -199,9 +199,9 @@ final class ResolvedWitDefinitions {
             }
             throw ArgumentError('Unsupported handle: $handle');
           case {'future': final inner}:
-            return FutureType(readType(inner as Object));
+            return FutureType(readOptionalType(inner));
           case {'stream': final inner}:
-            return StreamType(readType(inner as Object));
+            return StreamType(readOptionalType(inner));
         }
     }
 

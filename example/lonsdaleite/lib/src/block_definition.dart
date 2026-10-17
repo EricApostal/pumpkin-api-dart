@@ -12,8 +12,7 @@ import 'manifest.dart';
 /// and `createBlockStateDefinition`):
 ///
 /// * `strength(5.0F, 1200.0F)`, `requiresCorrectToolForDrops()`,
-///   `sound(AMETHYST)`, `lightLevel(7)`, `noOcclusion()`,
-///   `isSuffocating(false)`;
+///   `sound(AMETHYST)`, `lightLevel(7)`, `noOcclusion()`;
 /// * one boolean property per direction (the property is named after the
 ///   direction, which is how the mod's `updateShape` works), default
 ///   `false`, each following the neighbour in that direction when it is the
@@ -24,7 +23,9 @@ import 'manifest.dart';
 ///   otherwise the loot table by key.
 ///
 /// The block's tags are not part of the definition: [installManifestBlock]
-/// registers the manifest's block tags with `register-block-tag`.
+/// registers the manifest's block tags with `register-block-tag`. The same goes
+/// for `isSuffocating`: a block suffocates when it is in the
+/// `minecraft:causes_suffocation` tag, the manifest's `false` means it is not.
 BlockDefinition blockDefinitionFor(Manifest manifest) {
   final b = manifest.block;
   for (final name in b.properties) {
@@ -53,7 +54,6 @@ BlockDefinition blockDefinitionFor(Manifest manifest) {
     soundType: b.soundType,
     luminance: b.lightLevel,
     canOcclude: b.canOcclude,
-    suffocating: b.isSuffocating,
     replaceable: b.replaceable,
     collisionShape: BlockShape.fullCube,
     selectionShape: BlockShape.fullCube,

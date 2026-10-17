@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/api.dart';
@@ -33,10 +35,10 @@ final class KitsModule extends Module {
   List<PermNode> get permissions => KitPerms.all;
 
   @override
-  void onLoad(ModuleHost host) {
+  Future<void> onLoad(ModuleHost host) async {
     final docs = host.docs;
     final economy = host.services.require<Economy>();
-    final service = KitService(
+    final service = await KitService.create(
       economy: economy,
       clock: host.clock,
       catalog: docs.open(
@@ -99,11 +101,15 @@ final class KitsModule extends Module {
   /// Whether the server knows an item called [key]. The host has no registry
   /// lookup: asking for an unknown item gives air, so the key that comes back
   /// tells.
-  bool _isKnownItem(String key) {
+  Future<bool> _isKnownItem(String key) async {
     try {
       final stack = ItemStack.create(registryKey: key, count: 1);
-      final actual = stack.getRegistryKey();
-      stack.dispose();
+      final String actual;
+      try {
+        actual = await stack.getRegistryKey();
+      } finally {
+        stack.dispose();
+      }
       return registryKeysMatch(actual, key);
     } catch (_) {
       return false;
@@ -122,37 +128,48 @@ final class KitsModule extends Module {
       // Wait until the player has finished joining (and the core has
       // recorded them), then look the player up again: the handle of the
       // event is gone by then.
-      server.after(_starterDelay, (server) {
-        final id = Uuids.tryParse(uuid);
-        final player = id == null ? null : server.getPlayerByUuid(id: id);
-        if (player == null) return;
-        try {
-          final record = players.byUuid(uuid);
-          final isNew =
-              record != null &&
-              host.clock.now().difference(record.firstSeen) < _newPlayerWindow;
-          final result = service.grantStarterKit(
-            PlayerKitRecipient(player),
-            isNewPlayer: isNew,
-          );
-          if (result == null) return;
-          if (result.isOk) {
-            player.title(
-              texts.plain('starter.title', {'player': player.getName()}),
-              subtitle: texts.plain('starter.subtitle'),
-              stay: const Duration(seconds: 3),
-            );
-          } else if (result.failure == ClaimFailure.noSpace) {
-            player.send(texts.line('starter.no_room'));
-          }
-        } catch (e, s) {
-          host.log.error(
-            'Could not give the starter kit',
-            error: e,
-            stackTrace: s,
-          );
-        }
-      });
+      server.after(
+        _starterDelay,
+        // Tasks don't wait for their callback, so the work runs on its own.
+        (server) => unawaited(
+          _grantStarterKit(host, service, texts, players, server, uuid),
+        ),
+      );
     });
+  }
+
+  Future<void> _grantStarterKit(
+    ModuleHost host,
+    KitService service,
+    KitTexts texts,
+    PlayerDirectory players,
+    Server server,
+    String uuid,
+  ) async {
+    final id = Uuids.tryParse(uuid);
+    final player = id == null ? null : server.getPlayerByUuid(id: id);
+    if (player == null) return;
+    try {
+      final record = players.byUuid(uuid);
+      final isNew =
+          record != null &&
+          host.clock.now().difference(record.firstSeen) < _newPlayerWindow;
+      final result = await service.grantStarterKit(
+        PlayerKitRecipient(player),
+        isNewPlayer: isNew,
+      );
+      if (result == null) return;
+      if (result.isOk) {
+        player.title(
+          texts.plain('starter.title', {'player': player.getName()}),
+          subtitle: texts.plain('starter.subtitle'),
+          stay: const Duration(seconds: 3),
+        );
+      } else if (result.failure == ClaimFailure.noSpace) {
+        player.send(texts.line('starter.no_room'));
+      }
+    } catch (e, s) {
+      host.log.error('Could not give the starter kit', error: e, stackTrace: s);
+    }
   }
 }

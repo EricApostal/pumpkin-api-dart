@@ -28,7 +28,7 @@ final class CommonsPlugin extends Plugin {
   late Documents _docs;
 
   @override
-  void onLoad(Context context) {
+  Future<void> onLoad(Context context) async {
     const clock = SystemClock();
     _docs = Documents(
       DataFolderBackend(context.files),
@@ -50,7 +50,7 @@ final class CommonsPlugin extends Plugin {
     )) {
       try {
         _registerPermissions(context, module.permissions);
-        module.onLoad(
+        await module.onLoad(
           ModuleHost(
             moduleName: module.name,
             context: context,
@@ -75,10 +75,10 @@ final class CommonsPlugin extends Plugin {
   }
 
   @override
-  void onUnload(Context context) {
+  Future<void> onUnload(Context context) async {
     for (final module in _loaded.reversed) {
       try {
-        module.onUnload();
+        await module.onUnload();
       } catch (e, s) {
         _log.error(
           'Module ${module.name} failed to unload',

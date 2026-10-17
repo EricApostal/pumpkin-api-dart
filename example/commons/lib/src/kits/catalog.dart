@@ -40,11 +40,11 @@ final class KitReport {
 ///
 /// [isKnownItem] receives normalised keys (`minecraft:bread`),
 /// [isKnownEnchantment] the keys as written in the file.
-KitReport validateKits(
+Future<KitReport> validateKits(
   KitCatalog raw, {
-  required bool Function(String key) isKnownItem,
+  required Future<bool> Function(String key) isKnownItem,
   required bool Function(String key) isKnownEnchantment,
-}) {
+}) async {
   final problems = <String>[];
   final kits = <Kit>[];
   final seen = <String>{};
@@ -82,7 +82,7 @@ KitReport validateKits(
     final items = <KitItem>[];
     var broken = false;
     for (final item in kit.items) {
-      final problem = _itemProblem(item, isKnownItem, isKnownEnchantment);
+      final problem = await _itemProblem(item, isKnownItem, isKnownEnchantment);
       if (problem != null) {
         problems.add('$where, item "${item.item}": $problem, skipped.');
         broken = true;
@@ -106,7 +106,7 @@ KitReport validateKits(
     if (broken) continue;
 
     var icon = normalizeItemKey(kit.icon);
-    if (!_itemKey.hasMatch(icon) || !isKnownItem(icon)) {
+    if (!_itemKey.hasMatch(icon) || !await isKnownItem(icon)) {
       problems.add(
         '$where: unknown icon "${kit.icon}", using minecraft:chest.',
       );
@@ -128,13 +128,15 @@ KitReport validateKits(
   return KitReport(kits, problems);
 }
 
-String? _itemProblem(
+Future<String?> _itemProblem(
   KitItem item,
-  bool Function(String key) isKnownItem,
+  Future<bool> Function(String key) isKnownItem,
   bool Function(String key) isKnownEnchantment,
-) {
+) async {
   final key = normalizeItemKey(item.item);
-  if (!_itemKey.hasMatch(key) || !isKnownItem(key)) return 'unknown item';
+  if (!_itemKey.hasMatch(key) || !await isKnownItem(key)) {
+    return 'unknown item';
+  }
   if (item.count < 1 || item.count > 64 * 4) {
     return 'the count must be between 1 and 256';
   }

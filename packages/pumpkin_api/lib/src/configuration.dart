@@ -403,7 +403,7 @@ void _startHandler<C extends PhaseConnection>(
 ) {
   Timer(const Duration(milliseconds: 1), () {
     if (connection.isClosed) return;
-    try {
+    unawaited(
       runCallback<void>(
         'connection handler',
         () => runConnectionHandler<C>(
@@ -413,10 +413,11 @@ void _startHandler<C extends PhaseConnection>(
           releaseOnReturn: releaseOnReturn,
           failureMessage: failureMessage,
         ),
-      );
-    } catch (e, s) {
-      _log.error('Connection handler failed: $e\n$s');
-    }
+        fallback: () {},
+      ).catchError((Object e, StackTrace s) {
+        _log.error('Connection handler failed: $e\n$s');
+      }),
+    );
   });
 }
 

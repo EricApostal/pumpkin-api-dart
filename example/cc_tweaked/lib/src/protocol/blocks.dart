@@ -154,7 +154,6 @@ final class CcBlockSpec {
     soundType: soundType,
     luminance: 0,
     canOcclude: fullCube,
-    suffocating: fullCube,
     mapColor: mapColor,
     collisionShape: shape,
     selectionShape: shape,
@@ -635,8 +634,15 @@ abstract final class CcBlockCatalog {
   }
 
   /// The block tags for [plans], restricted to the blocks that are registered.
+  /// The host takes "suffocates" from the tag `minecraft:causes_suffocation`
+  /// (`BlockDefinition` has no flag for it): the full cubes are in it, which is
+  /// what the flag used to be set to.
   static Map<String, List<String>> tagsFor(List<CcBlockPlan> plans) {
     final registered = {for (final p in plans) p.spec.name};
+    final suffocating = [
+      for (final p in plans)
+        if (p.spec.fullCube) 'computercraft:${p.spec.name}',
+    ];
     return {
       for (final e in tags.entries)
         if (e.value.any(registered.contains))
@@ -644,6 +650,7 @@ abstract final class CcBlockCatalog {
             for (final name in e.value)
               if (registered.contains(name)) 'computercraft:$name',
           ],
+      if (suffocating.isNotEmpty) 'minecraft:causes_suffocation': suffocating,
     };
   }
 }

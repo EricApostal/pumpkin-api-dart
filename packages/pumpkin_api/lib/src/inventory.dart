@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'bindings.g.dart';
 import 'blocks.dart';
 
@@ -13,18 +15,19 @@ extension InventoryHelpers on Inventory {
   ItemStack? operator [](int slot) => getItem(slot: slot);
 
   /// Puts [item] in [slot], or empties the slot when `null`. [item] is
-  /// consumed.
+  /// consumed. The host applies it right after, use `setItem` to wait for it.
   void operator []=(int slot, ItemStack? item) =>
-      setItem(slot: slot, item: item);
+      unawaited(setItem(slot: slot, item: item));
 
   /// All slots, with `null` for the empty ones.
   List<ItemStack?> get items => getAllItems();
 
-  /// Replaces every slot. Items are consumed.
-  set items(List<ItemStack?> value) => setAllItems(items: value);
+  /// Replaces every slot. Items are consumed. The host applies it right after,
+  /// use `setAllItems` to wait for it.
+  set items(List<ItemStack?> value) => unawaited(setAllItems(items: value));
 
   /// Removes and returns the item in [slot], or `null` if it was empty.
-  ItemStack? take(int slot) => removeItem(slot: slot);
+  Future<ItemStack?> take(int slot) => removeItem(slot: slot);
 
   /// The number of items of the kind [key] (`diamond` or `minecraft:diamond`)
   /// in this inventory, counted over all stacks.
@@ -45,10 +48,10 @@ extension InventoryHelpers on Inventory {
   /// Puts [item] in the first empty slot and returns `true`, or returns
   /// `false` when the inventory is full. [item] is consumed only when it is
   /// placed. This doesn't merge with existing stacks.
-  bool give(ItemStack item) {
+  Future<bool> give(ItemStack item) async {
     final slot = firstEmptySlot;
     if (slot < 0) return false;
-    this[slot] = item;
+    await setItem(slot: slot, item: item);
     return true;
   }
 }

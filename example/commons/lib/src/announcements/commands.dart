@@ -28,8 +28,11 @@ final class AnnouncementCommands {
       (c) => c.arg(
         'message',
         ArgumentTypes.greedyString,
-        runs: (ctx) {
-          _display.show(ctx.server, Announcement(text: ctx.string('message')));
+        runs: (ctx) async {
+          await _display.show(
+            ctx.server,
+            Announcement(text: ctx.string('message')),
+          );
           ctx.sender.send('&aAnnouncement sent.');
         },
       ),
@@ -72,15 +75,15 @@ final class AnnouncementCommands {
     }
   }
 
-  void _next(CommandContext ctx) {
+  Future<void> _next(CommandContext ctx) async {
     final server = ctx.server;
-    final announcement = _service.next(
+    final announcement = await _service.next(
       hasAudience: (a) => _display.hasAudience(server, a),
     );
     if (announcement == null) {
       ctx.fail('There is nothing to announce to the players who are online.');
     }
-    _display.show(server, announcement);
+    await _display.show(server, announcement);
     ctx.sender.send('&aShown message of type ${announcement.mode.name}.');
   }
 

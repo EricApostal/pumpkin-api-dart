@@ -13,3 +13,5 @@ analyzer:
 linter:
   rules:
     prefer_relative_imports: true
+    # Host calls finish later: a call nobody awaits is a mistake unless it is meant.
+    unawaited_futures: true

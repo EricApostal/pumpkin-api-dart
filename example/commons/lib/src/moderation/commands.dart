@@ -49,7 +49,7 @@ final class ModerationCommands {
 
   /// The player named by the argument [key]: someone who joined before, or
   /// who is online right now.
-  Target _target(CommandContext ctx, String key) {
+  Future<Target> _target(CommandContext ctx, String key) async {
     final name = ctx.string(key);
     var target = service.find(name);
     if (target == null) {
@@ -57,7 +57,7 @@ final class ModerationCommands {
       if (online != null) target = Target(online.uuidString, online.getName());
     }
     if (target == null) _fail('player.unknown', {'name': name});
-    enforcement.refreshProtection(ctx.server, target.uuid);
+    await enforcement.refreshProtection(ctx.server, target.uuid);
     return target;
   }
 
@@ -85,22 +85,22 @@ final class ModerationCommands {
   }
 
   /// Tells staff about a new punishment and carries it out on the player.
-  void _carryOut(
+  Future<void> _carryOut(
     CommandContext ctx,
     Actor issuer,
     Punishment punishment, {
     Punishment? escalation,
-  }) {
-    enforcement.announce(
+  }) async {
+    await enforcement.announce(
       ctx.server,
       ctx.sender,
       issuer,
       messages.notice(punishment),
     );
-    enforcement.enforce(ctx.server, punishment);
+    await enforcement.enforce(ctx.server, punishment);
     if (escalation != null) {
-      enforcement.notifyStaff(ctx.server, messages.notice(escalation));
-      enforcement.enforce(ctx.server, escalation);
+      await enforcement.notifyStaff(ctx.server, messages.notice(escalation));
+      await enforcement.enforce(ctx.server, escalation);
     }
   }
 
@@ -227,15 +227,15 @@ final class ModerationCommands {
     );
   }
 
-  void _warn(CommandContext ctx) {
+  Future<void> _warn(CommandContext ctx) async {
     final issuer = _actor(ctx);
-    final target = _target(ctx, 'player');
+    final target = await _target(ctx, 'player');
     final result = service.warn(
       issuer,
       target,
       reason: ctx.stringOrNull('reason'),
     );
-    _carryOut(
+    await _carryOut(
       ctx,
       issuer,
       _issued(result, target),
@@ -243,9 +243,9 @@ final class ModerationCommands {
     );
   }
 
-  void _mute(CommandContext ctx) {
+  Future<void> _mute(CommandContext ctx) async {
     final issuer = _actor(ctx);
-    final target = _target(ctx, 'player');
+    final target = await _target(ctx, 'player');
     final typed = splitSpanAndReason(ctx.stringOrNull('details'));
     final length = typed.span == null
         ? service.config.defaultMuteLength
@@ -256,26 +256,26 @@ final class ModerationCommands {
       duration: length,
       reason: typed.reason,
     );
-    _carryOut(ctx, issuer, _issued(result, target));
+    await _carryOut(ctx, issuer, _issued(result, target));
   }
 
   /// Bans for [lengthText] (already validated, as typed) or permanently when
   /// it is `null`.
-  void _ban(CommandContext ctx, {required String? lengthText}) {
+  Future<void> _ban(CommandContext ctx, {required String? lengthText}) async {
     final issuer = _actor(ctx);
-    final target = _target(ctx, 'player');
+    final target = await _target(ctx, 'player');
     final result = service.ban(
       issuer,
       target,
       duration: lengthText == null ? null : parseSpan(lengthText)!.length,
       reason: ctx.stringOrNull('reason'),
     );
-    _carryOut(ctx, issuer, _issued(result, target));
+    await _carryOut(ctx, issuer, _issued(result, target));
   }
 
-  void _kick(CommandContext ctx) {
+  Future<void> _kick(CommandContext ctx) async {
     final issuer = _actor(ctx);
-    final target = _target(ctx, 'player');
+    final target = await _target(ctx, 'player');
     if (enforcement.online(ctx.server, target.uuid) == null) {
       _fail('player.offline', {'name': target.name});
     }
@@ -284,7 +284,7 @@ final class ModerationCommands {
       target,
       reason: ctx.stringOrNull('reason'),
     );
-    _carryOut(ctx, issuer, _issued(result, target));
+    await _carryOut(ctx, issuer, _issued(result, target));
   }
 
   // -- Taking punishments back ------------------------------------------------
@@ -334,16 +334,16 @@ final class ModerationCommands {
     );
   }
 
-  void _revoke(
+  Future<void> _revoke(
     CommandContext ctx,
     String missingKey,
     Punishment? Function(Actor by, String uuid) revoke,
-  ) {
+  ) async {
     final issuer = _actor(ctx);
-    final target = _target(ctx, 'player');
+    final target = await _target(ctx, 'player');
     final revoked = revoke(issuer, target.uuid);
     if (revoked == null) _fail(missingKey, {'name': target.name});
-    enforcement.announce(
+    await enforcement.announce(
       ctx.server,
       ctx.sender,
       issuer,
@@ -356,16 +356,16 @@ final class ModerationCommands {
     }
   }
 
-  void _unwarn(CommandContext ctx) {
+  Future<void> _unwarn(CommandContext ctx) async {
     final issuer = _actor(ctx);
-    final target = _target(ctx, 'player');
+    final target = await _target(ctx, 'player');
     final id = ctx.integerOrNull('id');
     final revoked = service.unwarn(issuer, target.uuid, id: id);
     if (revoked == null) {
       if (id == null) _fail('revoke.noWarning', {'name': target.name});
       _fail('revoke.warningNotFound', {'name': target.name, 'id': id});
     }
-    enforcement.announce(
+    await enforcement.announce(
       ctx.server,
       ctx.sender,
       issuer,
@@ -432,8 +432,8 @@ final class ModerationCommands {
     );
   }
 
-  void _history(CommandContext ctx) {
-    final target = _target(ctx, 'player');
+  Future<void> _history(CommandContext ctx) async {
+    final target = await _target(ctx, 'player');
     final records = service.history(target.uuid);
     if (records.isEmpty) {
       ctx.sender.send(
@@ -474,8 +474,8 @@ final class ModerationCommands {
     );
   }
 
-  void _checkBan(CommandContext ctx) {
-    final target = _target(ctx, 'player');
+  Future<void> _checkBan(CommandContext ctx) async {
+    final target = await _target(ctx, 'player');
     final lines = messages.check(
       name: target.name,
       ban: service.activeBan(target.uuid),
@@ -518,7 +518,7 @@ final class ModerationCommands {
     );
   }
 
-  void _vanish(CommandContext ctx) {
+  Future<void> _vanish(CommandContext ctx) async {
     final player = ctx.player;
     final uuid = player.uuidString;
     final wanted = switch (ctx.stringOrNull('state')) {
@@ -534,7 +534,7 @@ final class ModerationCommands {
     }
     enforcement.setVanished(player, vanished: wanted);
     ctx.sender.send(messages.chat(wanted ? 'vanish.on' : 'vanish.off'));
-    enforcement.notifyStaff(
+    await enforcement.notifyStaff(
       ctx.server,
       messages.chat(wanted ? 'notice.vanish.on' : 'notice.vanish.off', {
         'player': MessageFormat.escape(player.getName()),
@@ -550,7 +550,7 @@ final class ModerationCommands {
     ctx.sender.send(messages.chat(joined ? 'staffchat.on' : 'staffchat.off'));
   }
 
-  void _staffMessage(CommandContext ctx) => enforcement.sendStaffChat(
+  Future<void> _staffMessage(CommandContext ctx) => enforcement.sendStaffChat(
     ctx.server,
     ctx.senderName,
     ctx.string('message'),

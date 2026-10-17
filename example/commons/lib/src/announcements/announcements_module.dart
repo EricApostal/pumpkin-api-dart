@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/module.dart';
@@ -64,29 +66,36 @@ final class AnnouncementsModule extends Module {
     host.context.listen(Events.playerJoin, (server, event) {
       display.playerJoined(server, event.player.uuidString);
     });
-    _tick = host.context.every(const Duration(seconds: 1), (server) {
-      try {
-        final due = service.poll(
-          hasAudience: (a) => display.hasAudience(server, a),
-        );
-        if (due != null) display.show(server, due);
-      } catch (e, s) {
-        host.log.error(
-          'Could not show an announcement',
-          error: e,
-          stackTrace: s,
-        );
-      }
-    });
+    _tick = host.context.every(
+      const Duration(seconds: 1),
+      // Tasks don't wait for their callback, so the work runs on its own.
+      (server) => unawaited(_announce(host, service, display, server)),
+    );
     host.log.info(
       '${config.messages.length} announcements, every ${config.intervalSeconds}s.',
     );
   }
 
+  Future<void> _announce(
+    ModuleHost host,
+    AnnouncementService service,
+    AnnouncementDisplay display,
+    Server server,
+  ) async {
+    try {
+      final due = await service.poll(
+        hasAudience: (a) => display.hasAudience(server, a),
+      );
+      if (due != null) await display.show(server, due);
+    } catch (e, s) {
+      host.log.error('Could not show an announcement', error: e, stackTrace: s);
+    }
+  }
+
   @override
-  void onUnload() {
+  Future<void> onUnload() async {
     _tick?.cancel();
-    _display?.dispose();
+    await _display?.dispose();
   }
 
   /// Reads the file again. The old configuration stays in use if the file is

@@ -126,6 +126,10 @@ BlockInstallation installManifestBlock(
     backend.registerTag(tag.id, tag.values);
     tags.add(tag.id);
   }
+  if (b.isSuffocating) {
+    // A block suffocates by being in this tag, there is no flag for it.
+    backend.registerTag('minecraft:causes_suffocation', [b.id]);
+  }
 
   // Ask the host again: what it reports is what the packets will carry.
   final after = backend.registeredBlocks

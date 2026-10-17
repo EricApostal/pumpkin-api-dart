@@ -791,7 +791,9 @@ impl DartDefinition {
                 self.0.push_str(">");
             }
             TypeDefKind::Future(element_type) => {
-                self.0.push_str("Future<");
+                // A component model future is an opaque handle, not a Dart `Future`.
+                self.imported_identifier(dart, KnownDartUri::PkgWasmComponents, "ComponentFuture");
+                self.0.push_str("<");
                 self.write_optional_dart_type(dart, resolve, element_type.as_ref());
                 self.0.push_str(">");
             }

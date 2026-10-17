@@ -81,7 +81,7 @@ bool _listEq<T>(List<T> a, List<T> b) {
 ///   lore: ['Forged in Dart'],
 ///   enchantments: [(Enchantment.sharpness, 5)],
 /// );
-/// player.inventory.give(sword.build());
+/// player.inventory.give(await sword.build());
 /// ```
 ///
 /// Texts are plain strings. A name or lore line containing `&` followed by a
@@ -201,21 +201,21 @@ final class ItemSpec {
 
   /// Creates a new [ItemStack]. Every call makes a fresh one; hand it to
   /// the host (inventory, `setItem`, ...) which consumes it.
-  ItemStack build() {
+  Future<ItemStack> build() async {
     final stack = ItemStack.create(
       registryKey: normalizeRegistryKey(key),
       count: count,
     );
     final n = name;
-    if (n != null) stack.setCustomName(name: _text(n));
+    if (n != null) await stack.setCustomName(name: _text(n));
     if (lore.isNotEmpty) {
-      stack.setLore(lore: [for (final line in lore) _text(line)]);
+      await stack.setLore(lore: [for (final line in lore) _text(line)]);
     }
     for (final (enchantment, level) in enchantments) {
-      stack.addEnchantment(enchantment: enchantment, level: level);
+      await stack.addEnchantment(enchantment: enchantment, level: level);
     }
     for (final a in attributes) {
-      stack.addAttributeModifier(
+      await stack.addAttributeModifier(
         modifier: ItemAttributeModifier(
           attribute: a.attribute,
           modifier: AttributeModifier(
@@ -227,8 +227,9 @@ final class ItemSpec {
         ),
       );
     }
+    final components = <Future<void>>[];
     void component(DataComponent c, List<int> bytes) =>
-        stack.setComponent(component: c, value: bytes);
+        components.add(stack.setComponent(component: c, value: bytes));
     final cmd = customModelData;
     if (cmd != null) {
       component(DataComponent.customModelData, ComponentBytes.customModelData(cmd));
@@ -251,6 +252,7 @@ final class ItemSpec {
     if (model != null) {
       component(DataComponent.itemModel, ComponentBytes.string(model));
     }
+    await Future.wait(components);
     return stack;
   }
 
@@ -397,7 +399,7 @@ final class ItemBuilder {
   ItemSpec get spec => _spec;
 
   /// Creates a new [ItemStack].
-  ItemStack build() => _spec.build();
+  Future<ItemStack> build() => _spec.build();
 }
 
 

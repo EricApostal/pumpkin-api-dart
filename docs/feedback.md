@@ -63,12 +63,12 @@ when you pass a duration (otherwise the client's defaults apply).
 
 ```dart
 final bar = ManagedBossBar('&cBoss', color: BossBarColor.red);
-bar.addPlayerById(server, uuid);    // doesn't consume anything
-bar.addPlayer(player);              // CONSUMES `player` (the host takes it)
-bar.progress = 0.5;                 // 0..1
+await bar.addPlayerById(server, uuid);  // doesn't consume anything
+await bar.addPlayer(player);            // CONSUMES `player` (the host takes it)
+bar.progress = 0.5;                     // 0..1, reaches the host right after
 bar.updateEvery(Duration(seconds: 1), (b) => b.title = '...');
 bar.countdown(Duration(seconds: 30), onFinish: (b) => ...);
-bar.remove();                       // hides it for everyone and releases it
+await bar.remove();                     // hides it for everyone and releases it
 ```
 
 ## Sidebar

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import 'bag.dart';
@@ -21,9 +23,11 @@ const _filler = ItemSpec('gray_stained_glass_pane', name: ' ');
 /// | right | sell `amount` items |
 /// | shift + right | sell everything the player carries of it |
 ///
-/// Everything a click does is synchronous, so a second click can never run
-/// in the middle of a first one. The confirmation menu additionally ignores
-/// clicks after the first one, because it is replaced on the next tick.
+/// A click does its work on its own, without the menu waiting for it. A
+/// player's trades run one after another (see [ShopService.buy]), so a second
+/// click can never run in the middle of a first one. The confirmation menu
+/// additionally ignores clicks after the first one, because it is replaced on
+/// the next tick.
 final class ShopUi {
   final ShopService shop;
   final ShopTexts texts;
@@ -32,14 +36,15 @@ final class ShopUi {
   ShopUi(this.shop, this.texts, this.log);
 
   /// Opens the category menu for [player].
-  void open(Player player) => _categories(player).open(player);
+  Future<void> open(Player player) async =>
+      (await _categories(player)).open(player);
 
   /// Opens the items of [categoryId] for [player]. Returns `false` if there
   /// is no such category.
-  bool openCategory(Player player, String categoryId) {
+  Future<bool> openCategory(Player player, String categoryId) async {
     final category = shop.catalog.category(categoryId);
     if (category == null) return false;
-    _items(player, category).open(player);
+    await (await _items(player, category)).open(player);
     return true;
   }
 
@@ -48,11 +53,13 @@ final class ShopUi {
   /// What a menu needs to know about a player, as plain data. Player handles
   /// are only valid inside the callback that received them, but a menu is
   /// drawn again later (page changes, refreshes).
-  _Viewer _viewer(Player player) =>
-      _Viewer(player.asEntity().getUuid().asString, {
-        for (final node in shop.catalog.permissions)
-          if (player.hasPermission(node: node)) node,
-      });
+  Future<_Viewer> _viewer(Player player) async {
+    final granted = <String>{};
+    for (final node in shop.catalog.permissions) {
+      if (await player.hasPermission(node: node)) granted.add(node);
+    }
+    return _Viewer(player.asEntity().getUuid().asString, granted);
+  }
 
   ItemSpec _balance(String uuid) => ItemSpec(
     'gold_ingot',
@@ -61,8 +68,8 @@ final class ShopUi {
     }),
   );
 
-  Menu _categories(Player player) {
-    final viewer = _viewer(player);
+  Future<Menu> _categories(Player player) async {
+    final viewer = await _viewer(player);
     final categories = shop.catalog.categories;
     final rows = ((categories.length + 6) ~/ 7 + 2).clamp(3, 6);
     final menu = Menu(title: texts.plain('menu.title'), rows: rows)
@@ -90,8 +97,8 @@ final class ShopUi {
             texts.plain('menu.category_click'),
           ],
         ),
-        onClick: (click) => _guard(click.player, () {
-          click.open(_items(click.player, category));
+        onClick: (click) => _fire(click.player, () async {
+          click.open(await _items(click.player, category));
         }),
       );
     }
@@ -99,8 +106,8 @@ final class ShopUi {
     return menu;
   }
 
-  Menu _items(Player player, ShopCategory category) {
-    final viewer = _viewer(player);
+  Future<Menu> _items(Player player, ShopCategory category) async {
+    final viewer = await _viewer(player);
     late final PagedMenu<ShopEntry> menu;
     menu = PagedMenu<ShopEntry>(
       title: texts.plain('menu.items_title', {
@@ -109,14 +116,14 @@ final class ShopUi {
       items: () => shop.catalog.category(category.id)?.entries ?? const [],
       render: (entry) => _entryItem(viewer, entry),
       onSelect: (click, entry) =>
-          _guard(click.player, () => _entryClick(click, menu, category, entry)),
+          _fire(click.player, () => _entryClick(click, menu, category, entry)),
     );
     menu.button(
       row: 5,
       column: 0,
       item: ItemSpec('arrow', name: texts.plain('menu.back')),
-      onClick: (click) => _guard(click.player, () {
-        click.open(_categories(click.player));
+      onClick: (click) => _fire(click.player, () async {
+        click.open(await _categories(click.player));
       }),
     );
     menu.button(row: 5, column: 8, item: _balance(viewer.uuid));
@@ -189,17 +196,17 @@ final class ShopUi {
         'lime_stained_glass_pane',
         name: texts.plain('menu.confirm', {'money': texts.money(cost)}),
       ),
-      onClick: (click) => _guard(click.player, () {
+      onClick: (click) => _fire(click.player, () async {
         if (answered) return;
         answered = true;
-        final result = shop.buy(
+        final result = await shop.buy(
           PlayerShopper(click.player),
           entry,
           amount,
           expectedCost: cost,
         );
         _report(click.player, result);
-        click.open(_items(click.player, back));
+        click.open(await _items(click.player, back));
       }),
     );
     menu.button(
@@ -209,10 +216,10 @@ final class ShopUi {
         'red_stained_glass_pane',
         name: texts.plain('menu.cancel'),
       ),
-      onClick: (click) => _guard(click.player, () {
+      onClick: (click) => _fire(click.player, () async {
         if (answered) return;
         answered = true;
-        click.open(_items(click.player, back));
+        click.open(await _items(click.player, back));
       }),
     );
     return menu;
@@ -220,15 +227,15 @@ final class ShopUi {
 
   // -- Clicks -----------------------------------------------------------------
 
-  void _entryClick(
+  Future<void> _entryClick(
     MenuClick click,
     PagedMenu<ShopEntry> menu,
     ShopCategory category,
     ShopEntry entry,
-  ) {
+  ) async {
     final player = click.player;
     if (click.isLeft) {
-      if (!player.hasPermission(node: ShopPerms.buy.node)) {
+      if (!await player.hasPermission(node: ShopPerms.buy.node)) {
         return _report(
           player,
           TradeResult.failed(
@@ -244,9 +251,9 @@ final class ShopUi {
         click.open(_confirm(player, category, entry, amount, cost));
         return;
       }
-      _report(player, shop.buy(PlayerShopper(player), entry, amount));
+      _report(player, await shop.buy(PlayerShopper(player), entry, amount));
     } else if (click.isRight) {
-      if (!player.hasPermission(node: ShopPerms.sell.node)) {
+      if (!await player.hasPermission(node: ShopPerms.sell.node)) {
         return _report(
           player,
           TradeResult.failed(
@@ -258,9 +265,9 @@ final class ShopUi {
       }
       final shopper = PlayerShopper(player);
       final amount = click.isShift
-          ? shopper.bag.countOf(entry.item).clamp(1, maxTradeAmount)
+          ? (await shopper.bag.countOf(entry.item)).clamp(1, maxTradeAmount)
           : entry.amount;
-      _report(player, shop.sell(shopper, entry, amount));
+      _report(player, await shop.sell(shopper, entry, amount));
     } else {
       return;
     }
@@ -290,11 +297,16 @@ final class ShopUi {
     }
   }
 
+  /// Starts the work of a click without waiting for it: menus don't wait for
+  /// their click handlers. Failures are handled by [_guard].
+  void _fire(Player player, Future<void> Function() body) =>
+      unawaited(_guard(player, body));
+
   /// Runs a click handler so that a failure is logged and shown to the
   /// player instead of reaching the server.
-  void _guard(Player player, void Function() body) {
+  Future<void> _guard(Player player, Future<void> Function() body) async {
     try {
-      body();
+      await body();
     } catch (e, s) {
       log.error('Shop menu action failed', error: e, stackTrace: s);
       try {

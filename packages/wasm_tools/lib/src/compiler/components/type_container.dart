@@ -178,9 +178,13 @@ final class TypesContainer {
       case BorrowType(:final resource):
         return addInner(BorrowType(addResourceType(resource)));
       case StreamType(:final element):
-        return addInner(StreamType(addValueType(element)));
+        return addInner(
+          StreamType(element == null ? null : addValueType(element)),
+        );
       case FutureType(:final element):
-        return addInner(FutureType(addValueType(element)));
+        return addInner(
+          FutureType(element == null ? null : addValueType(element)),
+        );
       case EnumType():
       case PrimitiveType():
       case StringType():

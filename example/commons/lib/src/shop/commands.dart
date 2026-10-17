@@ -230,16 +230,16 @@ final class _ShopCommands {
 
   // -- Player commands --------------------------------------------------------
 
-  void _openShop(CommandContext ctx) {
+  Future<void> _openShop(CommandContext ctx) async {
     final category = ctx.stringOrNull('category');
     if (category == null) {
-      ui.open(ctx.player);
-    } else if (!ui.openCategory(ctx.player, category)) {
+      await ui.open(ctx.player);
+    } else if (!await ui.openCategory(ctx.player, category)) {
       _fail('err.no_category', {'name': MessageFormat.escape(category)});
     }
   }
 
-  void _buy(CommandContext ctx) {
+  Future<void> _buy(CommandContext ctx) async {
     final player = ctx.player;
     final entry = _entry(ctx.string('item'));
     final amount = ctx.integerOrNull('amount') ?? 1;
@@ -267,10 +267,13 @@ final class _ShopCommands {
       );
       return;
     }
-    _say(ctx, texts.trade(shop.buy(PlayerShopper(player), entry, amount)));
+    _say(
+      ctx,
+      texts.trade(await shop.buy(PlayerShopper(player), entry, amount)),
+    );
   }
 
-  void _confirmPurchase(CommandContext ctx) {
+  Future<void> _confirmPurchase(CommandContext ctx) async {
     final player = ctx.player;
     final pending = confirmations.confirm(_uuid(player));
     if (pending == null) _fail('err.not_confirmed');
@@ -278,7 +281,7 @@ final class _ShopCommands {
     _say(
       ctx,
       texts.trade(
-        shop.buy(
+        await shop.buy(
           PlayerShopper(player),
           entry,
           pending.amount,
@@ -288,7 +291,7 @@ final class _ShopCommands {
     );
   }
 
-  void _sell(CommandContext ctx) {
+  Future<void> _sell(CommandContext ctx) async {
     final player = ctx.player;
     final shopper = PlayerShopper(player);
     final what = ctx.string('what').toLowerCase();
@@ -296,7 +299,7 @@ final class _ShopCommands {
 
     if (what == 'all') {
       if (typedAmount != null) ctx.failUsage('"all" takes no amount.');
-      final sale = shop.sellAll(shopper);
+      final sale = await shop.sellAll(shopper);
       for (final line in texts.bulkSale(
         sale,
         shop.economy.balance(shopper.uuid),
@@ -309,7 +312,7 @@ final class _ShopCommands {
     final ShopEntry entry;
     final int amount;
     if (what == 'hand') {
-      final held = shopper.bag.held();
+      final held = await shopper.bag.held();
       if (held == null) _fail('err.hand_empty');
       if (!held.plain) _fail('err.hand_custom');
       entry = _entry(held.key);
@@ -318,16 +321,16 @@ final class _ShopCommands {
       entry = _entry(what);
       amount = typedAmount ?? 1;
     }
-    _say(ctx, texts.trade(shop.sell(shopper, entry, amount)));
+    _say(ctx, texts.trade(await shop.sell(shopper, entry, amount)));
   }
 
-  void _worth(CommandContext ctx) {
+  Future<void> _worth(CommandContext ctx) async {
     final typed = ctx.stringOrNull('item');
     final String key;
     if (typed != null) {
       key = typed;
     } else {
-      final held = PlayerBag(ctx.player).held();
+      final held = await PlayerBag(ctx.player).held();
       if (held == null) _fail('err.hand_empty');
       key = held.key;
     }
@@ -346,8 +349,8 @@ final class _ShopCommands {
 
   // -- Admin ------------------------------------------------------------------
 
-  void _reload(CommandContext ctx) {
-    final report = shop.reload(backend);
+  Future<void> _reload(CommandContext ctx) async {
+    final report = await shop.reload(backend);
     if (!report.ok) {
       _say(ctx, texts.line('admin.reload_failed', {'error': report.error}));
       return;
@@ -367,17 +370,17 @@ final class _ShopCommands {
   }
 
   /// Runs an edit and turns a [ShopException] into a failed command.
-  void _edit(void Function() change) {
+  Future<void> _edit(Future<void> Function() change) async {
     try {
-      change();
+      await change();
     } on ShopException catch (e) {
       throw CommandException(e.message);
     }
   }
 
-  void _setPrice(CommandContext ctx) {
+  Future<void> _setPrice(CommandContext ctx) async {
     final item = ctx.string('item');
-    _edit(
+    await _edit(
       () => shop.setPrice(
         item,
         ctx.integer('buy'),
@@ -396,12 +399,12 @@ final class _ShopCommands {
     );
   }
 
-  void _addItem(CommandContext ctx) {
-    final held = PlayerBag(ctx.player).held();
+  Future<void> _addItem(CommandContext ctx) async {
+    final held = await PlayerBag(ctx.player).held();
     if (held == null) _fail('err.hand_empty');
     final category = ctx.string('category');
     final buy = ctx.integer('buy');
-    _edit(
+    await _edit(
       () => shop.addItem(
         category,
         held.key,
@@ -419,9 +422,9 @@ final class _ShopCommands {
     );
   }
 
-  void _removeItem(CommandContext ctx) {
+  Future<void> _removeItem(CommandContext ctx) async {
     final item = ctx.string('item');
-    _edit(() => shop.removeItem(item));
+    await _edit(() => shop.removeItem(item));
     _say(
       ctx,
       texts.line('admin.removed', {

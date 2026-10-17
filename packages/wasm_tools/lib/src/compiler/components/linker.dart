@@ -178,7 +178,8 @@ final class TaskReturn extends CanonPrimitive with CanonicalHasOptions {
     s.writeByte(0x09);
     if (returnType case final returnType?) {
       s.writeByte(0x00);
-      s.writeUnsigned(returnType.index.index);
+      // A value type reference is a signed 33-bit index.
+      s.writeSigned(returnType.index.index);
     } else {
       s.writeByte(0x01);
       s.writeByte(0x00);
@@ -243,6 +244,26 @@ final class WaitableSetDrop extends CanonPrimitive {
   @override
   void serialize(w.Serializer s) {
     s.writeByte(0x22);
+  }
+}
+
+/// `canon waitable.join`: adds a waitable (a subtask, ...) to a waitable set.
+final class WaitableJoin extends CanonPrimitive {
+  new(super.createdCoreFunction);
+
+  @override
+  void serialize(w.Serializer s) {
+    s.writeByte(0x23);
+  }
+}
+
+/// `canon subtask.drop`: releases the handle of a subtask that has returned.
+final class SubtaskDrop extends CanonPrimitive {
+  new(super.createdCoreFunction);
+
+  @override
+  void serialize(w.Serializer s) {
+    s.writeByte(0x0d);
   }
 }
 

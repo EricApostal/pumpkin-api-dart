@@ -253,12 +253,38 @@ final class ComponentAssembler {
   /// concrete-component level). To link against the host, resource handles in
   /// these signatures must instead alias the imported interfaces' resources.
   void resolveExportTypes() {
-    final definitions = _definitions = ResolvedWitDefinitions()
-      ..readTypes(abi.rawTypeDefs);
+    _definitions = ResolvedWitDefinitions()..readTypes(abi.rawTypeDefs);
     for (final export in abi.functionExports.values) {
-      export.type = _readFunctionType(definitions, export.rawJson);
+      // Both name the types the same way the lifted function does (resources
+      // alias the imported ones): `task.return` has to take exactly the result
+      // type of the function that is being returned from.
+      final owner = export.interfaceIndex;
+      export.type = owner == null
+          ? buildBareExportType(export.rawJson)
+          : _interfaceExportType(export.rawJson, owner);
     }
   }
+
+  /// The type of a function exported by the interface `type_defs`-owner
+  /// [ownInterface]. Types it uses from other interfaces are aliased out of
+  /// their imports, so they are named like everywhere else.
+  FunctionType _interfaceExportType(
+    Map<String, Object?> json,
+    int ownInterface,
+  ) {
+    _exportingInterface = ownInterface;
+    try {
+      return buildBareExportType(json);
+    } finally {
+      _exportingInterface = null;
+      // What was built depends on the interface it was built for.
+      _rootValues.clear();
+    }
+  }
+
+  /// The interface whose export type is being built, whose own types are
+  /// defined here rather than aliased from an import.
+  int? _exportingInterface;
 
   /// The named value types (`record`/`variant`/`enum`/`flags`) owned by the
   /// exported interface [interface], each defined at the component level and
@@ -285,30 +311,6 @@ final class ComponentAssembler {
       result.add((name, ref.index));
     }
     return result;
-  }
-
-  static FunctionType _readFunctionType(
-    ResolvedWitDefinitions definitions,
-    Map<String, Object?> value,
-  ) {
-    final params = <RecordField>[
-      for (final rawParam in value['params'] as List)
-        RecordField(
-          label: rawParam['name'] as String,
-          type: definitions.readType(rawParam['type'] as Object),
-        ),
-    ];
-    final result = definitions.readOptionalType(value['result']);
-    final kindTag = switch (value['kind']) {
-      final String s => s,
-      final Map<String, Object?> m => m.keys.single,
-      final other => throw ArgumentError('Unsupported function kind: $other'),
-    };
-    return FunctionType(
-      async: kindTag.contains('async'),
-      parameters: params,
-      result: result,
-    );
   }
 
   // ---------------------------------------------------------------------------
@@ -407,7 +409,7 @@ final class ComponentAssembler {
     final owner = _ownerInterface(index);
 
     // Interface-owned named type: alias it in from the interface's import.
-    if (name != null && owner != null) {
+    if (name != null && owner != null && owner != _exportingInterface) {
       final componentIndex = _foreignTypeAlias(owner, name);
       final ref = ValueTypeReference(
         _rootContainer,
@@ -498,7 +500,9 @@ final class ComponentAssembler {
     }
 
     final ref = _rootContainer.addValueType(built);
-    if (name != null && _isWorldOwned(index)) {
+    if (name != null &&
+        _isWorldOwned(index) &&
+        !rootTypeExports.any((e) => e.$1 == name)) {
       // World-owned named types are exported from the component root so they
       // are named where the hooks reference them.
       rootTypeExports.add((name, ref.index));

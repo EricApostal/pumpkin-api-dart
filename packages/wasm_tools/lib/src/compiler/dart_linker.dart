@@ -138,5 +138,6 @@ final class DartLinker {
       canon.realloc = _libcRealloc;
     }
     if (options.usesStrings) canon.stringEncoding = .utf16;
+    if (options.asyncLower) canon.async = true;
   }
 }

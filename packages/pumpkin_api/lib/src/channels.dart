@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'bindings.g.dart';
@@ -24,7 +25,7 @@ final class ChannelPlayer {
 
 /// Called with data a client sent on a [PluginChannel]. [player] is only
 /// valid until the handler first yields.
-typedef ChannelHandler = void Function(Player player, List<int> data);
+typedef ChannelHandler = FutureOr<void> Function(Player player, List<int> data);
 
 /// A custom payload (plugin message) channel for talking to client mods,
 /// like `myplugin:main`. The name must be `namespace:path`.
@@ -66,24 +67,24 @@ final class PluginChannel {
 
   /// Sends [data] to [player]'s client on this channel. Only Java players
   /// have custom payloads; throws [UnsupportedError] for Bedrock players.
-  void send(Player player, List<int> data) {
+  Future<void> send(Player player, List<int> data) async {
     final java = player.asJava();
     if (java == null) {
       throw UnsupportedError('Custom payloads need a Java Edition player');
     }
     try {
-      java.sendCustomPayload(channel: name, data: data);
+      await java.sendCustomPayload(channel: name, data: data);
     } finally {
       java.dispose();
     }
   }
 
   /// Sends [text] as UTF-8.
-  void sendString(Player player, String text) =>
+  Future<void> sendString(Player player, String text) =>
       send(player, utf8.encode(text));
 
   /// Sends [value] encoded as JSON text.
-  void sendJson(Player player, Object? value) =>
+  Future<void> sendJson(Player player, Object? value) =>
       sendString(player, jsonEncode(value));
 
   /// Calls [handler] for data clients send on this channel. The first call
@@ -98,10 +99,10 @@ final class PluginChannel {
   void _attach(Context context) {
     if (_attached) return;
     _attached = true;
-    context.listen(Events.playerCustomPayload, (server, event) {
+    context.listen(Events.playerCustomPayload, (server, event) async {
       if (event.channel != name) return;
       for (final handler in List.of(_handlers)) {
-        handler(event.player, event.data);
+        await handler(event.player, event.data);
       }
     });
     context.listen(Events.playerRegisterChannel, (server, event) {
@@ -154,17 +155,18 @@ final class TypedChannel<T> {
   bool isRegistered(Player player) => raw.isRegistered(player);
 
   /// Sends [value] to [player]. Throws [UnsupportedError] for Bedrock players.
-  void send(Player player, T value) => raw.send(player, codec.encode(value));
+  Future<void> send(Player player, T value) =>
+      raw.send(player, codec.encode(value));
 
   /// Calls [handler] with the values clients send, see [PluginChannel.listen].
   /// [onInvalid] is told about payloads that failed to decode (by default
   /// they are logged as warnings).
   Subscription listen(
     Context context,
-    void Function(Player player, T value) handler, {
+    FutureOr<void> Function(Player player, T value) handler, {
     void Function(Player player, Object error)? onInvalid,
   }) {
-    return raw.listen(context, (player, data) {
+    return raw.listen(context, (player, data) async {
       final T value;
       try {
         value = codec.decode(data);
@@ -176,7 +178,7 @@ final class TypedChannel<T> {
         }
         return;
       }
-      handler(player, value);
+      await handler(player, value);
     });
   }
 }
@@ -185,11 +187,11 @@ extension PlayerChannelAnnouncement on Player {
   /// Tells this player's client which custom payload channels the server
   /// receives (a `minecraft:register` payload), see [encodeChannelList].
   /// Do it when the player joins, before the mod has to send on them.
-  void announceChannels(Iterable<String> channels) {
+  Future<void> announceChannels(Iterable<String> channels) async {
     final java = asJava();
     if (java == null) return;
     try {
-      java.sendCustomPayload(
+      await java.sendCustomPayload(
         channel: registerChannel,
         data: encodeChannelList(channels),
       );

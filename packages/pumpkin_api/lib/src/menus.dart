@@ -127,12 +127,22 @@ final class _Session {
   int page = 0;
   bool opening = true;
 
+  /// Slot updates on their way to the host. The inventory must not be dropped
+  /// before they have arrived.
+  final Set<Future<void>> _pending = {};
+
   _Session(this.menu, this.playerId);
 
   void setSlot(int slot, ItemSpec? item) {
     final inv = inventory;
     if (inv == null || slot < 0 || slot >= menu.size) return;
-    inv.setItem(slot: slot, item: item?.build());
+    final update = _setSlot(inv, slot, item);
+    _pending.add(update);
+    update.whenComplete(() => _pending.remove(update));
+  }
+
+  static Future<void> _setSlot(Inventory inv, int slot, ItemSpec? item) async {
+    await inv.setItem(slot: slot, item: await item?.build());
   }
 
   void render() {
@@ -142,9 +152,12 @@ final class _Session {
     }
   }
 
-  void dispose() {
-    inventory?.dispose();
+  Future<void> dispose() async {
+    final inv = inventory;
     inventory = null;
+    if (inv == null) return;
+    await Future.wait(_pending.toList());
+    inv.dispose();
   }
 }
 
@@ -308,7 +321,7 @@ class Menu {
   ///
   /// Needs `context.installMenus()` to have been called. The [Gui] handed to
   /// the host is built from fresh item stacks on every call.
-  void open(Player player) {
+  Future<void> open(Player player) async {
     if (!_installed) {
       throw StateError('Call Context.installMenus() in onLoad before opening menus.');
     }
@@ -317,30 +330,30 @@ class Menu {
     final session = _Session(this, id);
     _sessions[id] = session;
 
-    final gui = _buildGui(session);
-    session.inventory = gui.getInventory().keep();
     try {
-      player.openGui(guiRef: gui);
+      final gui = await _buildGui(session);
+      session.inventory = (await gui.getInventory()).keep();
+      await player.openGui(guiRef: gui);
     } catch (_) {
       _sessions.remove(id);
-      session.dispose();
+      await session.dispose();
       if (previous != null) _sessions[id] = previous;
       rethrow;
     } finally {
       session.opening = false;
     }
     if (previous != null) {
-      _finish(previous, player);
+      await _finish(previous, player);
     }
     onOpen?.call(player);
   }
 
-  Gui _buildGui(_Session session) {
+  Future<Gui> _buildGui(_Session session) async {
     final gui = Gui.create(type: _screen, title: _titleText(title));
-    gui.allowGrabItems = false;
-    gui.allowPutItems = false;
+    await gui.setAllowGrabItems(allow: false);
+    await gui.setAllowPutItems(allow: false);
     for (final entry in _buttonsFor(session).entries) {
-      gui.setItem(slot: entry.key, item: entry.value.item.build());
+      await gui.setItem(slot: entry.key, item: await entry.value.item.build());
     }
     return gui;
   }
@@ -348,16 +361,16 @@ class Menu {
   /// A new [Gui] showing this menu's first page, for use with
   /// `Player.openGui` when you manage the window yourself (no click handling
   /// happens for it). `open` is what you normally want.
-  Gui toGui() => _buildGui(_Session(this, ''));
+  Future<Gui> toGui() => _buildGui(_Session(this, ''));
 
   /// Opens a fresh copy of the current state for [player] again. Use it if
   /// in-place updates don't reach the client.
-  void reopen(Player player) => open(player);
+  Future<void> reopen(Player player) => open(player);
 }
 
-void _finish(_Session session, Player? player) {
+Future<void> _finish(_Session session, Player? player) async {
   final close = session.menu.onClose;
-  session.dispose();
+  await session.dispose();
   if (close != null && player != null) {
     try {
       close(player);
@@ -525,20 +538,20 @@ extension MenuContextApi on Context {
       return event.copyWith(cancelled: true);
     });
 
-    listen(Events.inventoryClose, (server, event) {
+    listen(Events.inventoryClose, (server, event) async {
       final id = event.player.getId().asString;
       final session = _sessions[id];
       // A close that arrives while the next menu is being opened belongs to
       // the previous window; `Menu.open` finishes that one itself.
       if (session == null || session.opening) return;
       _sessions.remove(id);
-      _finish(session, event.player);
+      await _finish(session, event.player);
     });
 
-    listen(Events.playerLeave, (server, event) {
+    listen(Events.playerLeave, (server, event) async {
       final id = event.player.getId().asString;
       final session = _sessions.remove(id);
-      if (session != null) _finish(session, event.player);
+      if (session != null) await _finish(session, event.player);
     });
   }
 }
@@ -546,7 +559,7 @@ extension MenuContextApi on Context {
 /// Opens menus from the player side.
 extension PlayerMenus on Player {
   /// Opens [menu] for this player. Same as `menu.open(player)`.
-  void openMenu(Menu menu) => menu.open(this);
+  Future<void> openMenu(Menu menu) => menu.open(this);
 
   /// The menu this player has open, or `null`.
   Menu? get currentMenu => _sessions[getId().asString]?.menu;

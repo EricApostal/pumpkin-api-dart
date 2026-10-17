@@ -85,10 +85,10 @@ final class CatalogReport {
 ///
 /// [isKnownItem] decides whether a (normalised) registry key exists on the
 /// server.
-CatalogReport validateCatalog(
+Future<CatalogReport> validateCatalog(
   ShopCatalog raw, {
-  required bool Function(String key) isKnownItem,
-}) {
+  required Future<bool> Function(String key) isKnownItem,
+}) async {
   final problems = <String>[];
   final categories = <ShopCategory>[];
   final seenIds = <String>{};
@@ -111,7 +111,7 @@ CatalogReport validateCatalog(
     }
 
     var icon = normalizeItemKey(category.icon);
-    if (!_itemKey.hasMatch(icon) || !isKnownItem(icon)) {
+    if (!_itemKey.hasMatch(icon) || !await isKnownItem(icon)) {
       problems.add(
         '$where: unknown icon "${category.icon}", using minecraft:chest.',
       );
@@ -121,7 +121,7 @@ CatalogReport validateCatalog(
     final entries = <ShopEntry>[];
     final seenItems = <String>{};
     for (final entry in category.entries) {
-      final problem = entryProblem(entry, isKnownItem);
+      final problem = await entryProblem(entry, isKnownItem);
       final key = normalizeItemKey(entry.item);
       if (problem != null) {
         problems.add('$where, item "${entry.item}": $problem, skipped.');
@@ -144,9 +144,14 @@ CatalogReport validateCatalog(
 }
 
 /// Why [e] can not be sold, or `null` if it is fine.
-String? entryProblem(ShopEntry e, bool Function(String key) isKnownItem) {
+Future<String?> entryProblem(
+  ShopEntry e,
+  Future<bool> Function(String key) isKnownItem,
+) async {
   final key = normalizeItemKey(e.item);
-  if (!_itemKey.hasMatch(key) || !isKnownItem(key)) return 'unknown item';
+  if (!_itemKey.hasMatch(key) || !await isKnownItem(key)) {
+    return 'unknown item';
+  }
   if (e.buy < 1) return 'the buy price must be at least 1';
   if (e.sell != null && e.sell! < 0) {
     return 'the sell price can not be negative';

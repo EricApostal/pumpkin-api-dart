@@ -137,7 +137,8 @@ final class ShapedRecipeBuilder {
   }
 
   /// Registers the recipe with [manager]. Throws a [RecipeException] if invalid.
-  void register(RecipeManager manager) => manager.registerShaped(id: id, recipe: build());
+  Future<void> register(RecipeManager manager) =>
+      manager.registerShaped(id: id, recipe: build());
 }
 
 /// Builds a shapeless crafting recipe (at most 9 ingredients).
@@ -195,7 +196,7 @@ final class ShapelessRecipeBuilder {
   }
 
   /// Registers the recipe with [manager]. Throws a [RecipeException] if invalid.
-  void register(RecipeManager manager) =>
+  Future<void> register(RecipeManager manager) =>
       manager.registerShapeless(id: id, recipe: build());
 }
 
@@ -276,14 +277,14 @@ final class CookingRecipeBuilder {
   }
 
   /// Registers the recipe with [manager]. Throws a [RecipeException] if invalid.
-  void register(RecipeManager manager) =>
+  Future<void> register(RecipeManager manager) =>
       manager.registerCooking(id: id, stationType: type, recipe: build());
 }
 
 extension RecipeManagerApi on RecipeManager {
   /// Registers a recipe from a [ShapedRecipeBuilder], [ShapelessRecipeBuilder]
   /// or [CookingRecipeBuilder].
-  void register(Object builder) => switch (builder) {
+  Future<void> register(Object builder) => switch (builder) {
     ShapedRecipeBuilder() => builder.register(this),
     ShapelessRecipeBuilder() => builder.register(this),
     CookingRecipeBuilder() => builder.register(this),
@@ -293,10 +294,12 @@ extension RecipeManagerApi on RecipeManager {
 
 extension RecipeRegistration on Server {
   /// Registers a recipe, see [RecipeManagerApi.register].
-  void registerRecipe(Object builder) => getRecipeManager().register(builder);
+  Future<void> registerRecipe(Object builder) =>
+      getRecipeManager().register(builder);
 }
 
 extension RecipeContextRegistration on Context {
   /// Registers a recipe, see [RecipeManagerApi.register].
-  void registerRecipe(Object builder) => getServer().registerRecipe(builder);
+  Future<void> registerRecipe(Object builder) =>
+      getServer().registerRecipe(builder);
 }

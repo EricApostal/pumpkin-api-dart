@@ -42,12 +42,12 @@ final class Enforcement {
 
   /// Looks up the protection of [uuid] if they are online, so a permission
   /// that changed since they joined counts.
-  void refreshProtection(Server server, String uuid) {
+  Future<void> refreshProtection(Server server, String uuid) async {
     final player = online(server, uuid);
     if (player != null) {
       service.setProtected(
         uuid,
-        player.hasPermission(node: ModerationPerms.exempt.node),
+        await player.hasPermission(node: ModerationPerms.exempt.node),
       );
     }
   }
@@ -55,20 +55,20 @@ final class Enforcement {
   // -- Acting on players --------------------------------------------------------
 
   /// Disconnects [player] with [screen] (legacy text with `&` codes).
-  void kick(Player player, String screen) {
+  Future<void> kick(Player player, String screen) async {
     final java = player.asJava();
     if (java != null) {
-      java.kick(options: KickOptions.java(Messages.component(screen)));
+      await java.kick(options: KickOptions.java(Messages.component(screen)));
       return;
     }
-    player.asBedrock()?.kick(
+    await player.asBedrock()?.kick(
       options: KickOptions.bedrock(message: MessageFormat.colorize(screen)),
     );
   }
 
   /// Carries out [punishment] on its target if they are online: a warning or
   /// mute is told to them, a ban or kick removes them.
-  void enforce(Server server, Punishment punishment) {
+  Future<void> enforce(Server server, Punishment punishment) async {
     final player = online(server, punishment.targetUuid);
     if (player == null) return;
     final now = clock.now();
@@ -91,9 +91,9 @@ final class Enforcement {
         player.send(messages.targetNotice(punishment));
         _bestEffort('mute sound', () => player.customSound(_warnSound));
       case PunishmentType.ban:
-        kick(player, messages.banScreen(punishment, now));
+        await kick(player, messages.banScreen(punishment, now));
       case PunishmentType.kick:
-        kick(player, messages.kickScreen(punishment));
+        await kick(player, messages.kickScreen(punishment));
     }
   }
 
@@ -110,12 +110,18 @@ final class Enforcement {
 
   /// Sends [line] to every online player who may see moderation notices
   /// (except [except]) and logs it. Returns the UUIDs that were told.
-  Set<String> notifyStaff(Server server, String line, {String? except}) {
+  Future<Set<String>> notifyStaff(
+    Server server,
+    String line, {
+    String? except,
+  }) async {
     final told = <String>{};
     for (final player in server.getAllPlayers()) {
       final uuid = player.uuidString;
       if (uuid == except) continue;
-      if (!player.hasPermission(node: ModerationPerms.notify.node)) continue;
+      if (!await player.hasPermission(node: ModerationPerms.notify.node)) {
+        continue;
+      }
       player.send(line);
       told.add(uuid);
     }
@@ -126,13 +132,13 @@ final class Enforcement {
   /// Tells staff about what [issuer] just did, and makes sure [issuer] sees
   /// it too: players with the notice permission got it with everybody else,
   /// the console and other players get it as the command's reply.
-  void announce(
+  Future<void> announce(
     Server server,
     CommandSender issuerSender,
     Actor issuer,
     String line,
-  ) {
-    final told = notifyStaff(server, line);
+  ) async {
+    final told = await notifyStaff(server, line);
     if (!told.contains(issuer.uuid)) issuerSender.send(line);
   }
 
@@ -140,13 +146,17 @@ final class Enforcement {
 
   /// Sends [message] from [sender] to every online player who may read staff
   /// chat, and logs it.
-  void sendStaffChat(Server server, String sender, String message) {
+  Future<void> sendStaffChat(
+    Server server,
+    String sender,
+    String message,
+  ) async {
     final line = messages.plain('staffchat.line', {
       'player': MessageFormat.escape(sender),
       'message': MessageFormat.escape(message),
     });
     for (final player in server.getAllPlayers()) {
-      if (player.hasPermission(node: ModerationPerms.staffchat.node)) {
+      if (await player.hasPermission(node: ModerationPerms.staffchat.node)) {
         player.send(line);
       }
     }

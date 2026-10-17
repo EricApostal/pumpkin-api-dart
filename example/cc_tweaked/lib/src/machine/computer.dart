@@ -15,6 +15,7 @@ import 'api/os_api.dart';
 import 'api/peripheral_api.dart';
 import 'api/redstone_api.dart';
 import 'api/term_api.dart';
+import 'api/turtle_api.dart';
 import 'craftos.dart';
 import 'filesystem.dart';
 import 'input.dart';
@@ -23,6 +24,7 @@ import 'peripheral.dart';
 import 'redstone.dart';
 import 'side.dart';
 import 'terminal.dart';
+import '../turtle/brain.dart';
 
 /// The kinds of computer. Advanced computers have colour and mouse support.
 enum ComputerFamily { normal, advanced }
@@ -165,18 +167,43 @@ final class Computer implements OsHost, PeripheralLookup {
   final Map<int, int> _timers = {};
   int _nextTimer = 0;
 
+  /// The turtle this computer is the brain of, if it is one. Set before the
+  /// computer starts: the `turtle` API is built when the machine is created.
+  TurtleBrain? _turtle;
+
   Computer({
     required this.id,
     required this.family,
     required ComputerServices services,
     String? label,
+    int? terminalWidth,
+    int? terminalHeight,
+    TurtleBrain? turtle,
   }) : _services = services,
        terminal = Terminal(
-         services.config.terminalWidth,
-         services.config.terminalHeight,
+         terminalWidth ?? services.config.terminalWidth,
+         terminalHeight ?? services.config.terminalHeight,
          family == ComputerFamily.advanced,
        ) {
     _label = label;
+    this.turtle = turtle;
+  }
+
+  TurtleBrain? get turtle => _turtle;
+
+  set turtle(TurtleBrain? brain) {
+    _turtle = brain;
+    brain?.queueEvent = _turtleEvent;
+  }
+
+  /// The brain's events: `turtle_response` carries values the Lua layer must
+  /// convert (inspect's table), the others plain ones.
+  void _turtleEvent(String name, List<Object?> args) {
+    if (name == 'turtle_response') {
+      queueRawEvent(name, [for (final arg in args) turtleValueToLua(arg)]);
+    } else {
+      queueEvent(name, args);
+    }
   }
 
   // -- State ----------------------------------------------------------------
@@ -499,6 +526,7 @@ final class Computer implements OsHost, PeripheralLookup {
       'fs': buildFsApi(() => _fileSystem!),
       'peripheral': buildPeripheralApi(this),
     };
+    final turtle = _turtle;
     final redstoneApi = buildRedstoneApi(redstone);
     apis['rs'] = redstoneApi;
     apis['redstone'] = redstoneApi;
@@ -508,6 +536,7 @@ final class Computer implements OsHost, PeripheralLookup {
         cache: _services.cache,
         bios: image.bios,
         apis: apis,
+        vmApis: {if (turtle != null) 'turtle': turtleApiBuilder(turtle)},
         hostString: 'ComputerCraft ${image.modVersion ?? '1.120.3'} (Minecraft 26.3)',
         defaultSettings: config.defaultSettings,
       );
@@ -521,6 +550,7 @@ final class Computer implements OsHost, PeripheralLookup {
     final wasOn = _on;
     _on = false;
     _wasPaused = false;
+    _turtle?.clearQueue();
     _events.clear();
     _timers.clear();
     _machine?.close();

@@ -118,14 +118,17 @@ final class ModerationModule extends Module {
       );
     });
 
-    host.context.listen(Events.playerJoin, (server, event) {
+    host.context.listen(Events.playerJoin, (server, event) async {
       final player = event.player;
       final ban = service.activeBan(player.uuidString);
       if (ban != null) {
         host.log.warn(
           '${player.getName()} joined despite a ban (#${ban.id}), kicking',
         );
-        enforcement.kick(player, messages.banScreen(ban, host.clock.now()));
+        await enforcement.kick(
+          player,
+          messages.banScreen(ban, host.clock.now()),
+        );
       }
     });
   }
@@ -137,23 +140,23 @@ final class ModerationModule extends Module {
     ModerationService service,
     Enforcement enforcement,
   ) {
-    host.context.listen(Events.playerJoin, (server, event) {
+    host.context.listen(Events.playerJoin, (server, event) async {
       final player = event.player;
       service.setProtected(
         player.uuidString,
-        player.hasPermission(node: ModerationPerms.exempt.node),
+        await player.hasPermission(node: ModerationPerms.exempt.node),
       );
       enforcement.hideVanishedFrom(server);
     });
 
     // Intercepted, not just listened to: a vanished player leaves silently
     // by cancelling the leave message.
-    host.context.intercept(Events.playerLeave, (server, event) {
+    host.context.intercept(Events.playerLeave, (server, event) async {
       final player = event.player;
       final uuid = player.uuidString;
       service.setProtected(
         uuid,
-        player.hasPermission(node: ModerationPerms.exempt.node),
+        await player.hasPermission(node: ModerationPerms.exempt.node),
       );
       enforcement.staffChatMembers.remove(uuid);
       if (!service.isVanished(uuid)) return event;
@@ -173,16 +176,16 @@ final class ModerationModule extends Module {
     ModerationConfig config,
   ) {
     // First in line, so the chat module never sees staff chat.
-    host.context.intercept(Events.playerChat, (server, event) {
+    host.context.intercept(Events.playerChat, (server, event) async {
       final members = enforcement.staffChatMembers;
       final player = event.player;
       final uuid = player.uuidString;
       if (event.cancelled || !members.contains(uuid)) return event;
-      if (!player.hasPermission(node: ModerationPerms.staffchat.node)) {
+      if (!await player.hasPermission(node: ModerationPerms.staffchat.node)) {
         members.remove(uuid);
         return event;
       }
-      enforcement.sendStaffChat(server, player.getName(), event.message);
+      await enforcement.sendStaffChat(server, player.getName(), event.message);
       return event.cancel();
     }, priority: EventPriority.highest);
 

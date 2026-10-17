@@ -136,6 +136,10 @@ final class ResourceScope {
     return scope;
   }
 
+  /// Creates a scope without making it the current one. Work is done in it with
+  /// [run], which is how tasks that interleave with others use their scope.
+  static ResourceScope detached() => ResourceScope._(null);
+
   /// Runs [body] with this scope as the current one, for code that continues
   /// work started inside the scope after the original call returned.
   R run<R>(R Function() body) {

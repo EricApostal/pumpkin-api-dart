@@ -50,14 +50,14 @@ final class NeoForgePlay {
       );
     }
     final subscriptions = <void Function()>[
-      context.listen(Events.playerJoin, (server, event) {
+      context.listen(Events.playerJoin, (server, event) async {
         final uuid = event.player.getId().asString;
         _glider.remove(uuid);
         if (!_flagged(uuid)) return;
         if (recipeContent) {
-          _send(
+          await _send(
             event.player,
-            () => event.player.asJava()?.sendCustomPayload(
+            () async => event.player.asJava()?.sendCustomPayload(
               channel: recipeContentChannel,
               data: emptyRecipeContent,
             ),
@@ -75,9 +75,9 @@ final class NeoForgePlay {
         _glider.remove(event.player.getId().asString);
       }).cancel,
       if (options != null && attributeId != null)
-        context.every(options.interval, (server) {
+        context.every(options.interval, (server) async {
           for (final player in server.getAllPlayers()) {
-            _checkGlider(player, options, attributeId);
+            await _checkGlider(player, options, attributeId);
           }
         }).cancel,
     ];
@@ -89,19 +89,20 @@ final class NeoForgePlay {
     });
   }
 
-  void _checkGlider(
+  Future<void> _checkGlider(
     Player player,
     GlidingFlightOptions options,
     int attributeId,
-  ) {
+  ) async {
     final uuid = player.getId().asString;
     if (!_flagged(uuid)) return;
     final chest = player.getInventory().getChestplate();
     final wearing =
-        chest != null && options.gliderItems.contains(chest.getRegistryKey());
+        chest != null &&
+        options.gliderItems.contains(await chest.getRegistryKey());
     if (_glider[uuid] == wearing) return;
-    _send(player, () {
-      player.asJava()?.sendPacket(
+    await _send(player, () async {
+      await player.asJava()?.sendPacket(
         packet: JavaPacketsClientboundPacketCUpdateAttributes(
           JavaPacketsCUpdateAttributes(
             entityId: player.asEntity().getId(),
@@ -126,9 +127,9 @@ final class NeoForgePlay {
     _glider[uuid] = wearing;
   }
 
-  void _send(Player player, void Function() send) {
+  Future<void> _send(Player player, Future<void> Function() send) async {
     try {
-      send();
+      await send();
     } catch (e, s) {
       _log.error('Could not send to ${player.getName()}: $e\n$s');
     }

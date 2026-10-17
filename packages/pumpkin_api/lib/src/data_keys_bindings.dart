@@ -56,13 +56,6 @@ extension EntityTypedData on Entity {
       persistentData(namespace.namespace).typed;
 }
 
-/// Typed persistent data on item stacks.
-extension ItemStackTypedData on ItemStack {
-  /// Typed data of this item in [namespace].
-  TypedData data(PluginData namespace) =>
-      persistentData(namespace.namespace).typed;
-}
-
 /// Typed persistent data on worlds.
 extension WorldTypedData on World {
   /// Typed data of this world in [namespace].

@@ -26,7 +26,7 @@ final class FakeBag implements ItemBag {
   int get _used => items.values.fold(0, (sum, n) => sum + (n + 63) ~/ 64);
 
   @override
-  int spaceFor(String key) {
+  Future<int> spaceFor(String key) async {
     final have = items[key] ?? 0;
     final slack = (64 - have % 64) % 64;
     final free = (slots - _used) * 64;
@@ -34,19 +34,19 @@ final class FakeBag implements ItemBag {
   }
 
   @override
-  int countOf(String key) => items[key] ?? 0;
+  Future<int> countOf(String key) async => items[key] ?? 0;
 
   @override
-  int add(String key, int count) {
+  Future<int> add(String key, int count) async {
     if (addThrows) throw StateError('inventory is gone');
-    final room = failAddAfter ?? spaceFor(key);
+    final room = failAddAfter ?? await spaceFor(key);
     final put = count < room ? count : room;
     if (put > 0) items[key] = (items[key] ?? 0) + put;
     return count - put;
   }
 
   @override
-  int remove(String key, int count) {
+  Future<int> remove(String key, int count) async {
     final have = items[key] ?? 0;
     final taken = count < have ? count : have;
     if (have - taken == 0) {
@@ -71,7 +71,7 @@ final class FakeShopper implements Shopper {
     : bag = bag ?? FakeBag();
 
   @override
-  bool hasPermission(String node) => permissions.contains(node);
+  Future<bool> hasPermission(String node) async => permissions.contains(node);
 }
 
 const _known = {
@@ -84,7 +84,7 @@ const _known = {
   'minecraft:grass_block',
 };
 
-bool isKnown(String key) => _known.contains(key);
+Future<bool> isKnown(String key) async => _known.contains(key);
 
 void main() {
   group('normalizeItemKey', () {
@@ -110,8 +110,8 @@ void main() {
           ],
         );
 
-    test('keeps good entries and normalises their keys', () {
-      final report = validateCatalog(
+    test('keeps good entries and normalises their keys', () async {
+      final report = await validateCatalog(
         one([const ShopEntry(item: 'Stone', buy: 4)]),
         isKnownItem: isKnown,
       );
@@ -121,8 +121,8 @@ void main() {
       expect(report.catalog.names, ['stone']);
     });
 
-    test('skips and reports unknown items and bad numbers', () {
-      final report = validateCatalog(
+    test('skips and reports unknown items and bad numbers', () async {
+      final report = await validateCatalog(
         one([
           const ShopEntry(item: 'stone', buy: 4),
           const ShopEntry(item: 'bedrock_x', buy: 4),
@@ -142,8 +142,8 @@ void main() {
       expect(report.catalog.find('stone')!.buy, 4);
     });
 
-    test('skips broken categories and replaces unknown icons', () {
-      final report = validateCatalog(
+    test('skips broken categories and replaces unknown icons', () async {
+      final report = await validateCatalog(
         ShopCatalog(
           categories: [
             const ShopCategory(id: 'Bad Id', name: 'x', icon: 'stone'),
@@ -160,8 +160,8 @@ void main() {
       expect(report.problems, hasLength(3));
     });
 
-    test('limits the number of categories', () {
-      final report = validateCatalog(
+    test('limits the number of categories', () async {
+      final report = await validateCatalog(
         ShopCatalog(
           categories: [
             for (var i = 0; i < maxCategories + 2; i++)
@@ -174,8 +174,8 @@ void main() {
       expect(report.problems, hasLength(2));
     });
 
-    test('the first of two categories listing an item wins', () {
-      final report = validateCatalog(
+    test('the first of two categories listing an item wins', () async {
+      final report = await validateCatalog(
         ShopCatalog(
           categories: [
             const ShopCategory(
@@ -199,10 +199,10 @@ void main() {
   });
 
   group('default catalog', () {
-    test('is valid when every item exists', () {
-      final report = validateCatalog(
+    test('is valid when every item exists', () async {
+      final report = await validateCatalog(
         defaultCatalog(),
-        isKnownItem: (_) => true,
+        isKnownItem: (_) async => true,
       );
       expect(report.problems, isEmpty);
       expect(report.catalog.categories.map((c) => c.id), [
@@ -220,10 +220,10 @@ void main() {
       expect(back, defaultCatalog());
     });
 
-    test('has no duplicate items', () {
-      final report = validateCatalog(
+    test('has no duplicate items', () async {
+      final report = await validateCatalog(
         defaultCatalog(),
-        isKnownItem: (_) => true,
+        isKnownItem: (_) async => true,
       );
       final all = [
         for (final c in report.catalog.categories)
@@ -232,10 +232,10 @@ void main() {
       expect(all.toSet(), hasLength(all.length));
     });
 
-    test('every item can be sold at the default percentage', () {
-      final report = validateCatalog(
+    test('every item can be sold at the default percentage', () async {
+      final report = await validateCatalog(
         defaultCatalog(),
-        isKnownItem: (_) => true,
+        isKnownItem: (_) async => true,
       );
       for (final c in report.catalog.categories) {
         for (final e in c.entries) {
@@ -253,9 +253,9 @@ void main() {
     late ShopService shop;
     late FakeShopper steve;
 
-    ShopService build({ShopCatalog? catalog, ShopConfig? config}) {
+    Future<ShopService> build({ShopCatalog? catalog, ShopConfig? config}) {
       docs = Documents(backend, clock: clock);
-      return ShopService(
+      return ShopService.create(
         economy: economy,
         clock: clock,
         catalog: docs.open(
@@ -301,12 +301,12 @@ void main() {
       );
     }
 
-    setUp(() {
+    setUp(() async {
       backend = MemoryBackend();
       clock = FakeClock();
       economy = FakeEconomy();
       economy.balances['u1'] = 1000;
-      shop = build();
+      shop = await build();
       steve = FakeShopper('u1', 'Steve');
     });
 
@@ -322,35 +322,35 @@ void main() {
         expect(shop.buyCost(entry('stone'), 7), 70);
       });
 
-      test('the sell percentage is limited to 0-100', () {
-        shop = build(config: const ShopConfig(sellPercent: 300));
+      test('the sell percentage is limited to 0-100', () async {
+        shop = await build(config: const ShopConfig(sellPercent: 300));
         expect(shop.sellPriceOf(shop.catalog.find('stone')!), 10);
-        shop = build(config: const ShopConfig(sellPercent: -5));
+        shop = await build(config: const ShopConfig(sellPercent: -5));
         expect(shop.sellPriceOf(shop.catalog.find('stone')!), isNull);
       });
 
-      test('confirmation threshold', () {
+      test('confirmation threshold', () async {
         expect(shop.needsConfirmation(4999), isFalse);
         expect(shop.needsConfirmation(5000), isTrue);
-        shop = build(config: const ShopConfig(confirmThreshold: 0));
+        shop = await build(config: const ShopConfig(confirmThreshold: 0));
         expect(shop.needsConfirmation(1000000), isFalse);
       });
     });
 
     group('buy', () {
-      test('charges and delivers', () {
-        final r = shop.buy(steve, entry('stone'), 5);
+      test('charges and delivers', () async {
+        final r = await shop.buy(steve, entry('stone'), 5);
         expect(r.isOk, isTrue);
         expect(r.items, 5);
         expect(r.money, 50);
         expect(r.balance, 950);
         expect(economy.balance('u1'), 950);
-        expect(steve.bag.countOf('minecraft:stone'), 5);
+        expect(await steve.bag.countOf('minecraft:stone'), 5);
       });
 
-      test('refuses when the player cannot pay and changes nothing', () {
+      test('refuses when the player cannot pay and changes nothing', () async {
         economy.balances['u1'] = 30;
-        final r = shop.buy(steve, entry('stone'), 5);
+        final r = await shop.buy(steve, entry('stone'), 5);
         expect(r.failure, TradeFailure.insufficientFunds);
         expect(r.detail, 20); // 20 coins short
         expect(r.balance, 30);
@@ -359,59 +359,59 @@ void main() {
         expect(shop.ledger, isEmpty);
       });
 
-      test('checks space before charging', () {
+      test('checks space before charging', () async {
         steve = FakeShopper('u1', 'Steve', bag: FakeBag(slots: 1));
         steve.bag.items['minecraft:dirt'] = 64; // the only slot is taken
-        final r = shop.buy(steve, entry('stone'), 1);
+        final r = await shop.buy(steve, entry('stone'), 1);
         expect(r.failure, TradeFailure.noSpace);
         expect(r.detail, 0);
         expect(economy.balance('u1'), 1000);
         expect(economy.log, isEmpty);
       });
 
-      test('reports how many would fit', () {
+      test('reports how many would fit', () async {
         steve = FakeShopper('u1', 'Steve', bag: FakeBag(slots: 1));
-        final r = shop.buy(steve, entry('stone'), 100);
+        final r = await shop.buy(steve, entry('stone'), 100);
         expect(r.failure, TradeFailure.noSpace);
         expect(r.detail, 64);
         expect(economy.log, isEmpty);
       });
 
-      test('tops up an existing stack', () {
+      test('tops up an existing stack', () async {
         steve = FakeShopper('u1', 'Steve', bag: FakeBag(slots: 1));
         steve.bag.items['minecraft:stone'] = 60;
-        final r = shop.buy(steve, entry('stone'), 4);
+        final r = await shop.buy(steve, entry('stone'), 4);
         expect(r.isOk, isTrue);
-        expect(steve.bag.countOf('minecraft:stone'), 64);
+        expect(await steve.bag.countOf('minecraft:stone'), 64);
       });
 
-      test('refunds the items that did not fit', () {
+      test('refunds the items that did not fit', () async {
         // The space check said yes, but the hand-over delivers only 3 of 5.
         steve.bag.failAddAfter = 3;
-        final r = shop.buy(steve, entry('stone'), 5);
+        final r = await shop.buy(steve, entry('stone'), 5);
         expect(r.isOk, isTrue);
         expect(r.items, 3);
         expect(r.money, 30);
         expect(r.refunded, 20);
         expect(economy.balance('u1'), 970);
-        expect(steve.bag.countOf('minecraft:stone'), 3);
+        expect(await steve.bag.countOf('minecraft:stone'), 3);
         expect(shop.ledger.single.amount, 3);
         expect(shop.ledger.single.total, 30);
       });
 
-      test('refunds everything when nothing was delivered', () {
+      test('refunds everything when nothing was delivered', () async {
         steve.bag.failAddAfter = 0;
-        final r = shop.buy(steve, entry('stone'), 5);
+        final r = await shop.buy(steve, entry('stone'), 5);
         expect(r.failure, TradeFailure.deliveryFailed);
         expect(economy.balance('u1'), 1000);
         expect(steve.bag.items, isEmpty);
         expect(shop.ledger, isEmpty);
       });
 
-      test('refunds everything when the hand-over throws', () {
+      test('refunds everything when the hand-over throws', () async {
         steve.bag.addThrows = true;
         final warnings = <String>[];
-        shop = ShopService(
+        shop = await ShopService.create(
           economy: economy,
           clock: clock,
           catalog: docs.open(
@@ -432,65 +432,82 @@ void main() {
             encode: (v) => v.toJson(),
             create: Ledger.new,
           ),
-          isKnownItem: (_) => true,
+          isKnownItem: (_) async => true,
           warn: warnings.add,
         );
-        final r = shop.buy(steve, shop.catalog.find('stone')!, 5);
+        final r = await shop.buy(steve, shop.catalog.find('stone')!, 5);
         expect(r.failure, TradeFailure.deliveryFailed);
         expect(economy.balance('u1'), 1000);
         expect(warnings, hasLength(1));
       });
 
-      test('never charges twice for the same click', () {
+      test('never charges twice for the same click', () async {
         // Two clicks are two calls; each one is charged once.
-        shop.buy(steve, entry('stone'), 1);
-        shop.buy(steve, entry('stone'), 1);
+        await shop.buy(steve, entry('stone'), 1);
+        await shop.buy(steve, entry('stone'), 1);
         expect(economy.balance('u1'), 980);
-        expect(steve.bag.countOf('minecraft:stone'), 2);
+        expect(await steve.bag.countOf('minecraft:stone'), 2);
       });
 
-      test('rejects invalid amounts', () {
+      test('two purchases at the same time run one after another', () async {
+        steve = FakeShopper('u1', 'Steve', bag: FakeBag(slots: 1));
+        final results = await Future.wait([
+          shop.buy(steve, entry('stone'), 40),
+          shop.buy(steve, entry('stone'), 40),
+        ]);
+        expect(results.first.isOk, isTrue);
+        expect(results.last.failure, TradeFailure.noSpace);
+        expect(economy.balance('u1'), 600);
+        expect(await steve.bag.countOf('minecraft:stone'), 40);
+      });
+
+      test('rejects invalid amounts', () async {
         expect(
-          shop.buy(steve, entry('stone'), 0).failure,
+          (await shop.buy(steve, entry('stone'), 0)).failure,
           TradeFailure.invalidAmount,
         );
         expect(
-          shop.buy(steve, entry('stone'), -3).failure,
+          (await shop.buy(steve, entry('stone'), -3)).failure,
           TradeFailure.invalidAmount,
         );
         expect(
-          shop.buy(steve, entry('stone'), maxTradeAmount + 1).failure,
+          (await shop.buy(steve, entry('stone'), maxTradeAmount + 1)).failure,
           TradeFailure.invalidAmount,
         );
         expect(economy.log, isEmpty);
       });
 
-      test('needs the entry permission', () {
+      test('needs the entry permission', () async {
         expect(
-          shop.buy(steve, entry('iron_sword'), 1).failure,
+          (await shop.buy(steve, entry('iron_sword'), 1)).failure,
           TradeFailure.noPermission,
         );
         final vip = FakeShopper('u1', 'Steve', permissions: {'x:vip'});
-        expect(shop.buy(vip, entry('iron_sword'), 1).isOk, isTrue);
+        expect((await shop.buy(vip, entry('iron_sword'), 1)).isOk, isTrue);
       });
 
-      test('refuses a confirmed purchase whose price changed', () {
+      test('refuses a confirmed purchase whose price changed', () async {
         final quote = shop.buyCost(entry('stone'), 10);
-        shop.setPrice('stone', 20);
-        final r = shop.buy(steve, entry('stone'), 10, expectedCost: quote);
+        await shop.setPrice('stone', 20);
+        final r = await shop.buy(
+          steve,
+          entry('stone'),
+          10,
+          expectedCost: quote,
+        );
         expect(r.failure, TradeFailure.priceChanged);
         expect(economy.balance('u1'), 1000);
         expect(
-          shop.buy(steve, entry('stone'), 10, expectedCost: 200).isOk,
+          (await shop.buy(steve, entry('stone'), 10, expectedCost: 200)).isOk,
           isTrue,
         );
       });
 
-      test('a failing deposit during a refund does not throw', () {
+      test('a failing deposit during a refund does not throw', () async {
         steve.bag.failAddAfter = 0;
         economy.refuseDeposits = true;
         final warnings = <String>[];
-        final s = ShopService(
+        final s = await ShopService.create(
           economy: economy,
           clock: clock,
           catalog: docs.open(
@@ -511,10 +528,10 @@ void main() {
             encode: (v) => v.toJson(),
             create: Ledger.new,
           ),
-          isKnownItem: (_) => true,
+          isKnownItem: (_) async => true,
           warn: warnings.add,
         );
-        final r = s.buy(steve, s.catalog.find('stone')!, 2);
+        final r = await s.buy(steve, s.catalog.find('stone')!, 2);
         expect(r.failure, TradeFailure.deliveryFailed);
         expect(warnings, hasLength(1));
         expect(warnings.single, contains('refund'));
@@ -522,87 +539,87 @@ void main() {
     });
 
     group('sell', () {
-      test('takes the items and pays', () {
+      test('takes the items and pays', () async {
         steve.bag.items['minecraft:stone'] = 10;
-        final r = shop.sell(steve, entry('stone'), 4);
+        final r = await shop.sell(steve, entry('stone'), 4);
         expect(r.isOk, isTrue);
         expect(r.items, 4);
         expect(r.money, 20);
         expect(economy.balance('u1'), 1020);
-        expect(steve.bag.countOf('minecraft:stone'), 6);
+        expect(await steve.bag.countOf('minecraft:stone'), 6);
       });
 
-      test('verifies the player has the items first', () {
+      test('verifies the player has the items first', () async {
         steve.bag.items['minecraft:stone'] = 3;
-        final r = shop.sell(steve, entry('stone'), 4);
+        final r = await shop.sell(steve, entry('stone'), 4);
         expect(r.failure, TradeFailure.nothingToSell);
         expect(r.detail, 3);
         expect(economy.balance('u1'), 1000);
-        expect(steve.bag.countOf('minecraft:stone'), 3);
+        expect(await steve.bag.countOf('minecraft:stone'), 3);
       });
 
-      test('refuses items the shop does not buy', () {
+      test('refuses items the shop does not buy', () async {
         steve.bag.items['minecraft:chest'] = 1;
         steve.bag.items['minecraft:dirt'] = 1;
         expect(
-          shop.sell(steve, entry('chest'), 1).failure,
+          (await shop.sell(steve, entry('chest'), 1)).failure,
           TradeFailure.notForSale,
         );
         expect(
-          shop.sell(steve, entry('dirt'), 1).failure,
+          (await shop.sell(steve, entry('dirt'), 1)).failure,
           TradeFailure.notForSale,
         );
         expect(steve.bag.items, hasLength(2));
       });
 
-      test('pays only for what really left the inventory', () {
+      test('pays only for what really left the inventory', () async {
         steve.bag.items['minecraft:stone'] = 4;
         final partial = _PartialBag(steve.bag, takes: 2);
         final who = FakeShopper('u1', 'Steve', bag: partial);
-        final r = shop.sell(who, entry('stone'), 4);
+        final r = await shop.sell(who, entry('stone'), 4);
         expect(r.items, 2);
         expect(r.money, 10);
       });
 
-      test('pays for the difference when the removal throws', () {
+      test('pays for the difference when the removal throws', () async {
         steve.bag.items['minecraft:stone'] = 4;
         final bag = _ThrowingBag(steve.bag, removeFirst: 1);
         final who = FakeShopper('u1', 'Steve', bag: bag);
-        final r = shop.sell(who, entry('stone'), 4);
+        final r = await shop.sell(who, entry('stone'), 4);
         expect(r.items, 1);
         expect(economy.balance('u1'), 1005);
       });
 
-      test('pays nothing when nothing left the inventory', () {
+      test('pays nothing when nothing left the inventory', () async {
         steve.bag.items['minecraft:stone'] = 4;
         final who = FakeShopper(
           'u1',
           'Steve',
           bag: _PartialBag(steve.bag, takes: 0),
         );
-        final r = shop.sell(who, entry('stone'), 4);
+        final r = await shop.sell(who, entry('stone'), 4);
         expect(r.failure, TradeFailure.deliveryFailed);
         expect(economy.balance('u1'), 1000);
       });
 
-      test('selling needs the permission too', () {
+      test('selling needs the permission too', () async {
         steve.bag.items['minecraft:iron_sword'] = 1;
         expect(
-          shop.sell(steve, entry('iron_sword'), 1).failure,
+          (await shop.sell(steve, entry('iron_sword'), 1)).failure,
           TradeFailure.noPermission,
         );
       });
     });
 
     group('sellAll', () {
-      test('sells everything the shop buys and leaves the rest', () {
+      test('sells everything the shop buys and leaves the rest', () async {
         steve.bag.items
           ..['minecraft:stone'] = 10
           ..['minecraft:diamond'] = 2
           ..['minecraft:chest'] =
               5 // not bought
           ..['minecraft:grass_block'] = 9; // not in the shop
-        final r = shop.sellAll(steve);
+        final r = await shop.sellAll(steve);
         expect(r.items, 12);
         expect(r.money, 10 * 5 + 2 * 80);
         expect(economy.balance('u1'), 1000 + 210);
@@ -612,17 +629,17 @@ void main() {
         });
       });
 
-      test('counts what it could not sell', () {
+      test('counts what it could not sell', () async {
         steve.bag.items['minecraft:iron_sword'] = 1; // needs x:vip
-        final r = shop.sellAll(steve);
+        final r = await shop.sellAll(steve);
         expect(r.sales, isEmpty);
         expect(r.skipped, 1);
       });
 
-      test('splits piles larger than one trade', () {
+      test('splits piles larger than one trade', () async {
         steve = FakeShopper('u1', 'Steve', bag: FakeBag(slots: 100));
         steve.bag.items['minecraft:stone'] = maxTradeAmount + 100;
-        final r = shop.sellAll(steve);
+        final r = await shop.sellAll(steve);
         expect(r.items, maxTradeAmount + 100);
         expect(r.sales, hasLength(2));
         expect(steve.bag.items, isEmpty);
@@ -630,14 +647,14 @@ void main() {
     });
 
     group('ledger', () {
-      test('records trades and stays bounded', () {
-        shop = build(config: const ShopConfig(ledgerSize: 3));
+      test('records trades and stays bounded', () async {
+        shop = await build(config: const ShopConfig(ledgerSize: 3));
         steve.bag.items['minecraft:stone'] = 50;
         for (var i = 1; i <= 5; i++) {
           clock.advance(const Duration(minutes: 1));
-          shop.buy(steve, shop.catalog.find('dirt')!, i);
+          await shop.buy(steve, shop.catalog.find('dirt')!, i);
         }
-        shop.sell(steve, shop.catalog.find('stone')!, 2);
+        await shop.sell(steve, shop.catalog.find('stone')!, 2);
         final log = shop.ledger;
         expect(log, hasLength(3));
         expect(log.map((e) => e.amount), [4, 5, 2]);
@@ -647,22 +664,22 @@ void main() {
         expect(log.last.time, clock.now());
       });
 
-      test('can be switched off', () {
-        shop = build(config: const ShopConfig(ledgerSize: 0));
-        shop.buy(steve, shop.catalog.find('dirt')!, 1);
+      test('can be switched off', () async {
+        shop = await build(config: const ShopConfig(ledgerSize: 0));
+        await shop.buy(steve, shop.catalog.find('dirt')!, 1);
         expect(shop.ledger, isEmpty);
       });
 
-      test('is persisted', () {
-        shop.buy(steve, entry('dirt'), 1);
+      test('is persisted', () async {
+        await shop.buy(steve, entry('dirt'), 1);
         docs.saveDirty();
         expect(backend.files[ledgerPath], contains('dirt'));
       });
     });
 
     group('admin', () {
-      test('setPrice changes the price and saves', () {
-        shop.setPrice('Stone', 12, sell: 6);
+      test('setPrice changes the price and saves', () async {
+        await shop.setPrice('Stone', 12, sell: 6);
         expect(entry('stone').buy, 12);
         expect(shop.sellPriceOf(entry('stone')), 6);
         expect(backend.files[catalogPath], isNotNull);
@@ -677,55 +694,64 @@ void main() {
         );
       });
 
-      test('setPrice keeps the sell price when none is given', () {
-        shop.setPrice('diamond', 90);
+      test('setPrice keeps the sell price when none is given', () async {
+        await shop.setPrice('diamond', 90);
         expect(entry('diamond').sell, 80);
       });
 
-      test('setPrice validates', () {
-        expect(() => shop.setPrice('stone', 0), throwsA(isA<ShopException>()));
-        expect(
-          () => shop.setPrice('stone', 5, sell: -1),
+      test('setPrice validates', () async {
+        await expectLater(
+          shop.setPrice('stone', 0),
           throwsA(isA<ShopException>()),
         );
-        expect(
-          () => shop.setPrice('grass_block', 5),
+        await expectLater(
+          shop.setPrice('stone', 5, sell: -1),
+          throwsA(isA<ShopException>()),
+        );
+        await expectLater(
+          shop.setPrice('grass_block', 5),
           throwsA(isA<ShopException>()),
         );
       });
 
-      test('addItem lists a new item', () {
-        shop.addItem('blocks', 'minecraft:apple', 7);
+      test('addItem lists a new item', () async {
+        await shop.addItem('blocks', 'minecraft:apple', 7);
         expect(entry('apple').buy, 7);
         expect(shop.catalog.names, contains('apple'));
       });
 
-      test('addItem rejects unknown items, categories and duplicates', () {
-        expect(
-          () => shop.addItem('blocks', 'nonsense', 7),
-          throwsA(isA<ShopException>()),
-        );
-        expect(
-          () => shop.addItem('nope', 'apple', 7),
-          throwsA(isA<ShopException>()),
-        );
-        expect(
-          () => shop.addItem('blocks', 'stone', 7),
-          throwsA(isA<ShopException>()),
-        );
-        expect(
-          () => shop.addItem('blocks', 'apple', 0),
-          throwsA(isA<ShopException>()),
-        );
-      });
+      test(
+        'addItem rejects unknown items, categories and duplicates',
+        () async {
+          await expectLater(
+            shop.addItem('blocks', 'nonsense', 7),
+            throwsA(isA<ShopException>()),
+          );
+          await expectLater(
+            shop.addItem('nope', 'apple', 7),
+            throwsA(isA<ShopException>()),
+          );
+          await expectLater(
+            shop.addItem('blocks', 'stone', 7),
+            throwsA(isA<ShopException>()),
+          );
+          await expectLater(
+            shop.addItem('blocks', 'apple', 0),
+            throwsA(isA<ShopException>()),
+          );
+        },
+      );
 
-      test('removeItem removes it everywhere', () {
-        shop.removeItem('stone');
+      test('removeItem removes it everywhere', () async {
+        await shop.removeItem('stone');
         expect(shop.catalog.find('stone'), isNull);
-        expect(() => shop.removeItem('stone'), throwsA(isA<ShopException>()));
+        await expectLater(
+          shop.removeItem('stone'),
+          throwsA(isA<ShopException>()),
+        );
       });
 
-      test('reload picks up a hand-edited file', () {
+      test('reload picks up a hand-edited file', () async {
         backend.files[catalogPath] = const ShopCatalog(
           categories: [
             ShopCategory(
@@ -740,7 +766,7 @@ void main() {
           ],
         ).toJson();
         backend.files[configPath] = const ShopConfig(sellPercent: 10).toJson();
-        final report = shop.reload(backend);
+        final report = await shop.reload(backend);
         expect(report.ok, isTrue);
         expect(report.categories, 1);
         expect(report.entries, 1);
@@ -752,9 +778,9 @@ void main() {
         expect(backend.files[catalogPath], contains('bogus'));
       });
 
-      test('reload keeps the old shop when the file is broken', () {
+      test('reload keeps the old shop when the file is broken', () async {
         backend.files[catalogPath] = '{oops';
-        final report = shop.reload(backend);
+        final report = await shop.reload(backend);
         expect(report.ok, isFalse);
         expect(report.error, isNotNull);
         expect(shop.catalog.find('stone'), isNotNull);
@@ -842,7 +868,7 @@ final class _PartialBag extends FakeBag {
   }
 
   @override
-  int remove(String key, int count) => super.remove(key, takes);
+  Future<int> remove(String key, int count) => super.remove(key, takes);
 }
 
 /// A bag that removes [removeFirst] items and then throws.
@@ -853,8 +879,8 @@ final class _ThrowingBag extends FakeBag {
   }
 
   @override
-  int remove(String key, int count) {
-    super.remove(key, removeFirst);
+  Future<int> remove(String key, int count) async {
+    await super.remove(key, removeFirst);
     throw StateError('lost the player');
   }
 }

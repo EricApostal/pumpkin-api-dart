@@ -67,5 +67,7 @@ it.
 
 A scope stays open while the work a callback started is still running (its
 returned `Future`, pending `Timer`s), so owned resources remain usable across
-`await`s. Borrowed ones don't: the server stops lending them as soon as the
-callback first returns to it. Use them before the first `await`.
+`await`s. Borrowed ones (`server`, `sender`, `context`) are lent for as long as
+the callback waits for host calls; once it has waited for a timer or a future
+that another callback completes, the server has been given a result and stops
+lending them. Use them before such a wait (see [async.md](async.md)).

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:commons/src/core/clock.dart';
+import 'package:commons/src/core/lock.dart';
 import 'package:commons/src/core/players.dart';
 import 'package:commons/src/core/services.dart';
 import 'package:commons/src/core/storage.dart';
@@ -67,5 +70,34 @@ void main() {
     expect(services.find<int>(), isNull);
     expect(() => services.require<int>(), throwsStateError);
     expect(() => services.provide<String>('y'), throwsStateError);
+  });
+
+  group('KeyedLock', () {
+    test('runs actions of one key one after another', () async {
+      final lock = KeyedLock();
+      final log = <String>[];
+      final gate = Completer<void>();
+      final first = lock.run('a', () async {
+        log.add('first start');
+        await gate.future;
+        log.add('first end');
+      });
+      final second = lock.run('a', () async => log.add('second'));
+      final other = lock.run('b', () async => log.add('other'));
+      await other;
+      expect(log, ['first start', 'other']);
+      gate.complete();
+      await Future.wait([first, second]);
+      expect(log, ['first start', 'other', 'first end', 'second']);
+    });
+
+    test('a failing action does not block the next one', () async {
+      final lock = KeyedLock();
+      await expectLater(
+        lock.run('a', () async => throw StateError('no')),
+        throwsStateError,
+      );
+      expect(await lock.run('a', () async => 7), 7);
+    });
   });
 }

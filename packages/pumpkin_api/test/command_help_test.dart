@@ -62,7 +62,7 @@ void main() {
   });
 
   group('help', () {
-    test('lists lines with descriptions, sorted, filtered by permission', () {
+    test('lists lines with descriptions, sorted, filtered by permission', () async {
       final registry = CommandRegistry();
       final warp = SpecNode(
         'warp',
@@ -80,21 +80,21 @@ void main() {
       registry
         ..add(warp)
         ..add(_home());
-      expect(helpLines(registry), [
+      expect(await helpLines(registry), [
         '/home [name] - Go home',
         '/home set <name> - Save a home',
         '/warp - Warp',
         '/warp set - Create',
       ]);
       expect(
-        helpLines(registry, canUse: (p) => !p.contains('p:set')),
+        await helpLines(registry, canUse: (p) => !p.contains('p:set')),
         isNot(contains('/warp set - Create')),
       );
-      expect(helpLines(registry, command: '/warp'), [
+      expect(await helpLines(registry, command: '/warp'), [
         '/warp - Warp',
         '/warp set - Create',
       ]);
-      expect(helpLines(registry, hidden: {'home'}).length, 2);
+      expect((await helpLines(registry, hidden: {'home'})).length, 2);
     });
 
     test('registry replaces by name and finds aliases', () {

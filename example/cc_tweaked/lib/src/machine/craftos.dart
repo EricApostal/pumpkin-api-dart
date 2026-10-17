@@ -32,11 +32,17 @@ final class CraftOsImage {
   /// with.
   final String? modVersion;
 
+  /// The jar the image was read from (null for the fallback BIOS): the plugin
+  /// also reads the mod's data pack from it (the turtle and pocket upgrades,
+  /// block tags), see `protocol/datapack_registries.dart`.
+  final ZipArchive? archive;
+
   const CraftOsImage({
     required this.bios,
     required this.rom,
     required this.source,
     this.modVersion,
+    this.archive,
   });
 
   /// The built-in minimal BIOS, without a ROM.
@@ -63,6 +69,7 @@ final class CraftOsImage {
       rom: rom,
       source: '$name (${rom.fileCount} ROM files)',
       modVersion: _readVersion(archive),
+      archive: archive,
     );
   }
 

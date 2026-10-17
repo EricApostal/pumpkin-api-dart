@@ -1,5 +1,5 @@
 // Internal: everything the plugin dispatcher needs in one import.
-export 'async_runtime.dart' show Outcome, runCallback, runTask, taskHandlers;
+export 'async_runtime.dart' show runCallback, runTask, taskHandlers;
 export 'bindings.g.dart';
 export 'commands.dart' show commandErrorFor, CommandException, commandHandlers, suggestionHandlers;
 export 'events.dart' show eventHandlers;

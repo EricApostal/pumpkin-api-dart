@@ -69,8 +69,9 @@ abstract class Plugin {
   /// Called when the server loads the plugin. Register commands, event
   /// handlers and tasks here. Throwing aborts loading the plugin.
   ///
-  /// May be `async`, though the server doesn't wait for work that happens after
-  /// the first `await`. [context] is only valid until the first `await`.
+  /// May be `async`. The server waits for the host calls it awaits, but not for
+  /// timers or futures that something else completes. [context] is only valid
+  /// until the callback returns, use [Plugin.context] after that.
   FutureOr<void> onLoad(Context context) {}
 
   /// Called when the server unloads the plugin.
@@ -89,7 +90,11 @@ void runPlugin(Plugin plugin) {
   // `print` writes to the server log.
   printHandler = logger.info;
   commandNamespace = plugin.info.name;
-  definePlugin(exports: _Exports(plugin), metadata: _Metadata(plugin));
+  definePlugin(
+    exports: _Exports(plugin),
+    metadata: _Metadata(plugin),
+    gametestCallbacks: _GametestCallbacks(),
+  );
 }
 
 final class _Metadata implements Metadata {
@@ -111,6 +116,34 @@ final class _Metadata implements Metadata {
   }
 }
 
+/// Plugins don't take part in the server's gametests, so the host never calls
+/// these.
+final class _GametestCallbacks implements GametestCallbacks {
+  @override
+  void invokeVoid({required VoidCallbackId callback}) {}
+
+  @override
+  void invokeTest({required TestCallbackId callback, required Test test}) {}
+
+  @override
+  Future<void> invokeAsyncTest({
+    required AsyncTestCallbackId callback,
+    required Test test,
+  }) async {}
+
+  @override
+  bool invokeBlockPredicate({
+    required BlockPredicateCallbackId callback,
+    required BlockState permutation,
+  }) => false;
+
+  @override
+  bool invokeEntityPredicate({
+    required EntityPredicateCallbackId callback,
+    required Entity entity,
+  }) => false;
+}
+
 /// Implements the raw exports of the plugin world by calling into the Dart
 /// closures registered through the wrapper API.
 final class _Exports implements PluginExports {
@@ -122,34 +155,35 @@ final class _Exports implements PluginExports {
   void initPlugin() {}
 
   @override
-  Result<void, String> onLoad(Context context) => _guard('onLoad', () {
+  Future<Result<void, String>> onLoad(Context context) => _guard('onLoad', () {
     // The load context is owned: keep it for `Plugin.context`.
     _plugin._context = context.keep();
     return _plugin.onLoad(context);
   });
 
   @override
-  Result<void, String> onUnload(Context context) => _guard('onUnload', () async {
-    try {
-      await _plugin.onUnload(context);
-      await runUnloadHooks();
-    } finally {
-      final loadContext = _plugin._context;
-      _plugin._context = null;
-      loadContext?.dispose();
-    }
-  });
+  Future<Result<void, String>> onUnload(Context context) =>
+      _guard('onUnload', () async {
+        try {
+          await _plugin.onUnload(context);
+          await runUnloadHooks();
+        } finally {
+          final loadContext = _plugin._context;
+          _plugin._context = null;
+          loadContext?.dispose();
+        }
+      });
 
   @override
-  Event handleEvent(int eventId, Server server, Event event) {
+  Future<Event> handleEvent(int eventId, Server server, Event event) async {
     final handler = eventHandlers[eventId];
     if (handler == null) return event;
     try {
-      final outcome = runCallback<Event>(
+      return await runCallback<Event>(
         'event handler',
         () => handler(server, event),
+        fallback: () => event,
       );
-      return outcome.completed ? outcome.value! : event;
     } catch (e, s) {
       _logFailure('event handler', e, s);
       return event;
@@ -157,12 +191,12 @@ final class _Exports implements PluginExports {
   }
 
   @override
-  Result<int, CommandError> handleCommand(
+  Future<Result<int, CommandError>> handleCommand(
     int commandId,
     CommandSender sender,
     Server server,
     ConsumedArgs args,
-  ) {
+  ) async {
     final handler = commandHandlers[commandId];
     if (handler == null) {
       return Result.error(
@@ -170,12 +204,14 @@ final class _Exports implements PluginExports {
       );
     }
     try {
-      final outcome = runCallback<int>(
-        'command',
-        () => handler(sender, server, args),
+      // The server can't wait for a command that waits for a timer, it gets 1.
+      return Result.ok(
+        await runCallback<int>(
+          'command',
+          () => handler(sender, server, args),
+          fallback: () => 1,
+        ),
       );
-      // The server can't wait for a command that is still running.
-      return Result.ok(outcome.completed ? outcome.value! : 1);
     } catch (e, s) {
       if (e is! CommandException) _logFailure('command', e, s);
       return Result.error(commandErrorFor(e));
@@ -183,83 +219,93 @@ final class _Exports implements PluginExports {
   }
 
   @override
-  CommandSuggestions handleCommandSuggestion(
+  Future<CommandSuggestions> handleCommandSuggestion(
     int handlerId,
     CommandSender sender,
     Server server,
     SuggestionRequest request,
-  ) {
-    final none = CommandSuggestions(
-      start: request.start,
-      length: 0,
-      values: const [],
-    );
+  ) async {
+    CommandSuggestions none() =>
+        CommandSuggestions(start: request.start, length: 0, values: const []);
     final handler = suggestionHandlers[handlerId];
-    if (handler == null) return none;
+    if (handler == null) return none();
     try {
-      final outcome = runCallback<CommandSuggestions>(
+      return await runCallback<CommandSuggestions>(
         'suggestion handler',
         () => handler(sender, server, request),
+        fallback: none,
       );
-      return outcome.completed ? outcome.value! : none;
     } catch (e, s) {
       _logFailure('suggestion handler', e, s);
-      return none;
+      return none();
     }
   }
 
   @override
-  void handleTask(int handlerId, Server server) {
+  Future<void> handleTask(int handlerId, Server server) async {
     final task = taskHandlers[handlerId];
     if (task == null) return;
     try {
-      runTask(task, server);
+      await runTask(task, server);
     } catch (e, s) {
       _logFailure('scheduled task', e, s);
     }
   }
 
   @override
-  Result<List<int>, String> handleIpcMessage(
+  Future<Result<List<int>, String>> handleIpcMessage(
     String sender,
     List<int> message,
-  ) {
+  ) async {
     try {
-      final outcome = runCallback<List<int>>(
-        'onMessage',
-        () => _plugin.onMessage(sender, message),
+      return Result.ok(
+        await runCallback<List<int>>(
+          'onMessage',
+          () => _plugin.onMessage(sender, message),
+          fallback: () => const <int>[],
+        ),
       );
-      return Result.ok(outcome.value!);
     } catch (e) {
       return Result.error('$e');
     }
   }
 
   @override
-  bool handleAiGoalCanStart(int goalId, Server server, Entity entity) =>
+  Future<bool> handleAiGoalCanStart(int goalId, Server server, Entity entity) =>
       _goal(goalId, false, (g) => g.canStart(server, entity));
 
   @override
-  bool handleAiGoalShouldContinue(int goalId, Server server, Entity entity) =>
-      _goal(goalId, false, (g) => g.shouldContinue(server, entity));
+  Future<bool> handleAiGoalShouldContinue(
+    int goalId,
+    Server server,
+    Entity entity,
+  ) => _goal(goalId, false, (g) => g.shouldContinue(server, entity));
 
   @override
-  void handleAiGoalStart(int goalId, Server server, Entity entity) =>
-      _goal(goalId, null, (g) => g.start(server, entity));
+  Future<void> handleAiGoalStart(int goalId, Server server, Entity entity) =>
+      _goal<void>(goalId, null, (g) => g.start(server, entity));
 
   @override
-  void handleAiGoalTick(int goalId, Server server, Entity entity) =>
-      _goal(goalId, null, (g) => g.tick(server, entity));
+  Future<void> handleAiGoalTick(int goalId, Server server, Entity entity) =>
+      _goal<void>(goalId, null, (g) => g.tick(server, entity));
 
   @override
-  void handleAiGoalStop(int goalId, Server server, Entity entity) =>
-      _goal(goalId, null, (g) => g.stop(server, entity));
+  Future<void> handleAiGoalStop(int goalId, Server server, Entity entity) =>
+      _goal<void>(goalId, null, (g) => g.stop(server, entity));
 
-  R _goal<R>(int goalId, R fallback, R Function(AiGoal goal) call) {
+  Future<R> _goal<R>(
+    int goalId,
+    R fallback,
+    FutureOr<R> Function(AiGoal goal) call,
+  ) async {
     final goal = aiGoals[goalId];
     if (goal == null) return fallback;
     try {
-      return runCallback<R>('AI goal', () => call(goal)).value ?? fallback;
+      return await runCallback<R>(
+        'AI goal',
+        () => call(goal),
+        fallback: () => fallback,
+      );
     } catch (e, s) {
       _logFailure('AI goal', e, s);
       return fallback;
@@ -267,15 +313,15 @@ final class _Exports implements PluginExports {
   }
 
   @override
-  void handleGeneratePhase(
+  Future<void> handleGeneratePhase(
     int generatorId,
     GenerationPhase phase,
     ChunkBuffer chunk,
-  ) {
+  ) async {
     final generator = chunkGenerators[generatorId];
     if (generator == null) return;
     try {
-      runCallback<void>('chunk generator', () {
+      await runCallback<void>('chunk generator', () {
         switch (phase) {
           case GenerationPhase.biomes:
             generator.generateBiomes(chunk);
@@ -286,15 +332,18 @@ final class _Exports implements PluginExports {
           case GenerationPhase.features:
             generator.generateFeatures(chunk);
         }
-      });
+      }, fallback: () {});
     } catch (e, s) {
       _logFailure('chunk generator', e, s);
     }
   }
 
-  Result<void, String> _guard(String what, FutureOr<void> Function() body) {
+  Future<Result<void, String>> _guard(
+    String what,
+    FutureOr<void> Function() body,
+  ) async {
     try {
-      runCallback<void>(what, body);
+      await runCallback<void>(what, body, fallback: () {});
       return const Result.ok(null);
     } catch (e, s) {
       _logFailure(what, e, s);

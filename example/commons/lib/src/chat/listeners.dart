@@ -51,10 +51,13 @@ final class ChatListeners {
 
   /// A handler that never throws into the server: on an error the event
   /// continues unchanged (vanilla chat, vanilla join message).
-  T Function(Server, T) _safe<T>(String name, T Function(Server, T) handler) {
-    return (server, event) {
+  Future<T> Function(Server, T) _safe<T>(
+    String name,
+    Future<T> Function(Server, T) handler,
+  ) {
+    return (server, event) async {
       try {
-        return handler(server, event);
+        return await handler(server, event);
       } catch (e, s) {
         _log.error('The $name handler failed', error: e, stackTrace: s);
         return event;
@@ -64,7 +67,10 @@ final class ChatListeners {
 
   // -- Chat ------------------------------------------------------------------
 
-  PlayerChatEventData _onChat(Server server, PlayerChatEventData event) {
+  Future<PlayerChatEventData> _onChat(
+    Server server,
+    PlayerChatEventData event,
+  ) async {
     // Someone else (staff chat) already took this message.
     if (event.cancelled) return event;
     final player = event.player;
@@ -81,7 +87,7 @@ final class ChatListeners {
       );
       return event.cancel();
     }
-    if (!player.hasPermission(node: ChatPerms.bypass.node)) {
+    if (!await player.hasPermission(node: ChatPerms.bypass.node)) {
       final verdict = _service.spam.check(uuid, event.message);
       final reason = verdict.reason;
       if (reason != null) {
@@ -97,10 +103,10 @@ final class ChatListeners {
     final everyone = server.getAllPlayers();
     final moderation = _moderation;
     final spans = _template.render(
-      rank: _rankOf(player),
+      rank: await _rankOf(player),
       playerName: name,
       message: event.message,
-      allowColor: player.hasPermission(node: ChatPerms.color.node),
+      allowColor: await player.hasPermission(node: ChatPerms.color.node),
       mentionable: !_config.mentions
           ? const []
           : [
@@ -114,7 +120,9 @@ final class ChatListeners {
       for (final span in spans)
         if (span.mention != null) span.mention!.toLowerCase(),
     };
-    final exempt = player.hasPermission(node: ChatPerms.ignoreExempt.node);
+    final exempt = await player.hasPermission(
+      node: ChatPerms.ignoreExempt.node,
+    );
 
     _log.info('<$name> ${event.message}');
     for (final recipient in everyone) {
@@ -139,7 +147,7 @@ final class ChatListeners {
     return event.cancel();
   }
 
-  RankStyle _rankOf(Player player) => selectRank(
+  Future<RankStyle> _rankOf(Player player) => selectRank(
     _config.ranks,
     _config.defaultRank,
     (permission) => player.hasPermission(node: permission),
@@ -152,7 +160,10 @@ final class ChatListeners {
 
   // -- Join and leave --------------------------------------------------------
 
-  PlayerJoinEventData _onJoin(Server server, PlayerJoinEventData event) {
+  Future<PlayerJoinEventData> _onJoin(
+    Server server,
+    PlayerJoinEventData event,
+  ) async {
     final player = event.player;
     final uuid = player.uuidString;
     // The core records the player in the directory when its (non-blocking)
@@ -188,12 +199,15 @@ final class ChatListeners {
     }
     return event.copyWith(
       joinMessage: Messages.component(
-        _presence(server, template, player, count: _players.count + 1),
+        await _presence(server, template, player, count: _players.count + 1),
       ),
     );
   }
 
-  PlayerLeaveEventData _onLeave(Server server, PlayerLeaveEventData event) {
+  Future<PlayerLeaveEventData> _onLeave(
+    Server server,
+    PlayerLeaveEventData event,
+  ) async {
     final player = event.player;
     final uuid = player.uuidString;
     _service.playerLeft(uuid);
@@ -205,18 +219,18 @@ final class ChatListeners {
     }
     return event.copyWith(
       leaveMessage: Messages.component(
-        _presence(server, template, player, count: _players.count),
+        await _presence(server, template, player, count: _players.count),
       ),
     );
   }
 
-  String _presence(
+  Future<String> _presence(
     Server server,
     String template,
     Player player, {
     required int count,
-  }) {
-    final rank = _rankOf(player);
+  }) async {
+    final rank = await _rankOf(player);
     return MessageFormat.format(template, {
       'prefix': rank.prefix,
       'suffix': rank.suffix,

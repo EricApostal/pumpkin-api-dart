@@ -1,6 +1,7 @@
 // Exercises the parts of the Dart core libraries that standalone dart2wasm
 // needs host support for, as `/t <name>` commands. Run it with
 // `tool/runtime_check.sh`.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -16,8 +17,10 @@ class Thing {
 }
 
 late DataFolder _data;
+late CommandSender _sender;
+late Server _server;
 
-final Map<String, Object? Function()> tests = {
+final Map<String, FutureOr<Object?> Function()> tests = {
   'fs_text': () {
     _data.writeAsString('check.txt', 'héllo');
     _data.writeAsString('check.txt', ' wörld', append: true);
@@ -99,6 +102,88 @@ final Map<String, Object? Function()> tests = {
   'duration': () => const Duration(seconds: 90).toString(),
   'uri': () => Uri.parse('https://a.b/c?d=e').host,
   'utf8': () => utf8.encode('héllo').length,
+  // Async host calls and the event loop, see docs/async.md.
+  'async_microtask': () async {
+    final a = await Future.value(2);
+    final b = await Future(() => 3);
+    return a + b;
+  },
+  'async_host_call': () async {
+    final stack = ItemStack.create(registryKey: 'minecraft:diamond', count: 3);
+    final before = await stack.getCount();
+    await stack.setCount(count: 7);
+    final after = await stack.getCount();
+    final max = await stack.getMaxCount();
+    final key = await stack.getRegistryKey();
+    stack.dispose();
+    return '$before $after $max $key';
+  },
+  'async_parallel': () async {
+    final stack = ItemStack.create(registryKey: 'minecraft:stone', count: 5);
+    final results = await Future.wait([
+      stack.getCount(),
+      stack.getMaxCount(),
+      stack.getRegistryKey(),
+    ]);
+    stack.dispose();
+    return results;
+  },
+  'async_values': () async {
+    final stack = ItemStack.create(registryKey: 'minecraft:diamond_sword', count: 1);
+    await stack.setCustomName(name: TextComponent.text(plain: 'Excalibur'));
+    await stack.addLore(line: TextComponent.text(plain: 'first'));
+    await stack.addLore(line: TextComponent.text(plain: 'second'));
+    await stack.addEnchantment(enchantment: Enchantment.sharpness, level: 5);
+    final name = (await stack.getCustomName())?.getText();
+    final lore = await stack.getLore();
+    final enchantments = await stack.getEnchantments();
+    stack.dispose();
+    return '$name ${lore.length} ${enchantments.single.level}';
+  },
+  'async_sequence': () async {
+    final stack = ItemStack.create(registryKey: 'minecraft:stone', count: 1);
+    var sum = 0;
+    for (var i = 1; i <= 200; i++) {
+      await stack.setCount(count: i % 64 + 1);
+      sum += await stack.getCount();
+    }
+    stack.dispose();
+    return sum;
+  },
+  'async_unawaited': () async {
+    final stack = ItemStack.create(registryKey: 'minecraft:stone', count: 1);
+    unawaited(stack.setCount(count: 9));
+    // The task waits for the call, so the stack may be read after it.
+    await Future<void>.value();
+    final count = await stack.getCount();
+    stack.dispose();
+    return count;
+  },
+  'async_permission': () async => _sender.hasPermission(node: 'runtime_check:t'),
+  'async_broadcast': () async {
+    await _server.broadcast(message: 'async broadcast works');
+    return true;
+  },
+  'async_timer': () async {
+    final start = DateTime.now();
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    return DateTime.now().difference(start).inMilliseconds >= 150;
+  },
+  'async_timer_then_host': () async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    final stack = ItemStack.create(registryKey: 'minecraft:stone', count: 4);
+    final count = await stack.getCount();
+    stack.dispose();
+    return count;
+  },
+  'async_error': () async {
+    try {
+      await Future<void>.delayed(Duration.zero);
+      throw StateError('boom');
+    } on StateError catch (e) {
+      return e.message;
+    }
+  },
 };
 
 void main() => runPlugin(RuntimeCheck());
@@ -116,10 +201,12 @@ final class RuntimeCheck extends Plugin {
     _data = context.files;
     final command = Command.create(names: ['t'], description: 'Runs a check');
     final name = CommandNode.argument(name: 'name', type: ArgumentTypes.word)
-      ..execute((sender, server, args) {
+      ..execute((sender, server, args) async {
         final key = args.string('name');
+        _sender = sender;
+        _server = server;
         try {
-          logger.info('RT OK $key => ${tests[key]!()}');
+          logger.info('RT OK $key => ${await tests[key]!()}');
         } catch (e) {
           logger.info('RT FAIL $key: $e');
         }

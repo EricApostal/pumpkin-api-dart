@@ -14,9 +14,9 @@ because stacks are consumed when put into an inventory.
 ```dart
 const sword = ItemSpec('diamond_sword', name: '&6Excalibur', lore: ['Sharp'],
     enchantments: [(Enchantment.sharpness, 5)], unbreakable: true);
-player.inventory.give(sword.build());
+await player.inventory.give(await sword.build());
 
-final stack = ItemBuilder('apple').name('Snack').count(3).glint().build();
+final stack = await ItemBuilder('apple').name('Snack').count(3).glint().build();
 ```
 
 Names and lore use `&` colour codes and are non-italic unless `italic: true`.
@@ -33,7 +33,7 @@ final menu = Menu(title: 'Shop', rows: 3)
   ..border(const ItemSpec('gray_stained_glass_pane', name: ' '))
   ..button(row: 1, column: 4, item: const ItemSpec('diamond'),
       onClick: (click) => click.update(13, const ItemSpec('emerald')));
-menu.open(player);
+await menu.open(player);
 ```
 
 * `Menu.button/set/clear/fill/border/fillRow/fillColumn`, `onOpen`, `onClose`.
@@ -57,8 +57,8 @@ Gaps in the host API:
   another menu; the old one gets `onClose`.
 * A click handler runs inside a blocking event, so `MenuClick.open` opens the
   next menu on the following tick.
-* Click handlers are synchronous (the event is intercepted); start futures
-  yourself for async work.
+* Click handlers are synchronous; start futures yourself for async work. The
+  click event itself is answered right away, a handler that awaits would delay it.
 * In-place slot changes rely on the host syncing the open window; if a client
   doesn't redraw, use `menu.reopen(player)`.
 * Item names/titles are strings (plus `&` codes); no `TextComponent` input.

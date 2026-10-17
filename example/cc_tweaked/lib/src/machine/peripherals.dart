@@ -139,7 +139,8 @@ final class WirelessModem extends MethodPeripheral {
   final double range;
 
   /// Where the modem is, if known; without positions every message arrives.
-  final (double, double, double)? position;
+  /// A turtle's modem follows its turtle.
+  (double, double, double)? position;
 
   final Set<int> _open = {};
   final Set<PeripheralAccess> _computers = {};
@@ -214,3 +215,29 @@ final class WirelessModem extends MethodPeripheral {
   }
 }
 
+
+/// A peripheral that exists so programs find the type they look for, but whose
+/// methods only answer "not supported": the speaker and the crafting table of
+/// a turtle (the server has neither audio nor a recipe API, see
+/// docs/host-requirements.md). Its [type] is what `peripheral.getType` says.
+final class StubPeripheral extends MethodPeripheral {
+  @override
+  final String type;
+
+  StubPeripheral(this.type, Map<String, List<Object?> Function(List<Object?> args)> methods) {
+    methods.forEach((name, body) => method(name, (computer, args) => body(args)));
+  }
+
+  /// `speaker`: `playNote`, `playSound` and `playAudio` return false, `stop` does nothing.
+  factory StubPeripheral.speaker() => StubPeripheral('speaker', {
+    'playNote': (_) => [false],
+    'playSound': (_) => [false],
+    'playAudio': (_) => [false],
+    'stop': (_) => noValues,
+  });
+
+  /// `workbench`: `craft` returns `false` and a message.
+  factory StubPeripheral.workbench() => StubPeripheral('workbench', {
+    'craft': (_) => [false, 'Crafting is not supported on this server'],
+  });
+}

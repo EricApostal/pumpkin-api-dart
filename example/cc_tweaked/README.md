@@ -16,18 +16,23 @@ two layers:
   blocks, block entity types, menu types and data component types, computers as
   block entities, the computer GUI over `neoforge:advanced_open_screen`, the
   terminal sync and the serverbound key/mouse/paste/action/upload messages,
-  pocket computers on right click. What the host provides and what is still
-  missing is in [docs/host-requirements.md](docs/host-requirements.md).
+  pocket computers on right click, the turtle and pocket upgrade registries
+  (`registry_data`) that fill the creative tab with the variants, and
+  turtles (block entity, GUI, the `turtle` API and movement). What the host
+  provides and what is still missing is in
+  [docs/host-requirements.md](docs/host-requirements.md).
 
-> **Never run.** This package was written under rules that forbade tests,
-> scripts and test clients, and no server was available: it passes
-> `dart analyze` and builds to a wasm component, but no Lua program has ever
-> executed in it, and the host features it now uses (block entities, menus,
-> custom data components, use events, placement rules) were themselves written
-> without being built or run. **Everything under "Computers in the world" is
-> unverified until a rebuilt host and a real CC: Tweaked client exercise it**;
-> the uncertain byte level points are listed there. Expect bugs on first
-> contact; see [docs/engine.md](docs/engine.md#honest-status).
+> **Status.** The package was written under rules that forbade tests, scripts
+> and test clients: it passes `dart analyze` and builds to a wasm component.
+> Computers in the world (block entity, terminal GUI, input, the Lua VM running
+> the real ROM) have been seen working on a real CC: Tweaked client. **What was
+> added after that has never run: the datapack registries (creative tab
+> variants), turtles (block entity, GUI, `turtle` API, movement) and the NeoForge
+> wrapper that sends them (`CcNeoForgeServer`)**; the host features they use were
+> themselves written without being built or run. The uncertain points are listed
+> in the sections of the same names and in
+> [docs/host-requirements.md](docs/host-requirements.md); expect bugs on first
+> contact, see [docs/engine.md](docs/engine.md#honest-status).
 
 | Document | Contents |
 | -------- | -------- |
@@ -97,6 +102,8 @@ restart):
 | `terminal_width`, `terminal_height` | 51, 19 | terminal size of computers |
 | `max_computers_per_player` | 5 | 0 = unlimited |
 | `default_computer_settings` | `""` | `name=value,...` (CC: `default_computer_settings`) |
+| `turtles_need_fuel` | `true` | turtles use fuel to move (CC: `turtlesNeedFuel`) |
+| `turtle_fuel_limit`, `advanced_turtle_fuel_limit` | 20000, 100000 | the fuel a turtle holds (CC: `turtleFuelLimit`, `advancedTurtleFuelLimit`) |
 | `neoforge` | `false` | install the NeoForge handshake (`NeoForgeNegotiation.full`, with the host's pre-brand hold) + registry sync, register CC's items, blocks (with placement rules), block entity types, menu types and data component types, and handle computers in the world; needs a host with `configuration-pre-brand-event`, `set-connection-flavour`, the block registry and placement rules, block entities, menus, custom data components and the use events (below) |
 
 Data layout: `computers.json` (ids, labels, owners, power, peripherals),
@@ -123,8 +130,8 @@ wireless modems, full wired modems and cables from the creative tab; the block
 stays, is drawn by the client with the state the server sent, can be mined
 (pickaxe speed, strength as in CC, the command computer is unbreakable) and
 drops its item. Only the computers have behaviour (next section); the other
-blocks have no block entity: monitors show nothing, turtles are invisible,
-speakers, drives and printers do nothing.
+blocks have no block entity: monitors show nothing, speakers, drives and
+printers do nothing. Turtles have one (next sections).
 
 **Placement state.** The registration also sets the placement rules of the
 host's `block-placement` interface (`CcBlockSpec.placement`, each rule cites
@@ -175,7 +182,8 @@ stands.
 touch, and peripherals are not discovered from neighbouring blocks: the host has
 no neighbour-changed callback, so `/cc attach` is still how a computer gets a
 monitor or modem), disk drives and printers (menus with real slot logic: the host
-has no menu behaviour), turtles, speakers, cables, redstone in the world (no
+has no menu behaviour; the turtle GUI works around it, see Turtles), speakers,
+cables, redstone in the world (no
 signal API), the command computer's GUI, `pocket_computer_data` (the state of a
 pocket computer's item model), lecterns, `getCloneItemStack` (pick block keeps
 the id), recipes, locks, the `Capacity`/`TerminalSize` of a stack are kept but
@@ -192,6 +200,70 @@ zero slots and accepts `computer_terminal` for it; the block entity data the
 client expects is really empty for computers; `Hand.left` is the off hand in
 the use events; and the item the player gets back after breaking a computer
 shows the right id.
+
+### Datapack registries: the creative tab variants (`"neoforge": true`)
+
+The creative tab of CC: Tweaked builds one stack per entry of two **datapack
+registries** the *client* received in the configuration phase
+(`ModRegistry.CreativeTabs.addTurtle/addPocket`: `registries.lookupOrThrow(
+ITurtleUpgrade.REGISTRY).listElements()`, `context.holders()` = the client's
+`RegistryAccess`). Both are `NewDatapackRegistryEvent.worldRegistry(key, codec,
+networkCodec)` registries, so NeoForge adds them to the synchronised datapack
+registries (`DataPackRegistriesHooks.addWorldRegistry`), and the server has to
+send their entries as `registry_data` packets. Pumpkin only sends the vanilla
+ones, so the client's registries were empty and the tab showed the base
+turtle/pocket computer only.
+
+The plugin now sends `computercraft:turtle_upgrade` (9 entries) and
+`computercraft:pocket_upgrade` (3) as `registry_data` (configuration packet
+id 7: registry id, VarInt count, per entry key + `true` + network NBT), in the
+**finish hold** of the NeoForge handshake (`plugin/neoforge_install.dart`,
+`CcNeoForgeServer`: the library's handshake with one extra step before its own
+finish tasks, so there is still a single hold), only for connections the
+handshake accepted as NeoForge. The entries are the files
+`data/{computercraft,minecraft}/computercraft/{turtle,pocket}_upgrade/*.json` of
+the mod's jar (the built-in copy of the 12 definitions is the fallback),
+converted by the generic `protocol/json_nbt.dart` (rules in its header: objects
+to compounds, arrays to lists, booleans to bytes, integers to int (long when
+large), decimals to double, `damageMultiplier` to float because
+`TurtleToolSpec` uses `Codec.FLOAT`; the real server would decode and re-encode
+with the network codec, the NBT shape is the same). The **order** of the entries
+is the id the client numbers them with and what the `left_turtle_upgrade` /
+`right_turtle_upgrade` / `top_pocket_upgrade` / `back_pocket_upgrade` item
+components carry (`ByteBufCodecs.holderRegistry`: a VarInt id): the plugin sorts
+by path, then namespace, like a Java server (`Identifier.compareTo`), so the tab
+lists `crafting_table`, `diamond_axe`, ..., `speaker`, `wireless_modem_advanced`,
+`wireless_modem_normal`. Nothing needs announcing: the registry names are in the
+packet and in the client's own mod code, `neoforge:frozen_registry` only covers
+static registries, and the type registries (`computercraft:turtle_upgrade_type`)
+are unsynchronised on both sides. Known packs do not matter, the entries carry
+their data. Not verified on a live client; the log line to look for is
+`sent registry_data: 9 turtle upgrades, 3 pocket upgrades`.
+
+### Turtles (`"neoforge": true`)
+
+Mirrors `TurtleBlock`, `TurtleBlockEntity`, `TurtleBrain`, `TurtleMenu`,
+`TurtleAPI` and the `Turtle*Command` classes (mc-26.3), **never run**; the model
+is binding-free in `lib/src/turtle/`, the glue in `plugin/world_turtles.dart`.
+
+| Part | What the plugin does |
+| ---- | -------------------- |
+| Block entity | save data: `ComputerId`, `Label`, `On`, `Fuel`, `Color`, `Overlay`, `LeftUpgrade`/`RightUpgrade` (`{id}` + `...Data` patch bytes), `Slot`, owner, `Items` (16 slots with their component bytes); client data (`getUpdateTag`): `Label`, `Fuel`, `Color`, `Overlay`, upgrades, `Animation` (`plugin/turtle_nbt.dart`). Written at placement, when something changed (every 5 ticks at most, at once when the client data changed) and when a chunk unloads |
+| Item | placing restores computer id, label, `dyed_color`, `fuel`, `overlay`, both upgrades; breaking gives the turtle item with all of them back, plus the contents of its inventory (into the breaker's inventory; the break is refused when it does not fit, because no plugin call drops an item entity with components). Breaking without a player (explosion) drops the plain item and loses id and contents |
+| GUI | right click opens `computercraft:turtle` (terminal + 54 slots: 16 turtle, 27 main, 9 hotbar, 2 upgrades; data slot 0 `isOn`, 1 the selected slot) through `advanced_open_screen`; the slot logic of vanilla (pick up, put down, split, merge, swap, shift click, number keys, double click, drags) is `turtle/menu.dart`. **Limit:** the host cannot set the cursor stack, so the carried stack is *virtual* (the plugin holds it, the client shows an empty cursor, an action bar message names it, closing the GUI gives it back); throwing items (Q, click outside) is ignored |
+| Lua | `turtle.forward/back/up/down/turnLeft/turnRight`, `dig*`, `place*`, `attack*`, `suck*`, `drop*`, `detect*`, `inspect*`, `compare*`, `compareTo`, `transferTo`, `select`, `refuel`, `equipLeft/Right`, `getFuelLevel/Limit`, `getSelectedSlot`, `getItemCount/Space/Detail`, `getEquippedLeft/Right`: queued commands answered by `turtle_response` events, one per 8 tick animation like CC (`machine/api/turtle_api.dart` is a Lua layer over natives); wireless modem upgrades are real peripherals, speaker and crafting table upgrades are stubs (`turtle.craft` returns `false`) |
+| Movement | the same block is set at the new position, the block entity is written there with the animation, the old block is removed; fuel, facing and water logging follow `TurtleBrain.teleportTo` |
+
+Approximations the host forces (details in
+[docs/host-requirements.md](docs/host-requirements.md#turtles)): block drops are
+the block's item plus a table of common exceptions (stone gives cobblestone, ores
+their raw item, leaves nothing), the vanilla block tags in the tool tags are
+approximated by block names, placing blocks gives the default state with `axis`
+and `facing` set, entities in the way are only checked for players, nothing can
+be dropped into or picked up from the world (`drop`/`suck` work with chests,
+hoppers, furnaces, barrels, shulker boxes, dispensers and droppers), a turtle
+refuses to dig computers and turtles, no crafting, no redstone, no
+`turtle` peripheral for other computers, wired modems.
 
 ### Combining with other NeoForge plugins
 
@@ -225,17 +297,25 @@ lib/src/lua/        Lua 5.1 + 5.2 features: lexer, parser, compiler, bytecode VM
                     explicit frames (coroutines yield anywhere, preemptible), stdlib
 lib/src/machine/    binding free CC machine: Terminal/Palette (= TerminalState layout),
                     FileSystem + mounts (writable quota mount, zip/ROM mount), redstone,
-                    peripherals (monitor, wireless modem), the Lua APIs (term, fs, os,
-                    redstone, peripheral), Computer (power state machine, event queue,
+                    peripherals (monitor, wireless modem, stubs), the Lua APIs (term, fs, os,
+                    redstone, peripheral, turtle), Computer (power state machine, event queue,
                     timers, time slicing), ComputerManager, CraftOS image from the jar
 lib/src/protocol/   payload codecs (messages.dart), TerminalState, upload reassembly,
                     registry lists + NeoForge spec, block definitions with placement
-                    rules (blocks.dart), data component codecs (components.dart), menu data
-lib/src/plugin/     the host glue: config, data-folder storage, service, /cc, chat view,
+                    rules (blocks.dart), data component codecs (components.dart), menu data,
+                    datapack registries (datapack_registries.dart) and the JSON to network
+                    NBT converter (json_nbt.dart)
+lib/src/turtle/     binding free turtle model: brain (state, command queue, animation
+                    clock), commands, stacks and inventory algorithms, upgrades, the
+                    menu click logic, approximated vanilla data; the world is the
+                    TurtleWorld adapter interface (world.dart)
+lib/src/plugin/         the host glue: config, data-folder storage, service, /cc, chat view,
                     network sessions + GUI (network.dart), block registration
                     (block_install.dart), block entity / menu / component type registration
                     (registry_install.dart), computers in the world (world_computers.dart),
-                    block state ids (block_states.dart), the plugin class
+                    turtles in the world (world_turtles.dart, turtle_items.dart,
+                    turtle_nbt.dart), the NeoForge handshake with the datapack registries
+                    (neoforge_install.dart), block state ids (block_states.dart), the plugin class
 bin/main.dart       runPlugin(CcTweakedPlugin())
 ```
 
@@ -251,9 +331,13 @@ compiles on its own. The integration points:
   clientbound terminal pushes for a player with a computer open;
 * `CcWorldComputers` (`plugin/world_computers.dart`): the events of the host
   (use item, use block, block place, block entity load/unload, block drop);
-* `CcRegistries.serverSpec(version)` + `plugin.dart` `_installNeoForge`: the
-  registry sync and channel negotiation (`NeoForgeNegotiation.full`, with the
-  pre-brand hold of the host);
+* `CcWorldTurtles` (`plugin/world_turtles.dart`): turtle blocks, items, GUI, the
+  tick that runs the brains' commands, and `_HostTurtleWorld`, the
+  `TurtleWorld` over the host's world API;
+* `CcRegistries.serverSpec(version)` + `plugin.dart` `_installNeoForge`
+  (`CcNeoForgeServer`): the registry sync, channel negotiation
+  (`NeoForgeNegotiation.full`, with the pre-brand hold of the host) and the
+  datapack registries in the finish hold;
 * `CcRegistries`, `CcBlockCatalog`, `CcRegistryIds`: what the host must register
   and the ids the client will use;
 * `MonitorPeripheral.touch(x, y)` / `resizeBlocks()` for multiblock monitors.
@@ -272,13 +356,13 @@ compiles on its own. The integration points:
 ## Not implemented
 
 * The client link beyond computers: monitors in the world, disk drives,
-  printers, turtles, speakers, wired modems/cables, redstone relays, redstone
+  printers, speakers, wired modems/cables, redstone relays, redstone
   from the world, pocket computer state sync (see "What is not done" above and
-  host-requirements.md). Computers in the world and pocket computers are wired,
-  unverified.
+  host-requirements.md). Computers in the world, pocket computers and turtles are
+  wired, unverified.
 * `http` (absent from `_G`, which is what CC does when http is disabled),
-  turtles, the command computer, bundled cables between blocks, `gps` (the ROM
-  program exists, no location source), the `commands` API.
+  the command computer, bundled cables between blocks, `gps` (the ROM
+  program exists, no location source), the `commands` API, `turtle.craft`.
 * Lua: `string.pack/unpack`, `debug.getlocal/getupvalue`, `__gc`/`__mode`
   (see engine.md). Time zones: `os.date`/`os.time("local")` are UTC.
 * The in-game clock follows the overworld's time of day, re-read every 100

@@ -69,7 +69,7 @@ final class ComponentCompiler {
         '--enable-experimental-wasm-interop',
         '--no-minify',
         '--no-strip-wasm',
-        '-O0',
+        '-O3',
         options.input.path,
         dart2wasmOut,
       ], mode: .inheritStdio)).exitCode;

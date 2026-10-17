@@ -85,13 +85,14 @@ final class EnchantmentBuilder {
 
   /// Registers the enchantment with [manager]. Throws an
   /// [EnchantmentException] if it is invalid or rejected by the server.
-  void register(EnchantmentManager manager) => manager.register(build());
+  Future<void> register(EnchantmentManager manager) =>
+      manager.register(build());
 }
 
 extension EnchantmentManagerApi on EnchantmentManager {
   /// Registers a custom enchantment, given as a [CustomEnchantment] or an
   /// [EnchantmentBuilder]. Throws an [EnchantmentException] on failure.
-  void register(Object enchantment) {
+  Future<void> register(Object enchantment) async {
     final record = switch (enchantment) {
       EnchantmentBuilder() => enchantment.build(),
       CustomEnchantment() => enchantment,
@@ -101,42 +102,37 @@ extension EnchantmentManagerApi on EnchantmentManager {
         'Expected an EnchantmentBuilder or CustomEnchantment',
       ),
     };
-    if (registerEnchantment(enchantment: record) case ErrorResult(:final value)) {
+    if (await registerEnchantment(enchantment: record) case ErrorResult(:final value)) {
       throw EnchantmentException(value);
     }
   }
 
   /// The definition of the enchantment [id], or `null` if it isn't registered.
-  CustomEnchantment? find(String id) {
-    final found = getEnchantment(id: id);
-    return found;
-  }
+  Future<CustomEnchantment?> find(String id) => getEnchantment(id: id);
 
   /// Whether an enchantment with this [id] is registered.
-  bool has(String id) => hasEnchantment(id: id);
+  Future<bool> has(String id) => hasEnchantment(id: id);
 
   /// The ids of all registered enchantments.
-  List<String> get ids => getAllEnchantmentIds();
+  Future<List<String>> ids() => getAllEnchantmentIds();
 }
 
 extension EnchantmentRegistration on Server {
   /// Registers a custom enchantment, see [EnchantmentManagerApi.register].
-  void registerCustomEnchantment(Object enchantment) =>
+  Future<void> registerCustomEnchantment(Object enchantment) =>
       getEnchantmentManager().register(enchantment);
 }
 
 extension EnchantmentContextRegistration on Context {
   /// Registers a custom enchantment, see [EnchantmentManagerApi.register].
-  void registerCustomEnchantment(Object enchantment) =>
+  Future<void> registerCustomEnchantment(Object enchantment) =>
       getServer().registerCustomEnchantment(enchantment);
 }
 
 extension CustomEnchantmentItems on ItemStack {
   /// The level of the custom enchantment [id], or `null` if the stack lacks it.
-  int? customEnchantmentLevel(String id) {
-    final level = getCustomEnchantmentLevel(enchantmentId: id);
-    return level;
-  }
+  Future<int?> customEnchantmentLevel(String id) =>
+      getCustomEnchantmentLevel(enchantmentId: id);
 }
 
 /// Formats [level] as a roman numeral up to 10 (`3` is `III`); larger levels

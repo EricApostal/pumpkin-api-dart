@@ -152,21 +152,28 @@ void main() {
     ];
     const fallback = RankStyle(prefix: 'default');
 
-    test('the first match wins', () {
-      expect(selectRank(ranks, fallback, (p) => true).prefix, 'A');
-      expect(selectRank(ranks, fallback, (p) => p == 'b').prefix, 'B');
+    test('the first match wins', () async {
+      expect(
+        (await selectRank(ranks, fallback, (p) async => true)).prefix,
+        'A',
+      );
+      expect(
+        (await selectRank(ranks, fallback, (p) async => p == 'b')).prefix,
+        'B',
+      );
     });
 
-    test('falls back, and an empty permission matches everybody', () {
-      expect(selectRank(ranks, fallback, (p) => false).prefix, 'default');
+    test('falls back, and an empty permission matches everybody', () async {
       expect(
-        selectRank(
-          [const RankStyle(prefix: 'all'), ...ranks],
-          fallback,
-          (p) => false,
-        ).prefix,
-        'all',
+        (await selectRank(ranks, fallback, (p) async => false)).prefix,
+        'default',
       );
+      final all = await selectRank(
+        [const RankStyle(prefix: 'all'), ...ranks],
+        fallback,
+        (p) async => false,
+      );
+      expect(all.prefix, 'all');
     });
   });
 

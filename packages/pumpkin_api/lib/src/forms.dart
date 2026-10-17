@@ -263,14 +263,17 @@ extension FormPlayerApi on Player {
   /// throws [StateError] if the player is not a Bedrock player. The [form] is
   /// consumed. Don't use this player object after the `await`: it is only
   /// valid inside the callback that received it.
-  Future<FormResponse> showForm(Form form) {
+  Future<FormResponse> showForm(Form form) async {
     final completer = Completer<FormResponse>();
-    showFormCallback(form, completer.complete);
+    await showFormCallback(form, completer.complete);
     return completer.future;
   }
 
   /// Like [showForm], but calls [onResponse] instead of returning a future.
-  void showFormCallback(Form form, void Function(FormResponse response) onResponse) {
+  Future<void> showFormCallback(
+    Form form,
+    void Function(FormResponse response) onResponse,
+  ) async {
     if (!_formsInstalled) {
       throw StateError('Call Context.handleFormResponses() in onLoad before showing forms.');
     }
@@ -280,7 +283,7 @@ extension FormPlayerApi on Player {
     }
     final int id;
     try {
-      id = bedrock.openForm(form: form);
+      id = await bedrock.openForm(form: form);
     } finally {
       bedrock.dispose();
     }

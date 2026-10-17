@@ -287,6 +287,34 @@ package wasi:cli@0.3.0 {
     }
 
     #[test]
+    fn async_import() {
+        print_definitions(
+            "
+package demo:component;
+
+world root {
+  import things;
+}
+
+interface things {
+  record big { a: string, b: string, c: u64, d: u32, e: list<u8> }
+  resource thing {
+    count: async func() -> u32;
+    rename: async func(name: string);
+    label: async func(prefix: string, suffix: string) -> string;
+    update: async func(value: big, other: big) -> result<big, string>;
+  }
+  ping: async func();
+  echo: async func(text: string) -> string;
+  sum: async func(a: u32, b: u32, c: u32, d: u32, e: u32) -> u64;
+  sync-one: func(a: u32) -> u32;
+}
+",
+        )
+        .expect("Could not generate definitions")
+    }
+
+    #[test]
     fn post_return() {
         print_definitions(
             "

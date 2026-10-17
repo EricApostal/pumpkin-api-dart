@@ -24,7 +24,15 @@ final class ManagedBossBar {
   BossBar? _bar;
   Object _title;
   double _progress;
+  BossBarColor _color;
+  BossBarDivision _division;
+  BossBarMetadata _metadata = const BossBarMetadata(
+    darkenSky: false,
+    dragonBar: false,
+    createFog: false,
+  );
   final Set<String> _players = {};
+  final Set<Future<void>> _pending = {};
   Timer? _timer;
 
   /// Creates a boss bar. [title] is a `String` with color codes or a [Text];
@@ -35,6 +43,8 @@ final class ManagedBossBar {
     BossBarDivision division = BossBarDivision.noDivision,
     double progress = 1,
   }) : _title = title,
+       _color = color,
+       _division = division,
        _progress = progress.clamp(0.0, 1.0).toDouble() {
     final bar = BossBar.create(
       title: Messages.component(title),
@@ -42,11 +52,21 @@ final class ManagedBossBar {
       division: division,
     ).keep();
     _bar = bar;
-    if (_progress != 1) bar.setHealth(health: _progress);
+    if (_progress != 1) _track(bar.setHealth(health: _progress));
   }
 
   BossBar get _live =>
       _bar ?? (throw StateError('This boss bar was removed'));
+
+  /// Remembers [call], a change that is on its way to the host, so [remove]
+  /// can wait for it before it releases the bar.
+  void _track(Future<void> call) {
+    _pending.add(call);
+    call.whenComplete(() => _pending.remove(call));
+  }
+
+  /// Completes once every change made so far has reached the host.
+  Future<void> flush() => Future.wait(_pending.toList());
 
   /// Whether [remove] was called.
   bool get isRemoved => _bar == null;
@@ -55,69 +75,80 @@ final class ManagedBossBar {
   Object get title => _title;
   set title(Object value) {
     _title = value;
-    _live.setTitle(title: Messages.component(value));
+    _track(_live.setTitle(title: Messages.component(value)));
   }
 
   /// The fill, 0 (empty) to 1 (full). Values are clamped.
   double get progress => _progress;
   set progress(double value) {
     _progress = value.clamp(0.0, 1.0).toDouble();
-    _live.setHealth(health: _progress);
+    _track(_live.setHealth(health: _progress));
   }
 
   /// The bar color.
-  BossBarColor get color => _live.getColor();
-  set color(BossBarColor value) => _live.setColor(color: value);
+  BossBarColor get color => _color;
+  set color(BossBarColor value) {
+    _color = value;
+    _track(_live.setColor(color: value));
+  }
 
   /// The notches of the bar.
-  BossBarDivision get division => _live.getDivision();
-  set division(BossBarDivision value) => _live.setDivision(division: value);
+  BossBarDivision get division => _division;
+  set division(BossBarDivision value) {
+    _division = value;
+    _track(_live.setDivision(division: value));
+  }
+
+  void _setMetadata(BossBarMetadata value) {
+    _metadata = value;
+    _track(_live.setMetadata(metadata: value));
+  }
 
   /// Whether the sky darkens for viewers.
-  bool get darkenSky => _live.getMetadata().darkenSky;
+  bool get darkenSky => _metadata.darkenSky;
   set darkenSky(bool value) =>
-      _live.setMetadata(metadata: _live.getMetadata().copyWith(darkenSky: value));
+      _setMetadata(_metadata.copyWith(darkenSky: value));
 
   /// Whether viewers get the ender dragon style bar.
-  bool get dragonBar => _live.getMetadata().dragonBar;
+  bool get dragonBar => _metadata.dragonBar;
   set dragonBar(bool value) =>
-      _live.setMetadata(metadata: _live.getMetadata().copyWith(dragonBar: value));
+      _setMetadata(_metadata.copyWith(dragonBar: value));
 
   /// Whether fog appears around viewers.
-  bool get createFog => _live.getMetadata().createFog;
+  bool get createFog => _metadata.createFog;
   set createFog(bool value) =>
-      _live.setMetadata(metadata: _live.getMetadata().copyWith(createFog: value));
+      _setMetadata(_metadata.copyWith(createFog: value));
 
   /// Shows the bar to [player]. The [player] handle is CONSUMED by the host:
   /// don't use it afterwards. Use [addPlayerById] to avoid that.
-  void addPlayer(Player player) {
+  Future<void> addPlayer(Player player) async {
     final key = _idKey(player.getId());
-    _live.addPlayer(player: player);
     _players.add(key);
+    await _live.addPlayer(player: player);
   }
 
   /// Shows the bar to the online player with [id], if there is one. Returns
   /// whether the player was found. [server] must be used within its callback.
-  bool addPlayerById(Server server, Uuid id) {
+  Future<bool> addPlayerById(Server server, Uuid id) async {
     final p = server.getPlayerByUuid(id: id);
     if (p == null) return false;
-    addPlayer(p);
+    await addPlayer(p);
     return true;
   }
 
   /// Hides the bar from [player]. The [player] handle is CONSUMED.
-  void removePlayer(Player player) {
+  Future<void> removePlayer(Player player) async {
     final key = _idKey(player.getId());
-    _live.removePlayer(player: player);
     _players.remove(key);
+    await _live.removePlayer(player: player);
   }
 
   /// Hides the bar from the online player with [id], if there is one.
-  bool removePlayerById(Server server, Uuid id) {
+  Future<bool> removePlayerById(Server server, Uuid id) async {
     final p = server.getPlayerByUuid(id: id);
     _players.remove(_idKey(id));
     if (p == null) return false;
-    _live.removePlayer(player: p);
+    await _live.removePlayer(player: p);
     return true;
   }
 
@@ -128,9 +159,9 @@ final class ManagedBossBar {
   int get playerCount => _players.length;
 
   /// Hides the bar from everybody. It stays usable.
-  void clearPlayers() {
-    _live.removeAll();
+  Future<void> clearPlayers() async {
     _players.clear();
+    await _live.removeAll();
   }
 
   /// Calls [update] every [interval] (resolution of one tick, 50ms) until
@@ -169,7 +200,7 @@ final class ManagedBossBar {
         b.stopUpdating();
         b.progress = 0;
         onFinish?.call(b);
-        if (removeWhenDone && !b.isRemoved) b.remove();
+        if (removeWhenDone && !b.isRemoved) unawaited(b.remove());
       } else {
         b.progress = 1 - elapsed.inMilliseconds / total.inMilliseconds;
       }
@@ -177,13 +208,15 @@ final class ManagedBossBar {
   }
 
   /// Hides the bar from everybody and releases it. Safe to call twice.
-  void remove() {
+  Future<void> remove() async {
     stopUpdating();
     final bar = _bar;
     if (bar == null) return;
-    bar.removeAll();
-    bar.dispose();
     _bar = null;
     _players.clear();
+    // The host call has to be done with the bar before the handle is dropped.
+    await flush();
+    await bar.removeAll();
+    bar.dispose();
   }
 }

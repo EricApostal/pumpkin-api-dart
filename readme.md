@@ -83,8 +83,9 @@ Mob AI goals (`AiGoal`, `Mob.addGoal`) and chunk generators (`ChunkGenerator`,
 ### Resources and `async`
 
 Objects from the server (`Player`, `World`, ...) are only valid until the
-callback that received them returns; call `keep()` to hold on to one. Callbacks
-can be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
+callback that received them returns; call `keep()` to hold on to one. Host calls
+that change things are `async` (`await player.heal(amount: 20)`), callbacks can
+be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
 [docs/lifetimes.md](docs/lifetimes.md) and [docs/async.md](docs/async.md).
 [docs/events-and-time.md](docs/events-and-time.md) covers events, `context.next`, `Duration` scheduling and enum names.
 [docs/configuration.md](docs/configuration.md) covers custom handshakes with client mods in the configuration phase.

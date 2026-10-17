@@ -94,13 +94,13 @@ List<Mention> findMentions(String text, Iterable<String> names) {
 }
 
 /// The first rank whose permission [has] says yes to, or [fallback].
-RankStyle selectRank(
+Future<RankStyle> selectRank(
   List<RankStyle> ranks,
   RankStyle fallback,
-  bool Function(String permission) has,
-) {
+  Future<bool> Function(String permission) has,
+) async {
   for (final rank in ranks) {
-    if (rank.permission.isEmpty || has(rank.permission)) return rank;
+    if (rank.permission.isEmpty || await has(rank.permission)) return rank;
   }
   return fallback;
 }

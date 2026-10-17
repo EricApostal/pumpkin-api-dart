@@ -152,10 +152,20 @@ final class TypesSection extends w.Section {
         s.writeUnsigned(resource.index.index);
       case StreamType(:final element):
         s.writeByte(0x66);
-        _writeType(element, s);
+        if (element == null) {
+          s.writeByte(0x00);
+        } else {
+          s.writeByte(0x01);
+          _writeType(element, s);
+        }
       case FutureType(:final element):
         s.writeByte(0x65);
-        _writeType(element, s);
+        if (element == null) {
+          s.writeByte(0x00);
+        } else {
+          s.writeByte(0x01);
+          _writeType(element, s);
+        }
       case InstanceResourceTypeExport():
         // Only legal as a direct entry in an `InstanceType`'s own type list,
         // handled specially there (it's an instancedecl export, not a type

@@ -61,11 +61,10 @@ final class _KitCommands {
     this.log,
   );
 
-  /// The kits [s]'s sender may claim, for tab completion.
-  Iterable<String> _claimable(SuggestionContext s) => [
-    for (final kit in kits.kits)
-      if (s.hasPermission(kit.permission)) kit.name,
-  ];
+  /// The kits to suggest for claiming. Suggestions are synchronous and the
+  /// permission check is not, so every kit is suggested; claiming a kit the
+  /// sender may not have is refused by the command.
+  Iterable<String> _claimable(SuggestionContext s) => _all(s);
 
   Iterable<String> _all(SuggestionContext _) => [
     for (final k in kits.kits) k.name,
@@ -138,16 +137,17 @@ final class _KitCommands {
 
   void _openMenu(CommandContext ctx) => ui.open(ctx.player);
 
-  void _claim(CommandContext ctx) {
+  Future<void> _claim(CommandContext ctx) async {
     final player = ctx.player;
     final kit = _kit(ctx.string('name'));
-    _say(ctx, texts.claim(kits.claim(PlayerKitRecipient(player), kit.name)));
+    final result = await kits.claim(PlayerKitRecipient(player), kit.name);
+    _say(ctx, texts.claim(result));
   }
 
   void _preview(CommandContext ctx) =>
       ui.preview(ctx.player, _kit(ctx.string('name')));
 
-  void _list(CommandContext ctx) {
+  Future<void> _list(CommandContext ctx) async {
     if (kits.kits.isEmpty) {
       _say(ctx, texts.line('list.empty'));
       return;
@@ -156,7 +156,7 @@ final class _KitCommands {
     final uuid = player.asEntity().getUuid().asString;
     _say(ctx, texts.plain('list.header'));
     for (final kit in kits.kits) {
-      final status = kits.status(uuid, kit, ctx.hasPermission);
+      final status = await kits.status(uuid, kit, ctx.hasPermission);
       _say(
         ctx,
         texts.plain('list.line', {
@@ -169,13 +169,13 @@ final class _KitCommands {
 
   // -- Admin ------------------------------------------------------------------
 
-  void _create(CommandContext ctx) {
+  Future<void> _create(CommandContext ctx) async {
     final name = ctx.string('name');
-    final items = PlayerKitRecipient(ctx.player).capture();
+    final items = await PlayerKitRecipient(ctx.player).capture();
     if (items.isEmpty) _fail(texts.plain('admin.empty'));
     final bool replaced;
     try {
-      replaced = kits.createKit(name, items);
+      replaced = await kits.createKit(name, items);
     } on KitException catch (e) {
       throw CommandException(e.message);
     }
@@ -189,10 +189,10 @@ final class _KitCommands {
     );
   }
 
-  void _delete(CommandContext ctx) {
+  Future<void> _delete(CommandContext ctx) async {
     final name = ctx.string('name');
     try {
-      kits.deleteKit(name);
+      await kits.deleteKit(name);
     } on KitException catch (e) {
       throw CommandException(e.message);
     }
@@ -200,8 +200,8 @@ final class _KitCommands {
     _say(ctx, texts.line('admin.deleted', {'name': name.toLowerCase()}));
   }
 
-  void _reload(CommandContext ctx) {
-    final report = kits.reload(backend);
+  Future<void> _reload(CommandContext ctx) async {
+    final report = await kits.reload(backend);
     if (!report.ok) {
       _say(ctx, texts.line('admin.reload_failed', {'error': report.error}));
       return;

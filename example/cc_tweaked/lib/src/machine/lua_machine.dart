@@ -52,13 +52,15 @@ final class LuaMachine {
   LuaMachine._(this.vm, this._main);
 
   /// Creates a machine that will run [bios] with [apis] as globals (and as
-  /// loaded modules).
+  /// loaded modules). [vmApis] are globals that need the VM to be built (the
+  /// `turtle` API has a Lua layer).
   factory LuaMachine.create({
     required ProtoCache cache,
     required String bios,
     required Map<String, LuaTable> apis,
     required String hostString,
     required String defaultSettings,
+    Map<String, LuaTable Function(LuaVm vm)> vmApis = const {},
   }) {
     final vm = LuaVm(cache: cache);
     installStandardLibrary(vm);
@@ -67,6 +69,9 @@ final class LuaMachine {
       ..setString('_CC_DEFAULT_SETTINGS', defaultSettings);
     for (final entry in apis.entries) {
       vm.globals.setString(entry.key, entry.value);
+    }
+    for (final entry in vmApis.entries) {
+      vm.globals.setString(entry.key, entry.value(vm));
     }
     final LuaClosure function;
     try {

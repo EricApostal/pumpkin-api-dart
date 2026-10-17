@@ -2,6 +2,7 @@ import 'package:dart_mappable/dart_mappable.dart' show MapperException;
 
 import '../core/api.dart';
 import '../core/clock.dart';
+import '../core/lock.dart';
 import '../core/storage.dart';
 import 'catalog.dart';
 import 'model.dart';
@@ -16,14 +17,14 @@ const claimsPath = 'kits/claims.json';
 abstract interface class KitRecipient {
   String get uuid;
   String get name;
-  bool hasPermission(String node);
+  Future<bool> hasPermission(String node);
 
   /// Whether all of [items] fit into the inventory at once.
-  bool canFit(List<KitItem> items);
+  Future<bool> canFit(List<KitItem> items);
 
   /// Puts all of [items] into the inventory. All or nothing: if it throws,
   /// whatever was already put in has been taken out again.
-  void give(List<KitItem> items);
+  Future<void> give(List<KitItem> items);
 }
 
 /// Where a player stands with a kit.
@@ -134,14 +135,18 @@ final class KitService {
   final JsonDocument<KitCatalog> _catalogDoc;
   final JsonDocument<KitsConfig> _configDoc;
   final JsonDocument<KitClaims> _claimsDoc;
-  final bool Function(String key) isKnownItem;
+  final Future<bool> Function(String key) isKnownItem;
   final bool Function(String key) isKnownEnchantment;
   final LogSink _warn;
+
+  /// Claims of one player run one after another, so two quick clicks can not
+  /// both pass the checks before the first is recorded.
+  final KeyedLock _claimLock = KeyedLock();
 
   List<Kit> _kits = const [];
   List<String> _problems = const [];
 
-  KitService({
+  KitService._({
     required this.economy,
     required this.clock,
     required JsonDocument<KitCatalog> catalog,
@@ -153,8 +158,31 @@ final class KitService {
   }) : _catalogDoc = catalog,
        _configDoc = config,
        _claimsDoc = claims,
-       _warn = warn ?? ((_) {}) {
-    _rebuild();
+       _warn = warn ?? ((_) {});
+
+  /// Creates the service and validates the kits.
+  static Future<KitService> create({
+    required Economy economy,
+    required Clock clock,
+    required JsonDocument<KitCatalog> catalog,
+    required JsonDocument<KitsConfig> config,
+    required JsonDocument<KitClaims> claims,
+    required Future<bool> Function(String key) isKnownItem,
+    required bool Function(String key) isKnownEnchantment,
+    LogSink? warn,
+  }) async {
+    final service = KitService._(
+      economy: economy,
+      clock: clock,
+      catalog: catalog,
+      config: config,
+      claims: claims,
+      isKnownItem: isKnownItem,
+      isKnownEnchantment: isKnownEnchantment,
+      warn: warn,
+    );
+    await service._rebuild();
+    return service;
   }
 
   KitsConfig get config => _configDoc.value;
@@ -173,8 +201,8 @@ final class KitService {
     return null;
   }
 
-  void _rebuild() {
-    final report = validateKits(
+  Future<void> _rebuild() async {
+    final report = await validateKits(
       _catalogDoc.value,
       isKnownItem: isKnownItem,
       isKnownEnchantment: isKnownEnchantment,
@@ -194,15 +222,28 @@ final class KitService {
 
   /// Where a player stands with [kit]. [hasPermission] answers permission
   /// checks for that player.
-  KitStatus status(
+  Future<KitStatus> status(
     String uuid,
     Kit kit,
-    bool Function(String node) hasPermission,
-  ) {
-    if (!hasPermission(kit.permission)) return const KitStatus(KitState.locked);
-    if (hasPermission(KitPerms.bypass.node)) {
-      return const KitStatus(KitState.available);
-    }
+    Future<bool> Function(String node) hasPermission,
+  ) async => statusWith(
+    uuid,
+    kit,
+    permitted: await hasPermission(kit.permission),
+    bypass: await hasPermission(KitPerms.bypass.node),
+  );
+
+  /// [status] for permissions that are known already: [permitted] is whether
+  /// the player has the kit's permission, [bypass] whether they ignore
+  /// cooldowns.
+  KitStatus statusWith(
+    String uuid,
+    Kit kit, {
+    required bool permitted,
+    required bool bypass,
+  }) {
+    if (!permitted) return const KitStatus(KitState.locked);
+    if (bypass) return const KitStatus(KitState.available);
     final claim = claimOf(uuid, kit.name);
     if (claim == null) return const KitStatus(KitState.available);
     if (kit.oneTime) return const KitStatus(KitState.claimed);
@@ -221,7 +262,10 @@ final class KitService {
   // -- Claiming ---------------------------------------------------------------
 
   /// Gives the kit called [name] to [who].
-  ClaimResult claim(KitRecipient who, String name) {
+  Future<ClaimResult> claim(KitRecipient who, String name) =>
+      _claimLock.run(who.uuid, () => _claim(who, name));
+
+  Future<ClaimResult> _claim(KitRecipient who, String name) async {
     final kit = this.kit(name);
     if (kit == null) {
       return ClaimResult.failed(ClaimFailure.unknownKit, requested: name);
@@ -235,7 +279,7 @@ final class KitService {
           balance: economy.balance(who.uuid),
         );
 
-    final status = this.status(who.uuid, kit, who.hasPermission);
+    final status = await this.status(who.uuid, kit, who.hasPermission);
     switch (status.state) {
       case KitState.locked:
         return fail(ClaimFailure.noPermission);
@@ -246,7 +290,7 @@ final class KitService {
       case KitState.available:
         break;
     }
-    if (!who.canFit(kit.items)) return fail(ClaimFailure.noSpace);
+    if (!await who.canFit(kit.items)) return fail(ClaimFailure.noSpace);
 
     if (kit.price > 0) {
       final paid = economy.withdraw(
@@ -265,7 +309,7 @@ final class KitService {
     }
 
     try {
-      who.give(kit.items);
+      await who.give(kit.items);
     } catch (e) {
       _warn('Could not give kit ${kit.name} to ${who.name}: $e');
       if (kit.price > 0) {
@@ -311,7 +355,10 @@ final class KitService {
   /// Gives the starter kit to a player who just joined for the first time.
   /// Returns `null` when nothing should happen: the feature is off, the kit
   /// is missing or costs money, the player is not new, or already got it.
-  ClaimResult? grantStarterKit(KitRecipient who, {required bool isNewPlayer}) {
+  Future<ClaimResult?> grantStarterKit(
+    KitRecipient who, {
+    required bool isNewPlayer,
+  }) async {
     if (!config.giveStarterKit || !isNewPlayer) return null;
     final kit = this.kit(config.starterKit);
     if (kit == null || kit.price > 0) return null;
@@ -324,10 +371,10 @@ final class KitService {
   /// Saves [items] as the kit [name], replacing a kit with that name.
   /// Everything else about a replaced kit (cooldown, price, ...) is kept.
   /// Returns whether a kit was replaced.
-  bool createKit(String name, List<KitItem> items) {
+  Future<bool> createKit(String name, List<KitItem> items) async {
     final lower = name.toLowerCase();
     final candidate = Kit(name: lower, items: items);
-    final report = validateKits(
+    final report = await validateKits(
       KitCatalog(kits: [candidate]),
       isKnownItem: isKnownItem,
       isKnownEnchantment: isKnownEnchantment,
@@ -347,13 +394,13 @@ final class KitService {
       kits.add(candidate);
     }
     _catalogDoc.value = KitCatalog(kits: kits);
-    _commit();
+    await _commit();
     return index >= 0;
   }
 
   /// Deletes the kit [name]. The claim history is kept, so a kit that is
   /// created again does not give one-time kits a second time.
-  void deleteKit(String name) {
+  Future<void> deleteKit(String name) async {
     final lower = name.toLowerCase();
     final kits = [..._catalogDoc.value.kits];
     final before = kits.length;
@@ -362,12 +409,12 @@ final class KitService {
       throw KitException('There is no kit called $name.');
     }
     _catalogDoc.value = KitCatalog(kits: kits);
-    _commit();
+    await _commit();
   }
 
   /// Re-reads the kits and the config from [backend]. A file that can not be
   /// parsed is reported and the old kits stay.
-  KitReload reload(StorageBackend backend) {
+  Future<KitReload> reload(StorageBackend backend) async {
     try {
       final kitsText = backend.read(kitsPath);
       final configText = backend.read(configPath);
@@ -384,12 +431,12 @@ final class KitService {
     } on FormatException catch (e) {
       return KitReload.failed('A kits file is not valid JSON: $e');
     }
-    _rebuild();
+    await _rebuild();
     return KitReload.ok(_kits.length, _problems);
   }
 
-  void _commit() {
-    _rebuild();
+  Future<void> _commit() async {
+    await _rebuild();
     _catalogDoc.save();
   }
 }

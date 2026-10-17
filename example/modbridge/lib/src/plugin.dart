@@ -104,13 +104,13 @@ final class ModBridgePlugin extends Plugin {
   // -- Play phase -------------------------------------------------------------
 
   void _play(Context context) {
-    _ping.listen(context, (player, ping) {
-      _pongChannel.send(player, Pong(ping.nonce, _tick));
+    _ping.listen(context, (player, ping) async {
+      await _pongChannel.send(player, Pong(ping.nonce, _tick));
     });
-    context.listen(Events.playerJoin, (server, event) {
+    context.listen(Events.playerJoin, (server, event) async {
       final player = event.player;
       if (_users.has(player.asEntity().getUuid().asString)) {
-        player.announceChannels([Protocol.pingChannel]);
+        await player.announceChannels([Protocol.pingChannel]);
       }
     });
     context.listen(Events.playerLeave, (server, event) {
@@ -154,13 +154,13 @@ final class ModBridgePlugin extends Plugin {
             build: (a) => a.arg(
               'message',
               ArgumentTypes.greedyString,
-              runs: (ctx) {
+              runs: (ctx) async {
                 final target = ctx.targetPlayer('player');
                 final uuid = target.asEntity().getUuid().asString;
                 if (!_users.has(uuid)) {
                   ctx.fail('${target.getName()} does not run the ModBridge mod.');
                 }
-                _toastChannel.send(
+                await _toastChannel.send(
                   target,
                   Toast('Message', ctx.string('message')),
                 );

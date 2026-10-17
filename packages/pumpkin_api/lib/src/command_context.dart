@@ -16,8 +16,9 @@ import 'commands.dart';
 ///   }));
 /// ```
 ///
-/// Like [sender] and [server], the context is only valid until the handler
-/// first yields (before its first `await`): read what you need from it first.
+/// Like [sender] and [server], the context stays valid while the handler awaits
+/// host calls, but not after it has waited for a timer: read what you need from
+/// it first.
 final class CommandContext {
   /// Who ran the command: a player, the console, a command block, ...
   final CommandSender sender;
@@ -57,7 +58,7 @@ final class CommandContext {
   ///
   /// Throws `CommandException('Only players can use this command.')` for any
   /// other sender. The handle is owned by this callback, don't keep it past
-  /// the handler's first `await` (use `keep()` or store the UUID instead).
+  /// a wait for a timer (use `keep()` or store the UUID instead).
   Player get player {
     return _player ??=
         sender.asPlayer() ??
@@ -68,8 +69,7 @@ final class CommandContext {
   Player? get playerOrNull => isPlayer ? player : null;
 
   /// Whether the sender has the permission [node]. The console always does.
-  bool hasPermission(String node) =>
-      sender.hasPermission(server: server, node: node);
+  Future<bool> hasPermission(String node) => sender.hasPermission(node: node);
 
   // -- Replies ---------------------------------------------------------------
 
@@ -226,6 +226,5 @@ final class SuggestionContext {
   Player? get player => sender.asPlayer();
 
   /// Whether the sender has the permission [node].
-  bool hasPermission(String node) =>
-      sender.hasPermission(server: server, node: node);
+  Future<bool> hasPermission(String node) => sender.hasPermission(node: node);
 }

@@ -114,10 +114,60 @@ Entry format, e.g. `{"type":"computercraft:wireless_modem","advanced":false,"ite
 `{"type":"computercraft:workbench","item":"minecraft:crafting_table"}`,
 `{"type":"computercraft:speaker","item":"computercraft:speaker"}`. The `type`
 is a name in the (unsynchronised) type registries above. The files ship in the
-mod jar's data pack (`projects/common/src/generated/resources/data/...`).
-Whether a known-packs exchange lets the server skip them: they belong to the
-mod's own pack, not `minecraft:core`, so they have to be sent in full
-(uncertain: not tested).
+mod jar's data pack (`projects/common/src/generated/resources/data/...`;
+`data/computercraft/computercraft/{turtle,pocket}_upgrade/*.json` and
+`data/minecraft/computercraft/turtle_upgrade/*.json`, 9 + 3 entries in jar
+1.120.3).
+
+#### 1.3.1 How the client builds the creative tab variants (conclusion)
+
+Read from the sources (CC `ModRegistry.CreativeTabs`, `UpgradeManager`,
+`ComputerCraft.registerDynamicRegistries`; NeoForge `DataPackRegistriesHooks`,
+the `RegistryDataLoader` patch; vanilla `RegistryDataCollector`), not observed:
+
+* The tab's `displayItems` lambda is run on the *client* with
+  `context.holders()`, the client's `RegistryAccess`. `addTurtle` adds the plain
+  turtle, then one stack per element of `registries.lookupOrThrow(
+  ITurtleUpgrade.REGISTRY)` with `right_turtle_upgrade = UpgradeData.ofDefault(
+  holder)`; `addPocket` the same with `back_pocket_upgrade` and
+  `IPocketUpgrade.REGISTRY`. Upgrades of the `minecraft` and `computercraft`
+  namespaces appear in the tab and the search tab, others only in search.
+* `event.worldRegistry(REGISTRY, codec, codec)` makes the registry a *synchronised*
+  datapack registry: NeoForge's `DataPackRegistriesHooks.addWorldRegistry` appends
+  `RegistryData(key, networkCodec)` to `RegistryDataLoader.SYNCHRONIZED_REGISTRIES`.
+  The client fills such a registry from the `registry_data` packets it
+  received during configuration (`appendContents`, decoded when the configuration
+  finishes in `collectGameRegistries`); a registry without packets stays empty
+  without an error, which is the "only the base turtle" symptom.
+* Packet (`ClientboundRegistryDataPacket`; Pumpkin's `CRegistryData`, id 7):
+  registry id string, VarInt count, per entry the key string, a boolean and,
+  if true, the entry as network NBT (compound, no root name). The client
+  decodes it with the network codec through `NbtOps`: the `type` field names an
+  entry of the unsynchronised type registry (`computercraft:tool`,
+  `wireless_modem`, `speaker`, `workbench`), `item` is an item id string,
+  `advanced` and `allowEnchantments` booleans (a byte tag decodes), `adjective` a
+  text component (`{translate: ...}`), `damageMultiplier` a float (any
+  numeric tag decodes), `breakable` a block tag id string, `consumeDurability` a
+  string. All of that is in the jar's JSON; the plugin converts it
+  generically (`protocol/json_nbt.dart`).
+* The **id** of an entry is its position in the packet (the client registers the
+  entries in order). It is what the four upgrade components carry
+  (`ByteBufCodecs.holderRegistry`, VarInt, no offset), and the order of the tab.
+* Known packs: an entry *with* data is decoded from the data; the mod's pack is
+  not one the server announces, so the data must be sent (it is always sent).
+* Nothing is announced elsewhere: `neoforge:frozen_registry` only lists static
+  registries (`computercraft:turtle_upgrade_type` / `pocket_upgrade_type` are
+  `NewRegistryEvent` registries without `sync(true)`, filled by the mod's own
+  code on both sides), and no handshake packet names datapack registries.
+* The plugin sends the packets in the finish hold (after Pumpkin's vanilla
+  registries and tags, before `finish_configuration`), only to connections the
+  handshake accepted as NeoForge. Their position in the configuration does not
+  matter to the client as long as they come before `finish_configuration`.
+* Uncertain: that Pumpkin's `registry_data` for vanilla and ours may arrive in
+  separate packets for different registries in any order (the vanilla client
+  keys them by registry); the exact sort order a Java server sends (derived:
+  `Identifier.compareTo`, path first); that the tab is rebuilt after the join
+  (it is built when the creative screen opens or the tags update).
 
 ### 1.4 Tags and recipes
 
@@ -299,7 +349,7 @@ short value).
 | `computer` | `ContainerData.toType(ComputerContainerData.STREAM_CODEC, ComputerMenuWithoutInventory...)` | **9 invisible slots** = the player's hotbar (`InvisibleSlot` over `Inventory` 0..8) | 1 (`isOn`) |
 | `pocket_computer_no_term` | same codec | same 9 | 1 |
 | `pocket_computer_lectern` | `PocketComputerLecternMenu.Data` | (lectern variant) | not analysed |
-| `turtle` | `TurtleMenu.ofMenuData` | 16 turtle slots (4x4 at x 175+17, y 134+1), 27 player slots, 9 hotbar, 2 upgrade slots | 1 (selected slot) |
+| `turtle` | `TurtleMenu.ofMenuData` | 54 slots: 0..15 the turtle (4x4 at x 175+17, y 134+1), 16..42 the player's main inventory, 43..51 the hotbar, 52 and 53 the left and right upgrade (`UpgradeSlot`, one item, only upgrade items) | 2: index 0 `isOn` (`AbstractComputerMenu`), index 1 the selected slot (`TurtleMenu`) |
 | `disk_drive` | `new MenuType<>(DiskDriveMenu::new, FeatureFlags.VANILLA_SET)` | vanilla style: 1 disk slot + player inventory | none |
 | `printer` | `new MenuType<>(PrinterMenu::new, ...)` | 1 ink + 1 paper input group + output + inventory (`PrinterMenu`) | 1 |
 | `printout` | `new MenuType<>((i, c) -> PrintoutMenu.createRemote(i), ...)` | none | none |
@@ -516,7 +566,8 @@ the same quota rules, `ArchiveMount` over the jar), `api/fs_api.dart`.
   the players have.
 * The name of the synced config file in the 26.3.0 release (`computercraft-synced.toml`
   per the FML `main` source) and the effect of not sending it.
-* Whether known packs let the server omit the datapack registry entries.
+* Whether known packs let the server omit the datapack registry entries: moot,
+  the plugin sends them with data (see 1.3.1).
 * The vanilla encodings assumed unchanged from 1.21.x: `ItemStack` and
   `DataComponentPatch` stream codecs, `Vec3.STREAM_CODEC` (3 doubles),
   `Identifier.STREAM_CODEC` (string), `BlockPos` packing, `Holder<JukeboxSong>`.

@@ -2,4 +2,10 @@
 # bindings and the prebuilt runtime helper are checked in.
 [workspace]
 members = ["native/runtime_helpers", "native/wit_bindgen_dart"]
+exclude = ["native/vendor"]
 resolver = "3"
+
+# wit-bindgen-core cannot lower async imports (it hits `todo!`). The vendored
+# copy implements it, see `AsyncImportAwait` in its `abi.rs`.
+[patch.crates-io]
+wit-bindgen-core = { path = "native/vendor/wit-bindgen-core" }

@@ -1,4 +1,5 @@
 // All computers of a server and how they share the server tick.
+import '../turtle/brain.dart';
 import 'computer.dart';
 
 final class ComputerManager {
@@ -14,12 +15,28 @@ final class ComputerManager {
 
   Computer? operator [](int id) => _computers[id];
 
-  /// Creates and registers the computer [id]. It starts off.
-  Computer create(int id, ComputerFamily family, {String? label}) {
+  /// Creates and registers the computer [id]. It starts off. A turtle passes
+  /// its [turtle] brain and the terminal size of turtles.
+  Computer create(
+    int id,
+    ComputerFamily family, {
+    String? label,
+    int? terminalWidth,
+    int? terminalHeight,
+    TurtleBrain? turtle,
+  }) {
     if (_computers.containsKey(id)) {
       throw StateError('Computer $id already exists');
     }
-    final computer = Computer(id: id, family: family, services: services, label: label);
+    final computer = Computer(
+      id: id,
+      family: family,
+      services: services,
+      label: label,
+      terminalWidth: terminalWidth,
+      terminalHeight: terminalHeight,
+      turtle: turtle,
+    );
     _computers[id] = computer;
     return computer;
   }

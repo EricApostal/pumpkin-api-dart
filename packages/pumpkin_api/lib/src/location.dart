@@ -120,11 +120,11 @@ extension EntityLocations on Entity {
 
   /// Teleports to [target], looking the world up on [server].
   /// Throws [WorldNotLoadedException] if it isn't loaded.
-  void teleportTo(Server server, Location target) {
+  Future<void> teleportTo(Server server, Location target) async {
     final w = server.getWorldByName(name: target.world);
     if (w == null) throw WorldNotLoadedException(target.world);
     // `teleport` consumes the world handle.
-    teleport(pos: target.position, worldRef: w);
+    await teleport(pos: target.position, worldRef: w);
     setRotation(yaw: target.yaw, pitch: target.pitch);
   }
 }
@@ -146,11 +146,11 @@ extension PlayerLocations on Player {
 
   /// Teleports to [target], looking the world up on [server].
   /// Throws [WorldNotLoadedException] if it isn't loaded.
-  void teleportTo(Server server, Location target) {
+  Future<void> teleportTo(Server server, Location target) async {
     final w = server.getWorldByName(name: target.world);
     if (w == null) throw WorldNotLoadedException(target.world);
     // `teleport` consumes the world handle.
-    teleport(
+    await teleport(
       position: target.position,
       yaw: target.yaw,
       pitch: target.pitch,
@@ -159,7 +159,6 @@ extension PlayerLocations on Player {
   }
 
   /// Moves within the current world, optionally changing the rotation.
-  void moveTo(Vec3 position, {double? yaw, double? pitch}) {
-    teleport(position: position, yaw: yaw, pitch: pitch, world: getWorld());
-  }
+  Future<void> moveTo(Vec3 position, {double? yaw, double? pitch}) =>
+      teleport(position: position, yaw: yaw, pitch: pitch, world: getWorld());
 }

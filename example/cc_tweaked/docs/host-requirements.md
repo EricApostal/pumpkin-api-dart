@@ -14,10 +14,14 @@ rules, block entities of plugin types, menus, custom data component types and
 the use events (`docs/host-features-for-client-mods.md`, also unbuilt), and
 this plugin was wired to them: see [Status](#status-what-the-host-now-offers-and-what-the-plugin-does-with-it)
 and [Open questions of the wiring](#open-questions-of-the-wiring). Recipe
-serializers, redstone and the datapack registries are still missing. Sections
-below (written before) say which requirement is met.
+serializers and redstone are still missing. **Update 3:** the datapack
+registries (turtle and pocket upgrades) are sent by the plugin itself, and
+turtles are implemented with workarounds for what the host lacks, listed in
+[Turtles](#turtles). Sections below (written before) say which requirement is
+met.
 
 * [Status: what the host now offers and what the plugin does with it](#status-what-the-host-now-offers-and-what-the-plugin-does-with-it)
+* [Turtles: what the host lacks](#turtles)
 * [Open questions of the wiring](#open-questions-of-the-wiring)
 * [Summary](#summary)
 * [P0: the client cannot join without these](#p0-the-client-cannot-join-without-these)
@@ -46,7 +50,8 @@ below (written before) say which requirement is met.
 | P1.4 | custom data components with codecs | `custom-components` (prefix notation codec, `set/get/remove-custom-component`) | 14 types with the exact StreamCodec shapes (`protocol/components.dart`, each cites its Java codec); `computer_id` read from items and written to the dropped/held stack | no |
 | P2 | interaction events with hit position, face, hand | `player-use-block-event` (with cursor), `player-use-item-event` | computer GUI on right click without sneaking; pocket computers on use; place tracking. The cursor is **not** used yet (monitor touch is not done) | no |
 | P1.6 | redstone | none | none: computers do not read or drive redstone in the world | - |
-| P1.5 | `turtle_upgrade` / `pocket_upgrade` datapack registries | none | none | - |
+| P1.5 | `turtle_upgrade` / `pocket_upgrade` datapack registries | none | **sent by the plugin itself** as `registry_data` in the finish hold (`plugin/neoforge_install.dart`, `protocol/datapack_registries.dart`): the entries come from the mod jar's data pack, converted to network NBT by `protocol/json_nbt.dart`. A host feature to contribute entries to its own `registry_data` would make this cleaner (below), but nothing is required | no |
+| P2 | turtles | no fake player, no item entities, no block drops query, no cursor control in plugin menus, no entity queries (the list is [Turtles](#turtles)) | block entity, item components, GUI, `turtle` API, movement, commands over a `TurtleWorld` adapter with the approximations listed there (`lib/src/turtle`, `plugin/world_turtles.dart`) | no |
 
 What is still missing on the host side for the rest of the mod: neighbour
 changed callbacks (peripheral discovery, redstone, monitors expanding), block
@@ -55,6 +60,157 @@ entity with a custom stack (a broken computer's id goes straight into the
 player's inventory instead), `getCloneItemStack` (pick block), menu behaviour
 with real slots (disk drive, printer, turtle), a redstone signal API, the
 datapack registries, recipes, and fake players for turtles.
+
+## Turtles
+
+What the plugin does with the host today is in the README ("Turtles"); this is
+what the host lacks, precisely, each with what the plugin does instead. Where a
+feature is listed the call names are proposals in the style of the existing WIT.
+
+### T1. Control of the cursor stack in plugin menus (the turtle GUI)
+
+* **Today.** `menu-click-event` is delivered, the click is not applied, and after
+  the event the host's `PluginMenuScreenHandler::sync_state()` resends the
+  slots *and the cursor, which is always empty* (the handler's `cursor_stack`
+  never changes). A client that picked a stack up therefore sees it vanish from
+  the cursor after every click. There is no `set-menu-cursor`; the generated
+  `java-packets` serializer has no `ClientboundSetCursorItem`
+  (`c-set-cursor-item` exists in the WIT, `serialize_java_packet` does not
+  handle it).
+* **Plugin.** a *virtual cursor*: the plugin keeps the carried stack
+  (`turtle/menu.dart`, `MenuLogic.cursor`), shows an action bar message
+  ("Holding 12 x cobblestone"), puts it down on the next click and gives it back
+  to the inventory when the menu closes. Everything else of vanilla's
+  `doClick` is implemented (pickup left/right, quick move, number key swap,
+  double click collect, drags, creative clone).
+* **Needed.** `menus.set-menu-cursor(player, stack: option<item-stack>)` and
+  `sync_state` that keeps the plugin's cursor, **or** a menu option
+  `apply-vanilla-clicks` for plugin menus, with the plugin supplying `may-place`
+  / max stack rules per slot; plus the click *mode* in `menu-click-event`
+  (today `click-type` is derived from it and a drag cannot be told from a click:
+  a drag start is `left` at slot `-999` with button 0/4/8, which is also "click
+  outside"; a drag step is `right` on a slot with button 1/5/9, which is also a
+  right click; the plugin recognises the three packets of a drag by their
+  sequence within 3 ticks, `turtle/menu.dart`), and the carried stack with
+  components (the event only has item id and count).
+* **Also missing here.** Throwing items (Q, click outside the window): needs T2.
+  `ServerboundContainerButtonClick`.
+
+### T2. Item entities
+
+`world.spawn-item(pos, stack, velocity)` with a stack that has data components
+(custom ones too), `world.item-entities-in(box)` / an `item-entity` resource
+(read the stack, set it, discard) and `entity.push`.
+
+* **Why.** `turtle.drop()` and `drop*` without an inventory drop an item entity,
+  `suck*` picks loose items up, a turtle that cannot store a drop or an
+  equipped upgrade drops it, a broken turtle drops its contents, an exploded
+  computer or turtle drops its item with its id.
+* **Plugin.** `drop` only works into containers (otherwise "Cannot drop items
+  into the world on this server"), `suck` only from containers, a dig whose
+  drops do not fit is refused ("No space for items"), equipping an upgrade that
+  has nowhere to go is refused, a turtle breaks only when the breaker's
+  inventory holds it and its contents (the break is cancelled otherwise) and
+  loses id and contents when it is destroyed without a player.
+
+### T3. Block drops and block tags
+
+* **Needed.** `world.get-block-drops(pos, tool: option<item-stack>) ->
+  list<item-stack>` (the loot of the block at a position with a tool,
+  enchantments applied, optionally the fake player's luck), or
+  `world.break-block(pos, tool, collect: bool) -> list<item-stack>`;
+  `block-has-tag(pos, tag)` / `get-tag-entries(registry, tag)` for the vanilla
+  tags (`#minecraft:mineable/hoe`, `#minecraft:wool`, `#minecraft:leaves`, ...),
+  which `computercraft:turtle_{hoe,shovel,sword}_harvestable` and
+  `turtle_always_breakable` include; an item `fuel` / burn time query
+  (`cooking_fuel`) and `crafting-remaining-item`.
+* **Plugin.** `turtle/vanilla_data.dart`: drops are the block's item with a
+  table of exceptions (stone to cobblestone, ores to raw items, glass nothing,
+  leaves nothing, crops by age), the tags are name lists, fuel is a burn time
+  table, tool attack damage a table. Silk touch, fortune, looting, loot tables
+  of modded blocks and blocks that drop several different items are wrong.
+
+### T4. Fake player / use item on block
+
+`world.use-item-on(pos, face, stack, hand, as: fake-player)` returning the
+interaction result and the consumed stack, and the block placement state a
+player would get (`facing`, `axis`, `half`, `shape`, waterlogging).
+
+* **Why.** `turtle.place*` (buckets, seeds, bone meal, flint and steel, spawn
+  eggs, signs with text, boats, minecarts), hoe/shovel `dig` actions,
+  `TurtleTool.attack` with the real attribute and enchantment damage and
+  knockback, spawn protection, `BlockBreakEvent` / protection plugins seeing the
+  turtle's owner.
+* **Plugin.** `place*` places blocks with the default state plus `axis` and
+  `facing` (`_HostTurtleWorld.placeBlock`), nothing else; hoes make farmland and
+  dirt, shovels make paths (`TurtleCommands`/`_useTool`); `attack` damages the
+  first living entity on a ray with `tool damage * damageMultiplier` as a
+  `player-attack`.
+
+### T5. Entity queries
+
+`world.entities-in(box) -> list<entity>`. Movement obstruction (`isUnobstructed`)
+and pushing entities (`turtlesCanPush`) need it; today the adapter checks
+players only (`server.get-all-players`), because scanning every entity of the
+world per move is too slow. Mobs in the way are walked into.
+
+### T6. Item stack completeness
+
+* `item-stack.get-components` returns only the vanilla components the host can
+  serialise and not the custom components of plugin types, so the plugin asks
+  for CC's 14 by key (`customComponent`); components of *other* plugins' types
+  are lost when an item passes through a turtle or its GUI. Needed:
+  `custom-components.list-custom-components(stack) -> list<string>` and
+  `item-stack.copy()`.
+* `item-stack.get-components` is the component *patch* only. The upgrade data of
+  a tool (`UpgradeData.data`, a `DataComponentPatch` in network form) is
+  therefore always empty here; enchanted or damaged tools are refused as
+  upgrades (as CC does for tools that cannot use durability), custom names of
+  upgrade items are lost.
+* `item-stack.get-display-name` / translation lookup for
+  `turtle.getItemDetail(slot, true).displayName` (derived from the key today),
+  `damage` / `maxDamage` / tags for the detailed item table.
+
+### T7. Drops with data from any break
+
+`block-drop-item-event` hands the plugin copies and applies only `cancelled`. A
+plugin that serves a mod needs to *replace* the drop list with stacks that carry
+components, or to spawn them itself (T2), so that a computer or turtle destroyed
+by a piston, explosion, fire, fluid or another turtle keeps its id and contents.
+`block-break-event` does not fire for blocks the plugin removes with
+`set-block-state` (a turtle digging), which is why drops are computed by the
+plugin.
+
+### T8. Redstone, neighbours, peripherals of turtles
+
+Neighbour changed callbacks and a redstone signal API (P1.6): turtles do not read
+or drive redstone, do not discover peripherals next to them (a turtle can
+equip a modem upgrade, which does work, but cannot use a disk drive, chest
+inventory *as a peripheral*, monitor or wired modem it faces), and are not
+peripherals themselves (`peripheral.wrap("turtle")` from another computer).
+
+### T9. Crafting
+
+`turtle.craft()` needs a recipe query (`recipes.find(grid) -> result + remainders`).
+The crafting table upgrade is accepted and the `workbench` peripheral exists but
+its `craft` returns `false, "Crafting is not supported on this server"`.
+
+### T10. Contributing datapack registry entries (nice to have)
+
+The plugin sends `computercraft:turtle_upgrade` / `pocket_upgrade` as
+`registry_data` itself with `ConfigurationConnection.sendPacket` (id 7) in the
+finish hold. A host call `datapack.register-entry(registry, key, nbt)` merged into
+the `CRegistryData` the host already sends (with the known packs it already
+computes) would remove the dependency on the hold ordering and let several plugins
+add entries without owning the handshake.
+
+### Turtle GUI: what else is approximate
+
+* The display stack of `ComputerContainerData` for a turtle has `computer_id`,
+  the custom name and both upgrades (`collectSafeComponents`), not `dyed_color`
+  / `overlay` / `fuel`.
+* Upgrade slots show the plain crafting item (no components) and give back the
+  plain item.
 
 ## Open questions of the wiring
 
@@ -347,6 +503,11 @@ server side but the client reads the mod's components, not `custom_data`.
 
 ### P1.5 Dynamic registries
 
+**Status: done by the plugin** (`registry_data` through
+`ConfigurationConnection.sendPacket`, see the README section "Datapack
+registries" and [client-compat.md 1.3](client-compat.md#13-datapack-dynamic-registries));
+a host contribution API is T10. The original request:
+
 `computercraft:turtle_upgrade` and `computercraft:pocket_upgrade` are
 datapack registries with a network codec, sent in the configuration phase as
 `registry_data` for the mod's data pack entries (lists and JSON in
@@ -442,6 +603,11 @@ assumes the host features exist.
 | **Computers, monitors, wireless modems** usable with the real GUI (placeable blocks, GUI, keyboard, screen, redstone, rednet, disks excluded) | P0.3 (blocks/BE/menu/components), P1.1-P1.4, P1.6: ~4-6 weeks | block entities, monitor multiblock `Expander`, menu session wiring, touch, persistence of ids: ~2-3 weeks, plus fixing what the first real `bios.lua` run reveals in the VM |
 | + disk drives, printers, speakers, cables and wired modems, redstone relay, lectern, recipes | P1.5, P2 (menus with real slot logic, recipes, chunk watch) : ~2-3 weeks | ~3-4 weeks (wired network graph, printer/drive menus, DFPWM speaker) |
 | + **turtles and pocket computers** (full parity) | fake player, entity/item interaction, animation: ~3-4 weeks | ~4-6 weeks (turtle API is ~30 commands over world access) |
+
+The **turtles** row has been implemented on the plugin side with the
+approximations above (T1 to T9): the plugin carries what the host cannot (a
+virtual cursor, drop tables, container-only item transfer), so a live test
+can start; each Tn removes one workaround.
 
 Total for the mod's main features: roughly **3 to 5 months** of one person's
 focused work, most of it on the host side of the first two milestones; a

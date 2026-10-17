@@ -31,7 +31,7 @@ no host handles, so it is safe to store (unlike `Player` or `World`).
 
 ```dart
 final home = player.location;                  // read
-other.teleportTo(server, home);                // throws WorldNotLoadedException
+await other.teleportTo(server, home);          // throws WorldNotLoadedException
 final spawn = world.spawnPoint;                // centered shared spawn
 ```
 
@@ -61,10 +61,11 @@ because passing a `World` to the host consumes it.
 * `sender.requirePlayer()` throws `CommandException` for the console.
 * `player.uuidString`, `isOperator(server)`, `hasPermissionLevel`,
   `isCreative` / `isSurvival` / `isAdventure` / `isSpectator`, `isAlive`,
-  `healFully()`, `feedFully()`, `eyePosition`, `lookDirection`.
-* `player.give(stack)` puts a stack in the first empty slot and returns the
-  stack back if the inventory is full (null when placed). `giveItem('diamond',
-  count: 100)` also tops up plain stacks and returns how many did not fit.
+  `healFully()`, `await feedFully()`, `eyePosition`, `lookDirection`.
+* `await player.give(stack)` puts a stack in the first empty slot and returns
+  the stack back if the inventory is full (null when placed). `await
+  giveItem('diamond', count: 100)` also tops up plain stacks and returns how
+  many did not fit.
   Overflow cannot be dropped: the WIT cannot spawn item entities.
 * `player.applyEffect(StatusEffectType.speed, duration: Duration(minutes: 1),
   amplifier: 1)`, `effectTimeLeft(type)`. `removeEffect(effect:)`,

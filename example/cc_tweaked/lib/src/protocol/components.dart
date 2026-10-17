@@ -79,6 +79,12 @@ abstract final class CcComponents {
   static final String storageCapacity = key('storage_capacity');
   static final String terminalSize = key('terminal_size');
   static final String on = key('on');
+  static final String leftTurtleUpgrade = key('left_turtle_upgrade');
+  static final String rightTurtleUpgrade = key('right_turtle_upgrade');
+  static final String topPocketUpgrade = key('top_pocket_upgrade');
+  static final String backPocketUpgrade = key('back_pocket_upgrade');
+  static final String fuel = key('fuel');
+  static final String overlay = key('overlay');
 
   // -- Values: the bytes of the network encoding ---------------------------------
 
@@ -111,6 +117,39 @@ abstract final class CcComponents {
   }
 
   static Uint8List encodeOn(bool value) => PacketBuffer.encode((w) => w.writeByte(value ? 1 : 0));
+
+  static Uint8List encodeFuel(int fuel) => PacketBuffer.encode((w) => w.writeVarInt(fuel));
+
+  static int decodeFuel(List<int> bytes) {
+    final reader = PacketReader(bytes);
+    final fuel = reader.readVarInt();
+    reader.expectEnd();
+    return fuel;
+  }
+
+  static Uint8List encodeOverlay(String overlay) => PacketBuffer.encode((w) => w.writeString(overlay));
+
+  static String decodeOverlay(List<int> bytes) {
+    final reader = PacketReader(bytes);
+    final overlay = reader.readString();
+    reader.expectEnd();
+    return overlay;
+  }
+
+  /// An upgrade component (`UpgradeData`): the VarInt id of the upgrade in its
+  /// datapack registry (the position in the `registry_data` the client was
+  /// sent), then a component patch (`VarInt added, VarInt removed, ...`, so
+  /// `[0, 0]` for none). [patch] is the patch bytes as they are.
+  static Uint8List encodeUpgrade(int id, List<int> patch) =>
+      PacketBuffer.encode((w) => w..writeVarInt(id)..writeBytes(patch));
+
+  /// Splits an upgrade component into the registry id and the patch bytes.
+  static (int, Uint8List) decodeUpgrade(List<int> bytes) {
+    final reader = PacketReader(bytes);
+    final id = reader.readVarInt();
+    final rest = Uint8List.fromList(bytes.sublist(bytes.length - reader.remaining));
+    return (id, rest);
+  }
 
   /// `computer` (`ServerComputerReference`): the registry's session id and the
   /// instance UUID of a pocket computer.

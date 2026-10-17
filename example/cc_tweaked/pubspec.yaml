@@ -7,6 +7,8 @@ environment:
 
 dependencies:
   crypto: ^3.0.7
+  hooks: ^2.0.2
+  wasm_tools:
   pumpkin_api:
     path: ../../packages/pumpkin_api
   pumpkin_neoforge:

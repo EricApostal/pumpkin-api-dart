@@ -6,6 +6,7 @@
 // next event; the value it yielded is the *filter*: events with another name
 // do not wake it (except `terminate`).
 import '../lua/lua.dart';
+import 'lua_host.dart';
 
 /// The ways running the machine can end.
 enum MachineStatus {
@@ -43,7 +44,22 @@ final class MachineException implements Exception {
   String toString() => message;
 }
 
-final class LuaMachine {
+/// A Lua machine of a computer, whichever Lua implementation runs it.
+abstract interface class Machine {
+  /// Gives the machine until [micros] microseconds from now to run.
+  void setSlice(int micros);
+
+  /// Makes the running Lua code fail with "Too long without yielding".
+  void requestAbort();
+
+  /// Resumes the machine. [name] is null to start it or to continue after a
+  /// pause. Events the program is not waiting for are dropped.
+  MachineResult handleEvent(String? name, List<Object?> args);
+
+  void close();
+}
+
+final class LuaMachine implements Machine {
   final LuaVm vm;
   final Coroutine _main;
   String? _eventFilter;
@@ -60,7 +76,7 @@ final class LuaMachine {
     required Map<String, LuaTable> apis,
     required String hostString,
     required String defaultSettings,
-    Map<String, LuaTable Function(LuaVm vm)> vmApis = const {},
+    Map<String, HostApiBuilder> vmApis = const {},
   }) {
     final vm = LuaVm(cache: cache);
     installStandardLibrary(vm);
@@ -71,7 +87,7 @@ final class LuaMachine {
       vm.globals.setString(entry.key, entry.value);
     }
     for (final entry in vmApis.entries) {
-      vm.globals.setString(entry.key, entry.value(vm));
+      vm.globals.setString(entry.key, entry.value(DartLuaHost(vm)));
     }
     final LuaClosure function;
     try {
@@ -84,16 +100,15 @@ final class LuaMachine {
     return LuaMachine._(vm, main);
   }
 
-  /// Gives the machine until [micros] microseconds from now to run.
+  @override
   void setSlice(int micros) {
     vm.deadlineMicros = vm.clock.elapsedMicroseconds + micros;
   }
 
-  /// Makes the running Lua code fail with "Too long without yielding".
+  @override
   void requestAbort() => vm.abortRequested = true;
 
-  /// Resumes the machine. [name] is null to start it or to continue after a
-  /// pause. Events the program is not waiting for are dropped.
+  @override
   MachineResult handleEvent(String? name, List<Object?> args) {
     if (_closed) throw StateError('The machine has been closed');
     final filter = _eventFilter;
@@ -126,5 +141,6 @@ final class LuaMachine {
     return 'error object is a ${luaTypeName(value)} value';
   }
 
+  @override
   void close() => _closed = true;
 }

@@ -13,21 +13,21 @@
 // `rom/apis/turtle/turtle.lua` (loaded by `bios.lua` when `turtle` exists) adds
 // `turtle.craft` for a crafting table upgrade and wraps `equipLeft/Right`.
 import '../../lua/lua.dart';
+import '../lua_host.dart';
 import '../../turtle/brain.dart';
 import '../../turtle/commands.dart';
 import '../../turtle/stack.dart';
 import '../../turtle/upgrades.dart';
 
-/// Builds a global table once the VM exists (the Lua layer needs it).
-typedef VmApiBuilder = LuaTable Function(LuaVm vm);
-
 /// The builder of the `turtle` global for [brain].
-VmApiBuilder turtleApiBuilder(TurtleBrain brain) => (vm) {
-  final native = _buildNatives(vm, brain);
-  final function = vm.load(_luaLayer, '=turtle');
-  final result = vm.call(function, [native]);
+HostApiBuilder turtleApiBuilder(TurtleBrain brain) => (host) {
+  final native = _buildNatives(host, brain);
+  final function = host.load(_luaLayer, '=turtle');
+  final result = host.call(function, [native]);
   final table = result.isEmpty ? null : result.first;
-  if (table is! LuaTable) throw StateError('The turtle API chunk did not return a table');
+  if (table == null || table is bool || table is double || table is String) {
+    throw StateError('The turtle API chunk did not return a table');
+  }
   return table;
 };
 
@@ -115,7 +115,7 @@ TurtleCommand _command(String name, List<Object?> list) {
   throw LuaError.message('No such turtle command $name');
 }
 
-LuaTable _buildNatives(LuaVm vm, TurtleBrain brain) {
+LuaTable _buildNatives(LuaHost host, TurtleBrain brain) {
   final native = LuaTable();
 
   // `queue(name, ...)`: the id of the queued command, or `false, message`.
@@ -129,7 +129,7 @@ LuaTable _buildNatives(LuaVm vm, TurtleBrain brain) {
       // The position of the program that called `turtle.x(...)`, not of the
       // Lua layer: level 2.
       final message = e.value is String ? e.value! as String : 'invalid arguments';
-      throw LuaError('${vm.where(2)}$message');
+      throw LuaError('${host.where(2)}$message');
     }
     final id = brain.enqueue(command);
     if (id == null) return <Object?>[false, 'Too many ongoing turtle commands'];

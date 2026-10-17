@@ -320,6 +320,15 @@ final class LuaTable {
   }
 }
 
+/// A Lua value that lives in another Lua implementation (see `clua/`) and has
+/// no Dart counterpart: a function, thread or userdata, or a table that is
+/// kept by reference.
+base class LuaForeign {
+  final String typeName;
+
+  const LuaForeign(this.typeName);
+}
+
 /// The Lua type name of [value].
 String luaTypeName(Object? value) {
   if (value == null) return 'nil';
@@ -328,6 +337,7 @@ String luaTypeName(Object? value) {
   if (value is String) return 'string';
   if (value is LuaTable) return 'table';
   if (value is LuaFunction) return 'function';
+  if (value is LuaForeign) return value.typeName;
   return 'thread';
 }
 

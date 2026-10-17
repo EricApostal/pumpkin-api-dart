@@ -1,0 +1,4 @@
+
+# Downloaded C toolchain for building the Lua VM (see native/lua)
+/native/toolchain/
+/native/lua/spike/*.wasm

@@ -50,6 +50,9 @@ final class PluginConfig {
   final int turtleFuelLimit;
   final int advancedTurtleFuelLimit;
 
+  /// The Lua implementation: `native` (PUC Lua as WebAssembly) or `dart`.
+  final LuaEngine luaEngine;
+
   const PluginConfig({
     this.jar = '',
     this.sliceMs = 3,
@@ -66,6 +69,7 @@ final class PluginConfig {
     this.turtlesNeedFuel = true,
     this.turtleFuelLimit = 20000,
     this.advancedTurtleFuelLimit = 100000,
+    this.luaEngine = LuaEngine.native,
   });
 
   factory PluginConfig.fromJson(Object? json) {
@@ -105,6 +109,11 @@ final class PluginConfig {
       turtlesNeedFuel: json['turtles_need_fuel'] is bool ? json['turtles_need_fuel']! as bool : defaults.turtlesNeedFuel,
       turtleFuelLimit: whole('turtle_fuel_limit', defaults.turtleFuelLimit, 0, 1 << 30),
       advancedTurtleFuelLimit: whole('advanced_turtle_fuel_limit', defaults.advancedTurtleFuelLimit, 0, 1 << 30),
+      luaEngine: switch (json['lua_engine']) {
+        'dart' => LuaEngine.dart,
+        'native' => LuaEngine.native,
+        _ => defaults.luaEngine,
+      },
     );
   }
 
@@ -124,6 +133,7 @@ final class PluginConfig {
     'turtles_need_fuel': turtlesNeedFuel,
     'turtle_fuel_limit': turtleFuelLimit,
     'advanced_turtle_fuel_limit': advancedTurtleFuelLimit,
+    'lua_engine': luaEngine.name,
   };
 
   String toJsonText() => const JsonEncoder.withIndent('  ').convert(toJson());
@@ -139,5 +149,6 @@ final class PluginConfig {
     terminalWidth: terminalWidth,
     terminalHeight: terminalHeight,
     defaultSettings: defaultSettings,
+    luaEngine: luaEngine,
   );
 }

@@ -7,6 +7,7 @@ import 'component_assembler.dart';
 import 'components/component.dart';
 import 'components/index_space.dart';
 import 'components/linker.dart';
+import 'core_bridge.dart';
 import 'dart_linker.dart';
 import 'hooks/builder.dart';
 import 'transform.dart';
@@ -80,6 +81,7 @@ final class ComponentCompiler {
       final transformer = ModuleTransformer.fromBytes(
         await File(dart2wasmOut).readAsBytes(),
         logger,
+        coreModuleNames: {for (final module in resolved.coreModules) module.name},
       );
       transformer.transform(abi);
 
@@ -98,12 +100,44 @@ final class ComponentCompiler {
       assembler.buildImports();
       assembler.resolveExportTypes();
 
+      // Linked core modules call into Dart, which imports them in turn. Break
+      // the cycle with a trampoline instantiated first, whose table is filled
+      // once the Dart module exists.
+      final coreModules = <String, ModuleInstanceIndex>{};
+      ModuleInstanceIndex? bridge;
+      if (resolved.coreModules.isNotEmpty) {
+        bridge = builder.linker.coreInstantiate(
+          .moduleAndArgs(
+            builder.defineModuleFromBytes(trampoline()),
+            {},
+          ),
+        );
+        for (final module in resolved.coreModules) {
+          coreModules[module.name] = builder.linker.coreInstantiate(
+            .moduleAndArgs(
+              builder.defineModuleFromBytes(await module.file.readAsBytes()),
+              {'host': bridge},
+            ),
+          );
+        }
+      }
+
       final app = builder.linker.coreInstantiate(
         .moduleAndArgs(appDef, {
           'libc': libc,
           'component': linker.createCoreImportInstance(assembler.instances),
+          ...coreModules,
         }),
       );
+
+      if (bridge != null) {
+        builder.linker.coreInstantiate(
+          .moduleAndArgs(builder.defineModuleFromBytes(tableInit()), {
+            'dart': app,
+            'trampoline': bridge,
+          }),
+        );
+      }
 
       final callback = abi.hasAsyncExport
           ? builder.linker.alias(

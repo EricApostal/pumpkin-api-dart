@@ -201,11 +201,15 @@ final class CcBlockPlan {
 }
 
 abstract final class CcBlockCatalog {
+  /// `BlockStateProperties.HORIZONTAL_FACING`: `DirectionProperty.create` filters
+  /// `Direction.values()` (DOWN, UP, NORTH, SOUTH, WEST, EAST), so the horizontal
+  /// values are NOT in compass order. The client numbers block states with this
+  /// order, so a wrong one shows every block turned.
   static final BlockProperty _facing = BlockProperty.enumeration('facing', const [
     'north',
-    'east',
     'south',
     'west',
+    'east',
   ]);
 
   /// `BlockStateProperties.FACING` (`DirectionalBlock`): the order of

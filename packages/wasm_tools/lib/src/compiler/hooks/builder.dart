@@ -16,10 +16,14 @@ final class PackageConfigWithAbi {
   final PackageConfig packageConfig;
   final DartProgramAbi abi;
 
+  /// Core modules declared by build hooks, linked next to the Dart module.
+  final List<CoreModuleInput> coreModules;
+
   PackageConfigWithAbi({
     required this.packageConfigFile,
     required this.packageConfig,
     required this.abi,
+    this.coreModules = const [],
   });
 
   /// Resolves the file containing pre-compiled WebAssembly helpers used to
@@ -83,10 +87,18 @@ final class PackageConfigWithAbi {
     }
 
     final abi = DartProgramAbi();
+    final coreModules = <CoreModuleInput>[];
     final assets = buildResult.asSuccess.value.encodedAssets;
     for (final asset in assets) {
       if (asset.type == hooks.name) {
         abi.includeAsset(logger, asset);
+      } else if (asset.type == hooks.coreModuleName) {
+        coreModules.add(
+          CoreModuleInput(
+            asset.encoding['name'] as String,
+            File(asset.encoding['file'] as String),
+          ),
+        );
       }
     }
 
@@ -94,6 +106,14 @@ final class PackageConfigWithAbi {
       packageConfig: pkgConfig.config,
       packageConfigFile: pkgConfig.file.toFilePath(),
       abi: abi,
+      coreModules: coreModules,
     );
   }
+}
+
+final class CoreModuleInput {
+  final String name;
+  final File file;
+
+  CoreModuleInput(this.name, this.file);
 }

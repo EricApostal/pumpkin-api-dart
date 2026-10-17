@@ -19,6 +19,7 @@ import 'api/turtle_api.dart';
 import 'craftos.dart';
 import 'filesystem.dart';
 import 'input.dart';
+import '../clua/machine.dart';
 import 'lua_machine.dart';
 import 'peripheral.dart';
 import 'redstone.dart';
@@ -58,6 +59,9 @@ final class MachineConfig {
   final int terminalWidth;
   final int terminalHeight;
 
+  /// The Lua implementation that runs the computers.
+  final LuaEngine luaEngine;
+
   /// Settings every computer starts with, as `name=value,name=value`.
   final String defaultSettings;
 
@@ -75,7 +79,17 @@ final class MachineConfig {
     this.terminalHeight = 19,
     this.defaultSettings = '',
     this.eventQueueLimit = 256,
+    this.luaEngine = LuaEngine.native,
   });
+}
+
+/// The Lua implementations a computer can run on.
+enum LuaEngine {
+  /// PUC Lua 5.2 as a WebAssembly module (`native/lua`), fast.
+  native,
+
+  /// The Lua VM written in Dart (`lua/`), which can pause anywhere.
+  dart,
 }
 
 /// What computers need from the server they run on.
@@ -161,7 +175,7 @@ final class Computer implements OsHost, PeripheralLookup {
   bool _softAborted = false;
 
   FileSystem? _fileSystem;
-  LuaMachine? _machine;
+  Machine? _machine;
   late final OsApi _os = OsApi(this);
   final List<_Attachment?> _attachments = List<_Attachment?>.filled(6, null);
   final Map<int, int> _timers = {};
@@ -518,7 +532,7 @@ final class Computer implements OsHost, PeripheralLookup {
     onChanged?.call();
   }
 
-  LuaMachine? _createMachine() {
+  Machine? _createMachine() {
     final image = _services.image;
     final config = _services.config;
     final apis = <String, LuaTable>{
@@ -532,14 +546,26 @@ final class Computer implements OsHost, PeripheralLookup {
     apis['redstone'] = redstoneApi;
     apis['os'] = _os.build();
     try {
-      return LuaMachine.create(
-        cache: _services.cache,
-        bios: image.bios,
-        apis: apis,
-        vmApis: {if (turtle != null) 'turtle': turtleApiBuilder(turtle)},
-        hostString: 'ComputerCraft ${image.modVersion ?? '1.120.3'} (Minecraft 26.3)',
-        defaultSettings: config.defaultSettings,
-      );
+      final hostString = 'ComputerCraft ${image.modVersion ?? '1.120.3'} (Minecraft 26.3)';
+      final vmApis = {if (turtle != null) 'turtle': turtleApiBuilder(turtle)};
+      return switch (config.luaEngine) {
+        LuaEngine.native => CLuaMachine.create(
+          bios: image.bios,
+          apis: apis,
+          vmApis: vmApis,
+          hostString: hostString,
+          defaultSettings: config.defaultSettings,
+          hardLimitMicros: config.timeoutMicros,
+        ),
+        LuaEngine.dart => LuaMachine.create(
+          cache: _services.cache,
+          bios: image.bios,
+          apis: apis,
+          vmApis: vmApis,
+          hostString: hostString,
+          defaultSettings: config.defaultSettings,
+        ),
+      };
     } on MachineException catch (e) {
       _displayFailure('Error loading bios.lua', e.message);
       return null;

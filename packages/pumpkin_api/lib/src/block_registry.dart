@@ -156,6 +156,18 @@ final class HostBlockRegistry implements BlockRegistryBackend {
           DropsLootTable(:final key) => generated.BlockDropsLootTable(key),
         },
         tags: b.tags,
+        shapeRules: [
+          for (final r in b.shapeRules)
+            generated.ShapeRule(
+              when: [
+                for (final e in r.when.entries)
+                  generated.PropertyValue(name: e.key, value: e.value),
+              ],
+              collisionShape: r.collisionShape == null ? null : _shape(r.collisionShape!),
+              selectionShape: r.selectionShape == null ? null : _shape(r.selectionShape!),
+            ),
+        ],
+        pistonBehavior: generated.PistonBehavior.values.byName(b.pistonBehavior.name),
       );
 
   static generated.PropertyKind _kind(BlockPropertyKind kind) => switch (kind) {

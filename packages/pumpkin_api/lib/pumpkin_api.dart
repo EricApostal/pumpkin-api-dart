@@ -35,6 +35,24 @@ export 'src/bindings.g.dart'
         PluginBlockEntity, pluginBlockEntity, PluginBlockEntityData, BlockEntityTypeEntry,
         Menus, menus, MenuTypeEntry, OpenMenuInfo,
         CustomComponents, customComponents, ComponentTypeEntry, CodecOp, CodecOpVarInt, CodecOpVarLong, CodecOpFlag, CodecOpByte, CodecOpShort, CodecOpInt, CodecOpLong, CodecOpFloat32, CodecOpFloat64, CodecOpText, CodecOpByteArray, CodecOpUuid, CodecOpFixedBytes, CodecOpNbt, CodecOpStack, CodecOpComponentPatch, CodecOpOptional, CodecOpRepeated, CodecOpSequence,
+        // The raw `fluid-registry`, `entity-registry`, `entity-ticking`, `damage-types`,
+        // `block-callbacks`, `item-handler` and `fake-player` interfaces; use `FluidRegistries`,
+        // `EntityRegistries`, `Context.tickEntities`, `DamageTypeRegistries`,
+        // `Context.registerBlockBehavior`, `ItemHandlers` and `FakePlayers`.
+        FluidRegistry, fluidRegistry, EntityRegistry, entityRegistry, EntityTicking, entityTicking, DamageTypes, damageTypes, BlockCallbacks, blockCallbacks, ItemHandlerInterface, itemHandler, FakePlayer, fakePlayer,
+        // The raw `neoforge` interface and its records; use `NeoForgeDeclaration`,
+        // `Context.declareNeoForge` and `Player.isNeoForge`.
+        // The raw `fluid-handler`, `structures`, `entity-flags`, `extra-registries`,
+        // `worldgen` and `advancement` interfaces; use `FluidHandlers`, `StructureTemplates`,
+        // `EntityFlagsApi`, `ExtraRegistries`, `WorldgenFeatures` and `Advancements`.
+        FluidHandlerInterface, fluidHandler, Structures, structures, EntityFlags, entityFlags,
+        ExtraRegistries, extraRegistries, Worldgen, worldgen, Advancement, advancement,
+        // Their records, which have typed specs: `ShapeRule`, `PistonBehavior` and the
+        // `*Definition` records of the extra registries.
+        ShapeRule, PistonBehavior, SoundDefinition, ParticleDefinition, MobEffectDefinition,
+        MobEffectModifier, MapDecorationDefinition, WorldgenPlacementRule, HeightRange,
+        BlockChange, PluginBlockEntityChange, EnchantmentEffect,
+        Neoforge, neoforge, Declaration, ModInfo, NetworkChannel, SyncedRegistry, ConfigFile, DatapackEntry, DataMap, NonNeoforgePolicy,
         // The raw WASI filesystem types, used through `DataFolder`.
         Advice, Datetime, Descriptor, DescriptorFlagsFlag, DescriptorStat, DescriptorType, DirectoryEntry, DirectoryEntryStream, Error, ErrorCode, ErrorInterface, InputStream, MetadataHashValue, NewTimestamp, NewTimestampNoChange, NewTimestampNow, NewTimestampTimestamp, OpenFlagsFlag, OutputStream, PathFlagsFlag, Poll, Pollable, Preopens, StreamError, StreamErrorClosed, StreamErrorLastOperationFailed, Streams, Types, WallClock, preopens, wallClock;
 export 'src/ai.dart' hide aiGoals;
@@ -76,6 +94,22 @@ export 'src/feedback.dart';
 export 'src/bossbars.dart';
 export 'src/scoreboards.dart';
 export 'src/menus.dart';
+export 'src/host_result.dart' show HostException;
+export 'src/block_callbacks.dart';
+export 'src/fluids.dart';
+export 'src/fluid_handlers.dart';
+export 'src/bulk_placement.dart';
+export 'src/structures.dart';
+export 'src/extra_registries.dart';
+export 'src/worldgen_features.dart';
+export 'src/entity_flags.dart';
+export 'src/entities.dart';
+export 'src/damage_types.dart';
+export 'src/item_handlers.dart';
+export 'src/fake_players.dart';
+export 'src/neoforge_declaration.dart';
+export 'src/recipe_queries.dart';
+export 'src/tags.dart';
 export 'src/item_builder.dart';
 export 'src/data_keys.dart';
 export 'src/data_keys_bindings.dart';

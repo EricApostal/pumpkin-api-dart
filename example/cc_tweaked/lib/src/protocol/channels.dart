@@ -1,11 +1,12 @@
 // The network channels CC: Tweaked registers (`NetworkMessages`), and how they
-// are announced to a NeoForge client.
+// are declared to the host's NeoForge handshake.
 //
 // All of them are play-phase payloads of the mod id `computercraft`,
 // registered through `registrar.versioned(<mod version>)` and *not*
 // `.optional()`: a client with the mod refuses a server that does not
-// announce them in `neoforge:network` with the same version string.
-import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart';
+// announce them in `neoforge:network` with the same version string (the host
+// does, from the declaration).
+import 'package:pumpkin_api/pumpkin_api.dart' show NeoForgeChannel;
 
 abstract final class CcChannels {
   static const String namespace = 'computercraft';
@@ -55,22 +56,10 @@ abstract final class CcChannels {
     uploadResult,
   ];
 
-  /// The channel declarations for `NeoForgeServerSpec.channels`: every
+  /// The channel declarations for `NeoForgeDeclaration.channels`: every
   /// channel in the play phase, required, with the mod's [version].
-  static List<PayloadChannelSpec> specs(String version) => [
-    for (final id in serverbound)
-      PayloadChannelSpec(
-        id: id,
-        version: version,
-        phases: const {NetworkPhase.play},
-        flow: PacketFlow.serverbound,
-      ),
-    for (final id in clientbound)
-      PayloadChannelSpec(
-        id: id,
-        version: version,
-        phases: const {NetworkPhase.play},
-        flow: PacketFlow.clientbound,
-      ),
+  static List<NeoForgeChannel> declared(String version) => [
+    for (final id in serverbound) NeoForgeChannel.serverbound(id, version),
+    for (final id in clientbound) NeoForgeChannel.clientbound(id, version),
   ];
 }

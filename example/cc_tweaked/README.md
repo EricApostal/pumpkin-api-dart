@@ -28,7 +28,7 @@ two layers:
 > the real ROM) have been seen working on a real CC: Tweaked client. **What was
 > added after that has never run: the datapack registries (creative tab
 > variants), turtles (block entity, GUI, `turtle` API, movement) and the NeoForge
-> wrapper that sends them (`CcNeoForgeServer`)**; the host features they use were
+> declaration that makes the host send them (`plugin/cc_neoforge.dart`)**; the host features they use were
 > themselves written without being built or run. The uncertain points are listed
 > in the sections of the same names and in
 > [docs/host-requirements.md](docs/host-requirements.md); expect bugs on first
@@ -57,7 +57,7 @@ dart analyze                        # clean
 1. Copy `build/cc_tweaked.wasm` into the server's `plugins/` directory and
    approve its permissions: `fs.write.data` (its data folder), and
    `registry.items`, `registry.blocks`, `registry.block-entities`,
-   `registry.menus` and `registry.components` (only used with `"neoforge": true`).
+   `registry.menus`, `registry.components` and `neoforge` (only used with `"neoforge": true`).
 2. **The ROM.** The CC: Tweaked ROM and `bios.lua` are not redistributed. Put
    the mod jar (any `.jar` file name; the jar of the mod build your players
    use) into `plugins/data/cc_tweaked/`, then restart. The plugin finds the jar
@@ -104,7 +104,7 @@ restart):
 | `default_computer_settings` | `""` | `name=value,...` (CC: `default_computer_settings`) |
 | `turtles_need_fuel` | `true` | turtles use fuel to move (CC: `turtlesNeedFuel`) |
 | `turtle_fuel_limit`, `advanced_turtle_fuel_limit` | 20000, 100000 | the fuel a turtle holds (CC: `turtleFuelLimit`, `advancedTurtleFuelLimit`) |
-| `neoforge` | `false` | install the NeoForge handshake (`NeoForgeNegotiation.full`, with the host's pre-brand hold) + registry sync, register CC's items, blocks (with placement rules), block entity types, menu types and data component types, and handle computers in the world; needs a host with `configuration-pre-brand-event`, `set-connection-flavour`, the block registry and placement rules, block entities, menus, custom data components and the use events (below) |
+| `neoforge` | `false` | declare the mod to the host's NeoForge handshake (`Context.declareNeoForge`), register CC's items, blocks (with placement rules), block entity types, menu types and data component types, and handle computers in the world; needs a host with `configuration-pre-brand-event`, `set-connection-flavour`, the block registry and placement rules, block entities, menus, custom data components and the use events (below) |
 
 Data layout: `computers.json` (ids, labels, owners, power, peripherals),
 `computers/<id>/` (the computer's disk, the `/` of the Lua file system).
@@ -217,10 +217,9 @@ turtle/pocket computer only.
 The plugin now sends `computercraft:turtle_upgrade` (9 entries) and
 `computercraft:pocket_upgrade` (3) as `registry_data` (configuration packet
 id 7: registry id, VarInt count, per entry key + `true` + network NBT), in the
-**finish hold** of the NeoForge handshake (`plugin/neoforge_install.dart`,
-`CcNeoForgeServer`: the library's handshake with one extra step before its own
-finish tasks, so there is still a single hold), only for connections the
-handshake accepted as NeoForge. The entries are the files
+registry data of the NeoForge handshake: the plugin declares the entries
+(`NeoForgeDeclaration.datapackEntries`, `plugin/cc_neoforge.dart`) and the host
+sends them, only to connections that completed the NeoForge handshake. The entries are the files
 `data/{computercraft,minecraft}/computercraft/{turtle,pocket}_upgrade/*.json` of
 the mod's jar (the built-in copy of the 12 definitions is the fallback),
 converted by the generic `protocol/json_nbt.dart` (rules in its header: objects
@@ -265,30 +264,27 @@ hoppers, furnaces, barrels, shulker boxes, dispensers and droppers), a turtle
 refuses to dig computers and turtles, no crafting, no redstone, no
 `turtle` peripheral for other computers, wired modems.
 
-### Combining with other NeoForge plugins
+### The NeoForge handshake (`"neoforge": true`)
 
-With `"neoforge": true` this plugin installs the NeoForge handshake, and **only
-one plugin per server may do that**: a client answers every `neoforge:register`
-query and registry sync it gets, so two handshakes would both talk to it, and a
-second registry sync replaces the first (a synced registry has to contain
-*every* mod's entries). A server with CC: Tweaked **and** Lonsdaleite therefore
-needs one plugin that owns the NeoForge spec with both mods' registries and
-channels; until then keep `neoforge` off here or run the other plugin without its
-handshake. A proposal for sharing the spec between plugins (an IPC contribution
-channel, an owner plugin, or JSON files) is in
-[packages/pumpkin_neoforge/README.md](../../packages/pumpkin_neoforge/README.md#one-neoforge-plugin-per-server).
+The host runs the handshake now (`neoforge.wit`, pumpkin_api
+[docs/neoforge-host.md](../../docs/neoforge-host.md)); this plugin no longer
+carries its own (`CcNeoForgeServer` and `pumpkin_neoforge`'s handshake are not
+used by it). With `"neoforge": true` it calls `Context.declareNeoForge` in
+`onLoad` (permission `neoforge`) with mod `computercraft` at the jar's version
+(1.120.3 when no jar is found), the 16 required play channels, the
+`computercraft:recipe_function` registry, the empty `computercraft-synced.toml`
+and the turtle/pocket upgrade datapack entries. The host runs the negotiation
+before the brand, numbers the items, blocks, block entity types, menus and data
+component types this plugin registers through the host registries (in
+registration order, after the vanilla entries) and lets a vanilla client through
+(`NonNeoForgeClientPolicy.allow`). `recipe_serializer` and `command_argument_type`
+are not declared (the host never writes ids of those for CC's entries). GUIs
+check `player.isNeoForge`.
 
-The handshake is the library's *full* mode: before the host's brand the plugin
-sends the `neoforge:register` query, waits for the client's answer, negotiates the
-16 required `computercraft:*` payloads, marks the connection as NeoForge in the
-host and sends `neoforge:network`; a vanilla client (no answer) is let through
-(`NonNeoForgePolicy.allow`). It also sends the elytra attribute and the empty
-`neoforge:recipe_content` that a NeoForge connection needs. The registry sync
-covers block, item, block entity type, data component type and menu plus
-`computercraft:recipe_function`; `recipe_serializer` and `command_argument_type`
-are **not** synchronised (Pumpkin has no list of their vanilla entries, see
-`CcRegistries.synchronised`), which is safe because the host never writes ids of
-those registries for CC's entries.
+Several plugins can declare on one server, so combining with Lonsdaleite no longer
+needs one owner plugin, as long as only one of them (not both) runs the Dart
+handshake of `packages/pumpkin_neoforge` (Lonsdaleite still does).
+**Not run against a live host or client.**
 
 ## How it is built
 
@@ -314,8 +310,8 @@ lib/src/plugin/         the host glue: config, data-folder storage, service, /cc
                     (block_install.dart), block entity / menu / component type registration
                     (registry_install.dart), computers in the world (world_computers.dart),
                     turtles in the world (world_turtles.dart, turtle_items.dart,
-                    turtle_nbt.dart), the NeoForge handshake with the datapack registries
-                    (neoforge_install.dart), block state ids (block_states.dart), the plugin class
+                    turtle_nbt.dart), the NeoForge declaration with the datapack entries
+                    (cc_neoforge.dart), block state ids (block_states.dart), the plugin class
 bin/main.dart       runPlugin(CcTweakedPlugin())
 ```
 
@@ -334,10 +330,9 @@ compiles on its own. The integration points:
 * `CcWorldTurtles` (`plugin/world_turtles.dart`): turtle blocks, items, GUI, the
   tick that runs the brains' commands, and `_HostTurtleWorld`, the
   `TurtleWorld` over the host's world API;
-* `CcRegistries.serverSpec(version)` + `plugin.dart` `_installNeoForge`
-  (`CcNeoForgeServer`): the registry sync, channel negotiation
-  (`NeoForgeNegotiation.full`, with the pre-brand hold of the host) and the
-  datapack registries in the finish hold;
+* `ccNeoForgeDeclaration` (`plugin/cc_neoforge.dart`) + `plugin.dart`
+  `_declareNeoForge`: the declaration (channels, `recipe_function`, config file,
+  datapack entries) the host's handshake runs from;
 * `CcRegistries`, `CcBlockCatalog`, `CcRegistryIds`: what the host must register
   and the ids the client will use;
 * `MonitorPeripheral.touch(x, y)` / `resizeBlocks()` for multiblock monitors.

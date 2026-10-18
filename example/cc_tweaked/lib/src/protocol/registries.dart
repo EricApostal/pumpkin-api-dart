@@ -1,5 +1,5 @@
 // Everything CC: Tweaked adds to the registries, in registration order, and
-// the NeoForge server spec built from it.
+// the registries of the NeoForge declaration.
 //
 // Source: `shared/ModRegistry.java` (mc-26.3). A real NeoForge server numbers
 // modded entries after all vanilla ones, in registration order within each
@@ -7,11 +7,9 @@
 // order the lists below are in. The client takes these ids from the
 // `neoforge:frozen_registry` payloads, so the host must put exactly these ids
 // on the wire for CC's blocks, items and menus.
-import 'dart:typed_data';
+import 'package:pumpkin_api/pumpkin_api.dart' show NeoForgeRegistryAddition;
+import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart' show VanillaRegistries;
 
-import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart';
-
-import 'channels.dart';
 
 abstract final class CcRegistries {
   static const String modId = 'computercraft';
@@ -201,33 +199,14 @@ abstract final class CcRegistries {
       if (VanillaRegistries.entries(entry.key) != null) entry.key: entry.value,
   };
 
-  /// The NeoForge server description that makes a CC: Tweaked client accept
-  /// this server and number the mod's entries: the synchronised registries
-  /// plus the play channels, all required with [modVersion] (the version of
-  /// the jar the players run).
-  static NeoForgeServerSpec serverSpec(String modVersion) {
-    final spec = NeoForgeServerSpec.vanillaPlus(
-      mods: [
-        NeoForgeModInfo(
-          id: modId,
-          version: modVersion,
-          displayName: 'CC: Tweaked',
-        ),
-      ],
-      additions: synchronised,
-    );
-    return NeoForgeServerSpec(
-      mods: spec.mods,
-      registries: [
-        ...spec.registries,
-        RegistrySpec('$modId:recipe_function', recipeFunctions),
-      ],
-      channels: CcChannels.specs(modVersion),
-      // The mod's synced config (`computercraft-synced.toml`, see
-      // docs/client-compat.md); empty: the client uses its defaults.
-      configFiles: {CcRegistries.syncedConfigFile: Uint8List(0)},
-    );
-  }
+  /// The registries the host does not know and so needs whole in the NeoForge
+  /// declaration: `computercraft:recipe_function`, a mod registry created with
+  /// `sync(true)`. The registries the plugin fills through the host (items, blocks,
+  /// block entity types, menus, data component types) are not listed: the host
+  /// numbers them itself, in registration order (`plugin.dart`).
+  static List<NeoForgeRegistryAddition> get declaredRegistries => [
+    NeoForgeRegistryAddition('$modId:recipe_function', recipeFunctions),
+  ];
 }
 
 /// Numeric ids of CC's entries, as the registry sync defines them: the number

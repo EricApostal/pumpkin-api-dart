@@ -144,6 +144,30 @@ If `default-state` leaves a property out, the host uses its **first** value (van
 * Block entities, redstone power, random ticks and waterlogging are not available for custom
   blocks yet.
 
+## Shape rules and piston behavior
+
+`BlockDefinition.shapeRules` (at most 64 `ShapeRule`s) give shapes per state: a rule
+has `when` (property values a state needs, empty matches all; unknown properties
+or values fail the registration) and an optional collision and selection shape.
+Rules are checked in order and per shape the first matching rule that sets it
+wins; otherwise `collisionShape` / `selectionShape` apply. `pistonBehavior` is a
+`PistonBehavior` (`normal`, `destroy`, `block`, `ignore`, `pushOnly`).
+Shapes that depend on the position use the `onShape` hook
+([block-callbacks.md](block-callbacks.md)). `BlockDefinition.check()` does not
+mirror these two checks yet: the host reports the errors.
+
+```dart
+BlockDefinition(
+  key: 'my_plugin:girder', hardness: 2, blastResistance: 3,
+  properties: [BlockProperty.enumeration('facing', ['north', 'south'])],
+  shapeRules: [
+    ShapeRule(when: {'facing': 'north'},
+        collisionShape: BlockShape.boxes([BlockBox(0, 0, .25, 1, 1, .75)])),
+  ],
+  pistonBehavior: PistonBehavior.pushOnly,
+)
+```
+
 ## Dart side
 
 `package:pumpkin_api` wraps the interface like the item registry

@@ -1,6 +1,7 @@
 import 'package:wasm_components/wasm_components.dart' show ErrorResult;
 
 import 'bindings.g.dart';
+import 'host_result.dart';
 
 /// Thrown when a custom enchantment is invalid or the server rejects it.
 final class EnchantmentException implements Exception {
@@ -115,6 +116,82 @@ extension EnchantmentManagerApi on EnchantmentManager {
 
   /// The ids of all registered enchantments.
   Future<List<String>> ids() => getAllEnchantmentIds();
+}
+
+/// An effect component of an enchantment, as in the `effects` of its registry
+/// data (`enchantment-effect` in `enchantments.wit`).
+final class EnchantmentEffectSpec {
+  /// The effect component type, for example `minecraft:ammo_use` or one from
+  /// [EnchantmentManagerEffects.registerEffectType].
+  final String componentKey;
+
+  /// The component value as network NBT (the root tag type and its payload, no
+  /// name).
+  final List<int> valueNbt;
+
+  const EnchantmentEffectSpec(this.componentKey, this.valueNbt);
+}
+
+/// Effects and costs of plugin enchantments. The host stores and syncs the
+/// effect components, but does not evaluate the effects of plugin enchantments
+/// itself: read them with [EnchantedItemStack.enchantmentEffect] and apply
+/// them in your own events.
+extension EnchantmentManagerEffects on EnchantmentManager {
+  /// Sets the effect components of a registered enchantment (replaces earlier
+  /// ones). They are part of the `minecraft:enchantment` registry data sent to
+  /// every client. Throws a [HostException] on failure.
+  Future<void> setEffects(String id, List<EnchantmentEffectSpec> effects) =>
+      unwrapHostAsync(
+        setEnchantmentEffects(
+          id: id,
+          effects: [
+            for (final e in effects)
+              EnchantmentEffect(componentKey: e.componentKey, valueNbtBytes: e.valueNbt),
+          ],
+        ),
+        'Setting the effects of $id',
+      );
+
+  /// Sets the enchanting costs of a registered enchantment
+  /// (`base + perLevel * (level - 1)`); without it the minimum is 1 + 10 per
+  /// level and the maximum 21 + 10 per level.
+  Future<void> setCosts(
+    String id, {
+    required int minBase,
+    required int minPerLevel,
+    required int maxBase,
+    required int maxPerLevel,
+  }) => unwrapHostAsync(
+    setEnchantmentCosts(
+      id: id,
+      minBase: minBase,
+      minPerLevel: minPerLevel,
+      maxBase: maxBase,
+      maxPerLevel: maxPerLevel,
+    ),
+    'Setting the costs of $id',
+  );
+
+  /// Registers an enchantment effect component type and returns its id, after
+  /// the vanilla ones. NeoForge clients get it in
+  /// `minecraft:enchantment_effect_component_type`.
+  Future<int> registerEffectType(String key) => unwrapHostAsync(
+    registerEnchantmentEffectType(key: key),
+    'Registering the enchantment effect type $key',
+  );
+}
+
+/// Enchantment queries on a stack.
+extension EnchantedItemStack on ItemStack {
+  /// The level of the enchantment [key] (vanilla or plugin) on this stack, 0 if
+  /// it is not there.
+  Future<int> enchantmentLevelOf(String key) => getEnchantmentLevel(enchantmentKey: key);
+
+  /// The effects of the plugin enchantments on this stack for the effect
+  /// component type [componentKey]: a list of compounds
+  /// `{enchantment, level, value}`, `null` if there are none.
+  Future<NbtTree?> enchantmentEffect(String componentKey) =>
+      getEnchantmentEffect(componentKey: componentKey);
 }
 
 extension EnchantmentRegistration on Server {

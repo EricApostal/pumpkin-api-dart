@@ -78,4 +78,42 @@ abstract final class Permissions {
   /// Register custom data component types (`ComponentTypeRegistries.host`).
   /// Only possible while the server loads, before players can connect.
   static const registryComponents = 'registry.components';
+
+  /// Register custom entity types (`EntityRegistries.host`). Only possible
+  /// while the server loads, before players can connect.
+  static const registryEntities = 'registry.entities';
+
+  /// Register custom fluids (`FluidRegistries.host`). Only possible while the
+  /// server loads, before players can connect.
+  static const registryFluids = 'registry.fluids';
+
+  /// Register damage types (`DamageTypeRegistries.host`). Only possible while
+  /// the server loads, before players can connect.
+  static const registryDamageTypes = 'registry.damage-types';
+
+  /// Register recipe types and custom recipes (`RecipeManager`).
+  static const registryRecipes = 'registry.recipes';
+
+  /// Create and drive fake players (`FakePlayers`).
+  static const fakePlayers = 'fake-players';
+
+  /// Move items in and out of the containers of blocks (`ItemHandlers`) and
+  /// give plugin block entities inventories.
+  static const containers = 'containers';
+
+  /// Declare a mod, channels and registries for the NeoForge client handshake
+  /// (`Context.declareNeoForge`). Only possible while the server starts.
+  static const neoforge = 'neoforge';
+
+  /// Register sound events, particle types, mob effects, map decoration types,
+  /// datapack registry entries and plugin owned registries
+  /// (`ExtraRegistries`). Only possible while the server loads.
+  static const registryExtra = 'registry.extra';
+
+  /// Register worldgen features and add them to biomes (`WorldgenFeatures`).
+  /// Register in `Plugin.onLoad`.
+  static const registryWorldgen = 'registry.worldgen';
+
+  /// Set flags and overrides of entities (`EntityFlagsApi`).
+  static const entityFlags = 'entity-flags';
 }

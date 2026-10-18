@@ -1,17 +1,17 @@
 // The Pumpkin plugin: loads the service, installs the command, the network
-// side and the optional NeoForge handshake, and drives the computers from the
+// side and the optional NeoForge declaration, and drives the computers from the
 // server tick.
 import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
-import 'package:pumpkin_neoforge/pumpkin_neoforge.dart';
+import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart' show VanillaRegistries, vanillaBlockStateCount;
 
 import '../protocol/datapack_registries.dart';
 import '../protocol/registries.dart';
 import 'block_install.dart';
 import 'block_states.dart';
+import 'cc_neoforge.dart';
 import 'commands.dart';
-import 'neoforge_install.dart';
 import 'network.dart';
 import 'registry_install.dart';
 import 'service.dart';
@@ -34,7 +34,6 @@ const Set<String> _singleItems = {
 
 final class CcTweakedPlugin extends Plugin {
   late CcService _service;
-  CcNeoForgeServer? _neoForge;
   CcWorldComputers? _world;
   CcWorldTurtles? _turtles;
   int _tick = 0;
@@ -51,6 +50,7 @@ final class CcTweakedPlugin extends Plugin {
       Permissions.registryBlockEntities,
       Permissions.registryMenus,
       Permissions.registryComponents,
+      Permissions.neoforge,
     ],
   );
 
@@ -69,13 +69,9 @@ final class CcTweakedPlugin extends Plugin {
       'Datapack registries: ${datapack.turtleUpgrades.entries.length} turtle upgrades, '
       '${datapack.pocketUpgrades.entries.length} pocket upgrades.',
     );
-    _installNeoForge(context, datapack);
-    final neoForge = _neoForge;
-    if (neoForge != null) {
-      network.canOpenGui = (player) {
-        final client = neoForge.clientOf(player.getId().asString);
-        return client != null && client.isAccepted && client.isNeoForge;
-      };
+    _declareNeoForge(context, datapack);
+    if (_service.pluginConfig.neoForge) {
+      network.canOpenGui = (player) => player.isNeoForge;
     }
     if (_service.pluginConfig.neoForge) {
       // Order matters, and is the order of the registry sync: the items first (a
@@ -206,41 +202,27 @@ final class CcTweakedPlugin extends Plugin {
     }
   }
 
-  /// Installs the NeoForge handshake and registry synchronisation for the real
-  /// CC: Tweaked client. Off by default (`"neoforge": true` in the config). It
-  /// uses the library's full negotiation: the host holds the connection before
-  /// the brand (`Context.onConfiguration(onPreBrand:)`), the plugin sends the
-  /// `neoforge:register` query and marks the connection as NeoForge in the host
-  /// (`ConfigurationConnection.setFlavour`), see docs/host-requirements.md.
+  /// Declares the mod to the host's NeoForge handshake for the real CC: Tweaked
+  /// client. Off by default (`"neoforge": true` in the config). The host runs the
+  /// handshake (channel negotiation before the brand, registry sync, channels,
+  /// config file, the datapack registry entries); this plugin no longer does
+  /// (docs/host-requirements.md, pumpkin_api `docs/neoforge-host.md`).
   ///
-  /// Only one plugin per server may do this: a server that also runs another
-  /// NeoForge mod's plugin (Lonsdaleite) needs one plugin that owns the spec
-  /// of both (README.md, "Combining with other NeoForge plugins").
-  void _installNeoForge(Context context, CcDatapackRegistries datapack) {
+  /// Several plugins may declare: the host merges the declarations.
+  void _declareNeoForge(Context context, CcDatapackRegistries datapack) {
     if (!_service.pluginConfig.neoForge) return;
     final version = _service.image.modVersion;
     if (version == null) {
       logger.warn(
         'neoforge is enabled but no CC: Tweaked jar was found: the mod version '
-        '(the version string of its network channels) is unknown, using 1.120.3.',
+        '(the version string of its network channels) is unknown, using $fallbackModVersion.',
       );
     }
-    final server = CcNeoForgeServer(
-      CcRegistries.serverSpec(version ?? '1.120.3'),
-      datapack,
-      options: const NeoForgeServerOptions(
-        negotiation: NeoForgeNegotiation.full,
-        nonNeoForge: NonNeoForgePolicy.allow,
-      ),
-    );
-    server.install(context);
-    _neoForge = server;
-    // A NeoForge client expects the elytra attribute and the (empty) recipe
-    // content from the server; only connections the handshake marked are
-    // touched.
-    server.installPlay(context);
-    server.onClient((client) {
-      logger.info('${client.username}: NeoForge handshake ${client.outcome.name}');
-    });
+    try {
+      context.declareNeoForge(ccNeoForgeDeclaration(datapack, modVersion: version));
+    } on HostException catch (e) {
+      logger.error('CC: Tweaked could not declare itself to the NeoForge handshake: ${e.message}');
+      rethrow;
+    }
   }
 }

@@ -21,6 +21,10 @@ Contents: [Summary](#summary) -
 [Host](#what-the-host-has-to-provide) -
 [Open questions](#what-could-not-be-determined)
 
+> **The host now runs this handshake.** Plugins declare their mod, channels and
+> registries (`neoforge.wit`, [neoforge-host.md](neoforge-host.md)); this page
+> stays the specification behind it and behind `packages/pumpkin_neoforge`.
+
 ## Summary
 
 * **There is no login-phase part.** Everything happens in the *configuration*

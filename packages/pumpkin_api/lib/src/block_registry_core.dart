@@ -264,6 +264,46 @@ final class DropsLootTable extends BlockDrops {
   const DropsLootTable(this.key);
 }
 
+/// Shapes for the block states that have all of [when]. Rules are checked in
+/// order, and for each shape the first matching rule that sets it wins; the
+/// block's [BlockDefinition.collisionShape] or [BlockDefinition.selectionShape]
+/// applies otherwise.
+final class ShapeRule {
+  /// Property values a state needs (`{'facing': 'north'}`); empty matches every
+  /// state. Unknown properties and values fail the registration.
+  final Map<String, String> when;
+
+  /// The collision shape of matching states, `null` leaves it to later rules.
+  final BlockShape? collisionShape;
+
+  /// The selection shape of matching states, `null` leaves it to later rules.
+  final BlockShape? selectionShape;
+
+  const ShapeRule({
+    this.when = const {},
+    this.collisionShape,
+    this.selectionShape,
+  });
+}
+
+/// How pistons treat a block (`piston-behavior` in `block-registry.wit`).
+enum PistonBehavior {
+  /// Can be pushed and pulled.
+  normal,
+
+  /// Breaks when pushed.
+  destroy,
+
+  /// Cannot be pushed or pulled, and stops the push.
+  block,
+
+  /// Pistons ignore it.
+  ignore,
+
+  /// Can only be pushed.
+  pushOnly,
+}
+
 /// A block to add to the host's block registry (`block-definition` in
 /// `block-registry.wit`).
 final class BlockDefinition {
@@ -312,6 +352,14 @@ final class BlockDefinition {
   /// Block tags to join, `namespace:path`.
   final List<String> tags;
 
+  /// Shapes per state (at most 64 rules), evaluated in order on top of
+  /// [collisionShape] and [selectionShape]. For shapes that depend on more than
+  /// the state use the `BlockBehavior.onShape` hook.
+  final List<ShapeRule> shapeRules;
+
+  /// How pistons treat the block.
+  final PistonBehavior pistonBehavior;
+
   const BlockDefinition({
     required this.key,
     this.properties = const [],
@@ -329,6 +377,8 @@ final class BlockDefinition {
     this.connectRules = const [],
     this.drops = BlockDrops.selfItem,
     this.tags = const [],
+    this.shapeRules = const [],
+    this.pistonBehavior = PistonBehavior.normal,
   });
 
   /// The numbering of this block's states.

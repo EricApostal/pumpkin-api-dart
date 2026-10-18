@@ -80,7 +80,7 @@ to 25 x 2 x 2^6 x 2 = **6400**; the other fifteen blocks have 540.)
 
 | Block | Properties (source: `createBlockStateDefinition`) | States |
 | ----- | ------------------------------------------------ | -----: |
-| `computer_normal`, `computer_advanced`, `computer_command` | `facing` (horizontal: north, east, south, west), `state` (`off`, `on`, `blinking`) | 12 each |
+| `computer_normal`, `computer_advanced`, `computer_command` | `facing` (horizontal: north, south, west, east, the order of `Direction.values()` filtered, not compass order), `state` (`off`, `on`, `blinking`) | 12 each |
 | `turtle_normal`, `turtle_advanced` | `facing` (horizontal), `waterlogged` | 8 each |
 | `speaker` | `facing` (horizontal) | 4 |
 | `disk_drive` | `facing` (horizontal), `state` (`empty`, `full`, `invalid`) | 12 |

@@ -8,9 +8,9 @@ implement the `plugin` world from
 [pumpkin-plugin-wit](https://github.com/Pumpkin-MC/pumpkin-plugin-wit).
 
 > [!NOTE]
-> Experimental. Plugins need Dart 3.14 or newer (the dev channel, or the Dart
-> bundled with Flutter master, e.g. `puro use master`). Older SDKs emit Wasm
-> exception instructions that Pumpkin's runtime rejects.
+> This does not work with pumpkin master. If you want to use this in your
+> own project, you'll need to fork it and generate the bindings against
+> pumpkin master.
 
 ## Quick start
 
@@ -72,50 +72,6 @@ final class MyPlugin extends Plugin {
   }
 }
 ```
-
-Uncaught exceptions in any callback are logged and reported to the server
-instead of crashing the plugin. The whole host API is available underneath
-(`Player`, `World`, `Entity`, ...), straight from the WIT.
-
-Mob AI goals (`AiGoal`, `Mob.addGoal`) and chunk generators (`ChunkGenerator`,
-`World.setGenerator`) are plain classes you override.
-
-### Resources and `async`
-
-Objects from the server (`Player`, `World`, ...) are only valid until the
-callback that received them returns; call `keep()` to hold on to one. Host calls
-that change things are `async` (`await player.heal(amount: 20)`), callbacks can
-be `async`, and `Timer`/`Future.delayed` run on the server's tick loop. See
-[docs/lifetimes.md](docs/lifetimes.md) and [docs/async.md](docs/async.md).
-[docs/events-and-time.md](docs/events-and-time.md) covers events, `context.next`, `Duration` scheduling and enum names.
-[docs/configuration.md](docs/configuration.md) covers custom handshakes with client mods in the configuration phase.
-[docs/item-registry.md](docs/item-registry.md) covers registering custom items (and encoding their data components).
-[docs/block-registry.md](docs/block-registry.md) covers registering custom blocks (block states, connect rules, tags) and the "Dart side" wrapper.
-[docs/files.md](docs/files.md) covers reading and writing files with `context.files`.
-[docs/generated-api.md](docs/generated-api.md) explains how WIT maps to Dart (`T?`, properties, mob views).
-[docs/runtime.md](docs/runtime.md) lists what the Dart core libraries support
-(`RegExp`, `double` formatting, `jsonDecode`, ...), and
-[docs/architecture.md](docs/architecture.md) shows how everything fits together.
-
-See [`example/teleport`](example/teleport) for a complete plugin: homes, warps, spawn and teleport requests, with permissions, files and `dart_mappable`. [`example/commons`](example/commons) is a larger, multi-module plugin that shows how to structure one.
-
-## Repository layout
-
-| Path | Contents |
-| --- | --- |
-| `wit/` | Git submodule: `pumpkin-plugin-wit` (`v0.1`, `v0.2`). |
-| `wit-dart/` | The world bindings are generated from: Pumpkin's plugin world plus WASI (files). |
-| `packages/pumpkin_api` | The plugin API: generated bindings plus the wrapper (`Plugin`, events, commands, scheduler). |
-| `packages/pumpkin_tools` | The `pumpkin` CLI (`new`, `build`). |
-| `packages/wasm_tools` | Compiler from Dart programs to components (fork of [wasm.dart](https://github.com/simolus3/wasm.dart)). |
-| `packages/wasm_components` | Runtime support for components in Dart. |
-| `native/wit_bindgen_dart` | Rust WIT-to-Dart binding generator (maintainers only). |
-| `native/runtime_helpers` | Rust allocator and math helpers linked into every plugin (maintainers only). |
-| `example/teleport` | Example plugin: homes, warps, spawn, `/tpa`. |
-| `example/commons` | A larger example: economy, shop, kits, rewards, mail, chat, announcements and moderation as separate modules. |
-| `example/lonsdaleite` | The server side of a NeoForge mod: registers its items and tags and answers the NeoForge registry sync, so a client with the mod can join ([README](example/lonsdaleite/README.md)). |
-| `packages/pumpkin_neoforge` | NeoForge's network negotiation and registry sync for plugins. |
-| `tool/runtime_check` | A plugin that checks the Dart core libraries inside a server (`tool/runtime_check.sh`). |
 
 ## Working on this repository
 

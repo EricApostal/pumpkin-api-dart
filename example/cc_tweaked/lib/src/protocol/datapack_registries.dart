@@ -16,7 +16,8 @@
 // registries: the server sends their entries. A server that does not (Pumpkin
 // sends only vanilla registries) leaves them empty, and the tab shows only the
 // base turtle and pocket computer. So the plugin sends the packets itself, in
-// the finish hold (`neoforge_install.dart`).
+// the NeoForge declaration (`plugin/cc_neoforge.dart`), the host adds them to the
+// registry data NeoForge clients get.
 //
 // Packet layout (`CRegistryData` in Pumpkin, `ClientboundRegistryDataPacket`):
 //
@@ -49,6 +50,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:pumpkin_api/pumpkin_api.dart' show NeoForgeDatapackEntry;
 import 'package:pumpkin_api/pumpkin_api_core.dart';
 
 import '../machine/zip.dart';
@@ -127,6 +129,13 @@ final class CcDatapackRegistries {
   CcDatapackRegistries(this.turtleUpgrades, this.pocketUpgrades, this.notes);
 
   Iterable<DatapackRegistry> get all => [turtleUpgrades, pocketUpgrades];
+
+  /// Every entry of both registries as a declaration entry, in id order (the
+  /// host sends them in the order given).
+  List<NeoForgeDatapackEntry> toDeclared() => [
+    for (final registry in all)
+      for (final entry in registry.entries) NeoForgeDatapackEntry(registry.id, entry.key, entry.nbt),
+  ];
 
   /// Reads both registries from the jar of the mod ([archive], null for none):
   /// every entry under `data/<namespace>/computercraft/<registry>/` (other data

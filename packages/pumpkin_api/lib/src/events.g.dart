@@ -577,8 +577,108 @@ abstract final class Events {
   static final menuClick = EventKind<MenuClickEventData>(EventType.menuClickEvent, (event) => (event as EventMenuClickEvent).value, EventMenuClickEvent.new);
   /// `menu-closed-event`.
   static final menuClosed = EventKind<MenuClosedEventData>(EventType.menuClosedEvent, (event) => (event as EventMenuClosedEvent).value, EventMenuClosedEvent.new);
+  /// `menu-slot-changed-event`.
+  static final menuSlotChanged = EventKind<MenuSlotChangedEventData>(EventType.menuSlotChangedEvent, (event) => (event as EventMenuSlotChangedEvent).value, EventMenuSlotChangedEvent.new);
+  /// `menu-button-click-event`.
+  static final menuButtonClick = EventKind<MenuButtonClickEventData>(EventType.menuButtonClickEvent, (event) => (event as EventMenuButtonClickEvent).value, EventMenuButtonClickEvent.new);
   /// `block-entity-load-event`.
   static final blockEntityLoad = EventKind<BlockEntityLoadEventData>(EventType.blockEntityLoadEvent, (event) => (event as EventBlockEntityLoadEvent).value, EventBlockEntityLoadEvent.new);
   /// `block-entity-unload-event`.
   static final blockEntityUnload = EventKind<BlockEntityUnloadEventData>(EventType.blockEntityUnloadEvent, (event) => (event as EventBlockEntityUnloadEvent).value, EventBlockEntityUnloadEvent.new);
+  /// `block-entity-tick-event`.
+  static final blockEntityTick = EventKind<BlockEntityTickEventData>(EventType.blockEntityTickEvent, (event) => (event as EventBlockEntityTickEvent).value, EventBlockEntityTickEvent.new);
+  /// `world-tick-event`.
+  static final worldTick = EventKind<WorldTickEventData>(EventType.worldTickEvent, (event) => (event as EventWorldTickEvent).value, EventWorldTickEvent.new);
+  /// `plugin-feature-place-event`.
+  static final pluginFeaturePlace = EventKind<PluginFeaturePlaceEventData>(EventType.pluginFeaturePlaceEvent, (event) => (event as EventPluginFeaturePlaceEvent).value, EventPluginFeaturePlaceEvent.new);
+  /// `living-drops-event`.
+  static final livingDrops = EventKind<LivingDropsEventData>(EventType.livingDropsEvent, (event) => (event as EventLivingDropsEvent).value, EventLivingDropsEvent.new);
+  /// `living-equipment-change-event`.
+  static final livingEquipmentChange = EventKind<LivingEquipmentChangeEventData>(EventType.livingEquipmentChangeEvent, (event) => (event as EventLivingEquipmentChangeEvent).value, EventLivingEquipmentChangeEvent.new);
+  /// `living-breathe-event`.
+  static final livingBreathe = EventKind<LivingBreatheEventData>(EventType.livingBreatheEvent, (event) => (event as EventLivingBreatheEvent).value, EventLivingBreatheEvent.new);
+  /// `living-visibility-event`.
+  static final livingVisibility = EventKind<LivingVisibilityEventData>(EventType.livingVisibilityEvent, (event) => (event as EventLivingVisibilityEvent).value, EventLivingVisibilityEvent.new);
+  /// `entity-size-event`.
+  static final entitySize = EventKind<EntitySizeEventData>(EventType.entitySizeEvent, (event) => (event as EventEntitySizeEvent).value, EventEntitySizeEvent.new);
+  /// `player-tick-event`.
+  static final playerTick = EventKind<PlayerTickEventData>(EventType.playerTickEvent, (event) => (event as EventPlayerTickEvent).value, EventPlayerTickEvent.new);
+  /// `entity-tick-event`.
+  static final entityTick = EventKind<EntityTickEventData>(EventType.entityTickEvent, (event) => (event as EventEntityTickEvent).value, EventEntityTickEvent.new);
+  /// `plugin-vehicle-input-event`.
+  static final pluginVehicleInput = EventKind<PluginVehicleInputEventData>(EventType.pluginVehicleInputEvent, (event) => (event as EventPluginVehicleInputEvent).value, EventPluginVehicleInputEvent.new);
+  /// `entity-entering-section-event`.
+  static final entityEnteringSection = EventKind<EntityEnteringSectionEventData>(EventType.entityEnteringSectionEvent, (event) => (event as EventEntityEnteringSectionEvent).value, EventEntityEnteringSectionEvent.new);
+  /// `entity-start-tracking-event`.
+  static final entityStartTracking = EventKind<EntityTrackingEventData>(EventType.entityStartTrackingEvent, (event) => (event as EventEntityStartTrackingEvent).value, EventEntityStartTrackingEvent.new);
+  /// `entity-stop-tracking-event`.
+  static final entityStopTracking = EventKind<EntityTrackingEventData>(EventType.entityStopTrackingEvent, (event) => (event as EventEntityStopTrackingEvent).value, EventEntityStopTrackingEvent.new);
+  /// `entity-fluid-movement-event`.
+  static final entityFluidMovement = EventKind<EntityFluidMovementEventData>(EventType.entityFluidMovementEvent, (event) => (event as EventEntityFluidMovementEvent).value, EventEntityFluidMovementEvent.new);
+  /// `item-use-tick-event`.
+  static final itemUseTick = EventKind<ItemUseTickEventData>(EventType.itemUseTickEvent, (event) => (event as EventItemUseTickEvent).value, EventItemUseTickEvent.new);
+  /// `item-swing-event`.
+  static final itemSwing = EventKind<ItemSwingEventData>(EventType.itemSwingEvent, (event) => (event as EventItemSwingEvent).value, EventItemSwingEvent.new);
+  /// `item-use-first-event`.
+  static final itemUseFirst = EventKind<ItemUseFirstEventData>(EventType.itemUseFirstEvent, (event) => (event as EventItemUseFirstEvent).value, EventItemUseFirstEvent.new);
+  /// `can-attack-block-event`.
+  static final canAttackBlock = EventKind<CanAttackBlockEventData>(EventType.canAttackBlockEvent, (event) => (event as EventCanAttackBlockEvent).value, EventCanAttackBlockEvent.new);
+  /// `entity-item-update-event`.
+  static final entityItemUpdate = EventKind<EntityItemUpdateEventData>(EventType.entityItemUpdateEvent, (event) => (event as EventEntityItemUpdateEvent).value, EventEntityItemUpdateEvent.new);
+  /// `fake-player-place-check-event`.
+  static final fakePlayerPlaceCheck = EventKind<FakePlayerPlaceCheckEventData>(EventType.fakePlayerPlaceCheckEvent, (event) => (event as EventFakePlayerPlaceCheckEvent).value, EventFakePlayerPlaceCheckEvent.new);
+  /// `fluid-can-pass-through-event`.
+  static final fluidCanPassThrough = EventKind<FluidCanPassThroughEventData>(EventType.fluidCanPassThroughEvent, (event) => (event as EventFluidCanPassThroughEvent).value, EventFluidCanPassThroughEvent.new);
+  /// `custom-block-neighbor-update-event`.
+  static final customBlockNeighborUpdate = EventKind<CustomBlockNeighborUpdateEventData>(EventType.customBlockNeighborUpdateEvent, (event) => (event as EventCustomBlockNeighborUpdateEvent).value, EventCustomBlockNeighborUpdateEvent.new);
+  /// `custom-block-placed-event`.
+  static final customBlockPlaced = EventKind<CustomBlockPlacedEventData>(EventType.customBlockPlacedEvent, (event) => (event as EventCustomBlockPlacedEvent).value, EventCustomBlockPlacedEvent.new);
+  /// `custom-block-state-replaced-event`.
+  static final customBlockStateReplaced = EventKind<CustomBlockStateReplacedEventData>(EventType.customBlockStateReplacedEvent, (event) => (event as EventCustomBlockStateReplacedEvent).value, EventCustomBlockStateReplacedEvent.new);
+  /// `custom-block-broken-event`.
+  static final customBlockBroken = EventKind<CustomBlockBrokenEventData>(EventType.customBlockBrokenEvent, (event) => (event as EventCustomBlockBrokenEvent).value, EventCustomBlockBrokenEvent.new);
+  /// `custom-block-scheduled-tick-event`.
+  static final customBlockScheduledTick = EventKind<CustomBlockTickEventData>(EventType.customBlockScheduledTickEvent, (event) => (event as EventCustomBlockScheduledTickEvent).value, EventCustomBlockScheduledTickEvent.new);
+  /// `custom-block-random-tick-event`.
+  static final customBlockRandomTick = EventKind<CustomBlockTickEventData>(EventType.customBlockRandomTickEvent, (event) => (event as EventCustomBlockRandomTickEvent).value, EventCustomBlockRandomTickEvent.new);
+  /// `custom-block-entity-collision-event`.
+  static final customBlockEntityCollision = EventKind<CustomBlockEntityCollisionEventData>(EventType.customBlockEntityCollisionEvent, (event) => (event as EventCustomBlockEntityCollisionEvent).value, EventCustomBlockEntityCollisionEvent.new);
+  /// `custom-block-entity-step-event`.
+  static final customBlockEntityStep = EventKind<CustomBlockEntityStepEventData>(EventType.customBlockEntityStepEvent, (event) => (event as EventCustomBlockEntityStepEvent).value, EventCustomBlockEntityStepEvent.new);
+  /// `custom-block-can-place-event`.
+  static final customBlockCanPlace = EventKind<CustomBlockCanPlaceEventData>(EventType.customBlockCanPlaceEvent, (event) => (event as EventCustomBlockCanPlaceEvent).value, EventCustomBlockCanPlaceEvent.new);
+  /// `custom-block-update-shape-event`.
+  static final customBlockUpdateShape = EventKind<CustomBlockUpdateShapeEventData>(EventType.customBlockUpdateShapeEvent, (event) => (event as EventCustomBlockUpdateShapeEvent).value, EventCustomBlockUpdateShapeEvent.new);
+  /// `custom-block-redstone-power-event`.
+  static final customBlockRedstonePower = EventKind<CustomBlockRedstonePowerEventData>(EventType.customBlockRedstonePowerEvent, (event) => (event as EventCustomBlockRedstonePowerEvent).value, EventCustomBlockRedstonePowerEvent.new);
+  /// `custom-block-comparator-output-event`.
+  static final customBlockComparatorOutput = EventKind<CustomBlockComparatorOutputEventData>(EventType.customBlockComparatorOutputEvent, (event) => (event as EventCustomBlockComparatorOutputEvent).value, EventCustomBlockComparatorOutputEvent.new);
+  /// `custom-block-shape-event`.
+  static final customBlockShape = EventKind<CustomBlockShapeEventData>(EventType.customBlockShapeEvent, (event) => (event as EventCustomBlockShapeEvent).value, EventCustomBlockShapeEvent.new);
+  /// `custom-block-use-event`.
+  static final customBlockUse = EventKind<CustomBlockUseEventData>(EventType.customBlockUseEvent, (event) => (event as EventCustomBlockUseEvent).value, EventCustomBlockUseEvent.new);
+  /// `custom-block-attack-event`.
+  static final customBlockAttack = EventKind<CustomBlockAttackEventData>(EventType.customBlockAttackEvent, (event) => (event as EventCustomBlockAttackEvent).value, EventCustomBlockAttackEvent.new);
+  /// `custom-block-clone-item-event`.
+  static final customBlockCloneItem = EventKind<CustomBlockCloneItemEventData>(EventType.customBlockCloneItemEvent, (event) => (event as EventCustomBlockCloneItemEvent).value, EventCustomBlockCloneItemEvent.new);
+  /// `custom-block-player-will-destroy-event`.
+  static final customBlockPlayerWillDestroy = EventKind<CustomBlockPlayerWillDestroyEventData>(EventType.customBlockPlayerWillDestroyEvent, (event) => (event as EventCustomBlockPlayerWillDestroyEvent).value, EventCustomBlockPlayerWillDestroyEvent.new);
+  /// `custom-block-physics-event`.
+  static final customBlockPhysics = EventKind<CustomBlockPhysicsEventData>(EventType.customBlockPhysicsEvent, (event) => (event as EventCustomBlockPhysicsEvent).value, EventCustomBlockPhysicsEvent.new);
+  /// `custom-block-landed-event`.
+  static final customBlockLanded = EventKind<CustomBlockLandedEventData>(EventType.customBlockLandedEvent, (event) => (event as EventCustomBlockLandedEvent).value, EventCustomBlockLandedEvent.new);
+  /// `custom-block-condition-event`.
+  static final customBlockCondition = EventKind<CustomBlockConditionEventData>(EventType.customBlockConditionEvent, (event) => (event as EventCustomBlockConditionEvent).value, EventCustomBlockConditionEvent.new);
+  /// `custom-block-sound-type-event`.
+  static final customBlockSoundType = EventKind<CustomBlockSoundTypeEventData>(EventType.customBlockSoundTypeEvent, (event) => (event as EventCustomBlockSoundTypeEvent).value, EventCustomBlockSoundTypeEvent.new);
+  /// `custom-block-fire-spread-event`.
+  static final customBlockFireSpread = EventKind<CustomBlockFireSpreadEventData>(EventType.customBlockFireSpreadEvent, (event) => (event as EventCustomBlockFireSpreadEvent).value, EventCustomBlockFireSpreadEvent.new);
+  /// `datapack-reload-event`.
+  static final datapackReload = EventKind<DatapackReloadEventData>(EventType.datapackReloadEvent, (event) => (event as EventDatapackReloadEvent).value, EventDatapackReloadEvent.new);
+  /// `tags-updated-event`.
+  static final tagsUpdated = EventKind<TagsUpdatedEventData>(EventType.tagsUpdatedEvent, (event) => (event as EventTagsUpdatedEvent).value, EventTagsUpdatedEvent.new);
+  /// `datapack-sync-event`.
+  static final datapackSync = EventKind<DatapackSyncEventData>(EventType.datapackSyncEvent, (event) => (event as EventDatapackSyncEvent).value, EventDatapackSyncEvent.new);
+  /// `loot-modify-event`.
+  static final lootModify = EventKind<LootModifyEventData>(EventType.lootModifyEvent, (event) => (event as EventLootModifyEvent).value, EventLootModifyEvent.new);
 }

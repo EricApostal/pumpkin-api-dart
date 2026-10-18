@@ -14,7 +14,7 @@ rules, block entities of plugin types, menus, custom data component types and
 the use events (`docs/host-features-for-client-mods.md`, also unbuilt), and
 this plugin was wired to them: see [Status](#status-what-the-host-now-offers-and-what-the-plugin-does-with-it)
 and [Open questions of the wiring](#open-questions-of-the-wiring). Recipe
-serializers and redstone are still missing. **Update 3:** the datapack
+serializers and redstone are still missing. **Update 4:** the host now runs the NeoForge handshake itself (`neoforge.wit`: plugins `declare` their mod, channels, registries, config files and datapack entries). This plugin lost its Dart handshake (`neoforge_install.dart`, `CcNeoForgeServer`) and declares through `plugin/cc_neoforge.dart`; P0.1 (pre-brand hold) and the datapack registries (P1.5) are therefore the host's job now. It compiles to wasm and has not been run against the host. **Update 3:** the datapack
 registries (turtle and pocket upgrades) are sent by the plugin itself, and
 turtles are implemented with workarounds for what the host lacks, listed in
 [Turtles](#turtles). Sections below (written before) say which requirement is
@@ -50,7 +50,7 @@ met.
 | P1.4 | custom data components with codecs | `custom-components` (prefix notation codec, `set/get/remove-custom-component`) | 14 types with the exact StreamCodec shapes (`protocol/components.dart`, each cites its Java codec); `computer_id` read from items and written to the dropped/held stack | no |
 | P2 | interaction events with hit position, face, hand | `player-use-block-event` (with cursor), `player-use-item-event` | computer GUI on right click without sneaking; pocket computers on use; place tracking. The cursor is **not** used yet (monitor touch is not done) | no |
 | P1.6 | redstone | none | none: computers do not read or drive redstone in the world | - |
-| P1.5 | `turtle_upgrade` / `pocket_upgrade` datapack registries | none | **sent by the plugin itself** as `registry_data` in the finish hold (`plugin/neoforge_install.dart`, `protocol/datapack_registries.dart`): the entries come from the mod jar's data pack, converted to network NBT by `protocol/json_nbt.dart`. A host feature to contribute entries to its own `registry_data` would make this cleaner (below), but nothing is required | no |
+| P1.5 | `turtle_upgrade` / `pocket_upgrade` datapack registries | none | **declared by the plugin** as `datapack-entries` of its NeoForge declaration (`plugin/cc_neoforge.dart`, `protocol/datapack_registries.dart`); the host puts them into the registry data of NeoForge clients (was: sent by the plugin in the finish hold): the entries come from the mod jar's data pack, converted to network NBT by `protocol/json_nbt.dart`. A host feature to contribute entries to its own `registry_data` would make this cleaner (below), but nothing is required | no |
 | P2 | turtles | no fake player, no item entities, no block drops query, no cursor control in plugin menus, no entity queries (the list is [Turtles](#turtles)) | block entity, item components, GUI, `turtle` API, movement, commands over a `TurtleWorld` adapter with the approximations listed there (`lib/src/turtle`, `plugin/world_turtles.dart`) | no |
 
 What is still missing on the host side for the rest of the mod: neighbour
@@ -315,9 +315,8 @@ query, send a ping, wait for the answer, then send `neoforge:network` and
 In Pumpkin terms: a new hold point (`configuration-pre-brand-event`, or a flag
 on `configuration-start-event` that moves the brand after the hold).
 
-Plugin: `NeoForgeServer` with `NeoForgeNegotiation.full`, installed from
-`lib/src/plugin/plugin.dart` (`_installNeoForge`) when `"neoforge": true` is
-set; the channel list is `CcChannels.specs(version)` (play phase, each
+Plugin: **superseded by the host handshake** (`neoforge.wit`): `lib/src/plugin/plugin.dart` (`_declareNeoForge`) declares the mod when `"neoforge": true` is
+set; the channel list is `CcChannels.declared(version)` (play phase, each
 direction, required, version = the jar's mod version).
 
 ### P0.2 Play-phase encodings for NeoForge connections

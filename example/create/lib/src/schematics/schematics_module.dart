@@ -179,12 +179,11 @@ final class SchematicsModule extends CreateModule {
         create: SchematicannonBlockEntity.new,
       ),
     );
-    // `AllStructureProcessorTypes.SCHEMATIC`: `create:schematic` runs the safe-NBT processors
-    // when a structure template with this processor is placed. The host does not number this
-    // registry itself, so it is declared with the NeoForge registry additions.
-    registry.neoForgeRegistry('minecraft:structure_processor', [
-      'create:schematic',
-    ]);
+    // `AllStructureProcessorTypes.SCHEMATIC` (`create:schematic`) is an entry of the datapack
+    // registry `minecraft:worldgen/structure_processor`, not a built-in one. The frozen registry
+    // sync only carries built-in registries, and the client throws when sent a name it does not
+    // have ("Tried to applied snapshot with registry name ... but was not found"), so it is not
+    // declared to the handshake.
   }
 
   @override

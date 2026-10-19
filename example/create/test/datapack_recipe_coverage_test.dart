@@ -203,7 +203,7 @@ void main() {
     // The host syncs a recipe only when its content is exactly encodable, so Create clients get
     // the recipes only when the encoder accepts them.
     const ids = RecipeNetworkIds(item: _one, fluid: _one, serializer: _one);
-    const encoder = RecipeNetworkEncoder(ids);
+    const encoder = RecipeNetworkEncoder(ids, _allTags);
     var encodable = 0;
     var total = 0;
     for (final f in recipeFiles) {
@@ -220,3 +220,7 @@ void main() {
 }
 
 int _one(String _) => 1;
+
+/// Every tag exists: the tests encode recipes, they do not model the client's tag table.
+const _allTags = (item: _yes, fluid: _yes);
+bool _yes(String tag) => true;

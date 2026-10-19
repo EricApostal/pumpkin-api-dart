@@ -64,8 +64,21 @@ final class NeoForgeChannel {
 }
 
 /// Entries the plugin adds to a synced registry, after the entries the host
-/// knows (vanilla and the ones registered through the registry interfaces). For
-/// a registry the host does not know, the entries are the whole registry.
+/// knows (vanilla and the ones registered through the registry interfaces).
+///
+/// The client **rebuilds** the registry from what the server sends, so:
+///
+/// * the key must be a registry the client actually has. Its ids are
+///   `minecraft:` (built-in) or `<modid>:` for a registry that mod creates; a
+///   key no mod registers makes the client refuse the whole sync
+///   ("Tried to applied snapshot with registry name … but was not found"),
+/// * for a registry the host does not number, [entries] must be *every* entry
+///   in the client's registration order — the ones left out are dropped from
+///   the client's registry. When in doubt, don't declare it: a registry the
+///   client's own mod fills needs nothing from the server.
+///
+/// Datapack registries (`minecraft:worldgen/structure_processor`, ...) are not
+/// synced this way at all; they travel with known packs.
 final class NeoForgeRegistryAddition {
   /// Registry key, `minecraft:block` or `mymod:thing`.
   final String key;

@@ -28,4 +28,16 @@ abstract final class Tags {
   /// Whether the entity type [entityTypeKey] is in [tag].
   static bool entityType(String entityTypeKey, String tag) =>
       generated.world.entityTypeHasTag(entityTypeKey: entityTypeKey, tag: tag);
+
+  /// Whether the item tag [tag] exists (`minecraft:planks`, `c:ingots/copper`).
+  ///
+  /// A client only knows the tags the server sent it: naming a tag it does not have in client
+  /// data (a recipe ingredient, an advancement) makes it drop the packet. Check before encoding.
+  static bool itemExists(String tag) => generated.world.itemTagExists(tag: tag);
+
+  /// Whether the block tag [tag] exists.
+  static bool blockExists(String tag) => generated.world.blockTagExists(tag: tag);
+
+  /// Whether the fluid tag [tag] exists.
+  static bool fluidExists(String tag) => generated.world.fluidTagExists(tag: tag);
 }

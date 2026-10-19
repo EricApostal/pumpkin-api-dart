@@ -169,6 +169,9 @@ final class ProcessingModule extends CreateModule {
               return i < 0 ? null : settings.vanillaRecipeSerializerCount + i;
             },
           ),
+          // A tag the client does not have makes it drop the whole payload, so a recipe that
+          // names one is left out (`Tags` queries the host's tags, which are what the client got).
+          (item: Tags.itemExists, fluid: Tags.fluidExists),
         );
       }
       registerRecipesWithHost(

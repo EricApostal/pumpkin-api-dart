@@ -15,8 +15,10 @@ List<int> potatoRecoveryAmmoUse() {
         'per_level_above_first': const NbtValue.float(33.333332),
       }),
     }),
+    // The enchantment `requirements` codec dispatches on `type` (a loot table condition uses
+    // `condition` instead); a client rejects `condition` here with "No key type in MapLike".
     'requirements': NbtValue.compound({
-      'condition': str('minecraft:match_tool'),
+      'type': str('minecraft:match_tool'),
       'predicate': NbtValue.compound({'items': str('create:potato_cannon')}),
     }),
   });

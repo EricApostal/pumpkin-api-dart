@@ -50,8 +50,9 @@ same if `puro` is not on `PATH`.)
 
 Set `"core": {"debug_smoke_test": true}` in the plugin's `config.json` to register
 `create:smoke_block`, a framework smoke test (block entity that ticks and persists a
-counter). `"core": {"neoforge": true}` declares the mod to the host's NeoForge
-handshake.
+counter). The plugin declares the mod to the host's NeoForge handshake by default,
+which a real Create client needs to join at all; `"core": {"neoforge": false}`
+turns the declaration off for vanilla-only servers.
 
 ## Known host limitations
 

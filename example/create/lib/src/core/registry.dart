@@ -87,9 +87,6 @@ final class CreateRegistry {
     for (final k in TagKind.values) k: OrderedRegistry('tags.${k.name}'),
   };
 
-  /// Registry additions that only go into the NeoForge declaration (registries
-  /// the host does not number itself).
-  final List<NeoForgeRegistryAddition> neoForgeRegistries = [];
   final List<DatapackEntrySpec> datapackEntries = [];
   final List<String> datapackRegistries = [];
   final List<NeoForgeConfigFile> neoForgeConfigFiles = [];
@@ -166,10 +163,6 @@ final class CreateRegistry {
   /// numbered by the host through `ExtraRegistries` and synced to NeoForge clients.
   void syncedRegistry(String key, List<String> entries) =>
       syncedRegistries.add(key, SyncedRegistrySpec(key, entries));
-
-  /// Entries added to a registry for the NeoForge declaration only.
-  void neoForgeRegistry(String key, List<String> entries) =>
-      neoForgeRegistries.add(NeoForgeRegistryAddition(key, entries));
 
   void datapackRegistry(String key) => datapackRegistries.add(key);
 

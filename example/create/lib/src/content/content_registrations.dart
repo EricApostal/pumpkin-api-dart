@@ -3,7 +3,6 @@
 // advancements. All from the manifest, in the order of the Java registries.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../api/data/all_ingredients.dart';
 import '../core/registry.dart';
 import '../manifest/manifest.dart';
 import 'advancement_data.dart';
@@ -73,9 +72,14 @@ void registerGlobalContent(CreateRegistry registry, AdvancementTree advancements
     registry.syncedRegistry('create:${r.key}', [for (final e in r.entries) 'create:${e.key}']);
   }
 
-  // `AllIngredients`: NeoForge's ingredient type registry, which the host does not know. The id
-  // must reach Java clients so recipes encoded with `create:simple_datagen` can be decoded.
-  registry.neoForgeRegistry('neoforge:ingredient_type', AllIngredients.ingredientTypes);
+  // `AllIngredients` (`create:simple_datagen`) is not declared to the handshake. Its registry is
+  // `neoforge:ingredient_serializer` (`NeoForgeRegistries.Keys.INGREDIENT_TYPES`, `sync(true)`),
+  // which the client already has from NeoForge and Create in the same Java order. A declaration
+  // sends a snapshot the client *replaces* its registry with, so listing the one entry the plugin
+  // knows would drop `neoforge:simple` and the other types the client has. Nothing needs those ids
+  // on the wire: item ingredients travel as item lists and fluid ingredients as the
+  // `neoforge:simple` id (`recipe_network.dart`); `create:simple_datagen` is only the
+  // `neoforge:ingredient_type` discriminator of datapack JSON, resolved by the client's own mod.
 
   // Tags.
   for (final t in manifestTags()) {

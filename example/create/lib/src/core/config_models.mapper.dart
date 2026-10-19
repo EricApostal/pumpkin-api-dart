@@ -27,7 +27,7 @@ class CoreSettingsMapper extends ClassMapperBase<CoreSettings> {
     'neoforge',
     _$neoforge,
     opt: true,
-    def: false,
+    def: true,
   );
   static String _$modVersion(CoreSettings v) => v.modVersion;
   static const Field<CoreSettings, String> _f$modVersion = Field(

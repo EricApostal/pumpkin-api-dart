@@ -112,5 +112,11 @@ void main() {
     expect(first['effect']!.asCompound['type']!.value, 'minecraft:set');
     final linear = first['effect']!.asCompound['value']!.asCompound;
     expect((linear['per_level_above_first']!.value as double), closeTo(33.333332, 1e-4));
+    // The requirement is a condition the client dispatches on `type`; `condition` (the loot
+    // table key) is rejected with "No key type in MapLike".
+    final requirement = first['requirements']!.asCompound;
+    expect(requirement['type']!.value, 'minecraft:match_tool');
+    expect(requirement.containsKey('condition'), isFalse);
+    expect(requirement['predicate']!.asCompound['items']!.value, 'create:potato_cannon');
   });
 }

@@ -1,35 +1,35 @@
 {
- "version": "a4d2afa373325a45",
+ "version": "d36c9b8ad23a014b",
  "categories": {
   "recipes": {
    "files": 1881,
-   "raw": 526480,
-   "gzip": 43142,
-   "base64": 57524
+   "raw": 514727,
+   "gzip": 42817,
+   "base64": 57092
   },
   "loot_tables": {
-   "files": 640,
-   "raw": 221841,
-   "gzip": 12179,
-   "base64": 16240
+   "files": 647,
+   "raw": 192366,
+   "gzip": 11879,
+   "base64": 15840
   },
   "advancements": {
    "files": 102,
-   "raw": 42765,
-   "gzip": 4107,
-   "base64": 5476
+   "raw": 41745,
+   "gzip": 4108,
+   "base64": 5480
   },
   "recipe_advancements": {
    "files": 1046,
-   "raw": 557799,
-   "gzip": 25013,
-   "base64": 33352
+   "raw": 558860,
+   "gzip": 25016,
+   "base64": 33356
   },
   "tags": {
    "files": 183,
-   "raw": 73251,
-   "gzip": 8871,
-   "base64": 11828
+   "raw": 73265,
+   "gzip": 8877,
+   "base64": 11836
   },
   "structures": {
    "files": 67,
@@ -38,10 +38,10 @@
    "base64": 119436
   },
   "registries": {
-   "files": 49,
-   "raw": 28118,
-   "gzip": 3313,
-   "base64": 4420
+   "files": 48,
+   "raw": 26173,
+   "gzip": 3081,
+   "base64": 4108
   }
  },
  "recipeTypes": {
@@ -157,7 +157,6 @@
   "data/create/recipe/crafting/appliances/cardboard_helmet.json": "minecraft:crafting_shaped",
   "data/create/recipe/crafting/appliances/cardboard_leggings.json": "minecraft:crafting_shaped",
   "data/create/recipe/crafting/appliances/cardboard_sword.json": "minecraft:crafting_shaped",
-  "data/create/recipe/crafting/appliances/chain_from_zinc.json": "minecraft:crafting_shaped",
   "data/create/recipe/crafting/appliances/clipboard.json": "minecraft:crafting_shaped",
   "data/create/recipe/crafting/appliances/clipboard_clear.json": "minecraft:crafting_shapeless",
   "data/create/recipe/crafting/appliances/copper_backtank.json": "minecraft:crafting_shaped",
@@ -166,6 +165,7 @@
   "data/create/recipe/crafting/appliances/crafting_blueprint.json": "minecraft:crafting_shapeless",
   "data/create/recipe/crafting/appliances/dough.json": "minecraft:crafting_shapeless",
   "data/create/recipe/crafting/appliances/filter_clear.json": "minecraft:crafting_shapeless",
+  "data/create/recipe/crafting/appliances/iron_chain_from_zinc.json": "minecraft:crafting_shaped",
   "data/create/recipe/crafting/appliances/item_frame.json": "minecraft:crafting_shaped",
   "data/create/recipe/crafting/appliances/linked_controller.json": "minecraft:crafting_shaped",
   "data/create/recipe/crafting/appliances/name_tag.json": "minecraft:crafting_shapeless",

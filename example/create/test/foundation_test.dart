@@ -103,7 +103,7 @@ void main() {
 
     test('invalid file falls back to defaults with a warning', () {
       final c = CreateConfig.parse('{nope');
-      expect(c.core.neoforge, isFalse);
+      expect(c.core.neoforge, isTrue);
       expect(c.warnings, isNotEmpty);
       final d = CreateConfig.parse('{"core": {"save_interval_ticks": "x"}}');
       expect(d.core.saveIntervalTicks, 20);

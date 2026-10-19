@@ -109,10 +109,11 @@ abstract final class EntityRegistries {
   );
 
   /// Registers an entity data serializer for entries of the synced data
-  /// (`neoforge:entity_data_serializers`) and returns its id: the vanilla count
-  /// plus the registration order. A modded client must register a serializer
-  /// of the same key. Registering a key again returns its id. Needs
-  /// [Permissions.registryEntities]; registration closes with the others.
+  /// (`neoforge:entity_data_serializers`) and returns its id: 256 (NeoForge's
+  /// `VANILLA_SERIALIZER_LIMIT`) plus the registration order. A modded client
+  /// must register a serializer of the same key. Registering a key again returns
+  /// its id. Needs [Permissions.registryEntities]; registration closes with the
+  /// others.
   static int registerDataSerializer(String key) => unwrapHost(
     generated.entityRegistry.registerEntityDataSerializer(key: key),
     'Registering the entity data serializer $key',

@@ -24,7 +24,6 @@ NeoForgeDeclaration createNeoForgeDeclaration(CreateRegistry registry, {required
           optional: p.optional,
         ),
     ],
-    registries: registry.neoForgeRegistries,
     configFiles: registry.neoForgeConfigFiles,
     dataMaps: registry.dataMaps,
     policy: NonNeoForgeClientPolicy.allow,

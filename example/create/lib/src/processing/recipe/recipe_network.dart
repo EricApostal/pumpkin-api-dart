@@ -56,6 +56,9 @@ final class RecipeNetworkIds {
   });
 }
 
+/// Whether the client has a tag: [Tags.itemExists] and [Tags.fluidExists] in the plugin.
+typedef _TagExists = ({bool Function(String tag) item, bool Function(String tag) fluid});
+
 final class _CannotEncode implements Exception {
   final String why;
   const _CannotEncode(this.why);
@@ -66,7 +69,10 @@ final class _CannotEncode implements Exception {
 final class RecipeNetworkEncoder {
   final RecipeNetworkIds ids;
 
-  const RecipeNetworkEncoder(this.ids);
+  /// Whether a tag the client would have to resolve exists, see [Tags].
+  final _TagExists tags;
+
+  const RecipeNetworkEncoder(this.ids, this.tags);
 
   /// The bytes after the serializer id for [recipe] (a [ProcessingRecipe],
   /// [MechanicalCraftingRecipe] or [SequencedAssemblyRecipe]), or `null`.
@@ -110,8 +116,11 @@ final class RecipeNetworkEncoder {
     w.writeVarInt(r.fluidResults.length);
     for (final f in r.fluidResults) {
       final id = ids.fluid(f.key) ?? (throw _CannotEncode('fluid ${f.key}'));
-      w.writeVarInt(f.amount);
+      // `FluidStackTemplate.STREAM_CODEC` is `(fluid, amount, components)`: the id first, then the
+      // amount. The other way round makes the client read the amount as a fluid id
+      // (`byIdOrThrow`: "No value with id 250").
       w.writeVarInt(id);
+      w.writeVarInt(f.amount);
       w.writeVarInt(0); // patch: nothing added
       w.writeVarInt(0); // patch: nothing removed
     }
@@ -130,11 +139,19 @@ final class RecipeNetworkEncoder {
 
   /// `Ingredient.CONTENTS_STREAM_CODEC`: a lone tag as a tag reference, anything else as the
   /// list of its items (custom ingredients are synced as their item list too).
+  ///
+  /// A tag reference is a `-1` marker and the tag name, which the client resolves in the tags the
+  /// server sent; a tag it does not have makes it drop the payload (`orElseThrow`), so such an
+  /// ingredient cannot be encoded at all.
   void _ingredient(PacketWriter w, Ingredient i) {
     final entries = i.entries;
     if (i is! BlockTagIngredient && entries.length == 1 && entries.first.tag != null) {
+      final tag = entries.first.tag!;
+      if (!tags.item(tag)) {
+        throw _CannotEncode('the client has no item tag $tag');
+      }
       w.writeVarInt(0);
-      w.writeString(entries.first.tag!, maxLength: 32767);
+      w.writeString(tag, maxLength: 32767);
       return;
     }
     final items = <int>[];
@@ -160,6 +177,9 @@ final class RecipeNetworkEncoder {
     if (f.components.isNotEmpty) throw const _CannotEncode('fluid ingredient with components');
     w.writeVarInt(ids.simpleFluidIngredientType);
     if (f.tag != null) {
+      if (!tags.fluid(f.tag!)) {
+        throw _CannotEncode('the client has no fluid tag ${f.tag}');
+      }
       w.writeVarInt(0);
       w.writeString(f.tag!, maxLength: 32767);
     } else {

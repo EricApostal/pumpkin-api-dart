@@ -215,7 +215,7 @@ void main() {
       final r = parseRecipe('create:crushing/x', j('''
         {"type":"create:crushing","ingredients":[{"item":"minecraft:emerald_ore"}],"processing_time":350,
          "results":[{"count":2,"id":"minecraft:emerald"},{"chance":0.75,"id":"create:experience_nugget"}]}''')) as ProcessingRecipe;
-      final bytes = RecipeNetworkEncoder(ids).encode(r)!;
+      final bytes = RecipeNetworkEncoder(ids, _allTags).encode(r)!;
       // 1 ingredient (set of 1 item: 2, id 5), 0 fluid ingredients, 2 results...
       expect(bytes.sublist(0, 4), [1, 2, 5, 0]);
       expect(bytes.last, 0); // heat ordinal none
@@ -223,7 +223,35 @@ void main() {
 
     test('unknown items are not synced', () {
       final r = parseRecipe('create:crushing/x', j('{"type":"create:crushing","ingredients":[{"item":"a:b"}],"results":[{"id":"a:c"}]}')) as ProcessingRecipe;
-      expect(RecipeNetworkEncoder(ids).encode(r), isNull);
+      expect(RecipeNetworkEncoder(ids, _allTags).encode(r), isNull);
+    });
+
+    test('a fluid result is the fluid id, then the amount', () {
+      // `FluidStackTemplate.STREAM_CODEC` is `(fluid, amount, components)`; the amount first makes
+      // the client read it as a fluid id and drop the payload.
+      final r = parseRecipe('create:mixing/x', j(
+        '{"type":"create:mixing","ingredients":[{"item":"minecraft:emerald_ore"}],'
+        '"results":[{"id":"minecraft:water","amount":250}],"processing_time":50}',
+      )) as ProcessingRecipe;
+      final bytes = RecipeNetworkEncoder(ids, _allTags).encode(r)!;
+      // ingredients (1: id 5), no fluid ingredients, no results, 1 fluid result.
+      expect(bytes.sublist(0, 4), [1, 2, 5, 0]);
+      expect(bytes.sublist(4, 6), [0, 1]);
+      // Fluid 2, 250 mB (a two byte VarInt: 250 = 0xFA 0x01), empty patch, duration, heat.
+      expect(bytes.sublist(6), [2, 250, 1, 0, 0, 50, 0]);
+    });
+
+    test('an ingredient tag the client does not have is not synced', () {
+      // The client resolves a tag reference in the tags the server sent and throws when the tag
+      // is missing, which drops the whole payload. See `IngredientCodecs` / `ByteBufCodecs`.
+      final r = parseRecipe('create:crushing/x', j(
+        '{"type":"create:crushing","ingredients":[{"tag":"c:slime_balls"}],"results":[{"id":"minecraft:emerald"}]}',
+      )) as ProcessingRecipe;
+      expect(RecipeNetworkEncoder(ids, _allTags).encode(r), isNotNull);
+      expect(
+        RecipeNetworkEncoder(ids, (item: _no, fluid: _yes)).encode(r),
+        isNull,
+      );
     });
   });
 
@@ -261,3 +289,8 @@ void main() {
     });
   });
 }
+
+/// Every tag exists: the tests encode recipes, they do not model the client's tag table.
+const _allTags = (item: _yes, fluid: _yes);
+bool _yes(String tag) => true;
+bool _no(String tag) => false;

@@ -79,7 +79,7 @@ CreateBlock itemHatchBlock() => CreateBlock(
   requiresCorrectTool: true,
   soundType: 'netherite_block',
   blockEntityType: ItemHatchBlockEntity.type,
-  placement: const [PlacementRule.clickedFace('facing', opposite: true)],
+  placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
   behavior: BlockBehavior(onUse: _onUse, onScheduledTick: _onScheduledTick),
 );
 

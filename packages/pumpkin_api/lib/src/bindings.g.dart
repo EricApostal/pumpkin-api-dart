@@ -51242,9 +51242,19 @@ final class PlacementSourceLookingDirection extends PlacementSource {
 final class PlacementSourceClickedFace extends PlacementSource {
   const PlacementSourceClickedFace();
 }
+/// The face of the clicked block, except that `up` gives `down`, for hopper-like facing
+/// properties that have no `up`: `down`, `north`, `south`, `west`, `east`.
+final class PlacementSourceClickedFaceDown extends PlacementSource {
+  const PlacementSourceClickedFaceDown();
+}
 /// The axis of the clicked face: `x`, `y`, `z`. `opposite` is not allowed.
 final class PlacementSourceClickedAxis extends PlacementSource {
   const PlacementSourceClickedAxis();
+}
+/// The horizontal axis of the direction the player looks at: `x` or `z`. `opposite` is not
+/// allowed. For blocks whose axis is horizontal only, like Create's pulleys.
+final class PlacementSourceHorizontalAxis extends PlacementSource {
+  const PlacementSourceHorizontalAxis();
 }
 /// `bottom` or `top` like vanilla's stairs and slabs: clicking the top face or the lower
 /// half of a side gives `bottom`.
@@ -51306,16 +51316,16 @@ i1.Result<void, String> setBlockPlacementRules({required String blockKey, requir
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(blockKey);
 _cleanups.add(tmp0.free);
-final tmp12 = rules.length;
-final tmp13 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(24 * tmp12));
-for (var i = 0; i < tmp12; i++) {
-final tmp14 = rules[i];
-final elementPtr = i0.WasmI32.fromInt(tmp13.toIntUnsigned() + i * 24);
-final tmp1 = i1.AllocatedString.allocateUtf16(tmp14.property);
+final tmp14 = rules.length;
+final tmp15 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(24 * tmp14));
+for (var i = 0; i < tmp14; i++) {
+final tmp16 = rules[i];
+final elementPtr = i0.WasmI32.fromInt(tmp15.toIntUnsigned() + i * 24);
+final tmp1 = i1.AllocatedString.allocateUtf16(tmp16.property);
 _cleanups.add(tmp1.free);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.packedLength, offset: 4);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.ptr, offset: 0);
-switch (tmp14.source) {
+switch (tmp16.source) {
 case PlacementSourceHorizontalFacing():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(0), offset: 8);
 
@@ -51325,51 +51335,57 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(1), offset: 8);
 case PlacementSourceClickedFace():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(2), offset: 8);
 
-case PlacementSourceClickedAxis():
+case PlacementSourceClickedFaceDown():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(3), offset: 8);
 
-case PlacementSourceClickedHalf():
+case PlacementSourceClickedAxis():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(4), offset: 8);
 
-case PlacementSourceVerticalLook(value: final tmp7):
+case PlacementSourceHorizontalAxis():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(5), offset: 8);
-i1.memory.storeFloat32(elementPtr.toIntUnsigned(), i0.WasmF32.fromDouble(tmp7), offset: 12);
 
-case PlacementSourceInWater():
+case PlacementSourceClickedHalf():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(6), offset: 8);
 
-case PlacementSourceSneaking():
+case PlacementSourceVerticalLook(value: final tmp9):
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(7), offset: 8);
+i1.memory.storeFloat32(elementPtr.toIntUnsigned(), i0.WasmF32.fromDouble(tmp9), offset: 12);
 
-case PlacementSourceConstant(value: final tmp10):
+case PlacementSourceInWater():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(8), offset: 8);
-final tmp11 = i1.AllocatedString.allocateUtf16(tmp10);
-_cleanups.add(tmp11.free);
-i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp11.packedLength, offset: 16);
-i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp11.ptr, offset: 12);
+
+case PlacementSourceSneaking():
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(9), offset: 8);
+
+case PlacementSourceConstant(value: final tmp12):
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(10), offset: 8);
+final tmp13 = i1.AllocatedString.allocateUtf16(tmp12);
+_cleanups.add(tmp13.free);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp13.packedLength, offset: 16);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp13.ptr, offset: 12);
 
 }
-i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp14.opposite), offset: 20);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp16.opposite), offset: 20);
 
 }
-final tmp15 = i0.WasmI32.fromInt(tmp12);
-_cleanups.add(() { i1.dartFree(tmp13, i0.WasmI32.fromInt(24 * tmp12), const i0.WasmI32(4)); });
-var tmp16 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1314(tmp0.ptr, tmp0.packedLength, tmp13, tmp15, tmp16);
+final tmp17 = i0.WasmI32.fromInt(tmp14);
+_cleanups.add(() { i1.dartFree(tmp15, i0.WasmI32.fromInt(24 * tmp14), const i0.WasmI32(4)); });
+var tmp18 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import1314(tmp0.ptr, tmp0.packedLength, tmp15, tmp17, tmp18);
 for (final cleanup in _cleanups) { cleanup(); }
-final tmp17 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 0);
-late final i1.Result<void, String> tmp20;
-if (tmp17.toIntUnsigned() == 0) {
+final tmp19 = i1.memory.loadUint8(tmp18.toIntUnsigned(), offset: 0);
+late final i1.Result<void, String> tmp22;
+if (tmp19.toIntUnsigned() == 0) {
 
-tmp20 = i1.Result.ok(null);
+tmp22 = i1.Result.ok(null);
 } else {
-final tmp18 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 4);
-final tmp19 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 8);
+final tmp20 = i1.memory.loadInt32(tmp18.toIntUnsigned(), offset: 4);
+final tmp21 = i1.memory.loadInt32(tmp18.toIntUnsigned(), offset: 8);
 
-tmp20 = i1.Result.error(i1.AllocatedString.read(tmp18, tmp19));
+tmp22 = i1.Result.error(i1.AllocatedString.read(tmp20, tmp21));
 }
-i1.dartFree(tmp16, const i0.WasmI32(12), const i0.WasmI32(4));
-return tmp20;
+i1.dartFree(tmp18, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp22;
 
 }
 }

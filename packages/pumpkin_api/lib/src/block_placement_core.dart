@@ -14,8 +14,15 @@ enum PlacementSourceKind {
   /// The face of the clicked block (`up` when its top was clicked).
   clickedFace,
 
+  /// The face of the clicked block, but `up` gives `down` (hopper-like
+  /// facing properties have no `up`).
+  clickedFaceDown,
+
   /// The axis of the clicked face (`x`, `y`, `z`).
   clickedAxis,
+
+  /// The horizontal axis of the player's look direction (`x` or `z`).
+  horizontalAxis,
 
   /// `bottom` or `top` like stairs and slabs.
   clickedHalf,
@@ -62,7 +69,15 @@ final class PlacementRule {
   const PlacementRule.clickedFace(String property, {bool opposite = false})
     : this._(property, PlacementSourceKind.clickedFace, opposite);
 
+  /// The clicked face, but `up` gives `down`: for hopper-like facing properties.
+  const PlacementRule.clickedFaceDown(String property, {bool opposite = false})
+    : this._(property, PlacementSourceKind.clickedFaceDown, opposite);
+
   const PlacementRule.clickedAxis(String property) : this._(property, PlacementSourceKind.clickedAxis, false);
+
+  /// The horizontal axis of the player's look direction: `x` or `z`.
+  const PlacementRule.horizontalAxis(String property)
+    : this._(property, PlacementSourceKind.horizontalAxis, false);
 
   const PlacementRule.clickedHalf(String property, {bool opposite = false})
     : this._(property, PlacementSourceKind.clickedHalf, opposite);

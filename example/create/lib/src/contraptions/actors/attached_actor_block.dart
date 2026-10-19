@@ -66,7 +66,7 @@ CreateBlock buildAttachedActorBlock(
     key,
     blockEntityType: blockEntityType,
     placement: const [
-      PlacementRule.lookingDirection('facing', opposite: true),
+      PlacementRule.horizontalFacing('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
     collisionShape: const BlockShape.boxes([BlockBox(0, 0, 0, 1, 1, 1)]),

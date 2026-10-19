@@ -747,7 +747,8 @@ List<CreateBlock> buildFluidBlocks() => [
     blockEntityType: 'create:smart_fluid_pipe',
     smart: true,
     placement: [
-      PlacementRule.lookingDirection('facing', opposite: true),
+      // `FaceAttachedHorizontalDirectionalBlock`: `facing` is horizontal only.
+      PlacementRule.horizontalFacing('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
   ),

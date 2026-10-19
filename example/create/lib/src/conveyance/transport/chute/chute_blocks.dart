@@ -26,7 +26,7 @@ void registerChutes(CreateRegistry registry) {
     blockEntityType: 'create:chute',
     behavior: _chuteBehavior(),
     placement: const [
-      PlacementRule.clickedFace('facing'),
+      PlacementRule.clickedFaceDown('facing'),
       PlacementRule.inWater('waterlogged'),
     ],
   );

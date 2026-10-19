@@ -33,10 +33,7 @@ List<CreateBlock> buildChassisBlocks() => [
   ),
   manifestBlock(
     'sticker',
-    placement: const [
-      PlacementRule.sneaking('facing', opposite: true),
-      PlacementRule.lookingDirection('facing', opposite: true),
-    ],
+    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
     behavior: stickerBehavior(),
   ),
 ];

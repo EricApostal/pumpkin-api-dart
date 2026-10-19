@@ -16,7 +16,7 @@ const String ropePulleyKey = 'create:rope_pulley';
 List<CreateBlock> buildPulleyBlocks() => [
   manifestBlock(
     'rope_pulley',
-    placement: const [PlacementRule.clickedAxis('axis')],
+    placement: const [PlacementRule.horizontalAxis('axis')],
     behavior: BlockBehavior(
       onUseWithoutItem: (server, e) async {
         if (e.sneaking) return BlockUseResult.pass;

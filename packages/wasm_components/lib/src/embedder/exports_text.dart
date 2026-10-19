@@ -100,30 +100,30 @@ double? _parse(WasmExternRef? string) {
 }
 
 @pragma('wasm:export')
-WasmExternRef? doubleTryParse(WasmExternRef? string) {
+WasmExternRef? doubleTryParse(WasmExternRef string) {
   final value = _parse(string);
   return value == null ? null : _ParsedDouble(value).externalize();
 }
 
 @pragma('wasm:export')
-WasmF64 tryParseResultGetDouble(WasmExternRef? parseResult) {
-  final result = parseResult!.internalize().toObject() as _ParsedDouble;
+WasmF64 tryParseResultGetDouble(WasmExternRef parseResult) {
+  final result = parseResult.internalize().toObject() as _ParsedDouble;
   return WasmF64.fromDouble(result.value);
 }
 
 @pragma('wasm:export')
-WasmF64 doubleParseInfallible(WasmExternRef? string) {
+WasmF64 doubleParseInfallible(WasmExternRef string) {
   return WasmF64.fromDouble(_parse(string) ?? double.nan);
 }
 
 // -- Strings ------------------------------------------------------------------
 
 @pragma('wasm:export')
-WasmExternRef? stringReplaceRange(
-  WasmExternRef? string,
+WasmExternRef stringReplaceRange(
+  WasmExternRef string,
   WasmI32 start,
   WasmI32 end,
-  WasmExternRef? replacement,
+  WasmExternRef replacement,
 ) {
   final source = WasmStringImplementation.fromExtern(string);
   final inserted = WasmStringImplementation.fromExtern(replacement);
@@ -146,10 +146,10 @@ void _write(
 }
 
 @pragma('wasm:export')
-WasmExternRef? stringReplaceAllString(
-  WasmExternRef? string,
-  WasmExternRef? needle,
-  WasmExternRef? replacement,
+WasmExternRef stringReplaceAllString(
+  WasmExternRef string,
+  WasmExternRef needle,
+  WasmExternRef replacement,
 ) {
   final source = WasmStringImplementation.fromExtern(string);
   final pattern = WasmStringImplementation.fromExtern(needle);
@@ -182,7 +182,7 @@ WasmExternRef? stringReplaceAllString(
 
 @pragma('wasm:export')
 WasmVoid stringToCodeUnits(
-  WasmExternRef? string,
+  WasmExternRef string,
   WasmArray<WasmI16> outArray,
   WasmI32 startIndex,
 ) {
@@ -212,7 +212,7 @@ final class _MatchHandle {
 
 @pragma('wasm:export')
 WasmExternRef regexpCreateOrFailWithString(
-  WasmExternRef? string,
+  WasmExternRef string,
   WasmI32 multiLine,
   WasmI32 caseSensitive,
   WasmI32 unicode,
@@ -233,12 +233,12 @@ WasmExternRef regexpCreateOrFailWithString(
 }
 
 @pragma('wasm:export')
-WasmI32 regexpIsRegexp(WasmExternRef? ref) {
-  return WasmI32.fromBool(ref!.internalize().toObject() is _RegExpHandle);
+WasmI32 regexpIsRegexp(WasmExternRef ref) {
+  return WasmI32.fromBool(ref.internalize().toObject() is _RegExpHandle);
 }
 
 @pragma('wasm:export')
-WasmExternRef regexpEscape(WasmExternRef? string) {
+WasmExternRef regexpEscape(WasmExternRef string) {
   return _externString(CompiledRegExp.escape(_dartString(string)));
 }
 
@@ -256,8 +256,8 @@ _MatchHandle? _search(
 
 @pragma('wasm:export')
 WasmExternRef? regexpMatch(
-  WasmExternRef? regexp,
-  WasmExternRef? string,
+  WasmExternRef regexp,
+  WasmExternRef string,
   WasmI32 start,
   WasmI32 asPrefix,
 ) {
@@ -274,15 +274,15 @@ _MatchHandle _matchOf(WasmExternRef? ref) =>
     ref!.internalize().toObject() as _MatchHandle;
 
 @pragma('wasm:export')
-WasmI32 regexpMatchGetStart(WasmExternRef? match) =>
+WasmI32 regexpMatchGetStart(WasmExternRef match) =>
     WasmI32.fromInt(_matchOf(match).data.start);
 
 @pragma('wasm:export')
-WasmI32 regexpMatchGetEnd(WasmExternRef? match) =>
+WasmI32 regexpMatchGetEnd(WasmExternRef match) =>
     WasmI32.fromInt(_matchOf(match).data.end);
 
 @pragma('wasm:export')
-WasmI32 regexpMatchGetGroupCount(WasmExternRef? match) =>
+WasmI32 regexpMatchGetGroupCount(WasmExternRef match) =>
     WasmI32.fromInt(_matchOf(match).data.groupCount);
 
 WasmExternRef? _group(_MatchHandle match, int index) {
@@ -295,23 +295,23 @@ WasmExternRef? _group(_MatchHandle match, int index) {
 }
 
 @pragma('wasm:export')
-WasmExternRef? regexpMatchGetGroup(WasmExternRef? match, WasmI32 index) =>
+WasmExternRef? regexpMatchGetGroup(WasmExternRef match, WasmI32 index) =>
     _group(_matchOf(match), index.toIntUnsigned());
 
 @pragma('wasm:export')
-WasmI32 regexpMatchGetNamedGroups(WasmExternRef? match) => WasmI32.fromInt(
+WasmI32 regexpMatchGetNamedGroups(WasmExternRef match) => WasmI32.fromInt(
   _matchOf(match).regExp.regExp.groupNames.length,
 );
 
 @pragma('wasm:export')
-WasmExternRef regexpMatchGetGroupName(WasmExternRef? match, WasmI32 index) =>
+WasmExternRef regexpMatchGetGroupName(WasmExternRef match, WasmI32 index) =>
     _externString(
       _matchOf(match).regExp.regExp.groupNames[index.toIntUnsigned()],
     );
 
 @pragma('wasm:export')
 WasmExternRef? regexpMatchGetGroupByName(
-  WasmExternRef? match,
+  WasmExternRef match,
   WasmI32 nameIndex,
 ) {
   final handle = _matchOf(match);
@@ -321,12 +321,12 @@ WasmExternRef? regexpMatchGetGroupByName(
 }
 
 @pragma('wasm:export')
-WasmExternRef? stringReplaceAllRegExp(
-  WasmExternRef? string,
-  WasmExternRef? needle,
-  WasmExternRef? replacement,
+WasmExternRef stringReplaceAllRegExp(
+  WasmExternRef string,
+  WasmExternRef needle,
+  WasmExternRef replacement,
 ) {
-  final handle = needle!.internalize().toObject() as _RegExpHandle;
+  final handle = needle.internalize().toObject() as _RegExpHandle;
   final source = WasmStringImplementation.fromExtern(string);
   final inserted = WasmStringImplementation.fromExtern(replacement);
   final input = _WasmCodeUnits(source);
@@ -376,8 +376,11 @@ WasmI32 timeZoneOffsetInSecondsForClampedSeconds(WasmI64 secondsSinceEpoch) =>
 
 // -- Environment --------------------------------------------------------------
 
+// The SDK declares `dart.baseUri` as returning a non-nullable string. A WASI
+// process has no notion of a current directory, so report the file URI of the
+// filesystem root, which is the closest meaningful answer.
 @pragma('wasm:export')
-WasmExternRef? baseUri() => null;
+WasmExternRef baseUri() => _externString('file:///');
 
 @pragma('wasm:export')
 WasmI32 isWindows() => const WasmI32(0);
@@ -393,8 +396,8 @@ WasmI32 reportTaskEvent(
   WasmI32 taskId,
   WasmI32 flowId,
   WasmI32 type,
-  WasmExternRef? name,
-  WasmExternRef? argumentsAsJson,
+  WasmExternRef name,
+  WasmExternRef argumentsAsJson,
 ) => const WasmI32(0);
 
 // -- Weak references, expandos and finalizers ---------------------------------
@@ -414,8 +417,8 @@ WasmExternRef weakRefCreate(WasmAnyRef originalValue) =>
     _StrongReference(originalValue).externalize();
 
 @pragma('wasm:export')
-WasmAnyRef? weakRefGet(WasmExternRef? weakReference) =>
-    (weakReference!.internalize().toObject() as _StrongReference).value;
+WasmAnyRef? weakRefGet(WasmExternRef weakReference) =>
+    (weakReference.internalize().toObject() as _StrongReference).value;
 
 final class _ExpandoEntry {
   final Object target;
@@ -446,11 +449,11 @@ _ExpandoEntry? _findExpandoEntry(
 
 @pragma('wasm:export')
 WasmAnyRef? expandoGet(
-  WasmExternRef? expando,
+  WasmExternRef expando,
   WasmAnyRef target,
   WasmI64 targetIdentityHashCode,
 ) {
-  final storage = expando!.internalize().toObject() as _ExpandoStorage;
+  final storage = expando.internalize().toObject() as _ExpandoStorage;
   return _findExpandoEntry(
     storage,
     target.toObject(),
@@ -460,12 +463,12 @@ WasmAnyRef? expandoGet(
 
 @pragma('wasm:export')
 WasmVoid expandoSet(
-  WasmExternRef? expando,
+  WasmExternRef expando,
   WasmAnyRef target,
   WasmI64 targetIdentityHashCode,
   WasmAnyRef? value,
 ) {
-  final storage = expando!.internalize().toObject() as _ExpandoStorage;
+  final storage = expando.internalize().toObject() as _ExpandoStorage;
   final hash = targetIdentityHashCode.toInt();
   final object = target.toObject();
   final existing = _findExpandoEntry(storage, object, hash);
@@ -485,12 +488,12 @@ WasmExternRef finalizerCreate(
 
 @pragma('wasm:export')
 WasmVoid finalizerAttach(
-  WasmExternRef? finalizer,
+  WasmExternRef finalizer,
   WasmAnyRef object,
   WasmAnyRef? token,
   WasmAnyRef? detachToken,
 ) => WasmVoid();
 
 @pragma('wasm:export')
-WasmVoid finalizerDetach(WasmExternRef? finalizer, WasmAnyRef detachToken) =>
+WasmVoid finalizerDetach(WasmExternRef finalizer, WasmAnyRef detachToken) =>
     WasmVoid();

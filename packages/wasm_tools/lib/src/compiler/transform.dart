@@ -262,9 +262,13 @@ final class ModuleTransformer {
             as w.ArrayType;
 
     final existingStart = module.start;
+    // `$invokeMain` is called with an empty argument array. `array.new_fixed`
+    // is used rather than `array.new_default` because the element type is not
+    // necessarily defaultable: since Dart 3.15's non-nullable extern
+    // references, the array is `(array (mut (ref extern)))`, which makes
+    // `array.new_default` invalid WebAssembly.
     final instructionsToInvokeMain = [
-      w.I32Const(0),
-      w.ArrayNewDefault(argsArrayType),
+      w.ArrayNewFixed(argsArrayType, 0),
       w.Call(mainFunction),
     ];
 

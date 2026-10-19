@@ -46,7 +46,7 @@ WasmVoid queueMicrotask(
 }
 
 @pragma('wasm:export')
-WasmVoid clearSchedule(WasmExternRef? schedule) {
+WasmVoid clearSchedule(WasmExternRef schedule) {
   _unsupportedAsyncSchedule();
 }
 
@@ -78,12 +78,12 @@ WasmExternRef i64ToString(WasmI64 value, WasmI32 radix) {
 }
 
 @pragma('wasm:export')
-WasmI32 stringLength(WasmExternRef? string) {
+WasmI32 stringLength(WasmExternRef string) {
   return WasmStringImplementation.fromExtern(string).length.toWasmI32();
 }
 
 @pragma('wasm:export')
-WasmI32 stringEquals(WasmExternRef? a, WasmExternRef? b) {
+WasmI32 stringEquals(WasmExternRef a, WasmExternRef b) {
   return WasmI32.fromBool(
     WasmStringImplementation.fromExtern(
       a,
@@ -92,21 +92,21 @@ WasmI32 stringEquals(WasmExternRef? a, WasmExternRef? b) {
 }
 
 @pragma('wasm:export')
-WasmI32 stringCompare(WasmExternRef? a, WasmExternRef? b) {
+WasmI32 stringCompare(WasmExternRef a, WasmExternRef b) {
   return WasmStringImplementation.fromExtern(
     a,
   ).compareTo(WasmStringImplementation.fromExtern(b));
 }
 
 @pragma('wasm:export')
-WasmI32 stringCodeUnitAt(WasmExternRef? string, WasmI32 index) {
+WasmI32 stringCodeUnitAt(WasmExternRef string, WasmI32 index) {
   final wasmString = WasmStringImplementation.fromExtern(string);
   return WasmI32.fromInt(wasmString.codeUnitAtUnchecked(index.toIntUnsigned()));
 }
 
 @pragma('wasm:export')
-WasmExternRef? stringSubstring(
-  WasmExternRef? string,
+WasmExternRef stringSubstring(
+  WasmExternRef string,
   WasmI32 start,
   WasmI32 end,
 ) {
@@ -116,7 +116,7 @@ WasmExternRef? stringSubstring(
 }
 
 @pragma('wasm:export')
-WasmI32 stringIndexOfString(WasmExternRef? a, WasmExternRef? b, WasmI32 start) {
+WasmI32 stringIndexOfString(WasmExternRef a, WasmExternRef b, WasmI32 start) {
   return WasmI32.fromInt(
     WasmStringImplementation.fromExtern(a).indexOfString(
       WasmStringImplementation.fromExtern(b),
@@ -127,8 +127,8 @@ WasmI32 stringIndexOfString(WasmExternRef? a, WasmExternRef? b, WasmI32 start) {
 
 @pragma('wasm:export')
 WasmI32 stringLastIndexOfString(
-  WasmExternRef? a,
-  WasmExternRef? b,
+  WasmExternRef a,
+  WasmExternRef b,
   WasmI32 start,
 ) {
   return WasmI32.fromInt(
@@ -140,24 +140,24 @@ WasmI32 stringLastIndexOfString(
 }
 
 @pragma('wasm:export')
-WasmExternRef? stringToLowerCase(WasmExternRef? string) {
+WasmExternRef stringToLowerCase(WasmExternRef string) {
   return WasmStringImplementation.fromExtern(string).toLower().externalize();
 }
 
 @pragma('wasm:export')
-WasmExternRef? stringToUpperCase(WasmExternRef? string) {
+WasmExternRef stringToUpperCase(WasmExternRef string) {
   return WasmStringImplementation.fromExtern(string).toUpper().externalize();
 }
 
 @pragma('wasm:export')
-WasmExternRef? stringConcat(WasmExternRef? a, WasmExternRef? b) {
+WasmExternRef stringConcat(WasmExternRef a, WasmExternRef b) {
   return WasmStringImplementation.fromExtern(
     a,
   ).concat(WasmStringImplementation.fromExtern(b)).externalize();
 }
 
 @pragma('wasm:export')
-WasmExternRef? stringRepeat(WasmExternRef? string, WasmI32 amount) {
+WasmExternRef stringRepeat(WasmExternRef string, WasmI32 amount) {
   final wasmString = WasmStringImplementation.fromExtern(string);
   return wasmString.repeat(amount.toIntSigned()).externalize();
 }
@@ -168,36 +168,36 @@ WasmExternRef stringBufferCreate() {
 }
 
 @pragma('wasm:export')
-WasmVoid stringBufferWriteString(WasmExternRef? buffer, WasmExternRef? string) {
-  (buffer!.internalize().toObject() as WasmStringBuffer).writeString(
+WasmVoid stringBufferWriteString(WasmExternRef buffer, WasmExternRef string) {
+  (buffer.internalize().toObject() as WasmStringBuffer).writeString(
     WasmStringImplementation.fromExtern(string),
   );
   return WasmVoid();
 }
 
 @pragma('wasm:export')
-WasmVoid stringBufferWriteCharCode(WasmExternRef? buffer, WasmI32 code) {
-  (buffer!.internalize().toObject() as WasmStringBuffer).writeCharCode(
+WasmVoid stringBufferWriteCharCode(WasmExternRef buffer, WasmI32 code) {
+  (buffer.internalize().toObject() as WasmStringBuffer).writeCharCode(
     code.toIntUnsigned(),
   );
   return WasmVoid();
 }
 
 @pragma('wasm:export')
-WasmVoid stringBufferClear(WasmExternRef? buffer) {
-  (buffer!.internalize().toObject() as WasmStringBuffer).clear();
+WasmVoid stringBufferClear(WasmExternRef buffer) {
+  (buffer.internalize().toObject() as WasmStringBuffer).clear();
   return WasmVoid();
 }
 
 @pragma('wasm:export')
-WasmI32 stringBufferLength(WasmExternRef? buffer) {
-  return (buffer!.internalize().toObject() as WasmStringBuffer).length
+WasmI32 stringBufferLength(WasmExternRef buffer) {
+  return (buffer.internalize().toObject() as WasmStringBuffer).length
       .toWasmI32();
 }
 
 @pragma('wasm:export')
-WasmExternRef stringBufferToString(WasmExternRef? buffer) {
-  return (buffer!.internalize().toObject() as WasmStringBuffer)
+WasmExternRef stringBufferToString(WasmExternRef buffer) {
+  return (buffer.internalize().toObject() as WasmStringBuffer)
       .renderToString()
       .externalize();
 }
@@ -209,14 +209,14 @@ WasmExternRef stackTraceGetCurrent() {
 }
 
 @pragma('wasm:export')
-WasmExternRef stackTraceToString(WasmExternRef? _) {
+WasmExternRef stackTraceToString(WasmExternRef _) {
   return stackTracesAreUnavailableMessage.externalize();
 }
 
 @pragma('wasm:export')
-WasmExternRef jsonEncodeString(WasmExternRef? line) {
+WasmExternRef jsonEncodeString(WasmExternRef line) {
   // TODO: Actually encode as JSON (not sure what exactly this even does).
-  return line!;
+  return line;
 }
 
 @pragma('wasm:export')
@@ -225,7 +225,7 @@ WasmVoid debugger(WasmExternRef? message) {
 }
 
 @pragma('wasm:export', 'print')
-WasmVoid wasiPrint(WasmExternRef? string) {
+WasmVoid wasiPrint(WasmExternRef string) {
   printImpl(.fromExtern(string));
   return WasmVoid();
 }

@@ -101,6 +101,7 @@ final Map<String, FutureOr<Object?> Function()> tests = {
   'bigint': () => BigInt.from(1 << 40).toString(),
   'duration': () => const Duration(seconds: 90).toString(),
   'uri': () => Uri.parse('https://a.b/c?d=e').host,
+  'uri_base': () => Uri.base.toString(),
   'utf8': () => utf8.encode('héllo').length,
   // Async host calls and the event loop, see docs/async.md.
   'async_microtask': () async {

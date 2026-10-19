@@ -48,7 +48,10 @@ abstract final class HostStacks {
     for (final (name, bytes) in data.comps) {
       if (name.startsWith(customComponentPrefix)) {
         try {
-          s.setCustomComponent(name.substring(customComponentPrefix.length), bytes);
+          s.setCustomComponent(
+            name.substring(customComponentPrefix.length),
+            bytes,
+          );
         } on Object {
           // a component the host rejects is dropped
         }
@@ -66,13 +69,21 @@ abstract final class HostStacks {
   }
 
   /// A stack without components (cheap): item and count only.
-  static ItemStack? simple(PStack data) =>
-      data.isEmpty ? null : ItemStack.create(registryKey: data.key, count: data.count);
+  static ItemStack? simple(PStack data) => data.isEmpty
+      ? null
+      : ItemStack.create(registryKey: data.key, count: data.count);
 
   /// Replaces the contents of [stack] with [data]'s component bytes for one component.
-  static Future<void> setComponentBytes(ItemStack stack, String name, List<int> bytes) async {
+  static Future<void> setComponentBytes(
+    ItemStack stack,
+    String name,
+    List<int> bytes,
+  ) async {
     if (name.startsWith(customComponentPrefix)) {
-      stack.setCustomComponent(name.substring(customComponentPrefix.length), bytes);
+      stack.setCustomComponent(
+        name.substring(customComponentPrefix.length),
+        bytes,
+      );
     } else {
       final c = DataComponent.fromWireName(name);
       if (c != null) await stack.setComponent(component: c, value: bytes);
@@ -104,6 +115,11 @@ abstract final class StackNbt {
   static NbtCompound writeClient(PStack s) => NbtCompound()
     ..putString('id', s.key)
     ..putInt('count', s.count);
+
+  /// `TransferUtil.saveItem` for a possibly empty stack: an empty compound, not
+  /// `{id: minecraft:air}` (the Create client and `FilteringBehaviour` expect that).
+  static NbtCompound writeOrEmpty(PStack s) =>
+      s.isEmpty ? NbtCompound() : write(s);
 
   static PStack read(NbtCompound? c) {
     if (c == null) return PStack.empty;

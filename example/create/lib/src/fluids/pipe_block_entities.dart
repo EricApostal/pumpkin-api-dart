@@ -14,6 +14,8 @@ import '../core/block_entity.dart';
 import '../decoration/bracketed_behaviour.dart';
 import '../kinetics/geometry.dart' show Dir;
 import '../kinetics/kinetic_block_entity.dart';
+import '../processing/common/stack.dart';
+import '../processing/host/stack_host.dart';
 import 'fluid_host.dart';
 import 'fluid_propagator.dart';
 import 'fluid_runtime.dart';
@@ -88,14 +90,31 @@ class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    filterFluid = tag.getString('Filter');
+    // `FilteringBehaviour.forFluids` stores the item (a bucket, or a potion bottle); the fluid is
+    // derived from it. Virtual fluids have no bucket item, so their id is kept in `FilterFluid`
+    // (a plugin-private key) to survive the round trip.
+    filterFluid = tag.getString('FilterFluid');
+    if (filterFluid == null) {
+      final stack = StackNbt.read(tag.getCompound('Filter'));
+      if (stack.isNotEmpty)
+        filterFluid = FluidRegistries.fromBucket(stack.key)?.fluid;
+    }
   }
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
-    final filter = filterFluid;
-    if (filter != null) tag.putString('Filter', filter);
+    final fluid = filterFluid;
+    final bucket = fluid == null ? null : FluidRegistries.bucketFor(fluid);
+    // `FilteringBehaviour.write`: an empty compound when there is no filter item.
+    tag.putCompound(
+      'Filter',
+      bucket == null ? NbtCompound() : StackNbt.write(PStack(bucket, 1)),
+    );
+    if (fluid != null && bucket == null) tag.putString('FilterFluid', fluid);
+    // `FilteringBehaviour.write` always writes the count; the smart pipe's slot shows no count.
+    tag.putInt('FilterAmount', 64);
+    tag.putBool('UpTo', true);
   }
 }
 

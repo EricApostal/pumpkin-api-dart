@@ -12,6 +12,7 @@ import '../../mounted/minecart_contraption_item.dart' show shrinkHeld;
 import '../../storage/stacks.dart';
 import '../actor_runtime.dart';
 import '../attached_actor_block.dart';
+import '../filter_nbt.dart';
 
 /// `RollerBlockEntity.RollingMode`.
 enum RollingMode {
@@ -31,6 +32,10 @@ final class RollerBlockEntity extends CreateBlockEntity {
 
   /// `filtering.getFilter()`.
   StoredStack filterStack = StoredStack.empty;
+
+  /// `filtering.count` and `filtering.upTo` (`FilterAmount`, `UpTo`).
+  int filterCount = 64;
+  bool filterUpTo = true;
 
   /// `mode.getValue()`.
   int mode = 0;
@@ -133,27 +138,17 @@ final class RollerBlockEntity extends CreateBlockEntity {
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    final filter = tag.getCompound('Filter');
-    filterStack = filter == null
-        ? StoredStack.empty
-        : StoredStack(
-            filter.getString('id') ?? 'minecraft:air',
-            filter.getInt('count') ?? 0,
-          );
+    final filtering = readFilteringBehaviour(tag);
+    filterStack = filtering.filter;
+    filterCount = filtering.count;
+    filterUpTo = filtering.upTo;
     mode = tag.getInt('ScrollValue') ?? 0;
   }
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
-    if (filterStack.isNotEmpty) {
-      tag.putCompound(
-        'Filter',
-        NbtCompound()
-          ..putString('id', filterStack.item)
-          ..putInt('count', filterStack.count),
-      );
-    }
+    writeFilteringBehaviour(tag, filterStack, filterCount, filterUpTo);
     tag.putInt('ScrollValue', mode);
   }
 }

@@ -27,6 +27,7 @@ import '../../behaviours/processing_bridge.dart';
 import '../../belt/transported_item.dart';
 import '../../items/item_codec.dart';
 import '../../items/item_data.dart';
+import '../../nbt_names.dart';
 import '../../runtime.dart';
 import '../funnel/funnel_block_entity.dart';
 import '../transport_support.dart';
@@ -463,8 +464,19 @@ class EjectorBlockEntity extends KineticBlockEntity {
       ..putInt('HorizontalDistance', launcher.getHorizontalDistance())
       ..putInt('VerticalDistance', launcher.getVerticalDistance())
       ..putBool('Powered', powered)
-      ..putString('State', _state.name)
-      ..putFloat('Lid', lidProgress)
+      // `State.name()` is the upper-case constant.
+      ..putString('State', enumNbtName(_state.name))
+      // `Lid` is the `LerpedFloat` compound (`{Speed, Target, Value}`). The port has only the
+      // value; Java's client ignores `Value` on a client packet and chases `Target`, so the
+      // target is the current value and the speed is the launching chaser's constant.
+      ..putCompound(
+        'Lid',
+        NbtCompound()
+          ..putFloat('Speed', .8)
+          ..putFloat('Target', lidProgress)
+          ..putFloat('Value', lidProgress),
+      )
+      // `IntAttached.serializeNBT`: `{Item, Location}`.
       ..putList('LaunchedItems', [
         for (final entry in _launchedItems)
           NbtCompound()
@@ -472,7 +484,7 @@ class EjectorBlockEntity extends KineticBlockEntity {
               'Item',
               ItemCodec.toTag(entry.stack, clientPacket: clientPacket),
             )
-            ..putInt('Time', entry.time),
+            ..putInt('Location', entry.time),
       ]);
   }
 
@@ -488,11 +500,18 @@ class EjectorBlockEntity extends KineticBlockEntity {
     }
     powered = tag.getBool('Powered') ?? false;
     final stateName = tag.getString('State');
+    final dartState = enumDartName([
+      for (final s in _EjectorState.values) s.name,
+    ], stateName ?? '');
     _state = _EjectorState.values.firstWhere(
-      (s) => s.name == stateName,
-      orElse: () => _EjectorState.retracting,
+      (s) => s.name == dartState,
+      // Java's `readState` falls back to the first constant (`CHARGED`).
+      orElse: () => _EjectorState.charged,
     );
-    lidProgress = tag.getDouble('Lid') ?? 0;
+    final lid = tag.getCompound('Lid');
+    lidProgress = lid != null
+        ? lid.getDouble('Value') ?? 0
+        : tag.getDouble('Lid') ?? 0; // legacy float form
     _launchedItems
       ..clear()
       ..addAll([
@@ -500,7 +519,7 @@ class EjectorBlockEntity extends KineticBlockEntity {
           if (e is NbtCompound)
             _Launched(
               ItemCodec.fromAnyNbt(e.getCompound('Item')),
-              e.getInt('Time') ?? 0,
+              e.getInt('Location') ?? 0,
             ),
       ]);
   }

@@ -25,10 +25,12 @@ import 'link_with_bulb.dart';
 
 const String displayLinkKey = 'create:display_link';
 
-Direction _facing(Map<String, String> p) => Direction.byName(p['facing'] ?? 'up') ?? Direction.up;
+Direction _facing(Map<String, String> p) =>
+    Direction.byName(p['facing'] ?? 'up') ?? Direction.up;
 
 /// `DisplayLinkBlockEntity`.
-final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements GatheredDataLink {
+final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity
+    implements GatheredDataLink {
   static const String type = 'create:display_link';
 
   Pos targetOffset = posZero;
@@ -43,7 +45,12 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements Ga
 
   DisplayLinkBlockEntity(super.worldId, super.pos) {
     factoryPanelSupport = addBehaviour(
-      PanelSupportBehaviour.of(Rs.i.ctx, isOutput: () => false, outputPower: () => false, onNotify: _notifyPanelChange),
+      PanelSupportBehaviour.of(
+        Rs.i.ctx,
+        isOutput: () => false,
+        outputPower: () => false,
+        onNotify: _notifyPanelChange,
+      ),
     );
   }
 
@@ -94,7 +101,8 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements Ga
     final source = activeSource;
     if (source == null) return;
     refreshTicks++;
-    if (refreshTicks < source.passiveRefreshTicks || !source.shouldPassiveReset) return;
+    if (refreshTicks < source.passiveRefreshTicks || !source.shouldPassiveReset)
+      return;
     tickSource();
   }
 
@@ -126,7 +134,10 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements Ga
       sourceConfig: _sourceConfig,
       direction: direction,
       activeTarget: activeTarget,
-      linkedPanels: [for (final p in factoryPanelSupport.linkedPanels) (p.pos, p.slot.serializedName)],
+      linkedPanels: [
+        for (final p in factoryPanelSupport.linkedPanels)
+          (p.pos, p.slot.serializedName),
+      ],
     );
   }
 
@@ -182,7 +193,11 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements Ga
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
-    tag.putIntArray('TargetOffset', [targetOffset.x, targetOffset.y, targetOffset.z]);
+    tag.putIntArray('TargetOffset', [
+      targetOffset.x,
+      targetOffset.y,
+      targetOffset.z,
+    ]);
     tag.putInt('TargetLine', targetLine);
 
     final source = activeSource;
@@ -191,7 +206,8 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements Ga
       data.putString('Id', source.id);
       tag.putCompound('Source', data);
     }
-    if (clientPacket && activeTarget != null) tag.putString('TargetType', activeTarget!.id);
+    if (clientPacket && activeTarget != null)
+      tag.putString('TargetType', activeTarget!.id);
   }
 
   @override
@@ -200,20 +216,29 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements Ga
     targetOffset = NbtHelper.readBlockPos(tag, 'TargetOffset');
     targetLine = tag.getInt('TargetLine') ?? 0;
 
+    // `TargetType` is part of the client tag only (the server resolves the target from the
+    // block it points at); an unknown id leaves the target unset like Java's `get`.
+    if (clientPacket) {
+      final targetType = tag.getString('TargetType');
+      if (targetType != null) {
+        activeTarget = Rs.i.displays.target(targetType);
+      }
+    }
+
     final src = tag.getCompound('Source');
     if (src == null) return;
     final id = src.getString('Id');
     activeSource = Rs.i.displays.source(id);
     _sourceConfig = ConfigTag();
     if (activeSource != null) _sourceConfig = configFromNbt(src);
-    // The target type is resolved again by the first update.
   }
 
   @override
   void onLoad() {
     super.onLoad();
     final w = world;
-    if (w != null) activeTarget = Rs.i.displays.targetAt(Lvl(w).blockKey(targetPosition));
+    if (w != null)
+      activeTarget = Rs.i.displays.targetAt(Lvl(w).blockKey(targetPosition));
   }
 }
 
@@ -228,12 +253,16 @@ final class DisplayLinkBlock {
       key,
       blockEntityType: DisplayLinkBlockEntity.type,
       placement: const [PlacementRule.clickedFace('facing')],
-      shapeRules: directionalShapeRules('facing', [pixelBox(1, 0, 1, 15, 6, 15), pixelBox(3, 5, 3, 13, 9, 13)], Direction.up),
+      shapeRules: directionalShapeRules('facing', [
+        pixelBox(1, 0, 1, 15, 6, 15),
+        pixelBox(3, 5, 3, 13, 9, 13),
+      ], Direction.up),
       behavior: BlockBehavior(
         onPlaced: _onPlaced,
         onNeighborUpdate: _onNeighborUpdate,
         // useWithoutItem: the client opens the screen; the server only consumes the click.
-        onUseWithoutItem: (server, e) => e.sneaking ? BlockUseResult.pass : BlockUseResult.success,
+        onUseWithoutItem: (server, e) =>
+            e.sneaking ? BlockUseResult.pass : BlockUseResult.success,
         isPathfindable: (server, e) => false,
       ),
     );
@@ -248,7 +277,11 @@ final class DisplayLinkBlock {
   );
 
   /// `shouldBePowered(state, level, pos)`.
-  static Future<bool> shouldBePowered(Lvl lvl, Pos pos, Direction facing) async {
+  static Future<bool> shouldBePowered(
+    Lvl lvl,
+    Pos pos,
+    Direction facing,
+  ) async {
     for (final d in Direction.values) {
       if (d.opposite == facing) continue;
       if (await lvl.signalFrom(pos, d) == 0) continue;
@@ -263,10 +296,14 @@ final class DisplayLinkBlock {
     final props = block.stateOf(e.stateIndex);
     // getStateForPlacement: POWERED follows the neighbours.
     final powered = await shouldBePowered(lvl, pos, _facing(props));
-    if (powered != (props['powered'] == 'true')) await lvl.setProps(pos, {'powered': '$powered'});
+    if (powered != (props['powered'] == 'true'))
+      await lvl.setProps(pos, {'powered': '$powered'});
   }
 
-  Future<void> _onNeighborUpdate(Server server, CustomBlockNeighborUpdateEventData e) async {
+  Future<void> _onNeighborUpdate(
+    Server server,
+    CustomBlockNeighborUpdateEventData e,
+  ) async {
     final lvl = Lvl(e.targetWorld);
     final pos = e.pos.toPos();
     final props = lvl.info(pos)?.properties ?? block.stateOf(e.stateIndex);
@@ -281,15 +318,23 @@ final class DisplayLinkBlock {
     final previouslyPowered = props['powered'] == 'true';
     if (previouslyPowered != powered) {
       await lvl.setProps(pos, {'powered': '${!previouslyPowered}'});
-      if (!powered) Rs.i.be<DisplayLinkBlockEntity>(e.targetWorld, e.pos)?.onNoLongerPowered();
+      if (!powered)
+        Rs.i
+            .be<DisplayLinkBlockEntity>(e.targetWorld, e.pos)
+            ?.onNoLongerPowered();
     }
   }
 
   // -- Gatherers (`forEachAttachedGatherer`) -------------------------------------------------
 
-  static Future<void> _sendToGatherersOfSource(Lvl lvl, Pos pos, {bool redstonePowerOnly = false}) async {
+  static Future<void> _sendToGatherersOfSource(
+    Lvl lvl,
+    Pos pos, {
+    bool redstonePowerOnly = false,
+  }) async {
     for (final be in attachedGatherers(lvl, pos)) {
-      if (redstonePowerOnly && be.activeSource?.id != 'create:redstone_power') continue;
+      if (redstonePowerOnly && be.activeSource?.id != 'create:redstone_power')
+        continue;
       be.tickSource();
     }
   }
@@ -301,7 +346,10 @@ final class DisplayLinkBlock {
       final offsetPos = pos.relative(d);
       final info = lvl.info(offsetPos);
       if (info == null || info.key != displayLinkKey) continue;
-      final be = Rs.i.store.typed<DisplayLinkBlockEntity>(lvl.id, BlockPos(x: offsetPos.x, y: offsetPos.y, z: offsetPos.z));
+      final be = Rs.i.store.typed<DisplayLinkBlockEntity>(
+        lvl.id,
+        BlockPos(x: offsetPos.x, y: offsetPos.y, z: offsetPos.z),
+      );
       if (be == null || be.activeSource == null) continue;
       if (be.direction != d.opposite) continue;
       result.add(be);
@@ -320,7 +368,8 @@ final class DisplayLinkBlock {
   static Future<void> itemReceived(Lvl lvl, Pos pos, int amount) async {
     for (final be in attachedGatherers(lvl, pos)) {
       final source = be.activeSource;
-      if (source is AccumulatedItemCountDisplaySource) await source.itemReceived(be, amount);
+      if (source is AccumulatedItemCountDisplaySource)
+        await source.itemReceived(be, amount);
     }
   }
 
@@ -334,7 +383,10 @@ final class DisplayLinkBlock {
       final pos = f['pos'] as (int, int, int);
       final world = player.getWorld();
       if (!configAllowed(player, world, pos)) return;
-      final be = rs.be<DisplayLinkBlockEntity>(world, BlockPos(x: pos.$1, y: pos.$2, z: pos.$3));
+      final be = rs.be<DisplayLinkBlockEntity>(
+        world,
+        BlockPos(x: pos.$1, y: pos.$2, z: pos.$3),
+      );
       if (be == null) return;
       final configData = ConfigTag.fromNbt(f['configData'] as NbtValue?);
 
@@ -389,7 +441,8 @@ abstract final class ClickToLink {
     ctx.host.intercept(Events.playerUseBlock, (server, e) async {
       if (e.cancelled) return e;
       final stack = e.item;
-      if (await stack.getCount() <= 0 || await stack.getRegistryKey() != item) return e;
+      if (await stack.getCount() <= 0 || await stack.getRegistryKey() != item)
+        return e;
       final player = e.player;
       final world = player.getWorld();
       final lvl = Lvl(world);
@@ -420,7 +473,8 @@ abstract final class ClickToLink {
       final (selectedPos, selectedDim) = data;
       final face = e.face.toDirection();
       final placedPos = pos.relative(face, lvl.canBeReplaced(pos) ? 0 : 1);
-      if (!selectedPos.closerThan(placedPos, maxDistance.toDouble()) || selectedDim != dimension) {
+      if (!selectedPos.closerThan(placedPos, maxDistance.toDouble()) ||
+          selectedDim != dimension) {
         _message(player, '§cTargeted position is too far from here');
         return e.cancel();
       }
@@ -429,7 +483,8 @@ abstract final class ClickToLink {
       final facing = face;
       final state = BlockStates.withProperties(displayLinkKey, {
         'facing': facing.serializedName,
-        'powered': '${await DisplayLinkBlock.shouldBePowered(lvl, placedPos, facing)}',
+        'powered':
+            '${await DisplayLinkBlock.shouldBePowered(lvl, placedPos, facing)}',
       });
       if (state == null) return e.cancel();
       await lvl.setState(placedPos, state, neighbors: true);
@@ -460,5 +515,8 @@ abstract final class ClickToLink {
   }
 
   static void _message(Player player, String legacyText) =>
-      player.sendSystemMessage(text: TextComponent.fromLegacyString(input: legacyText), overlay: true);
+      player.sendSystemMessage(
+        text: TextComponent.fromLegacyString(input: legacyText),
+        overlay: true,
+      );
 }

@@ -14,6 +14,7 @@ import '../host/env.dart';
 import '../host/runtime.dart';
 import '../model/dir.dart';
 import 'bell_movement.dart';
+import 'bell_nbt.dart';
 
 const String peculiarBellEntityType = 'create:peculiar_bell';
 const String hauntedBellEntityType = 'create:cursed_bell';
@@ -72,13 +73,19 @@ final class CreateBellEntity extends CreateBlockEntity {
     // tick after `ring`, so the flag stands in for `ringingTicks == 0`.
     if (!clientPacket || !isRinging || !(ringingTicks == 0 || _ringPending)) return;
     _ringPending = false;
-    tag.putString('Ringing', ringDirection.name.toUpperCase());
+    tag.putString('Ringing', ringDirectionNbtName(ringDirection));
   }
 
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
     if (haunted) effectTicks = tag.getInt('EffectTicks') ?? 0;
+    // `AbstractBellBlockEntity.read`: the client tag carries the ring direction; a missing or
+    // unknown name falls back to `Direction.values()[0]` (down).
+    if (!clientPacket || !tag.containsKey('Ringing')) return;
+    ringDirection = ringDirectionFromNbtName(tag.getString('Ringing') ?? '');
+    ringingTicks = 0;
+    isRinging = true;
   }
 }
 

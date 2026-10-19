@@ -110,9 +110,10 @@ abstract final class FluidNbt {
 }
 
 /// The NBT of a `CreateFluidTank` (`CreateFluidTank.writeToNBT` / `readFromNBT`): the fluid
-/// stack under `Fluid`, empty for an empty tank.
-NbtValue fluidTankNbt(FStack stack) =>
-    NbtValue.compound({'Fluid': FluidNbt.write(stack)});
+/// stack under `Fluid`; an empty tank is an empty compound (the key is omitted).
+NbtValue fluidTankNbt(FStack stack) => stack.isEmpty
+    ? NbtValue.emptyCompound()
+    : NbtValue.compound({'Fluid': FluidNbt.write(stack)});
 
 FStack readFluidTankNbt(NbtValue? value) {
   final compound = value != null && value.kind == NbtKind.compound

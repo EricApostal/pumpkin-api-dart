@@ -555,6 +555,21 @@ class CuckooClockBlockEntity extends KineticBlockEntity {
   }
 
   @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    // `Animation` is client-only state: the server never reads it back, but a
+    // client update tag (`readClient`) restarts the animation at its first tick.
+    // An unknown name falls back to the first constant, as Java's `readEnum`.
+    if (clientPacket && tag.containsKey('Animation')) {
+      final name = tag.getString('Animation');
+      animationType = animationNames.contains(name)
+          ? name!
+          : animationNames.first;
+      animationProgress = 0;
+    }
+  }
+
+  @override
   void tick() {
     super.tick();
     if (speed == 0) return;

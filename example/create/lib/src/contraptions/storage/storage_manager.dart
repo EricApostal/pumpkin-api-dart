@@ -201,7 +201,7 @@ class MountedStorageManager {
   }
 
   /// `read`.
-  void read(NbtMap nbt) {
+  void read(NbtMap nbt, {bool clientPacket = false}) {
     reset();
     try {
       for (final v in nbt.getList('items')) {
@@ -214,6 +214,7 @@ class MountedStorageManager {
         final storage = MountedStorages.decodeFluid(tag.getCompound('storage'));
         if (storage != null) addFluidStorage(storage, tag.getBlockPos('pos'));
       }
+      _readLegacy(nbt);
       if (nbt.contains('interactable_positions')) {
         interactablePositions = {
           for (final v in nbt.getList('interactable_positions'))
@@ -228,6 +229,40 @@ class MountedStorageManager {
       // an unreadable storage leaves the others; initialize() below makes the manager valid
     }
     initialize();
+  }
+
+  /// `readLegacy`: the `Storage`/`FluidStorage` lists of contraptions saved before the codec.
+  void _readLegacy(NbtMap nbt) {
+    for (final v in nbt.getList('Storage')) {
+      final tag = NbtMap.of(v);
+      final pos = tag.getBlockPos('Pos');
+      final data = tag.getCompound('Data');
+      final MountedItemStorage storage;
+      if (data.contains('Toolbox')) {
+        storage = MountedStorages.toolbox.fromLegacy(data);
+      } else if (data.contains('NoFuel')) {
+        storage = MountedStorages.vault.fromLegacy(data);
+      } else if (data.contains('Bottomless')) {
+        storage = MountedStorages.creativeCrate.fromLegacy(data);
+      } else if (data.contains('Synced')) {
+        storage = MountedStorages.depot.fromLegacy(data);
+      } else {
+        storage = MountedStorages.fallback.fromLegacy(data);
+      }
+      addItemStorage(storage, pos);
+    }
+
+    for (final v in nbt.getList('FluidStorage')) {
+      final tag = NbtMap.of(v);
+      final pos = tag.getBlockPos('Pos');
+      final data = tag.getCompound('Data');
+      addFluidStorage(
+        data.contains('Bottomless')
+            ? MountedStorages.creativeFluidTank.fromLegacy(data)
+            : MountedStorages.fluidTank.fromLegacy(data),
+        pos,
+      );
+    }
   }
 
   /// `write`: for the spawn packet only the synced storages, plus the positions of all of them.

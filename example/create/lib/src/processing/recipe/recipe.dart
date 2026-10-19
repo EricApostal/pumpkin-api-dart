@@ -87,6 +87,10 @@ class ProcessingRecipe {
   /// `getResultItem`: the first result, or empty.
   PStack get resultItem => results.isEmpty ? PStack.empty : results.first.stack;
 
+  /// `ProcessingRecipe.assemble`: a processing recipe has no placement-dependent output, so it
+  /// assembles to its first result (`getResultItem`).
+  PStack assemble() => resultItem;
+
   /// `rollResults`: [forcedFirst] replaces the roll of the first result (sequenced assembly's
   /// `enforceNextResult`).
   List<PStack> rollResults(Random random, {PStack Function()? forcedFirst}) {
@@ -110,15 +114,17 @@ class ProcessingRecipe {
 
   /// `getProcessedItem`: the ingredient for the item that is worked on.
   Ingredient get processedItem {
-    if (ingredients.isEmpty)
+    if (ingredients.isEmpty) {
       throw StateError('Item Application Recipe has no ingredient!');
+    }
     return ingredients[0];
   }
 
   /// `getRequiredHeldItem`: the ingredient for the held tool.
   Ingredient get requiredHeldItem {
-    if (ingredients.length < 2)
+    if (ingredients.length < 2) {
       throw StateError('Item Application Recipe has no tool!');
+    }
     return ingredients[1];
   }
 

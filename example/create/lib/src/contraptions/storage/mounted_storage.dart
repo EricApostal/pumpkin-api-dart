@@ -20,7 +20,12 @@ abstract class MountedItemStorageType {
   const MountedItemStorageType(this.id);
 
   /// `MountedItemStorageType.mount`: the storage of the block, `null` if it has none.
-  MountedItemStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be);
+  MountedItemStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+  );
 
   /// Reads a storage of this type from the compound saved by [MountedItemStorage.encode].
   MountedItemStorage decode(NbtMap tag);
@@ -66,7 +71,8 @@ abstract class MountedItemStorage implements ItemSlots {
   String? get closingSound => null;
 
   /// Number of menu rows, 0 if it cannot be shown (storages that are not 1-6 rows of 9 slots).
-  int get menuRows => slots > 0 && slots % 9 == 0 && slots <= 54 ? slots ~/ 9 : 0;
+  int get menuRows =>
+      slots > 0 && slots % 9 == 0 && slots <= 54 ? slots ~/ 9 : 0;
 }
 
 /// `SyncedMountedStorage`: a storage whose changes are sent to clients.
@@ -91,11 +97,15 @@ abstract class WrapperMountedItemStorage extends MountedItemStorage {
   StoredStack stackInSlot(int slot) => wrapped.stackInSlot(slot);
 
   @override
-  void setStackInSlot(int slot, StoredStack stack) => wrapped.setStackInSlot(slot, stack);
+  void setStackInSlot(int slot, StoredStack stack) =>
+      wrapped.setStackInSlot(slot, stack);
 
   @override
-  StoredStack insertItem(int slot, StoredStack stack, {bool simulate = false}) =>
-      wrapped.insertItem(slot, stack, simulate: simulate);
+  StoredStack insertItem(
+    int slot,
+    StoredStack stack, {
+    bool simulate = false,
+  }) => wrapped.insertItem(slot, stack, simulate: simulate);
 
   @override
   StoredStack extractItem(int slot, int amount, {bool simulate = false}) =>
@@ -105,15 +115,19 @@ abstract class WrapperMountedItemStorage extends MountedItemStorage {
   int slotLimit(int slot) => wrapped.slotLimit(slot);
 
   @override
-  bool isItemValid(int slot, StoredStack stack) => wrapped.isItemValid(slot, stack);
+  bool isItemValid(int slot, StoredStack stack) =>
+      wrapped.isItemValid(slot, stack);
 
   @override
-  void writeFields(NbtMap tag) => tag.putCompound('value', wrapped.serialize());
+  void writeFields(NbtMap tag) =>
+      tag.putCompound('value', wrapped.serializeItemSlots());
 }
 
 /// The number of slots of a vanilla container block.
 int vanillaContainerSize(String blockKey) {
-  final p = blockKey.contains(':') ? blockKey.substring(blockKey.indexOf(':') + 1) : blockKey;
+  final p = blockKey.contains(':')
+      ? blockKey.substring(blockKey.indexOf(':') + 1)
+      : blockKey;
   if (p == 'hopper' || p == 'brewing_stand') return 5;
   if (p == 'dispenser' || p == 'dropper' || p == 'crafter') return 9;
   if (p == 'furnace' || p == 'blast_furnace' || p == 'smoker') return 3;
@@ -195,16 +209,25 @@ class FallbackMountedStorage extends WrapperMountedItemStorage {
 class SimpleMountedStorageType extends MountedItemStorageType {
   const SimpleMountedStorageType([super.id = 'create:simple']);
 
-  SimpleMountedStorage create(ItemStackHandler h) => SimpleMountedStorage(this, h);
+  SimpleMountedStorage create(ItemStackHandler h) =>
+      SimpleMountedStorage(this, h);
 
   @override
-  MountedItemStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be) {
+  MountedItemStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+  ) {
     if (be == null) return null;
-    return create(_handlerFromVanillaItems(be.saved, vanillaContainerSize(state.key)));
+    return create(
+      _handlerFromVanillaItems(be.saved, vanillaContainerSize(state.key)),
+    );
   }
 
   @override
-  MountedItemStorage decode(NbtMap tag) => create(ItemStackHandler.fromNbt(tag.getCompound('value')));
+  MountedItemStorage decode(NbtMap tag) =>
+      create(ItemStackHandler.fromItemSlotsNbt(tag.getCompound('value')));
 }
 
 /// `create:chest`.
@@ -212,7 +235,8 @@ class ChestMountedStorageType extends SimpleMountedStorageType {
   const ChestMountedStorageType() : super('create:chest');
 
   @override
-  SimpleMountedStorage create(ItemStackHandler h) => ChestMountedStorage(this, h);
+  SimpleMountedStorage create(ItemStackHandler h) =>
+      ChestMountedStorage(this, h);
 }
 
 /// `create:dispenser` (dispensers and droppers).
@@ -220,7 +244,8 @@ class DispenserMountedStorageType extends SimpleMountedStorageType {
   const DispenserMountedStorageType() : super('create:dispenser');
 
   @override
-  SimpleMountedStorage create(ItemStackHandler h) => DispenserMountedStorage(this, h);
+  SimpleMountedStorage create(ItemStackHandler h) =>
+      DispenserMountedStorage(this, h);
 
   @override
   bool get isInternal => true;
@@ -231,15 +256,28 @@ class FallbackMountedStorageType extends MountedItemStorageType {
   const FallbackMountedStorageType() : super('create:fallback');
 
   @override
-  MountedItemStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be) {
+  MountedItemStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+  ) {
     if (be == null) return null;
     final inv = be.saved.getCompoundOrNull('Inventory');
-    if (inv == null || !inv.contains('Items') || !inv.contains('Size')) return null;
+    if (inv == null || !inv.contains('Items') || !inv.contains('Size'))
+      return null;
     return FallbackMountedStorage(this, ItemStackHandler.fromNbt(inv));
   }
 
   @override
-  MountedItemStorage decode(NbtMap tag) => FallbackMountedStorage(this, ItemStackHandler.fromNbt(tag.getCompound('value')));
+  MountedItemStorage decode(NbtMap tag) => FallbackMountedStorage(
+    this,
+    ItemStackHandler.fromItemSlotsNbt(tag.getCompound('value')),
+  );
+
+  /// `readLegacy` of an unknown handler: the old block entity `Inventory` compound.
+  MountedItemStorage fromLegacy(NbtMap data) =>
+      FallbackMountedStorage(this, ItemStackHandler.fromNbt(data));
 }
 
 /// The vault's storage (`create:vault`): the `Inventory` of the controller block entity.
@@ -253,7 +291,8 @@ class VaultMountedStorage extends WrapperMountedItemStorage {
   NbtMap? unmount(StructureBlockInfo info, NbtMap? be) {
     if (be == null) return null;
     // `ItemVaultBlockEntity.applyInventoryToBlock`: the slots are copied one by one.
-    final size = be.getCompoundOrNull('Inventory')?.getInt('Size', slots) ?? slots;
+    final size =
+        be.getCompoundOrNull('Inventory')?.getInt('Size', slots) ?? slots;
     final out = ItemStackHandler(size);
     for (var i = 0; i < size; i++) {
       out.stacks[i] = i < slots ? stackInSlot(i) : StoredStack.empty;
@@ -270,7 +309,12 @@ class VaultMountedStorageType extends MountedItemStorageType {
   bool get isFuelBlacklisted => true;
 
   @override
-  MountedItemStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be) {
+  MountedItemStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+  ) {
     if (be == null) return null;
     final inv = be.saved.getCompoundOrNull('Inventory');
     if (inv == null) return null;
@@ -278,26 +322,40 @@ class VaultMountedStorageType extends MountedItemStorageType {
   }
 
   @override
-  MountedItemStorage decode(NbtMap tag) => VaultMountedStorage(this, ItemStackHandler.fromNbt(tag.getCompound('value')));
+  MountedItemStorage decode(NbtMap tag) => VaultMountedStorage(
+    this,
+    ItemStackHandler.fromItemSlotsNbt(tag.getCompound('value')),
+  );
+
+  /// `ItemVaultMountedStorage.fromLegacy`: the old block entity `Inventory` compound.
+  MountedItemStorage fromLegacy(NbtMap data) =>
+      VaultMountedStorage(this, ItemStackHandler.fromNbt(data));
 }
 
 /// The toolbox storage (`create:toolbox`): the `Inventory` compound (stacks and filters) of the toolbox.
 class ToolboxMountedStorage extends WrapperMountedItemStorage {
-  /// The rest of the saved inventory (compartment filters) that is kept as it was.
+  /// The rest of the saved inventory (compartment filters) that is kept as it was when unmounting.
   final NbtMap extras;
 
-  ToolboxMountedStorage(super.type, super.wrapped, this.extras);
+  /// `ToolboxInventory.filters`: one filter per compartment (8).
+  final List<StoredStack> filters;
+
+  ToolboxMountedStorage(super.type, super.wrapped, this.extras, this.filters);
 
   @override
   bool get canOpen => false;
 
   @override
   void writeFields(NbtMap tag) {
-    final v = wrapped.serialize();
-    for (final e in extras.map.entries) {
-      v[e.key] = copyValue(e.value);
-    }
-    tag.putCompound('value', v);
+    // `ToolboxInventory.CODEC`: `{items: ItemSlots, filters: [ItemStack.OPTIONAL_CODEC]}`.
+    tag.putCompound(
+      'value',
+      NbtMap()
+        ..putCompound('items', wrapped.serializeItemSlots())
+        ..putList('filters', [
+          for (final s in filters) (s.isEmpty ? NbtMap() : s.toNbt()).toValue(),
+        ]),
+    );
   }
 
   @override
@@ -323,27 +381,66 @@ class ToolboxMountedStorageType extends MountedItemStorageType {
 
   static const _handlerKeys = {'Size', 'Items'};
 
+  /// `ToolboxInventory.deserializeNBT`: the `Compartments` list, cleared to 8 empty filters when
+  /// it does not have exactly 8 entries.
+  static List<StoredStack> _readBlockEntityFilters(NbtMap inv) {
+    final filters = [
+      for (final v in inv.getList('Compartments'))
+        StoredStack.fromNbt(NbtMap.of(v)),
+    ];
+    if (filters.length != 8) {
+      return List<StoredStack>.filled(8, StoredStack.empty);
+    }
+    return filters;
+  }
+
   ToolboxMountedStorage _from(NbtMap inv) {
     final extras = NbtMap({
       for (final e in inv.map.entries)
         if (!_handlerKeys.contains(e.key)) e.key: copyValue(e.value),
     });
-    return ToolboxMountedStorage(this, ItemStackHandler.fromNbt(inv), extras);
+    return ToolboxMountedStorage(
+      this,
+      ItemStackHandler.fromNbt(inv),
+      extras,
+      _readBlockEntityFilters(inv),
+    );
   }
 
+  /// `ToolboxInventory.CODEC` of the storage `value`.
+  ToolboxMountedStorage _fromCodec(NbtMap value) => ToolboxMountedStorage(
+    this,
+    ItemStackHandler.fromItemSlotsNbt(value.getCompound('items')),
+    NbtMap(),
+    [
+      for (final v in value.getList('filters'))
+        StoredStack.fromNbt(NbtMap.of(v)),
+    ],
+  );
+
   @override
-  MountedItemStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be) {
+  MountedItemStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+  ) {
     final inv = be?.saved.getCompoundOrNull('Inventory');
     return inv == null ? null : _from(inv);
   }
 
   @override
-  MountedItemStorage decode(NbtMap tag) => _from(tag.getCompound('value'));
+  MountedItemStorage decode(NbtMap tag) => _fromCodec(tag.getCompound('value'));
+
+  /// `ToolboxMountedStorage.fromLegacy`: the old block entity `Inventory` compound.
+  MountedItemStorage fromLegacy(NbtMap data) => _from(data);
 }
 
 /// The depot storage (`create:depot`): one slot, the held item.
-class DepotMountedStorage extends WrapperMountedItemStorage with SyncedMountedStorage {
-  DepotMountedStorage(MountedItemStorageType type, StoredStack held) : super(type, ItemStackHandler.of([held])) {
+class DepotMountedStorage extends WrapperMountedItemStorage
+    with SyncedMountedStorage {
+  DepotMountedStorage(MountedItemStorageType type, StoredStack held)
+    : super(type, ItemStackHandler.of([held])) {
     wrapped.onChange = (_) => dirty = true;
   }
 
@@ -355,7 +452,8 @@ class DepotMountedStorage extends WrapperMountedItemStorage with SyncedMountedSt
   bool get canOpen => false;
 
   @override
-  void writeFields(NbtMap tag) => tag.putCompound('value', item.isEmpty ? NbtMap() : item.toNbt());
+  void writeFields(NbtMap tag) =>
+      tag.putCompound('value', item.isEmpty ? NbtMap() : item.toNbt());
 
   @override
   NbtMap? unmount(StructureBlockInfo info, NbtMap? be) {
@@ -366,14 +464,16 @@ class DepotMountedStorage extends WrapperMountedItemStorage with SyncedMountedSt
       be.remove('HeldItem');
       return be;
     }
-    final t = held ?? (NbtMap()
-      ..putFloat('Pos', 0)
-      ..putFloat('PrevPos', 0)
-      ..putFloat('Offset', 0)
-      ..putFloat('PrevOffset', 0)
-      ..putInt('InSegment', 0)
-      ..putInt('Angle', 0)
-      ..putInt('InDirection', 0));
+    final t =
+        held ??
+        (NbtMap()
+          ..putFloat('Pos', 0)
+          ..putFloat('PrevPos', 0)
+          ..putFloat('Offset', 0)
+          ..putFloat('PrevOffset', 0)
+          ..putInt('InSegment', 0)
+          ..putInt('Angle', 0)
+          ..putInt('InDirection', 0));
     t.putCompound('Item', item.toNbt());
     be.putCompound('HeldItem', t);
     return be;
@@ -384,23 +484,47 @@ class DepotMountedStorageType extends MountedItemStorageType {
   const DepotMountedStorageType() : super('create:depot');
 
   @override
-  MountedItemStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be) {
+  MountedItemStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+  ) {
     if (be == null) return null;
     final held = be.saved.getCompoundOrNull('HeldItem');
-    return DepotMountedStorage(this, held == null ? StoredStack.empty : StoredStack.fromNbt(held.getCompoundOrNull('Item')));
+    return DepotMountedStorage(
+      this,
+      held == null
+          ? StoredStack.empty
+          : StoredStack.fromNbt(held.getCompoundOrNull('Item')),
+    );
   }
 
   @override
   MountedItemStorage decode(NbtMap tag) {
     final v = tag.getCompound('value');
-    return DepotMountedStorage(this, v.isEmpty ? StoredStack.empty : StoredStack.fromNbt(v));
+    return DepotMountedStorage(
+      this,
+      v.isEmpty ? StoredStack.empty : StoredStack.fromNbt(v),
+    );
+  }
+
+  /// `DepotMountedStorage.fromLegacy`: a one-slot handler holding the item.
+  MountedItemStorage fromLegacy(NbtMap data) {
+    final handler = ItemStackHandler.fromNbt(data);
+    return DepotMountedStorage(
+      this,
+      handler.slots == 1 ? handler.stackInSlot(0) : StoredStack.empty,
+    );
   }
 }
 
 /// The creative crate storage (`create:creative_crate`): endlessly supplies its stack.
 class CreativeCrateMountedStorage extends MountedItemStorage {
   final StoredStack suppliedStack;
-  late final StoredStack _cached = suppliedStack.copyWithCount(suppliedStack.maxStackSize);
+  late final StoredStack _cached = suppliedStack.copyWithCount(
+    suppliedStack.maxStackSize,
+  );
 
   CreativeCrateMountedStorage(super.type, this.suppliedStack);
 
@@ -414,12 +538,18 @@ class CreativeCrateMountedStorage extends MountedItemStorage {
   void setStackInSlot(int slot, StoredStack stack) {}
 
   @override
-  StoredStack insertItem(int slot, StoredStack stack, {bool simulate = false}) => StoredStack.empty;
+  StoredStack insertItem(
+    int slot,
+    StoredStack stack, {
+    bool simulate = false,
+  }) => StoredStack.empty;
 
   @override
   StoredStack extractItem(int slot, int amount, {bool simulate = false}) {
     if (slot == 0 && suppliedStack.isNotEmpty) {
-      final count = amount < suppliedStack.maxStackSize ? amount : suppliedStack.maxStackSize;
+      final count = amount < suppliedStack.maxStackSize
+          ? amount
+          : suppliedStack.maxStackSize;
       return suppliedStack.copyWithCount(count);
     }
     return StoredStack.empty;
@@ -435,7 +565,10 @@ class CreativeCrateMountedStorage extends MountedItemStorage {
   bool get canOpen => false;
 
   @override
-  void writeFields(NbtMap tag) => tag.putCompound('value', suppliedStack.isEmpty ? NbtMap() : suppliedStack.toNbt());
+  void writeFields(NbtMap tag) => tag.putCompound(
+    'value',
+    suppliedStack.isEmpty ? NbtMap() : suppliedStack.toNbt(),
+  );
 
   @override
   NbtMap? unmount(StructureBlockInfo info, NbtMap? be) => be;
@@ -445,19 +578,35 @@ class CreativeCrateMountedStorageType extends MountedItemStorageType {
   const CreativeCrateMountedStorageType() : super('create:creative_crate');
 
   @override
-  MountedItemStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be) {
+  MountedItemStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+  ) {
     if (be == null) return null;
     // `CreativeCrateBlockEntity`: the supplied stack is the filter of the filtering behaviour.
     final filter = be.saved.getCompoundOrNull('Filter');
-    final stack = filter == null ? StoredStack.empty : StoredStack.fromNbt(filter);
+    final stack = filter == null
+        ? StoredStack.empty
+        : StoredStack.fromNbt(filter);
     return CreativeCrateMountedStorage(this, stack);
   }
 
   @override
   MountedItemStorage decode(NbtMap tag) {
     final v = tag.getCompound('value');
-    return CreativeCrateMountedStorage(this, v.isEmpty ? StoredStack.empty : StoredStack.fromNbt(v));
+    return CreativeCrateMountedStorage(
+      this,
+      v.isEmpty ? StoredStack.empty : StoredStack.fromNbt(v),
+    );
   }
+
+  /// `readLegacy` of the `Bottomless` marker: the supplied stack is `ProvidedStack`.
+  MountedItemStorage fromLegacy(NbtMap data) => CreativeCrateMountedStorage(
+    this,
+    StoredStack.fromNbt(data.getCompoundOrNull('ProvidedStack')),
+  );
 }
 
 // -- Fluids -----------------------------------------------------------------------------------------------
@@ -468,7 +617,13 @@ abstract class MountedFluidStorageType {
 
   const MountedFluidStorageType(this.id);
 
-  MountedFluidStorage? mount(ContraptionLevel level, BState state, Pos pos, CapturedBlockEntity? be, ContraptionSettings settings);
+  MountedFluidStorage? mount(
+    ContraptionLevel level,
+    BState state,
+    Pos pos,
+    CapturedBlockEntity? be,
+    ContraptionSettings settings,
+  );
 
   MountedFluidStorage decode(NbtMap tag);
 }
@@ -492,11 +647,15 @@ abstract class MountedFluidStorage implements FluidTanks {
 }
 
 /// `FluidTankMountedStorage`: the content of a fluid tank (the controller block entity).
-class FluidTankMountedStorage extends MountedFluidStorage with SyncedMountedStorage {
+class FluidTankMountedStorage extends MountedFluidStorage
+    with SyncedMountedStorage {
   final SingleFluidTank tank;
 
-  FluidTankMountedStorage(MountedFluidStorageType type, int capacity, StoredFluid fluid)
-    : tank = SingleFluidTank(capacity, fluid),
+  FluidTankMountedStorage(
+    MountedFluidStorageType type,
+    int capacity,
+    StoredFluid fluid,
+  ) : tank = SingleFluidTank(capacity, fluid),
       super(type) {
     tank.onChange = () => dirty = true;
   }
@@ -518,13 +677,16 @@ class FluidTankMountedStorage extends MountedFluidStorage with SyncedMountedStor
   bool isFluidValid(int t, StoredFluid f) => tank.isFluidValid(t, f);
 
   @override
-  int fill(StoredFluid f, {bool simulate = false}) => tank.fill(f, simulate: simulate);
+  int fill(StoredFluid f, {bool simulate = false}) =>
+      tank.fill(f, simulate: simulate);
 
   @override
-  StoredFluid drain(int max, {bool simulate = false}) => tank.drain(max, simulate: simulate);
+  StoredFluid drain(int max, {bool simulate = false}) =>
+      tank.drain(max, simulate: simulate);
 
   @override
-  StoredFluid drainFluid(StoredFluid f, {bool simulate = false}) => tank.drainFluid(f, simulate: simulate);
+  StoredFluid drainFluid(StoredFluid f, {bool simulate = false}) =>
+      tank.drainFluid(f, simulate: simulate);
 
   @override
   void writeFields(NbtMap tag) {
@@ -560,14 +722,29 @@ class FluidTankMountedStorageType extends MountedFluidStorageType {
     final height = be.saved.getInt('Height');
     final capacity = width * width * height * settings.fluidTankCapacity * 1000;
     final content = be.saved.getCompoundOrNull('TankContent');
-    return FluidTankMountedStorage(this, capacity, content == null ? StoredFluid.empty : StoredFluid.fromNbt(content));
+    return FluidTankMountedStorage(
+      this,
+      capacity,
+      content == null ? StoredFluid.empty : StoredFluid.fromNbt(content),
+    );
   }
 
   @override
   MountedFluidStorage decode(NbtMap tag) {
     final fluid = tag.getCompoundOrNull('fluid');
-    return FluidTankMountedStorage(this, tag.getInt('capacity'), fluid == null ? StoredFluid.empty : StoredFluid.fromNbt(fluid));
+    return FluidTankMountedStorage(
+      this,
+      tag.getInt('capacity'),
+      fluid == null ? StoredFluid.empty : StoredFluid.fromNbt(fluid),
+    );
   }
+
+  /// `FluidTankMountedStorage.fromLegacy`: `Capacity` and the fluid fields at the top level.
+  MountedFluidStorage fromLegacy(NbtMap data) => FluidTankMountedStorage(
+    this,
+    data.getInt('Capacity'),
+    StoredFluid.fromNbt(data),
+  );
 }
 
 /// `CreativeFluidTankMountedStorage`: endlessly supplies its fluid.
@@ -581,24 +758,31 @@ class CreativeFluidTankMountedStorage extends MountedFluidStorage {
   int get tanks => 1;
 
   @override
-  StoredFluid fluidInTank(int tank) => contained.isEmpty ? StoredFluid.empty : contained.copyWithAmount(capacity);
+  StoredFluid fluidInTank(int tank) => contained.isEmpty
+      ? StoredFluid.empty
+      : contained.copyWithAmount(capacity);
 
   @override
   int tankCapacity(int tank) => capacity;
 
   @override
-  bool isFluidValid(int tank, StoredFluid fluid) => contained.isEmpty || contained.isFluidEqual(fluid);
+  bool isFluidValid(int tank, StoredFluid fluid) =>
+      contained.isEmpty || contained.isFluidEqual(fluid);
 
   @override
-  int fill(StoredFluid fluid, {bool simulate = false}) => contained.isEmpty ? 0 : fluid.amount;
+  int fill(StoredFluid fluid, {bool simulate = false}) =>
+      contained.isEmpty ? 0 : fluid.amount;
 
   @override
-  StoredFluid drain(int maxAmount, {bool simulate = false}) =>
-      contained.isEmpty ? StoredFluid.empty : contained.copyWithAmount(maxAmount < capacity ? maxAmount : capacity);
+  StoredFluid drain(int maxAmount, {bool simulate = false}) => contained.isEmpty
+      ? StoredFluid.empty
+      : contained.copyWithAmount(maxAmount < capacity ? maxAmount : capacity);
 
   @override
   StoredFluid drainFluid(StoredFluid fluid, {bool simulate = false}) =>
-      contained.isEmpty || !contained.isFluidEqual(fluid) ? StoredFluid.empty : drain(fluid.amount);
+      contained.isEmpty || !contained.isFluidEqual(fluid)
+      ? StoredFluid.empty
+      : drain(fluid.amount);
 
   @override
   void writeFields(NbtMap tag) {
@@ -606,7 +790,10 @@ class CreativeFluidTankMountedStorage extends MountedFluidStorage {
       'value',
       NbtMap()
         ..putInt('capacity', capacity)
-        ..putCompound('fluid', contained.isEmpty ? NbtMap() : contained.toNbt()),
+        ..putCompound(
+          'fluid',
+          contained.isEmpty ? NbtMap() : contained.toNbt(),
+        ),
     );
   }
 
@@ -615,7 +802,8 @@ class CreativeFluidTankMountedStorage extends MountedFluidStorage {
 }
 
 class CreativeFluidTankMountedStorageType extends MountedFluidStorageType {
-  const CreativeFluidTankMountedStorageType() : super('create:creative_fluid_tank');
+  const CreativeFluidTankMountedStorageType()
+    : super('create:creative_fluid_tank');
 
   @override
   MountedFluidStorage? mount(
@@ -631,15 +819,31 @@ class CreativeFluidTankMountedStorageType extends MountedFluidStorageType {
     final capacity = width * width * height * settings.fluidTankCapacity * 1000;
     // `CreativeFluidTankBlockEntity`: the tank content is the supplied fluid.
     final content = be.saved.getCompoundOrNull('TankContent');
-    return CreativeFluidTankMountedStorage(this, capacity, content == null ? StoredFluid.empty : StoredFluid.fromNbt(content));
+    return CreativeFluidTankMountedStorage(
+      this,
+      capacity,
+      content == null ? StoredFluid.empty : StoredFluid.fromNbt(content),
+    );
   }
 
   @override
   MountedFluidStorage decode(NbtMap tag) {
     final v = tag.getCompound('value');
     final fluid = v.getCompoundOrNull('fluid');
-    return CreativeFluidTankMountedStorage(this, v.getInt('capacity'), fluid == null ? StoredFluid.empty : StoredFluid.fromNbt(fluid));
+    return CreativeFluidTankMountedStorage(
+      this,
+      v.getInt('capacity'),
+      fluid == null ? StoredFluid.empty : StoredFluid.fromNbt(fluid),
+    );
   }
+
+  /// `CreativeFluidTankMountedStorage.fromLegacy`: `Capacity` and `ProvidedStack`.
+  MountedFluidStorage fromLegacy(NbtMap data) =>
+      CreativeFluidTankMountedStorage(
+        this,
+        data.getInt('Capacity'),
+        StoredFluid.fromNbt(data.getCompoundOrNull('ProvidedStack')),
+      );
 }
 
 // -- The registry -------------------------------------------------------------------------------------------
@@ -654,18 +858,24 @@ abstract final class MountedStorages {
   static final _fluidByBlock = <String, MountedFluidStorageType>{};
 
   /// The block tag of blocks that must never use the fallback (`create:fallback_mounted_storage_blacklist`).
-  static String fallbackBlacklistTag = 'create:fallback_mounted_storage_blacklist';
+  static String fallbackBlacklistTag =
+      'create:fallback_mounted_storage_blacklist';
 
-  static const MountedItemStorageType fallback = FallbackMountedStorageType();
-  static const MountedItemStorageType simple = SimpleMountedStorageType();
-  static const MountedItemStorageType chest = ChestMountedStorageType();
-  static const MountedItemStorageType dispenser = DispenserMountedStorageType();
-  static const MountedItemStorageType vault = VaultMountedStorageType();
-  static const MountedItemStorageType toolbox = ToolboxMountedStorageType();
-  static const MountedItemStorageType depot = DepotMountedStorageType();
-  static const MountedItemStorageType creativeCrate = CreativeCrateMountedStorageType();
-  static const MountedFluidStorageType fluidTank = FluidTankMountedStorageType();
-  static const MountedFluidStorageType creativeFluidTank = CreativeFluidTankMountedStorageType();
+  static const FallbackMountedStorageType fallback =
+      FallbackMountedStorageType();
+  static const SimpleMountedStorageType simple = SimpleMountedStorageType();
+  static const ChestMountedStorageType chest = ChestMountedStorageType();
+  static const DispenserMountedStorageType dispenser =
+      DispenserMountedStorageType();
+  static const VaultMountedStorageType vault = VaultMountedStorageType();
+  static const ToolboxMountedStorageType toolbox = ToolboxMountedStorageType();
+  static const DepotMountedStorageType depot = DepotMountedStorageType();
+  static const CreativeCrateMountedStorageType creativeCrate =
+      CreativeCrateMountedStorageType();
+  static const FluidTankMountedStorageType fluidTank =
+      FluidTankMountedStorageType();
+  static const CreativeFluidTankMountedStorageType creativeFluidTank =
+      CreativeFluidTankMountedStorageType();
 
   static bool _installed = false;
 
@@ -673,7 +883,16 @@ abstract final class MountedStorages {
   static void installDefaults() {
     if (_installed) return;
     _installed = true;
-    for (final t in [fallback, simple, chest, dispenser, vault, toolbox, depot, creativeCrate]) {
+    for (final t in [
+      fallback,
+      simple,
+      chest,
+      dispenser,
+      vault,
+      toolbox,
+      depot,
+      creativeCrate,
+    ]) {
       registerItemType(t);
     }
     registerFluidType(fluidTank);
@@ -697,20 +916,28 @@ abstract final class MountedStorages {
     associateFluid('create:creative_fluid_tank', creativeFluidTank);
   }
 
-  static void registerItemType(MountedItemStorageType type) => itemTypes[type.id] = type;
+  static void registerItemType(MountedItemStorageType type) =>
+      itemTypes[type.id] = type;
 
-  static void registerFluidType(MountedFluidStorageType type) => fluidTypes[type.id] = type;
+  static void registerFluidType(MountedFluidStorageType type) =>
+      fluidTypes[type.id] = type;
 
   /// Uses [type] for the block [blockKey].
-  static void associateItem(String blockKey, MountedItemStorageType type) => _itemByBlock[blockKey] = type;
+  static void associateItem(String blockKey, MountedItemStorageType type) =>
+      _itemByBlock[blockKey] = type;
 
   /// Uses [type] for all blocks of [tag].
-  static void associateItemTag(String tag, MountedItemStorageType type) => _itemByTag.add((tag, type));
+  static void associateItemTag(String tag, MountedItemStorageType type) =>
+      _itemByTag.add((tag, type));
 
-  static void associateFluid(String blockKey, MountedFluidStorageType type) => _fluidByBlock[blockKey] = type;
+  static void associateFluid(String blockKey, MountedFluidStorageType type) =>
+      _fluidByBlock[blockKey] = type;
 
   /// The item type of a block state: its registration, then the fallback.
-  static MountedItemStorageType? itemTypeOf(BState state, ContraptionLevel level) {
+  static MountedItemStorageType? itemTypeOf(
+    BState state,
+    ContraptionLevel level,
+  ) {
     final byBlock = _itemByBlock[state.key];
     if (byBlock != null) return byBlock;
     for (final (tag, type) in _itemByTag) {
@@ -719,7 +946,8 @@ abstract final class MountedStorages {
     return level.stateHasTag(state, fallbackBlacklistTag) ? null : fallback;
   }
 
-  static MountedFluidStorageType? fluidTypeOf(BState state) => _fluidByBlock[state.key];
+  static MountedFluidStorageType? fluidTypeOf(BState state) =>
+      _fluidByBlock[state.key];
 
   /// Reads a saved item storage (`MountedItemStorage.CODEC`).
   static MountedItemStorage? decodeItem(NbtMap tag) {

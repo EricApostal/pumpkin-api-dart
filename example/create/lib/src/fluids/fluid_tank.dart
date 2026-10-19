@@ -438,10 +438,11 @@ class FluidTankBlockEntity extends CreateBlockEntity
       height = tag.getInt('Height') ?? 0;
       tank.capacity = totalTankSize * capacityMultiplier;
       final content = tag.getCompound('TankContent');
+      // `CreateFluidTank.readFromNBT`: the stack is nested under `Fluid`.
       tank.rawSet(
         content == null
             ? FStack.empty
-            : FluidNbt.read(valueOfCompound(content)),
+            : readFluidTankNbt(valueOfCompound(content)),
       );
       final overflow = tank.fluidAmount - tank.capacity;
       if (overflow > 0) tank.drain(overflow, simulate: false);
@@ -490,7 +491,8 @@ class FluidTankBlockEntity extends CreateBlockEntity
         ..putBool('Window', window)
         ..putInt('Size', width)
         ..putInt('Height', height);
-      tag.putCompound('TankContent', compoundOf(FluidNbt.write(tank.fluid)));
+      // `CreateFluidTank.writeToNBT`: the stack is nested under `Fluid`.
+      tag.putCompound('TankContent', compoundOf(fluidTankNbt(tank.fluid)));
     }
     tag.putInt('Luminosity', luminosity);
 

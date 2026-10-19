@@ -15,7 +15,8 @@ import '../support/shapes.dart';
 import 'link_behaviour.dart';
 import 'link_slots.dart';
 
-Direction _facing(Map<String, String> p) => Direction.byName(p['facing'] ?? 'north') ?? Direction.north;
+Direction _facing(Map<String, String> p) =>
+    Direction.byName(p['facing'] ?? 'north') ?? Direction.north;
 
 /// `RedstoneLinkBlockEntity`.
 final class RedstoneLinkBlockEntity extends CreateBlockEntity {
@@ -50,7 +51,9 @@ final class RedstoneLinkBlockEntity extends CreateBlockEntity {
   }
 
   bool _slotTest(bool first, Vec3 localHit) {
-    final props = world == null ? null : Lvl(world!).info(pos.toPos())?.properties;
+    final props = world == null
+        ? null
+        : Lvl(world!).info(pos.toPos())?.properties;
     final facing = props == null ? Direction.north : _facing(props);
     return frequencySlotHit(facing, localHit, first: first);
   }
@@ -93,7 +96,10 @@ final class RedstoneLinkBlockEntity extends CreateBlockEntity {
 
     receivedSignal = tag.getInt('Receive') ?? 0;
     receivedSignalChanged = tag.getBool('ReceivedChanged') ?? false;
-    if (!link.newPosition) transmittedSignal = tag.getInt('Transmit') ?? 0;
+    // Java also restores the transmitted strength when the world is not available yet
+    // (`level == null`), so the network starts with the saved power.
+    if (world == null || !link.newPosition)
+      transmittedSignal = tag.getInt('Transmit') ?? 0;
   }
 
   @override
@@ -120,7 +126,8 @@ final class RedstoneLinkBlockEntity extends CreateBlockEntity {
       unawaited(lvl.setProps(p, {'powered': '${!powered}'}, neighbors: true));
     }
 
-    if (receivedSignalChanged) unawaited(updateSelfAndAttached(lvl, info.properties));
+    if (receivedSignalChanged)
+      unawaited(updateSelfAndAttached(lvl, info.properties));
   }
 
   /// `updateSelfAndAttached`: the strength changed, so the link, the block it sits on and
@@ -160,8 +167,18 @@ final class RedstoneLinkBlock {
       placement: const [PlacementRule.clickedFace('facing')],
       shapeRules: [
         // REDSTONE_BRIDGE: the tablet facing south; vertical links use the square tablet.
-        ...directionalShapeRules('facing', [pixelBox(3, 1, 0, 13, 15, 3)], Direction.south, directions: Direction.horizontals),
-        ...directionalShapeRules('facing', [pixelBox(2, 2, 0, 14, 14, 3)], Direction.south, directions: [Direction.up, Direction.down]),
+        ...directionalShapeRules(
+          'facing',
+          [pixelBox(3, 1, 0, 13, 15, 3)],
+          Direction.south,
+          directions: Direction.horizontals,
+        ),
+        ...directionalShapeRules(
+          'facing',
+          [pixelBox(2, 2, 0, 14, 14, 3)],
+          Direction.south,
+          directions: [Direction.up, Direction.down],
+        ),
       ],
       behavior: BlockBehavior(
         onPlaced: _onPlaced,
@@ -170,7 +187,9 @@ final class RedstoneLinkBlock {
         onCanPlace: (server, e) {
           final face = e.face?.toDirection();
           if (face == null) return e.canPlace;
-          return e.canPlace && !Lvl(e.targetWorld).canBeReplaced(e.pos.toPos().relative(face.opposite));
+          return e.canPlace &&
+              !Lvl(e.targetWorld)
+                  .canBeReplaced(e.pos.toPos().relative(face.opposite));
         },
         onWeakPower: (server, e) => _received(e),
         onStrongPower: (server, e) {
@@ -189,7 +208,10 @@ final class RedstoneLinkBlock {
 
   int _received(CustomBlockRedstonePowerEventData e) {
     if (block.stateOf(e.stateIndex)['receiver'] != 'true') return 0;
-    return Rs.i.be<RedstoneLinkBlockEntity>(e.targetWorld, e.pos)?.receivedSignal ?? 0;
+    return Rs.i
+            .be<RedstoneLinkBlockEntity>(e.targetWorld, e.pos)
+            ?.receivedSignal ??
+        0;
   }
 
   BlockEntityTypeSpec entitySpec() => BlockEntityTypeSpec(
@@ -206,7 +228,10 @@ final class RedstoneLinkBlock {
     await updateTransmittedSignal(lvl, e.pos.toPos());
   }
 
-  Future<void> _onNeighborUpdate(Server server, CustomBlockNeighborUpdateEventData e) async {
+  Future<void> _onNeighborUpdate(
+    Server server,
+    CustomBlockNeighborUpdateEventData e,
+  ) async {
     final lvl = Lvl(e.targetWorld);
     final pos = e.pos.toPos();
     final props = lvl.info(pos)?.properties ?? block.stateOf(e.stateIndex);
@@ -222,7 +247,8 @@ final class RedstoneLinkBlock {
   }
 
   /// `canSurvive`: the block behind must not be replaceable.
-  static bool canSurvive(Lvl lvl, Pos pos, Direction facing) => !lvl.canBeReplaced(pos.relative(facing.opposite));
+  static bool canSurvive(Lvl lvl, Pos pos, Direction facing) =>
+      !lvl.canBeReplaced(pos.relative(facing.opposite));
 
   Future<void> _onTick(Server server, CustomBlockTickEventData e) async {
     final lvl = Lvl(e.targetWorld);
@@ -235,7 +261,10 @@ final class RedstoneLinkBlock {
   }
 
   /// `useWithoutItem`: a sneaking click toggles between transmitting and receiving.
-  Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
+  Future<BlockUseResult> _onUse(
+    Server server,
+    CustomBlockUseEventData e,
+  ) async {
     if (e.withItem) return BlockUseResult.tryEmptyHand;
     if (!e.sneaking) return BlockUseResult.pass;
     final lvl = Lvl(e.targetWorld);
@@ -250,17 +279,26 @@ final class RedstoneLinkBlock {
   static Future<bool> toggleMode(Lvl lvl, Pos pos) async {
     final info = lvl.info(pos);
     if (info == null || info.key != 'create:redstone_link') return false;
-    final be = Rs.i.store.typed<RedstoneLinkBlockEntity>(lvl.id, BlockPos(x: pos.x, y: pos.y, z: pos.z));
+    final be = Rs.i.store.typed<RedstoneLinkBlockEntity>(
+      lvl.id,
+      BlockPos(x: pos.x, y: pos.y, z: pos.z),
+    );
     if (be == null) return false;
     final wasReceiver = info.properties['receiver'] == 'true';
     final blockPowered = await lvl.hasNeighborSignal(pos);
-    await lvl.setProps(pos, {'receiver': '${!wasReceiver}', 'powered': '$blockPowered'}, neighbors: true);
-    be.transmit(wasReceiver ? 0 : await getPower(lvl, pos, _facing(info.properties)));
+    await lvl.setProps(pos, {
+      'receiver': '${!wasReceiver}',
+      'powered': '$blockPowered',
+    }, neighbors: true);
+    be.transmit(
+      wasReceiver ? 0 : await getPower(lvl, pos, _facing(info.properties)),
+    );
     return true;
   }
 
   /// `getPower`.
-  static Future<int> getPower(Lvl lvl, Pos pos, Direction facing) => lvl.linkStylePower(pos, facing);
+  static Future<int> getPower(Lvl lvl, Pos pos, Direction facing) =>
+      lvl.linkStylePower(pos, facing);
 
   /// `updateTransmittedSignal`.
   static Future<void> updateTransmittedSignal(Lvl lvl, Pos pos) async {
@@ -269,7 +307,10 @@ final class RedstoneLinkBlock {
     if (info.properties['receiver'] == 'true') return;
 
     var power = await getPower(lvl, pos, _facing(info.properties));
-    final be = Rs.i.store.typed<RedstoneLinkBlockEntity>(lvl.id, BlockPos(x: pos.x, y: pos.y, z: pos.z));
+    final be = Rs.i.store.typed<RedstoneLinkBlockEntity>(
+      lvl.id,
+      BlockPos(x: pos.x, y: pos.y, z: pos.z),
+    );
 
     var powerFromPanels = 0;
     if (be != null) {

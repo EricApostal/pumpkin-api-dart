@@ -22,6 +22,7 @@ import '../../belt/transported_item.dart';
 import '../../items/inventory.dart';
 import '../../items/item_codec.dart';
 import '../../items/item_data.dart';
+import '../../nbt_names.dart';
 import '../../runtime.dart';
 import '../transport_inventory.dart';
 import '../transport_inventory_api.dart';
@@ -143,25 +144,33 @@ class BeltTunnelBlockEntity extends CreateBlockEntity
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
+    // Java's `writeFlapsAndSides` writes `ListTag`s of `IntTag`, not int arrays.
     tag
-      ..putIntArray('Flaps', [for (final d in flaps) d.data3d])
-      ..putIntArray('Sides', [for (final d in sides) d.data3d]);
+      ..putList('Flaps', [for (final v in directionValues(flaps)) NbtTagInt(v)])
+      ..putList('Sides', [
+        for (final v in directionValues(sides)) NbtTagInt(v),
+      ]);
   }
 
   /// Reads `Sides` (and `Flaps`) before the behaviours are read, so the brass tunnel's sided
   /// filters exist when their NBT is loaded.
   void readSides(NbtCompound tag) {
-    sides.clear();
-    for (final v in tag.getIntArray('Sides') ?? const <int>[]) {
-      sides.add(Direction.from3DDataValue(v));
-    }
-    flaps.clear();
-    for (final v in tag.getIntArray('Flaps') ?? const <int>[]) {
-      flaps.add(Direction.from3DDataValue(v));
-    }
+    sides
+      ..clear()
+      ..addAll(directionsFromValues(_intTags(tag.getList('Sides'))));
+    flaps
+      ..clear()
+      ..addAll(directionsFromValues(_intTags(tag.getList('Flaps'))));
     // Backwards compatibility: `Flaps` without `Sides`.
     if (!tag.containsKey('Sides') && tag.containsKey('Flaps'))
       sides.addAll(flaps);
+  }
+
+  /// The values of the `IntTag` elements of [list] (Java's `inbt instanceof IntTag`).
+  static Iterable<int> _intTags(List<Object>? list) sync* {
+    for (final e in list ?? const <Object>[]) {
+      if (e is NbtTagInt) yield e.value;
+    }
   }
 
   @override
@@ -733,7 +742,7 @@ class BrassTunnelBlockEntity extends BeltTunnelBlockEntity {
       ..putInt('DistanceLeft', distributionDistanceLeft)
       ..putInt('DistanceRight', distributionDistanceRight);
     if (stackEnteredFrom != null)
-      tag.putString('StackEnteredFrom', stackEnteredFrom!.serializedName);
+      tag.putString('StackEnteredFrom', directionNbtName(stackEnteredFrom!));
     _writeTargets(tag, 'FilteredTargets', _filteredTargets);
     _writeTargets(tag, 'Targets', _targets);
     super.write(tag, clientPacket: clientPacket);
@@ -767,7 +776,7 @@ class BrassTunnelBlockEntity extends BeltTunnelBlockEntity {
     final enteredFrom = tag.getString('StackEnteredFrom');
     stackEnteredFrom = enteredFrom == null
         ? null
-        : Direction.byName(enteredFrom);
+        : directionFromNbtName(enteredFrom);
     distributionProgress = tag.getDouble('DistributionProgress') ?? 0;
     previousOutputIndex = tag.getInt('PreviousIndex') ?? 0;
     distributionDistanceLeft = tag.getInt('DistanceLeft') ?? 0;

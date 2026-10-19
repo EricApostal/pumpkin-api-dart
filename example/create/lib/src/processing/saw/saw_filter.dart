@@ -18,6 +18,14 @@ class SawFilterBehaviour extends BlockEntityBehaviour {
   /// The filter stack (one item); empty matches everything.
   PStack filter = PStack.empty;
 
+  /// `FilteringBehaviour.count` / `upTo`: written with the filter even though the saw's value box
+  /// does not show the count (kept for NBT parity with `FilteringBehaviour`).
+  int count = 64;
+  bool upTo = true;
+
+  /// `FilteringBehaviour.getMaxStackSize()`.
+  int get maxStackSize => filter.isEmpty ? 64 : filter.maxStack;
+
   /// `FilteringBehaviour.test`: the recipe result passes when the filter is empty or names the
   /// same item.
   bool test(PStack stack) => filter.isEmpty || stack.key == filter.key;
@@ -31,10 +39,19 @@ class SawFilterBehaviour extends BlockEntityBehaviour {
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     filter = StackNbt.read(tag.getCompound('Filter'));
+    count = tag.getInt('FilterAmount') ?? 0;
+    upTo = tag.getBool('UpTo') ?? false;
+    // `FilteringBehaviour.read`: migrate data written before the count existed.
+    if (count == 0) {
+      upTo = true;
+      count = maxStackSize;
+    }
   }
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
-    tag.putCompound('Filter', StackNbt.write(filter));
+    tag.putCompound('Filter', StackNbt.writeOrEmpty(filter));
+    tag.putInt('FilterAmount', count);
+    tag.putBool('UpTo', upTo);
   }
 }

@@ -575,19 +575,30 @@ class BasinBlockEntity extends CreateBlockEntity
       'OutputItems',
       StackNbt.writeList(outputInventory.contents),
     );
+    // `SmartFluidTankBehaviour(INPUT/OUTPUT, this, 2, 1000, true)`: two tanks each, one
+    // `TankSegment` per entry (`InputTanks` / `OutputTanks`).
+    tag.putList('InputTanks', [
+      _tankSegment(inputTankA.fluid),
+      _tankSegment(inputTankB.fluid),
+    ]);
+    tag.putList('OutputTanks', [
+      _tankSegment(outputTankA.fluid),
+      _tankSegment(outputTankB.fluid),
+    ]);
     final preferred = preferredSpoutput;
     if (preferred != null) tag.putString('PreferredSpoutput', preferred.name);
-    tag.putString(
-      'DisabledSpoutput',
-      [for (final d in disabledSpoutputs) d.name].join(','),
-    );
+    // `DisabledSpoutput` is a list of direction names in Java, not one joined string.
+    tag.putList('DisabledSpoutput', [
+      for (final d in disabledSpoutputs) NbtTagStringTag(d.name),
+    ]);
     tag.putList('Overflow', [
       for (final stack in spoutputBuffer) StackNbt.write(stack),
     ]);
     tag.putList('FluidOverflow', [
       for (final fluid in spoutputFluidBuffer) StackNbt.writeFluid(fluid),
     ]);
-    if (filter.isNotEmpty) tag.putCompound('Filter', StackNbt.write(filter));
+    // `FilteringBehaviour.write`: `Filter` is written even when unset (an empty compound).
+    tag.putCompound('Filter', StackNbt.writeOrEmpty(filter));
   }
 
   @override
@@ -600,13 +611,31 @@ class BasinBlockEntity extends CreateBlockEntity
       StackNbt.readList(tag.getCompound('OutputItems'), outputInventory.slots),
     );
 
+    _readTanks(tag.getList('InputTanks'), [inputTankA, inputTankB]);
+    _readTanks(tag.getList('OutputTanks'), [outputTankA, outputTankB]);
+
     final preferred = tag.getString('PreferredSpoutput');
     preferredSpoutput = preferred == null ? null : Direction.byName(preferred);
     disabledSpoutputs.clear();
-    for (final name in (tag.getString('DisabledSpoutput') ?? '').split(',')) {
-      if (name.isEmpty) continue;
-      final direction = Direction.byName(name);
-      if (direction != null) disabledSpoutputs.add(direction);
+    // A list of names (Java); the comma-joined string of earlier versions still parses.
+    final legacyDisabled = tag.getString('DisabledSpoutput');
+    if (legacyDisabled != null) {
+      for (final name in legacyDisabled.split(',')) {
+        if (name.isEmpty) continue;
+        final direction = Direction.byName(name);
+        if (direction != null) disabledSpoutputs.add(direction);
+      }
+    } else {
+      for (final element
+          in tag.getList('DisabledSpoutput') ?? const <Object>[]) {
+        final name = switch (element) {
+          NbtTagStringTag(:final value) => value,
+          _ => null,
+        };
+        if (name == null) continue;
+        final direction = Direction.byName(name);
+        if (direction != null) disabledSpoutputs.add(direction);
+      }
     }
     spoutputBuffer
       ..clear()
@@ -622,5 +651,36 @@ class BasinBlockEntity extends CreateBlockEntity
       ]);
     filter = StackNbt.read(tag.getCompound('Filter'));
     contentsChanged = true;
+  }
+
+  /// One `SmartFluidTankBehaviour.TankSegment`: `{TankContent: {Fluid: ...}, Level: {...}}`.
+  NbtCompound _tankSegment(PFluid fluid) {
+    final fill = tankCapacity <= 0
+        ? 0.0
+        : (fluid.amount / tankCapacity).clamp(0.0, 1.0).toDouble();
+    final content = NbtCompound();
+    // `CreateFluidTank.writeToNBT` omits `Fluid` for an empty tank.
+    if (fluid.isNotEmpty) {
+      content.putCompound('Fluid', StackNbt.writeFluid(fluid));
+    }
+    return NbtCompound()
+      ..putCompound('TankContent', content)
+      ..putCompound(
+        'Level',
+        NbtCompound()
+          ..putFloat('Speed', 0)
+          ..putFloat('Target', fill)
+          ..putFloat('Value', fill),
+      );
+  }
+
+  static void _readTanks(List<Object>? list, List<SmartFluidTank> tanks) {
+    if (list == null) return;
+    for (var i = 0; i < tanks.length && i < list.length; i++) {
+      final element = list[i];
+      if (element is! NbtCompound) continue;
+      final content = element.getCompound('TankContent');
+      tanks[i].setFluid(StackNbt.readFluid(content?.getCompound('Fluid')));
+    }
   }
 }

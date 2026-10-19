@@ -113,7 +113,9 @@ final class Gen {
       case NetKind.nbtCompound:
         return compound(0);
       case NetKind.nbtTag:
-        return rnd.nextInt(5) == 0 ? null : nbt(0);
+        // `ByteBufCodecs.TAG` rejects TAG_End, and the manifest's nbtTag fields use
+        // compound-only codecs (legacy NBT / codec-as-nbt), so a compound is always valid.
+        return compound(0);
       case NetKind.component:
         return rnd.nextBool() ? NbtValue.string(text(10)) : compound(0);
       case NetKind.bytes:
@@ -217,6 +219,35 @@ void main() {
         }
       });
     }
+  });
+
+  group('nbtTag', () {
+    final codec = compileType(const NetType(NetKind.nbtTag));
+
+    test('round trips any non-null tag', () {
+      final gen = Gen(Random(11));
+      for (var i = 0; i < 30; i++) {
+        final v = gen.nbt(0);
+        final bytes = PacketBuffer.encode((w) => codec.write(w, v, {}));
+        final back = PacketBuffer.decode(bytes, (r) => codec.read(r, {}));
+        expect(deepEquals(back, v), isTrue, reason: 'seed $i');
+      }
+    });
+
+    test('rejects TAG_End in both directions', () {
+      expect(() => PacketBuffer.decode([0], (r) => codec.read(r, {})), throwsA(isA<PacketException>()));
+      expect(() => PacketBuffer.encode((w) => codec.write(w, null, {})), throwsA(isA<PacketException>()));
+    });
+
+    test('compound-only class names require a compound', () {
+      final compoundOnly = compileType(const NetType(NetKind.nbtTag, className: 'legacyNbtWithRegistries'));
+      const compound = NbtValue.compound({'a': NbtValue.int32(1)});
+      final bytes = PacketBuffer.encode((w) => compoundOnly.write(w, compound, {}));
+      expect(deepEquals(PacketBuffer.decode(bytes, (r) => compoundOnly.read(r, {})), compound), isTrue);
+      expect(() => PacketBuffer.encode((w) => compoundOnly.write(w, const NbtValue.string('x'), {})), throwsA(isA<PacketException>()));
+      final stringTag = PacketBuffer.encode((w) => w.writeNbt(const NbtValue.string('x')));
+      expect(() => PacketBuffer.decode(stringTag, (r) => compoundOnly.read(r, {})), throwsA(isA<PacketException>()));
+    });
   });
 
   group('wire layout (golden bytes)', () {

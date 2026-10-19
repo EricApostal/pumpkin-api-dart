@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart' hide pos;
+import '../filter/filter_item_stack.dart';
 import '../host/lg_block_entity.dart';
 import '../host/nbt_codecs.dart';
 import '../host/nbt_util.dart';
@@ -210,6 +211,16 @@ class StockTickerBlockEntity extends StockCheckingBlockEntity {
           for (final entry in categoryList)
             if (entry is NbtCompound) stackFromNbt(entry),
         ]);
+      // `categories.removeIf(...)`: only filter items are valid category filters.
+      categories.removeWhere(
+        (stack) =>
+            stack.isNotEmpty &&
+            !const {
+              FilterItemKeys.list,
+              FilterItemKeys.attribute,
+              FilterItemKeys.package,
+            }.contains(stack.key),
+      );
     }
     hiddenCategoriesByPlayer.clear();
     for (final entry in tag.getList('HiddenCategories') ?? const <Object>[]) {

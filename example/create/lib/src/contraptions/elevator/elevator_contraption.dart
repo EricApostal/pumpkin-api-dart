@@ -160,8 +160,8 @@ class ElevatorContraption extends PulleyContraption {
   @override
   void readNbt(ContraptionLevel level, NbtMap nbt, {bool spawnData = false}) {
     arrived = nbt.getBool('Arrived');
-    final columnTag = nbt.getCompoundOrNull('Column');
-    column = columnTag == null ? null : _readColumn(columnTag);
+    // `ColumnCoords.read(getCompoundOrEmpty("Column"))`: an absent Key reads as `(0, 0, DOWN)`.
+    column = _readColumn(nbt.getCompound('Column'));
     contactYOffset = nbt.getInt('ContactY');
     maxContactY = nbt.getInt('MaxContactY');
     minContactY = nbt.getInt('MinContactY');

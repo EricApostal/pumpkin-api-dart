@@ -51,7 +51,9 @@ void _put(NbtCompound out, String key, NbtValue v) {
     case NbtKind.longArray:
       out.putLongArray(key, v.value as List<int>);
     case NbtKind.list:
-      out.putList(key, [for (final item in v.value as List<NbtValue>) _listElement(item)]);
+      out.putList(key, [
+        for (final item in v.value as List<NbtValue>) _listElement(item),
+      ]);
     case NbtKind.compound:
       final c = NbtCompound();
       for (final e in (v.value as Map<String, NbtValue>).entries) {
@@ -71,6 +73,12 @@ Object _listElement(NbtValue v) => switch (v.kind) {
   NbtKind.float => NbtTagFloat(v.value as double),
   NbtKind.double => NbtTagDouble(v.value as double),
   NbtKind.string => NbtTagStringTag(v.value as String),
+  NbtKind.byteArray => NbtTagByteArray(v.value as List<int>),
+  NbtKind.intArray => NbtTagIntArray(v.value as List<int>),
+  NbtKind.longArray => NbtTagLongArray(v.value as List<int>),
+  NbtKind.list => [
+    for (final item in v.value as List<NbtValue>) _listElement(item),
+  ],
   NbtKind.compound => () {
     final c = NbtCompound();
     for (final e in (v.value as Map<String, NbtValue>).entries) {
@@ -78,46 +86,45 @@ Object _listElement(NbtValue v) => switch (v.kind) {
     }
     return c;
   }(),
-  _ => NbtTagStringTag(''),
+  NbtKind.end => NbtTagStringTag(''),
 };
 
-/// A [ConfigTag] from the host's compound (the keys it holds; `Id` included).
+/// A [ConfigTag] from the host's compound. Java keeps the source configuration as a
+/// `CompoundTag.copy()`, so every value keeps its tag type (int vs long, float vs double,
+/// compounds and arrays included). The display link writes the tag back out unchanged, so the
+/// conversion must not normalise the numbers or drop compounds.
 ConfigTag configFromNbt(NbtCompound c) {
-  final tag = ConfigTag();
-  for (final key in c.keys) {
-    final s = c.getString(key);
-    if (s != null) {
-      tag.putString(key, s);
-      continue;
-    }
-    final i = c.getInt(key);
-    if (i != null) {
-      tag.putInt(key, i);
-      continue;
-    }
-    final d = c.getDouble(key);
-    if (d != null) {
-      tag.putFloat(key, d);
-      continue;
-    }
-    final list = c.getList(key);
-    if (list != null) {
-      tag.putList(key, [for (final e in list) _fromListElement(e)]);
-    }
-  }
-  return tag;
+  final tree = c.toTree();
+  return ConfigTag(_compoundFromTree(tree, tree.root));
 }
 
-NbtValue _fromListElement(Object e) => switch (e) {
-  NbtTagByte(:final value) => NbtValue.byte(value),
-  NbtTagShort(:final value) => NbtValue.short(value),
-  NbtTagInt(:final value) => NbtValue.int32(value),
-  NbtTagLong(:final value) => NbtValue.long(value),
-  NbtTagFloat(:final value) => NbtValue.float(value),
-  NbtTagDouble(:final value) => NbtValue.double64(value),
-  NbtTagStringTag(:final value) => NbtValue.string(value),
-  _ => NbtValue.string(''),
-};
+Map<String, NbtValue> _compoundFromTree(NbtTree tree, int index) {
+  final tag = tree.tags[index];
+  if (tag is! NbtTagCompound) return {};
+  return {
+    for (final entry in tag.value) entry.key: _valueFromTree(tree, entry.value),
+  };
+}
+
+NbtValue _valueFromTree(NbtTree tree, int index) {
+  final tag = tree.tags[index];
+  return switch (tag) {
+    NbtTagByte(:final value) => NbtValue.byte(value),
+    NbtTagShort(:final value) => NbtValue.short(value),
+    NbtTagInt(:final value) => NbtValue.int32(value),
+    NbtTagLong(:final value) => NbtValue.long(value),
+    NbtTagFloat(:final value) => NbtValue.float(value),
+    NbtTagDouble(:final value) => NbtValue.double64(value),
+    NbtTagStringTag(:final value) => NbtValue.string(value),
+    NbtTagByteArray(:final value) => NbtValue.byteArray(value),
+    NbtTagIntArray(:final value) => NbtValue.intArray(value),
+    NbtTagLongArray(:final value) => NbtValue.longArray(value),
+    NbtTagListTag(:final value) => NbtValue.list([
+      for (final i in value) _valueFromTree(tree, i),
+    ]),
+    NbtTagCompound() => NbtValue.compound(_compoundFromTree(tree, index)),
+  };
+}
 
 /// The `deaths` of players seen so far, per auto objective.
 final Map<String, Map<String, int>> _trackedScores = {};
@@ -160,7 +167,8 @@ final class HostDisplayEnv implements DisplayEnv {
   }
 
   @override
-  bool blockHasTag(Pos pos, String tag) => BlockStates.isTag(lvl.stateId(pos), tag);
+  bool blockHasTag(Pos pos, String tag) =>
+      BlockStates.isTag(lvl.stateId(pos), tag);
 
   @override
   Future<int> directSignalTo(Pos pos) => lvl.directSignalTo(pos);
@@ -168,17 +176,23 @@ final class HostDisplayEnv implements DisplayEnv {
   // -- This module ---------------------------------------------------------------------------------------
 
   @override
-  Txt? nixieText(Pos pos) => rs.be<NixieTubeBlockEntity>(lvl.world, _bp(pos))?.fullText;
+  Txt? nixieText(Pos pos) =>
+      rs.be<NixieTubeBlockEntity>(lvl.world, _bp(pos))?.fullText;
 
   @override
   ({int level, int min, int max})? thresholdLevels(Pos pos) {
     final be = rs.be<ThresholdSwitchBlockEntity>(lvl.world, _bp(pos));
     if (be == null) return null;
-    return (level: be.currentLevel, min: be.currentMinLevel, max: be.currentMaxLevel);
+    return (
+      level: be.currentLevel,
+      min: be.currentMinLevel,
+      max: be.currentMaxLevel,
+    );
   }
 
   @override
-  Future<ObserverView?> observerView(Pos pos) async => rs.be<SmartObserverBlockEntity>(lvl.world, _bp(pos))?.view();
+  Future<ObserverView?> observerView(Pos pos) async =>
+      rs.be<SmartObserverBlockEntity>(lvl.world, _bp(pos))?.view();
 
   // -- Scoreboards ----------------------------------------------------------------------------------------
 
@@ -215,7 +229,12 @@ final class HostDisplayEnv implements DisplayEnv {
           _ => 0,
         };
         scores[name] = score;
-        scoreboard.updateScore(entityName: name, objectiveName: objective, value: score, numberFormat: null);
+        scoreboard.updateScore(
+          entityName: name,
+          objectiveName: objective,
+          value: score,
+          numberFormat: null,
+        );
       } on Object {
         // a player that went away
       }
@@ -226,43 +245,59 @@ final class HostDisplayEnv implements DisplayEnv {
   // -- Other modules --------------------------------------------------------------------------------------
 
   @override
-  double? kineticSpeedAt(Pos pos) => _service<KineticDisplayData>()?.speedGaugeSpeed(worldId, pos);
+  double? kineticSpeedAt(Pos pos) =>
+      _service<KineticDisplayData>()?.speedGaugeSpeed(worldId, pos);
 
   @override
   ({double stress, double capacity})? networkStressAt(Pos pos) =>
       _service<KineticDisplayData>()?.stressGaugeNetwork(worldId, pos);
 
   @override
-  double? cuckooClockSpeedAt(Pos pos) => _service<KineticDisplayData>()?.cuckooClockSpeed(worldId, pos);
+  double? cuckooClockSpeedAt(Pos pos) =>
+      _service<KineticDisplayData>()?.cuckooClockSpeed(worldId, pos);
 
   @override
-  ({Txt heatLevel, Txt size, Txt water, Txt heat})? boilerTexts(Pos pos, {required bool forFlapDisplay}) =>
-      _service<BoilerDisplayData>()?.boilerTexts(worldId, pos, forFlapDisplay: forFlapDisplay);
+  ({Txt heatLevel, Txt size, Txt water, Txt heat})? boilerTexts(
+    Pos pos, {
+    required bool forFlapDisplay,
+  }) => _service<BoilerDisplayData>()?.boilerTexts(
+    worldId,
+    pos,
+    forFlapDisplay: forFlapDisplay,
+  );
 
   @override
-  String? elevatorFloorAt(Pos pos) => _service<ElevatorDisplayData>()?.lastReportedFloor(worldId, pos);
+  String? elevatorFloorAt(Pos pos) =>
+      _service<ElevatorDisplayData>()?.lastReportedFloor(worldId, pos);
 
   @override
-  String? centeredItemNameAt(Pos pos) => _service<ItemFlowDisplayData>()?.centeredItemName(worldId, pos);
+  String? centeredItemNameAt(Pos pos) =>
+      _service<ItemFlowDisplayData>()?.centeredItemName(worldId, pos);
 
   @override
-  String? seatPassengerNameAt(Pos pos) => _service<SeatDisplayData>()?.passengerName(worldId, pos);
+  String? seatPassengerNameAt(Pos pos) =>
+      _service<SeatDisplayData>()?.passengerName(worldId, pos);
 
   @override
-  Txt? observedTrainNameAt(Pos pos) => _service<TrainDisplayData>()?.observedTrainName(worldId, pos);
+  Txt? observedTrainNameAt(Pos pos) =>
+      _service<TrainDisplayData>()?.observedTrainName(worldId, pos);
 
   @override
-  Txt? trainStatusAt(Pos pos) => _service<TrainDisplayData>()?.trainStatus(worldId, pos);
+  Txt? trainStatusAt(Pos pos) =>
+      _service<TrainDisplayData>()?.trainStatus(worldId, pos);
 
   @override
-  String? stationNameAt(Pos pos) => _service<TrainDisplayData>()?.stationName(worldId, pos);
+  String? stationNameAt(Pos pos) =>
+      _service<TrainDisplayData>()?.stationName(worldId, pos);
 
   @override
   List<TrainPredictionView> trainPredictions(String filter, int maxRows) =>
       _service<TrainDisplayData>()?.predictions(filter, maxRows) ?? const [];
 
   @override
-  List<GaugeEntryView> factoryGaugeEntries(List<(Pos pos, String slot)> panels) {
+  List<GaugeEntryView> factoryGaugeEntries(
+    List<(Pos pos, String slot)> panels,
+  ) {
     final access = _service<FactoryPanelAccess>();
     if (access == null) return const [];
     final result = <GaugeEntryView>[];
@@ -325,29 +360,35 @@ final class HostDisplayEnv implements DisplayEnv {
   }
 
   @override
-  Future<LecternBookView?> lecternBook(Pos pos) => readLecternBook(lvl.world, _bp(pos));
+  Future<LecternBookView?> lecternBook(Pos pos) =>
+      readLecternBook(lvl.world, _bp(pos));
 
   @override
-  Future<void> setLecternPages(Pos pos, List<Object?> pagesJson) => writeLecternPages(lvl.world, _bp(pos), pagesJson);
+  Future<void> setLecternPages(Pos pos, List<Object?> pagesJson) =>
+      writeLecternPages(lvl.world, _bp(pos), pagesJson);
 
   @override
   List<(Pos, int)> nixieRow(Pos pos) => walkNixies(pos, (p) => lvl.info(p));
 
   @override
-  void setNixieText(Pos pos, String jsonText, int rowPosition) =>
-      rs.be<NixieTubeBlockEntity>(lvl.world, _bp(pos))?.displayCustomText(jsonText, rowPosition);
+  void setNixieText(Pos pos, String jsonText, int rowPosition) => rs
+      .be<NixieTubeBlockEntity>(lvl.world, _bp(pos))
+      ?.displayCustomText(jsonText, rowPosition);
 
   @override
-  FlapControllerView? flapController(Pos pos) => _service<FlapDisplayAccess>()?.controllerAt(worldId, pos);
+  FlapControllerView? flapController(Pos pos) =>
+      _service<FlapDisplayAccess>()?.controllerAt(worldId, pos);
 
   // -- Reservations ---------------------------------------------------------------------------------------
 
   @override
-  Pos? reservedBy(Pos target, int line) => ReservationHolder.of(lvl.world).reservedBy(target, line);
+  Pos? reservedBy(Pos target, int line) =>
+      ReservationHolder.of(lvl.world).reservedBy(target, line);
 
   @override
   void setReservation(Pos target, int line, Pos? link) {
-    if (ReservationHolder.of(lvl.world).set(target, line, link)) ReservationHolder.save(lvl.world);
+    if (ReservationHolder.of(lvl.world).set(target, line, link))
+      ReservationHolder.save(lvl.world);
   }
 }
 
@@ -358,7 +399,12 @@ abstract final class ReservationHolder {
 
   static ReservationStore of(World world) {
     final id = world.getId();
-    return _stores.putIfAbsent(id, () => ReservationStore.fromJson(world.persistentData('create').getString(_key)));
+    return _stores.putIfAbsent(
+      id,
+      () => ReservationStore.fromJson(
+        world.persistentData('create').getString(_key),
+      ),
+    );
   }
 
   static void save(World world) {

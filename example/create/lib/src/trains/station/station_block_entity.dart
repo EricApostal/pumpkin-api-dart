@@ -126,7 +126,13 @@ final class StationBlockEntity extends CreateBlockEntity {
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    failedCarriageIndex = tag.getInt('FailedCarriageIndex') ?? -1;
+    failedCarriageIndex = tag.getInt('FailedCarriageIndex') ?? 0;
+
+    // `ForceFlag` is written only by the ponder scene (client side); Java reads it here, before the
+    // client packet guard, so it is kept for parity.
+    if (tag.containsKey('ForceFlag')) {
+      trainPresent = tag.getBool('ForceFlag') ?? false;
+    }
 
     final name = tag.getString('PrevTrainName');
     if (name != null) lastDisassembledTrainName = name;

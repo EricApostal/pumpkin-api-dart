@@ -11,45 +11,10 @@ import '../../common/common.dart';
 import '../../common/host_bridge.dart';
 import '../../core/block_entity.dart';
 import '../blocks/actuator_runtime.dart';
-import '../core/nbt_map.dart';
+import 'elevator_column_coords.dart';
 import 'elevator_contact_block_entity.dart';
 
-/// `ElevatorColumn.ColumnCoords`: the column of a contact: its block x/z and the side the contact
-/// faces.
-final class ColumnCoords {
-  final int x;
-  final int z;
-  final Direction side;
-
-  const ColumnCoords(this.x, this.z, this.side);
-
-  ColumnCoords relative(Pos anchor) =>
-      ColumnCoords(x + anchor.$1, z + anchor.$3, side);
-
-  NbtMap write() => NbtMap()
-    ..putInt('X', x)
-    ..putInt('Z', z)
-    ..putString('Side', side.name);
-
-  static ColumnCoords read(NbtMap tag) => ColumnCoords(
-    tag.getInt('X'),
-    tag.getInt('Z'),
-    Direction.byName(tag.getString('Side')) ?? Direction.north,
-  );
-
-  @override
-  bool operator ==(Object other) =>
-      other is ColumnCoords &&
-      other.x == x &&
-      other.z == z &&
-      other.side == side;
-
-  @override
-  int get hashCode => Object.hash(x, z, side);
-
-  @override
-  String toString() => 'ColumnCoords($x, $z, $side)';
-}
+export 'elevator_column_coords.dart';
 
 /// `ElevatorColumn`.
 final class ElevatorColumn {

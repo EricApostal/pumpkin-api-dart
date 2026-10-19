@@ -315,26 +315,27 @@ final class DeployerBlockEntity extends KineticBlockEntity
     tag.putInt('Timer', timer);
     tag.putBool('Powered', redstoneLocked);
     final owner = this.owner;
-    if (owner != null) tag.putString('Owner', owner);
-
-    final deferred = _deferredInventory;
-    if (deferred != null) {
-      tag.putCompound('Inventory', StackNbt.writeList(deferred));
-    } else {
-      final player = _player;
-      if (player != null) {
-        final inventory = List<PStack>.filled(36, PStack.empty);
-        inventory[0] = heldItem;
-        tag.putCompound('Inventory', StackNbt.writeList(inventory));
-      }
+    if (owner != null) {
+      final ownerUuid = _ownerToNbt(owner);
+      if (ownerUuid != null) tag.putIntArray('Owner', ownerUuid);
     }
-    tag.putCompound('HeldItem', StackNbt.write(heldItem));
-    tag.putCompound(
-      'Overflow',
-      NbtCompound()..putList('Items', [
+
+    // Java: the fake player's inventory is written as the vanilla `Inventory` list (byte `Slot`),
+    // with `HeldItem` and `Overflow` alongside; without a player only the deferred list is kept.
+    final player = _player;
+    if (player != null) {
+      final inventory = List<PStack>.filled(36, PStack.empty);
+      inventory[0] = heldItem;
+      tag.putList('Inventory', _writeInventoryList(inventory));
+      tag.putCompound('HeldItem', StackNbt.writeOrEmpty(heldItem));
+      tag.putList('Overflow', [
         for (final stack in overflowItems) StackNbt.write(stack),
-      ]),
-    );
+      ]);
+    } else {
+      final deferred = _deferredInventory;
+      if (deferred != null)
+        tag.putList('Inventory', _writeInventoryList(deferred));
+    }
 
     super.write(tag, clientPacket: clientPacket);
 
@@ -350,20 +351,68 @@ final class DeployerBlockEntity extends KineticBlockEntity
     state = DeployerState.fromJavaName(tag.getString('State'));
     timer = tag.getInt('Timer') ?? 0;
     redstoneLocked = tag.getBool('Powered') ?? false;
-    owner = tag.getString('Owner');
-    _deferredInventory = StackNbt.readList(tag.getCompound('Inventory'), 36);
+    owner = _ownerFromNbt(tag.getIntArray('Owner')) ?? tag.getString('Owner');
+    // The vanilla list form; the compound `{Items, Size}` of earlier versions is still read.
+    final inventoryList = tag.getList('Inventory');
+    if (inventoryList != null) {
+      _deferredInventory = _readInventoryList(inventoryList, 36);
+    } else {
+      final legacy = tag.getCompound('Inventory');
+      _deferredInventory = legacy == null
+          ? List<PStack>.filled(36, PStack.empty)
+          : StackNbt.readList(legacy, 36);
+    }
     heldItem = StackNbt.read(tag.getCompound('HeldItem'));
-    final overflow = tag.getCompound('Overflow');
     overflowItems
       ..clear()
       ..addAll([
-        for (final e in overflow?.getList('Items') ?? const <Object>[])
+        for (final e in tag.getList('Overflow') ?? const <Object>[])
           if (e is NbtCompound) StackNbt.read(e),
       ]);
     if (clientPacket) {
       fistBump = tag.getBool('Fistbump') ?? false;
       reach = tag.getDouble('Reach') ?? 0;
     }
+  }
+
+  /// The vanilla `Inventory` list: one `{Slot, ...stack}` compound per non-empty slot.
+  static List<Object> _writeInventoryList(List<PStack> stacks) {
+    final items = <Object>[];
+    for (var slot = 0; slot < stacks.length; slot++) {
+      if (stacks[slot].isEmpty) continue;
+      items.add(StackNbt.write(stacks[slot])..putByte('Slot', slot));
+    }
+    return items;
+  }
+
+  static List<PStack> _readInventoryList(List<Object> list, int size) {
+    final out = List<PStack>.filled(size, PStack.empty);
+    for (final element in list) {
+      if (element is! NbtCompound) continue;
+      final slot = element.getInt('Slot') ?? -1;
+      if (slot >= 0 && slot < size) out[slot] = StackNbt.read(element);
+    }
+    return out;
+  }
+
+  /// `UUIDUtil.CODEC`: four ints (the two halves of the uuid, big-endian each).
+  static List<int>? _ownerToNbt(String owner) {
+    final uuid = Uuids.tryParse(owner);
+    if (uuid == null) return null;
+    return [
+      (uuid.high >> 32) & 0xFFFFFFFF,
+      uuid.high & 0xFFFFFFFF,
+      (uuid.low >> 32) & 0xFFFFFFFF,
+      uuid.low & 0xFFFFFFFF,
+    ];
+  }
+
+  static String? _ownerFromNbt(List<int>? value) {
+    if (value == null || value.length < 4) return null;
+    return Uuid(
+      high: (value[0] << 32) | (value[1] & 0xFFFFFFFF),
+      low: (value[2] << 32) | (value[3] & 0xFFFFFFFF),
+    ).asString;
   }
 
   // -- Ticking --------------------------------------------------------------------------------

@@ -91,7 +91,8 @@ class KineticBlockEntity extends CreateBlockEntity with KineticNodeMixin {
       if (speedValue != 0 || hasNetwork) sendData();
     }
     super.tick();
-    if (_particleCountdown > 0 && --_particleCountdown == 0) spawnRotationIndicators();
+    if (_particleCountdown > 0 && --_particleCountdown == 0)
+      spawnRotationIndicators();
     kineticTickEnd();
   }
 
@@ -136,7 +137,9 @@ class KineticBlockEntity extends CreateBlockEntity with KineticNodeMixin {
         ),
       );
     } on HostException catch (e) {
-      runtime.log.debug('Rotation indicators could not be spawned: ${e.message}');
+      runtime.log.debug(
+        'Rotation indicators could not be spawned: ${e.message}',
+      );
     }
   }
 
@@ -180,8 +183,10 @@ class KineticBlockEntity extends CreateBlockEntity with KineticNodeMixin {
         ..putFloat('Stress', stress)
         ..putFloat('Capacity', capacity)
         ..putInt('Size', networkSize);
-      if (lastStressApplied != 0) net.putFloat('AddedStress', lastStressApplied);
-      if (lastCapacityProvided != 0) net.putFloat('AddedCapacity', lastCapacityProvided);
+      if (lastStressApplied != 0)
+        net.putFloat('AddedStress', lastStressApplied);
+      if (lastCapacityProvided != 0)
+        net.putFloat('AddedCapacity', lastCapacityProvided);
       tag.putCompound('Network', net);
     }
     super.write(tag, clientPacket: clientPacket);
@@ -198,8 +203,10 @@ class KineticBlockEntity extends CreateBlockEntity with KineticNodeMixin {
     }
 
     speedValue = tag.getDouble('Speed') ?? 0;
+    // `SequenceContext.fromNBT` returns null for an empty compound, so an absent or
+    // empty `Sequence` must not resurrect a default context.
     final seq = tag.getCompound('Sequence');
-    sequenceContext = seq == null
+    sequenceContext = seq == null || seq.isEmpty
         ? null
         : SequenceContext(
             SequencerInstructions.fromJavaName(seq.getString('Mode')),
@@ -208,7 +215,8 @@ class KineticBlockEntity extends CreateBlockEntity with KineticNodeMixin {
 
     source = null;
     final srcArr = tag.getIntArray('Source');
-    if (srcArr != null && srcArr.length >= 3) source = KPos(srcArr[0], srcArr[1], srcArr[2]);
+    if (srcArr != null && srcArr.length >= 3)
+      source = KPos(srcArr[0], srcArr[1], srcArr[2]);
 
     final net = tag.getCompound('Network');
     if (net != null) {
@@ -228,13 +236,23 @@ class KineticBlockEntity extends CreateBlockEntity with KineticNodeMixin {
 
   /// Sets the block state of this block (fire and forget, errors are logged).
   /// Flags default to a normal block change.
-  void setStateAsync(KState state, {Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal}) {
+  void setStateAsync(
+    KState state, {
+    Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal,
+  }) {
     final w = world;
     final id = runtime.states.idOf(state);
     if (w == null || id == null) return;
     unawaited(
-      w.setBlockState(pos: pos, state: id, updateFlags: flags).catchError((Object e, StackTrace st) {
-        runtime.log.error('Setting the state of $this failed', error: e, stackTrace: st);
+      w.setBlockState(pos: pos, state: id, updateFlags: flags).catchError((
+        Object e,
+        StackTrace st,
+      ) {
+        runtime.log.error(
+          'Setting the state of $this failed',
+          error: e,
+          stackTrace: st,
+        );
       }),
     );
   }
@@ -250,7 +268,8 @@ class KineticBlockEntity extends CreateBlockEntity with KineticNodeMixin {
 }
 
 /// The block entity of generators: speed sources.
-abstract class GeneratingKineticBlockEntity extends KineticBlockEntity with GeneratingNodeMixin {
+abstract class GeneratingKineticBlockEntity extends KineticBlockEntity
+    with GeneratingNodeMixin {
   GeneratingKineticBlockEntity(super.worldId, super.pos);
 
   @override
@@ -265,8 +284,13 @@ class SimpleKineticBlockEntity extends KineticBlockEntity {
   SimpleKineticBlockEntity(super.worldId, super.pos);
 
   @override
-  List<KPos> addPropagationLocations(KineticBlockDef block, KState state, List<KPos> neighbours) {
-    if (!block.isLargeCog) return super.addPropagationLocations(block, state, neighbours);
+  List<KPos> addPropagationLocations(
+    KineticBlockDef block,
+    KState state,
+    List<KPos> neighbours,
+  ) {
+    if (!block.isLargeCog)
+      return super.addPropagationLocations(block, state, neighbours);
     for (var z = -1; z <= 1; z++) {
       for (var y = -1; y <= 1; y++) {
         for (var x = -1; x <= 1; x++) {
@@ -293,7 +317,12 @@ class DirectionalShaftHalvesBlockEntity extends KineticBlockEntity {
 /// Operations on kinetic blocks that need the world.
 abstract final class KineticOps {
   /// `KineticBlockEntity.switchToBlockState`.
-  static Future<void> switchToBlockState(KineticsRuntime rt, String worldId, BlockPos pos, KState state) async {
+  static Future<void> switchToBlockState(
+    KineticsRuntime rt,
+    String worldId,
+    BlockPos pos,
+    KState state,
+  ) async {
     final world = rt.worlds.byId(worldId);
     if (world == null) return;
     final level = rt.level(worldId);
@@ -305,12 +334,17 @@ abstract final class KineticOps {
 
     final node = level.nodeAt(kpos);
     if (node is! KineticBlockEntity) {
-      await world.setBlockState(pos: pos, state: id, updateFlags: BlockUpdateFlags.normal);
+      await world.setBlockState(
+        pos: pos,
+        state: id,
+        updateFlags: BlockUpdateFlags.normal,
+      );
       return;
     }
 
     final newDef = rt.blocks.defFor(state);
-    if (newDef != null && !newDef.areStatesKineticallyEquivalent(current, state)) {
+    if (newDef != null &&
+        !newDef.areStatesKineticallyEquivalent(current, state)) {
       if (node.hasNetwork) node.getOrCreateNetwork()?.remove(node);
       node.detachKinetics();
       node.removeSource();
@@ -318,6 +352,10 @@ abstract final class KineticOps {
 
     if (node case final GeneratingNodeMixin g) g.reActivateSource = true;
 
-    await world.setBlockState(pos: pos, state: id, updateFlags: BlockUpdateFlags.normal);
+    await world.setBlockState(
+      pos: pos,
+      state: id,
+      updateFlags: BlockUpdateFlags.normal,
+    );
   }
 }

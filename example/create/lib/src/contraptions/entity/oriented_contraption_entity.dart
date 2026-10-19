@@ -156,16 +156,17 @@ class OrientedContraptionEntity extends AbstractContraptionEntity {
     if (compound.contains('ForceYaw'))
       startAtYaw(compound.getDouble('ForceYaw'));
 
-    final cachedMotion = compound.getVec('CachedMotion');
-    if (cachedMotion != vec3Zero) {
-      motionBeforeStall = cachedMotion;
-      targetYaw = prevYaw = yaw =
-          yaw + AbstractContraptionEntity.yawFromVector(motionBeforeStall);
+    final cachedMotion = compound.getList('CachedMotion');
+    if (cachedMotion.isNotEmpty) {
+      motionBeforeStall = readVec(cachedMotion);
+      if (motionBeforeStall != vec3Zero)
+        targetYaw = prevYaw = yaw =
+            yaw + AbstractContraptionEntity.yawFromVector(motionBeforeStall);
       host.setDeltaMovement(vec3Zero);
     }
 
     couplingId = compound.contains('OnCoupling')
-        ? compound.getString('OnCoupling')
+        ? compound.getUuid('OnCoupling')
         : null;
   }
 
@@ -173,24 +174,25 @@ class OrientedContraptionEntity extends AbstractContraptionEntity {
   void writeAdditional(NbtMap compound, {bool spawnPacket = false}) {
     super.writeAdditional(compound, spawnPacket: spawnPacket);
 
-    if (motionBeforeStall != vec3Zero)
-      compound.putVec('CachedMotion', motionBeforeStall);
+    // Java writes `CachedMotion` whenever the field is non-null, which is always (it starts at
+    // `Vec3.ZERO`).
+    compound.putVec('CachedMotion', motionBeforeStall);
 
     if (initialOrientation.axis.isHorizontal) {
       compound.putString(
         'InitialOrientation',
-        initialOrientation.name.toUpperCase(),
+        initialOrientation.serializedName,
       );
     }
     if (forceAngle) {
-      compound.putDouble('ForceYaw', yaw);
+      compound.putFloat('ForceYaw', yaw);
       forceAngle = false;
     }
     compound.putBool('Placed', manuallyPlaced);
-    compound.putDouble('Yaw', yaw);
-    compound.putDouble('Pitch', pitch);
+    compound.putFloat('Yaw', yaw);
+    compound.putFloat('Pitch', pitch);
     final coupling = couplingId;
-    if (coupling != null) compound.putString('OnCoupling', coupling);
+    if (coupling != null) compound.putUuid('OnCoupling', coupling);
   }
 
   @override

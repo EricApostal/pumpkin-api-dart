@@ -143,7 +143,7 @@ void main() {
 
     final contraption = _TestContraption([(6, 64, 5)]);
     await contraption.assemble(level, (5, 64, 5));
-    contraption.getSeatMapping()['player-uuid'] = 0;
+    contraption.getSeatMapping()['00000000-0000-0000-0000-000000000001'] = 0;
 
     final nbt = contraption.writeNbt();
     final restored = Contraption();
@@ -156,7 +156,9 @@ void main() {
       const BState('minecraft:chest', {'facing': 'north'}),
     );
     expect(restored.blocks[(1, 0, 0)]!.nbt!.getInt('Value'), 42);
-    expect(restored.getSeatMapping(), {'player-uuid': 0});
+    expect(restored.getSeatMapping(), {
+      '00000000-0000-0000-0000-000000000001': 0,
+    });
     expect(restored.typeId, ContraptionTypes.genericId);
   });
 

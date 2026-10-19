@@ -846,16 +846,15 @@ class Contraption {
       final controllerPos = tag.getBlockPos('Controller');
       for (final part in tag.getList('Parts')) {
         final cPart = NbtMap.of(part);
-        final partPos = cPart.contains('Pos')
-            ? cPart.getBlockPos('Pos')
-            : cPart.getBlockPos('Pos');
+        // `cPart.contains("Pos") ? readBlockPos : (X, Y, Z)`; `getBlockPos` reads both forms.
+        final partPos = cPart.getBlockPos('Pos');
         final info = blocks[partPos];
         if (info != null)
           capturedMultiblocks.putIfAbsent(controllerPos, () => []).add(info);
       }
     }
 
-    storage.read(nbt);
+    storage.read(nbt, clientPacket: spawnData);
 
     actors.clear();
     for (final v in nbt.getList('Actors')) {
@@ -879,28 +878,27 @@ class Contraption {
     seats.clear();
     for (final v in nbt.getList('Seats')) {
       final c = NbtMap.of(v);
-      seats.add(
-        c.contains('Pos') ? c.getBlockPos('Pos') : c.getBlockPos('Pos'),
-      );
+      // `c.contains("Pos") ? readBlockPos : (X, Y, Z)`; `getBlockPos` reads both forms.
+      seats.add(c.getBlockPos('Pos'));
     }
 
     seatMapping.clear();
     for (final v in nbt.getList('Passengers')) {
       final c = NbtMap.of(v);
-      seatMapping[c.getString('Id')] = c.getInt('Seat');
+      final id = c.getUuid('Id');
+      if (id != null) seatMapping[id] = c.getInt('Seat', 0);
     }
 
     stabilizedSubContraptions.clear();
     for (final v in nbt.getList('SubContraptions')) {
       final c = NbtMap.of(v);
-      final id = c.getString('Id');
-      final face = c.getInt('Face', 0);
-      final pos = c.getBlockPos('Pos');
-      if (id.isNotEmpty)
-        stabilizedSubContraptions[id] = BlockFace(
-          pos,
-          Direction.values[face.clamp(0, 5)],
-        );
+      final id = c.getUuid('Id');
+      final location = c.getCompoundOrNull('Location');
+      if (id == null || location == null) continue;
+      stabilizedSubContraptions[id] = BlockFace(
+        location.getBlockPos('pos'),
+        Direction.byName(location.getString('direction')) ?? Direction.north,
+      );
     }
 
     interactors.clear();
@@ -971,7 +969,7 @@ class Contraption {
     nbt.putList('Passengers', [
       for (final e in getSeatMapping().entries)
         (NbtMap()
-              ..putString('Id', e.key)
+              ..putUuid('Id', e.key)
               ..putInt('Seat', e.value))
             .toValue(),
     ]);
@@ -979,9 +977,13 @@ class Contraption {
     nbt.putList('SubContraptions', [
       for (final e in stabilizedSubContraptions.entries)
         (NbtMap()
-              ..putString('Id', e.key)
-              ..putBlockPos('Pos', e.value.pos)
-              ..putInt('Face', e.value.face.index))
+              ..putUuid('Id', e.key)
+              ..putCompound(
+                'Location',
+                NbtMap()
+                  ..putBlockPos('pos', e.value.pos)
+                  ..putString('direction', e.value.face.serializedName),
+              ))
             .toValue(),
     ]);
 
@@ -1005,32 +1007,28 @@ class Contraption {
   void writeStorage(NbtMap nbt, bool spawnPacket) =>
       storage.write(nbt, clientPacket: spawnPacket);
 
-  List<StoredStack> _readItemList(List<NbtValue> list) => [
-    for (final v in list)
-      if (NbtMap.of(v).isNotEmpty) StoredStack.fromNbt(NbtMap.of(v)),
-  ];
+  List<StoredStack> _readItemList(List<NbtValue> list) {
+    final out = <StoredStack>[];
+    for (final v in list) {
+      final tag = NbtMap.of(v);
+      if (tag.isEmpty) continue;
+      final stack = StoredStack.fromNbt(tag);
+      if (stack.isNotEmpty) out.add(stack);
+    }
+    return out;
+  }
 
   List<NbtValue> _writeItemList(List<StoredStack> list) => [
     for (final s in list)
       if (!s.isEmpty) s.toNbt().toValue(),
   ];
 
+  /// `SuperGlueEntity.writeBoundingBox`: `{From, To}` as two `VecHelper` vectors.
   NbtMap _writeAabb(Aabb bb) => NbtMap()
-    ..putDouble('minX', bb.minX)
-    ..putDouble('minY', bb.minY)
-    ..putDouble('minZ', bb.minZ)
-    ..putDouble('maxX', bb.maxX)
-    ..putDouble('maxY', bb.maxY)
-    ..putDouble('maxZ', bb.maxZ);
+    ..putVec('From', (bb.minX, bb.minY, bb.minZ))
+    ..putVec('To', (bb.maxX, bb.maxY, bb.maxZ));
 
-  Aabb _readAabb(NbtMap c) => Aabb(
-    c.getDouble('minX'),
-    c.getDouble('minY'),
-    c.getDouble('minZ'),
-    c.getDouble('maxX'),
-    c.getDouble('maxY'),
-    c.getDouble('maxZ'),
-  );
+  Aabb _readAabb(NbtMap c) => Aabb.between(c.getVec('From'), c.getVec('To'));
 
   List<NbtValue> _writeAabbList(Aabb bb) => [
     NbtValue.double64(bb.minX),

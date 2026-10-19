@@ -12,6 +12,7 @@ import '../../core/movement.dart';
 import '../../storage/stacks.dart';
 import '../actor_runtime.dart';
 import '../actor_shapes.dart';
+import '../filter_nbt.dart';
 import '../host_interacting_player.dart';
 import '../train_controls/controls_block.dart';
 
@@ -40,6 +41,10 @@ final class ContraptionControlsBlockEntity extends CreateBlockEntity {
 
   /// `filtering.getFilter()`.
   StoredStack filterStack = StoredStack.empty;
+
+  /// `filtering.count` and `filtering.upTo` (`FilterAmount`, `UpTo`).
+  int filterCount = 64;
+  bool filterUpTo = true;
 
   /// `disabled`.
   bool disabled = false;
@@ -70,13 +75,10 @@ final class ContraptionControlsBlockEntity extends CreateBlockEntity {
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    final filter = tag.getCompound('Filter');
-    filterStack = filter == null
-        ? StoredStack.empty
-        : StoredStack(
-            filter.getString('id') ?? 'minecraft:air',
-            filter.getInt('count') ?? 0,
-          );
+    final filtering = readFilteringBehaviour(tag);
+    filterStack = filtering.filter;
+    filterCount = filtering.count;
+    filterUpTo = filtering.upTo;
     disabled = tag.getBool('Disabled') ?? false;
     powered = tag.getBool('Powered') ?? false;
   }
@@ -84,14 +86,7 @@ final class ContraptionControlsBlockEntity extends CreateBlockEntity {
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
-    if (filterStack.isNotEmpty) {
-      tag.putCompound(
-        'Filter',
-        NbtCompound()
-          ..putString('id', filterStack.item)
-          ..putInt('count', filterStack.count),
-      );
-    }
+    writeFilteringBehaviour(tag, filterStack, filterCount, filterUpTo);
     tag.putBool('Disabled', disabled);
     tag.putBool('Powered', powered);
   }

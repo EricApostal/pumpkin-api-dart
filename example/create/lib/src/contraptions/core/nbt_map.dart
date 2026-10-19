@@ -9,11 +9,14 @@ final class NbtMap {
   /// The entries, in insertion order.
   final Map<String, NbtValue> map;
 
-  NbtMap([Map<String, NbtValue>? entries]) : map = entries ?? <String, NbtValue>{};
+  NbtMap([Map<String, NbtValue>? entries])
+    : map = entries ?? <String, NbtValue>{};
 
   /// The compound inside [value], sharing its map. A value of another kind gives an empty map.
   factory NbtMap.of(NbtValue? value) =>
-      value != null && value.kind == NbtKind.compound ? NbtMap(value.asCompound) : NbtMap();
+      value != null && value.kind == NbtKind.compound
+      ? NbtMap(value.asCompound)
+      : NbtMap();
 
   /// A deep copy of the compound [value].
   factory NbtMap.copyOf(NbtValue? value) => NbtMap.of(value).copy();
@@ -22,7 +25,8 @@ final class NbtMap {
   NbtValue toValue() => NbtValue.compound(map);
 
   /// A deep copy.
-  NbtMap copy() => NbtMap({for (final e in map.entries) e.key: copyValue(e.value)});
+  NbtMap copy() =>
+      NbtMap({for (final e in map.entries) e.key: copyValue(e.value)});
 
   bool get isEmpty => map.isEmpty;
   bool get isNotEmpty => map.isNotEmpty;
@@ -53,13 +57,18 @@ final class NbtMap {
   void putList(String key, List<NbtValue> v) => map[key] = NbtValue.list(v);
 
   /// `BlockPos.CODEC`: an int array of three.
-  void putBlockPos(String key, Pos p) => map[key] = NbtValue.intArray([p.$1, p.$2, p.$3]);
+  void putBlockPos(String key, Pos p) =>
+      map[key] = NbtValue.intArray([p.$1, p.$2, p.$3]);
 
   /// `NBTHelper.putMarker`.
   void putMarker(String key) => map[key] = NbtValue.emptyCompound();
 
   /// `VecHelper.writeNBT`: a list of three doubles.
   void putVec(String key, Vec3 v) => map[key] = writeVec(v);
+
+  /// `UUIDUtil.CODEC`: the four ints of a UUID (a `8-4-4-4-12` string).
+  void putUuid(String key, String uuid) =>
+      map[key] = NbtValue.intArray(uuidToInts(uuid));
 
   // -- Reading -----------------------------------------------------------------------------
 
@@ -68,7 +77,10 @@ final class NbtMap {
     final v = map[key];
     if (v == null) return fallback;
     return switch (v.kind) {
-      NbtKind.byte || NbtKind.short || NbtKind.int || NbtKind.long => v.value as int,
+      NbtKind.byte ||
+      NbtKind.short ||
+      NbtKind.int ||
+      NbtKind.long => v.value as int,
       NbtKind.float || NbtKind.double => (v.value as double).toInt(),
       _ => fallback,
     };
@@ -78,7 +90,10 @@ final class NbtMap {
     final v = map[key];
     if (v == null) return fallback;
     return switch (v.kind) {
-      NbtKind.byte || NbtKind.short || NbtKind.int || NbtKind.long => (v.value as int) != 0,
+      NbtKind.byte ||
+      NbtKind.short ||
+      NbtKind.int ||
+      NbtKind.long => (v.value as int) != 0,
       _ => fallback,
     };
   }
@@ -88,7 +103,10 @@ final class NbtMap {
     if (v == null) return fallback;
     return switch (v.kind) {
       NbtKind.float || NbtKind.double => v.value as double,
-      NbtKind.byte || NbtKind.short || NbtKind.int || NbtKind.long => (v.value as int).toDouble(),
+      NbtKind.byte ||
+      NbtKind.short ||
+      NbtKind.int ||
+      NbtKind.long => (v.value as int).toDouble(),
       _ => fallback,
     };
   }
@@ -101,24 +119,33 @@ final class NbtMap {
   /// The nested compound at [key], or an empty detached map (`getCompoundOrEmpty`).
   NbtMap getCompound(String key) {
     final v = map[key];
-    return v != null && v.kind == NbtKind.compound ? NbtMap(v.asCompound) : NbtMap();
+    return v != null && v.kind == NbtKind.compound
+        ? NbtMap(v.asCompound)
+        : NbtMap();
   }
 
   /// The nested compound at [key] or `null` when absent.
   NbtMap? getCompoundOrNull(String key) {
     final v = map[key];
-    return v != null && v.kind == NbtKind.compound ? NbtMap(v.asCompound) : null;
+    return v != null && v.kind == NbtKind.compound
+        ? NbtMap(v.asCompound)
+        : null;
   }
 
   /// The list at [key] or an empty list (`getListOrEmpty`).
   List<NbtValue> getList(String key) {
     final v = map[key];
-    return v != null && v.kind == NbtKind.list ? v.value as List<NbtValue> : <NbtValue>[];
+    return v != null && v.kind == NbtKind.list
+        ? v.value as List<NbtValue>
+        : <NbtValue>[];
   }
 
   List<int> getIntArray(String key) {
     final v = map[key];
-    return v != null && (v.kind == NbtKind.intArray || v.kind == NbtKind.byteArray || v.kind == NbtKind.longArray)
+    return v != null &&
+            (v.kind == NbtKind.intArray ||
+                v.kind == NbtKind.byteArray ||
+                v.kind == NbtKind.longArray)
         ? v.value as List<int>
         : <int>[];
   }
@@ -141,17 +168,50 @@ final class NbtMap {
   /// `VecHelper.readNBT` of the list at [key] (zero if absent).
   Vec3 getVec(String key) => readVec(getList(key));
 
+  /// The UUID at [key] (`UUIDUtil.CODEC`), or [fallback] when absent or malformed. The legacy
+  /// string form is accepted too.
+  String? getUuid(String key, [String? fallback]) {
+    final v = map[key];
+    if (v == null) return fallback;
+    if (v.kind == NbtKind.intArray) {
+      final a = v.value as List<int>;
+      return a.length == 4 ? uuidFromInts(a) : fallback;
+    }
+    if (v.kind == NbtKind.string) return v.value as String;
+    return fallback;
+  }
+
   @override
   String toString() => 'NbtMap($map)';
+}
+
+/// The four ints of the UUID [uuid] (`UUIDUtil.CODEC`).
+List<int> uuidToInts(String uuid) {
+  final hex = uuid.replaceAll('-', '');
+  int part(int i) =>
+      int.parse(hex.substring(i * 8, i * 8 + 8), radix: 16).toSigned(32);
+  return [part(0), part(1), part(2), part(3)];
+}
+
+/// The `8-4-4-4-12` string of the four ints of a `UUIDUtil.CODEC` array.
+String uuidFromInts(List<int> ints) {
+  final hex = [
+    for (final i in ints) (i & 0xFFFFFFFF).toRadixString(16).padLeft(8, '0'),
+  ].join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
 }
 
 /// A deep copy of [v].
 NbtValue copyValue(NbtValue v) {
   switch (v.kind) {
     case NbtKind.compound:
-      return NbtValue.compound({for (final e in v.asCompound.entries) e.key: copyValue(e.value)});
+      return NbtValue.compound({
+        for (final e in v.asCompound.entries) e.key: copyValue(e.value),
+      });
     case NbtKind.list:
-      return NbtValue.list([for (final e in v.value as List<NbtValue>) copyValue(e)]);
+      return NbtValue.list([
+        for (final e in v.value as List<NbtValue>) copyValue(e),
+      ]);
     case NbtKind.byteArray:
       return NbtValue.byteArray(List<int>.of(v.value as List<int>));
     case NbtKind.intArray:
@@ -164,8 +224,11 @@ NbtValue copyValue(NbtValue v) {
 }
 
 /// `VecHelper.writeNBT`.
-NbtValue writeVec(Vec3 v) =>
-    NbtValue.list([NbtValue.double64(v.$1), NbtValue.double64(v.$2), NbtValue.double64(v.$3)]);
+NbtValue writeVec(Vec3 v) => NbtValue.list([
+  NbtValue.double64(v.$1),
+  NbtValue.double64(v.$2),
+  NbtValue.double64(v.$3),
+]);
 
 /// `VecHelper.readNBT`.
 Vec3 readVec(List<NbtValue> list) {
@@ -174,7 +237,10 @@ Vec3 readVec(List<NbtValue> list) {
     final v = list[i];
     return switch (v.kind) {
       NbtKind.float || NbtKind.double => v.value as double,
-      NbtKind.byte || NbtKind.short || NbtKind.int || NbtKind.long => (v.value as int).toDouble(),
+      NbtKind.byte ||
+      NbtKind.short ||
+      NbtKind.int ||
+      NbtKind.long => (v.value as int).toDouble(),
       _ => 0,
     };
   }
@@ -191,7 +257,8 @@ bool nbtEquals(NbtValue? a, NbtValue? b) {
       final ma = a.asCompound, mb = b.asCompound;
       if (ma.length != mb.length) return false;
       for (final e in ma.entries) {
-        if (!mb.containsKey(e.key) || !nbtEquals(e.value, mb[e.key])) return false;
+        if (!mb.containsKey(e.key) || !nbtEquals(e.value, mb[e.key]))
+          return false;
       }
       return true;
     case NbtKind.list:

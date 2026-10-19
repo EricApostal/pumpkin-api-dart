@@ -126,8 +126,11 @@ Future<void> addContraptionToMinecart(
   final factory = ActuatorHosts.entities;
   if (level == null || factory == null) return;
 
+  // `readEnum(contraptionTag, "InitialOrientation", Direction.class)`: the Java enum name, falling
+  // back to `Direction.values()[0]` ([Direction.down]).
   final initialOrientation =
-      Direction.byName(tag.getString('InitialOrientation')) ?? Direction.south;
+      Direction.byName(tag.getString('InitialOrientation').toLowerCase()) ??
+      Direction.values[0];
   final contraption = Contraption.fromNbt(level, tag, spawnData: false);
 
   final entity = factory.createOriented(
@@ -260,9 +263,11 @@ ItemStack? createMinecartContraptionItem(
   tag.remove('UUID');
   tag.remove('Pos');
   tag.remove('Motion');
+  // `entity.getInitialOrientation().name()`: the Java enum name (upper case), the same form
+  // `OrientedContraptionEntity` writes and reads.
   tag.putString(
     'InitialOrientation',
-    entity.getInitialOrientation().serializedName,
+    entity.getInitialOrientation().name.toUpperCase(),
   );
 
   final stack = ItemStack.create(registryKey: itemKey, count: 1);

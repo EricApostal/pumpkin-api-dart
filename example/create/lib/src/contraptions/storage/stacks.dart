@@ -12,7 +12,13 @@ abstract final class ItemStackLimits {
 
   static int _defaultLimit(String item) {
     final p = item.contains(':') ? item.substring(item.indexOf(':') + 1) : item;
-    if (p == 'ender_pearl' || p == 'snowball' || p == 'egg' || p == 'bucket' || p == 'honey_bottle' || p == 'sign' || p.endsWith('_sign')) {
+    if (p == 'ender_pearl' ||
+        p == 'snowball' ||
+        p == 'egg' ||
+        p == 'bucket' ||
+        p == 'honey_bottle' ||
+        p == 'sign' ||
+        p.endsWith('_sign')) {
       return 16;
     }
     if (p.endsWith('_pickaxe') ||
@@ -57,7 +63,8 @@ final class StoredStack {
 
   int get maxStackSize => ItemStackLimits.of(item);
 
-  StoredStack copyWithCount(int n) => n <= 0 ? empty : StoredStack(item, n, components);
+  StoredStack copyWithCount(int n) =>
+      n <= 0 ? empty : StoredStack(item, n, components);
 
   StoredStack grow(int n) => copyWithCount(count + n);
 
@@ -85,14 +92,23 @@ final class StoredStack {
   /// Reads a saved stack; an unreadable one is [empty].
   static StoredStack fromNbt(NbtMap? t) {
     if (t == null || !t.contains('id')) return empty;
-    final count = t.contains('count') ? t.getInt('count', 1) : t.getInt('Count', 1);
+    final count = t.contains('count')
+        ? t.getInt('count', 1)
+        : t.getInt('Count', 1);
     final c = t.getCompoundOrNull('components');
-    return StoredStack(t.getString('id'), count, c == null || c.isEmpty ? null : c.copy());
+    return StoredStack(
+      t.getString('id'),
+      count,
+      c == null || c.isEmpty ? null : c.copy(),
+    );
   }
 
   @override
   bool operator ==(Object other) =>
-      other is StoredStack && other.count == count && sameItemSameComponents(other) || (isEmpty && other is StoredStack && other.isEmpty);
+      other is StoredStack &&
+          other.count == count &&
+          sameItemSameComponents(other) ||
+      (isEmpty && other is StoredStack && other.isEmpty);
 
   @override
   int get hashCode => isEmpty ? 0 : Object.hash(item, count);
@@ -113,7 +129,8 @@ final class StoredFluid {
 
   bool get isEmpty => amount <= 0 || fluid == 'minecraft:empty';
 
-  StoredFluid copyWithAmount(int n) => n <= 0 ? empty : StoredFluid(fluid, n, components);
+  StoredFluid copyWithAmount(int n) =>
+      n <= 0 ? empty : StoredFluid(fluid, n, components);
 
   bool isFluidEqual(StoredFluid other) {
     if (fluid != other.fluid) return false;
@@ -135,11 +152,18 @@ final class StoredFluid {
   static StoredFluid fromNbt(NbtMap? t) {
     if (t == null || !t.contains('id')) return empty;
     final c = t.getCompoundOrNull('components');
-    return StoredFluid(t.getString('id'), t.getInt('amount'), c == null || c.isEmpty ? null : c.copy());
+    return StoredFluid(
+      t.getString('id'),
+      t.getInt('amount'),
+      c == null || c.isEmpty ? null : c.copy(),
+    );
   }
 
   @override
-  bool operator ==(Object other) => other is StoredFluid && ((isEmpty && other.isEmpty) || (other.amount == amount && isFluidEqual(other)));
+  bool operator ==(Object other) =>
+      other is StoredFluid &&
+      ((isEmpty && other.isEmpty) ||
+          (other.amount == amount && isFluidEqual(other)));
 
   @override
   int get hashCode => isEmpty ? 0 : Object.hash(fluid, amount);
@@ -175,15 +199,22 @@ class ItemStackHandler implements ItemSlots {
   /// Called after a slot changed.
   void Function(int slot)? onChange;
 
-  ItemStackHandler(int size) : stacks = List<StoredStack>.filled(size, StoredStack.empty, growable: true);
+  ItemStackHandler(int size)
+    : stacks = List<StoredStack>.filled(
+        size,
+        StoredStack.empty,
+        growable: true,
+      );
 
-  ItemStackHandler.of(List<StoredStack> items) : stacks = List<StoredStack>.of(items, growable: true);
+  ItemStackHandler.of(List<StoredStack> items)
+    : stacks = List<StoredStack>.of(items, growable: true);
 
   @override
   int get slots => stacks.length;
 
   @override
-  StoredStack stackInSlot(int slot) => slot < 0 || slot >= stacks.length ? StoredStack.empty : stacks[slot];
+  StoredStack stackInSlot(int slot) =>
+      slot < 0 || slot >= stacks.length ? StoredStack.empty : stacks[slot];
 
   @override
   void setStackInSlot(int slot, StoredStack stack) {
@@ -201,9 +232,12 @@ class ItemStackHandler implements ItemSlots {
   @override
   StoredStack insertItem(int slot, StoredStack stack, {bool simulate = false}) {
     if (stack.isEmpty) return StoredStack.empty;
-    if (slot < 0 || slot >= stacks.length || !isItemValid(slot, stack)) return stack;
+    if (slot < 0 || slot >= stacks.length || !isItemValid(slot, stack))
+      return stack;
     final existing = stacks[slot];
-    final limit = stack.maxStackSize < slotLimit(slot) ? stack.maxStackSize : slotLimit(slot);
+    final limit = stack.maxStackSize < slotLimit(slot)
+        ? stack.maxStackSize
+        : slotLimit(slot);
     if (existing.isNotEmpty) {
       if (!stack.sameItemSameComponents(existing)) return stack;
     }
@@ -211,7 +245,9 @@ class ItemStackHandler implements ItemSlots {
     if (space <= 0) return stack;
     final moved = stack.count < space ? stack.count : space;
     if (!simulate) {
-      stacks[slot] = existing.isEmpty ? stack.copyWithCount(moved) : existing.grow(moved);
+      stacks[slot] = existing.isEmpty
+          ? stack.copyWithCount(moved)
+          : existing.grow(moved);
       onChange?.call(slot);
     }
     return moved >= stack.count ? StoredStack.empty : stack.shrink(moved);
@@ -219,10 +255,13 @@ class ItemStackHandler implements ItemSlots {
 
   @override
   StoredStack extractItem(int slot, int amount, {bool simulate = false}) {
-    if (amount <= 0 || slot < 0 || slot >= stacks.length) return StoredStack.empty;
+    if (amount <= 0 || slot < 0 || slot >= stacks.length)
+      return StoredStack.empty;
     final existing = stacks[slot];
     if (existing.isEmpty) return StoredStack.empty;
-    final toExtract = amount < existing.maxStackSize ? amount : existing.maxStackSize;
+    final toExtract = amount < existing.maxStackSize
+        ? amount
+        : existing.maxStackSize;
     if (existing.count <= toExtract) {
       if (!simulate) {
         stacks[slot] = StoredStack.empty;
@@ -250,6 +289,33 @@ class ItemStackHandler implements ItemSlots {
       ..putList('Items', items);
   }
 
+  /// `ItemSlots.CODEC` (`CreateCodecs.ITEM_STACK_HANDLER`): `{items: {"<slot>": stack}, size}`.
+  /// Only non-empty slots are written.
+  NbtMap serializeItemSlots() {
+    final items = NbtMap();
+    for (var i = 0; i < stacks.length; i++) {
+      if (stacks[i].isEmpty) continue;
+      items.putCompound('$i', stacks[i].toNbt());
+    }
+    return NbtMap()
+      ..putCompound('items', items)
+      ..putInt('size', stacks.length);
+  }
+
+  /// Reads a handler from an `ItemSlots.CODEC` compound (`{items, size}`).
+  static ItemStackHandler fromItemSlotsNbt(NbtMap nbt) {
+    final size = nbt.getInt('size');
+    final h = ItemStackHandler(size < 0 ? 0 : size);
+    final items = nbt.getCompound('items');
+    for (final key in items.keys) {
+      final slot = int.tryParse(key);
+      if (slot == null || slot < 0 || slot >= h.stacks.length) continue;
+      final stack = StoredStack.fromNbt(items.getCompoundOrNull(key));
+      if (stack.isNotEmpty) h.stacks[slot] = stack;
+    }
+    return h;
+  }
+
   /// `ItemStackHandler.deserializeNBT`.
   void deserialize(NbtMap nbt) {
     final size = nbt.contains('Size') ? nbt.getInt('Size') : stacks.length;
@@ -259,7 +325,8 @@ class ItemStackHandler implements ItemSlots {
     for (final v in nbt.getList('Items')) {
       final t = NbtMap.of(v);
       final slot = t.getInt('Slot', -1);
-      if (slot >= 0 && slot < stacks.length) stacks[slot] = StoredStack.fromNbt(t);
+      if (slot >= 0 && slot < stacks.length)
+        stacks[slot] = StoredStack.fromNbt(t);
     }
   }
 
@@ -313,7 +380,9 @@ class CombinedItemSlots implements ItemSlots {
   @override
   StoredStack extractItem(int slot, int amount, {bool simulate = false}) {
     final l = _locate(slot);
-    return l == null ? StoredStack.empty : l.$1.extractItem(l.$2, amount, simulate: simulate);
+    return l == null
+        ? StoredStack.empty
+        : l.$1.extractItem(l.$2, amount, simulate: simulate);
   }
 
   @override
@@ -333,13 +402,19 @@ class CombinedItemSlots implements ItemSlots {
 abstract final class ItemSlotsHelper {
   /// `ItemHandlerHelper.insertItem`: first into slots that already hold the item, then empty ones.
   /// Returns the remainder.
-  static StoredStack insert(ItemSlots to, StoredStack stack, {bool simulate = false}) {
+  static StoredStack insert(
+    ItemSlots to,
+    StoredStack stack, {
+    bool simulate = false,
+  }) {
     if (stack.isEmpty) return StoredStack.empty;
     var remaining = stack;
     for (var pass = 0; pass < 2 && remaining.isNotEmpty; pass++) {
       for (var i = 0; i < to.slots && remaining.isNotEmpty; i++) {
         final held = to.stackInSlot(i);
-        if (pass == 0 && (held.isEmpty || !held.sameItemSameComponents(remaining))) continue;
+        if (pass == 0 &&
+            (held.isEmpty || !held.sameItemSameComponents(remaining)))
+          continue;
         if (pass == 1 && held.isNotEmpty) continue;
         remaining = to.insertItem(i, remaining, simulate: simulate);
       }
@@ -349,12 +424,22 @@ abstract final class ItemSlotsHelper {
 
   /// `ItemHelper.extract(inv, test, amount, simulate)`: takes up to [amount] items accepted by
   /// [test], from several slots if needed (all of one kind).
-  static StoredStack extract(ItemSlots from, bool Function(StoredStack) test, int amount, {bool simulate = false}) {
+  static StoredStack extract(
+    ItemSlots from,
+    bool Function(StoredStack) test,
+    int amount, {
+    bool simulate = false,
+  }) {
     var extracted = StoredStack.empty;
-    for (var i = 0; i < from.slots && (extracted.isEmpty || extracted.count < amount); i++) {
+    for (
+      var i = 0;
+      i < from.slots && (extracted.isEmpty || extracted.count < amount);
+      i++
+    ) {
       final held = from.stackInSlot(i);
       if (held.isEmpty || !test(held)) continue;
-      if (extracted.isNotEmpty && !extracted.sameItemSameComponents(held)) continue;
+      if (extracted.isNotEmpty && !extracted.sameItemSameComponents(held))
+        continue;
       final want = amount - extracted.count;
       final got = from.extractItem(i, want, simulate: simulate);
       if (got.isEmpty) continue;
@@ -366,7 +451,10 @@ abstract final class ItemSlotsHelper {
   /// `ItemHelper.copyContents(from, to)`: slot by slot.
   static void copyContents(ItemSlots from, ItemSlots to) {
     for (var i = 0; i < to.slots; i++) {
-      to.setStackInSlot(i, i < from.slots ? from.stackInSlot(i) : StoredStack.empty);
+      to.setStackInSlot(
+        i,
+        i < from.slots ? from.stackInSlot(i) : StoredStack.empty,
+      );
     }
   }
 
@@ -456,7 +544,8 @@ class SingleFluidTank implements FluidTanks {
 
   @override
   StoredFluid drainFluid(StoredFluid resource, {bool simulate = false}) {
-    if (resource.isEmpty || !resource.isFluidEqual(fluid)) return StoredFluid.empty;
+    if (resource.isEmpty || !resource.isFluidEqual(fluid))
+      return StoredFluid.empty;
     return drain(resource.amount, simulate: simulate);
   }
 }
@@ -516,7 +605,9 @@ class CombinedFluidTanks implements FluidTanks {
     for (final p in parts) {
       final want = maxAmount - (out.isEmpty ? 0 : out.amount);
       if (want <= 0) break;
-      final got = out.isEmpty ? p.drain(want, simulate: simulate) : p.drainFluid(out.copyWithAmount(want), simulate: simulate);
+      final got = out.isEmpty
+          ? p.drain(want, simulate: simulate)
+          : p.drainFluid(out.copyWithAmount(want), simulate: simulate);
       if (got.isEmpty) continue;
       out = out.isEmpty ? got : out.copyWithAmount(out.amount + got.amount);
     }

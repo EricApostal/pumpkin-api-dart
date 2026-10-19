@@ -22,6 +22,9 @@ class ItemVaultBlockEntity extends CreateBlockEntity
     implements MultiPart, ItemInventoryProvider {
   late final ListInventory inventory;
   Pos? _controller;
+
+  /// `getLastKnownPos`: the part's own position, tracked so a moved (pushed) vault splits.
+  Pos? _lastKnownPos;
   bool _updateConnectivity = false;
   int radius = 1;
   int length = 1;
@@ -169,6 +172,16 @@ class ItemVaultBlockEntity extends CreateBlockEntity
   @override
   void tick() {
     super.tick();
+
+    // `tick`: a part that is no longer where it was has to split and re-form.
+    if (_lastKnownPos == null) {
+      _lastKnownPos = partPos;
+    } else if (_lastKnownPos != partPos) {
+      removeController(true);
+      _lastKnownPos = partPos;
+      return;
+    }
+
     if (_updateConnectivity) updateConnectivity();
   }
 
@@ -238,6 +251,9 @@ class ItemVaultBlockEntity extends CreateBlockEntity
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     if (_updateConnectivity) tag.putBool('Uninitialized', true);
+    final last = _lastKnownPos;
+    if (last != null)
+      tag.putIntArray('LastKnownPos', [last.$1, last.$2, last.$3]);
     if (!isController)
       tag.putIntArray('Controller', [
         controller.$1,
@@ -277,7 +293,11 @@ class ItemVaultBlockEntity extends CreateBlockEntity
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    _updateConnectivity = tag.getBool('Uninitialized') ?? false;
+    // `compound.contains("Uninitialized")`, not its value: the marker only exists when set.
+    _updateConnectivity = tag.containsKey('Uninitialized');
+    _lastKnownPos = null;
+    final lk = tag.getIntArray('LastKnownPos');
+    if (lk != null && lk.length >= 3) _lastKnownPos = (lk[0], lk[1], lk[2]);
     _controller = null;
     final c = tag.getIntArray('Controller');
     if (c != null && c.length >= 3) _controller = (c[0], c[1], c[2]);

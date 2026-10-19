@@ -20,7 +20,9 @@
 //   itemStack / itemStackOptional            ItemStackData (empty only for the optional kind)
 //   fluidStack / fluidStackOptional          FluidStackData
 //   nbtCompound                              NbtValue (kind compound)
-//   nbtTag                                   NbtValue? (null = TAG_End)
+//   nbtTag                                   NbtValue (non-null; `ByteBufCodecs.TAG` rejects TAG_End).
+//                                            When the manifest names a compound-only codec in `className`
+//                                            (`legacyNbtWithRegistries`, `codec-as-nbt`) a compound is required.
 //   component                                NbtValue (a text component is an NBT tag on the wire);
 //                                            `encode` also accepts a plain String
 //   bytes                                    Uint8List
@@ -118,6 +120,11 @@ String _checkId(String s) {
 /// The default bound of lists/maps/byte arrays that do not declare one.
 const int defaultCollectionLimit = 1 << 20;
 
+/// Class names the manifest gives to `nbtTag` fields whose Java codec is compound-only:
+/// `CreateStreamCodecs.ofLegacyNbtWithRegistries` and the `codec-as-nbt` mounted storage
+/// codecs both go through `FriendlyByteBuf.readNbt()` / `writeNbt(CompoundTag)`.
+const Set<String> _compoundOnlyTags = {'legacyNbtWithRegistries', 'codec-as-nbt'};
+
 // ---------------------------------------------------------------- compiler
 
 /// Special cases that the manifest describes in prose: fields from a given field on
@@ -197,10 +204,23 @@ WireCodec compileType(NetType type, [String path = '']) {
         },
       );
     case NetKind.nbtTag:
+      // ByteBufCodecs.TAG rejects TAG_End in both directions. The manifest also uses this kind
+      // for compound-only codecs, named in `className` (`ofLegacyNbtWithRegistries` and the
+      // `codec-as-nbt` mounted storage codecs both call FriendlyByteBuf.readNbt()).
+      final compoundOnly = _compoundOnlyTags.contains(type.className);
       return _Fn(
         1,
-        (r, _) => r.readNbt(),
-        (w, v, _) => v == null || v is NbtValue ? w.writeNbt(v as NbtValue?) : throw _typeError('NbtValue?', v),
+        (r, _) {
+          final tag = r.readNbt();
+          if (tag == null) throw const PacketException('expected a tag but got TAG_End');
+          if (compoundOnly && tag.kind != NbtKind.compound) throw const PacketException('expected a compound tag');
+          return tag;
+        },
+        (w, v, _) {
+          if (v is! NbtValue) throw _typeError('NbtValue', v);
+          if (compoundOnly && v.kind != NbtKind.compound) throw const PacketException('expected a compound tag');
+          w.writeNbt(v);
+        },
       );
     case NetKind.component:
       return _Fn(
@@ -419,7 +439,7 @@ final class _Struct extends WireCodec {
 
   _Struct(this.fields, String path, {this.gate})
     : codecs = [for (final f in fields) compileType(f.type, '$path.${f.name}')],
-      optional = [for (final f in fields) f.type.kind == NetKind.optional || f.type.kind == NetKind.nbtTag] {
+      optional = [for (final f in fields) f.type.kind == NetKind.optional] {
     final g = gate;
     _gateIndex = g == null ? fields.length : fields.indexWhere((f) => f.name == g.from);
     if (_gateIndex < 0) throw SchemaException('$path: gate field `${g!.from}` not found');

@@ -64,7 +64,7 @@ class ControlledContraptionEntity extends AbstractContraptionEntity {
       );
     final axis = rotationAxis;
     if (axis != null) compound.putString('Axis', axis.serializedName);
-    compound.putDouble('Angle', angle);
+    compound.putFloat('Angle', angle);
   }
 
   @override

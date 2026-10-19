@@ -230,14 +230,25 @@ class SpoutBlockEntity extends CreateBlockEntity
     createdHoneyApple = tag.getBool('HoneyApple') ?? false;
     createdSweetRoll = tag.getBool('SweetRoll') ?? false;
     final fluid = tag.getCompound('Tank');
-    if (fluid != null) tank.rawSet(FluidNbt.read(valueOfCompound(fluid)));
+    if (fluid != null) tank.rawSet(readFluidTankNbt(valueOfCompound(fluid)));
+    // `SmartFluidTankBehaviour.write`: a single tank under `Tanks`.
+    final tanks = tag.getList('Tanks');
+    if (tanks != null && tanks.isNotEmpty) {
+      final first = tanks.first;
+      if (first is NbtCompound) {
+        tank.rawSet(readTankSegmentNbt(valueOfCompound(first)));
+      }
+    }
   }
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
     tag.putInt('ProcessingTicks', processingTicks);
-    tag.putCompound('Tank', compoundOf(FluidNbt.write(tank.fluid)));
+    // `SmartFluidTankBehaviour.write`: a single tank under `Tanks`.
+    tag.putList('Tanks', [
+      compoundOf(tankSegmentNbt(tank.fluid, tank.tankCapacity(0))),
+    ]);
     if (sendSplash && clientPacket) {
       tag.putBool('Splash', true);
       sendSplash = false;

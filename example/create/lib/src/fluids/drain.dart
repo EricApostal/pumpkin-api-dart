@@ -260,7 +260,15 @@ class ItemDrainBlockEntity extends CreateBlockEntity
     final held = tag.getCompound('HeldItem');
     if (held != null) heldItem = TransportedStackNbt.read(held, StackNbt.read);
     final fluid = tag.getCompound('Tank');
-    if (fluid != null) tank.rawSet(FluidNbt.read(valueOfCompound(fluid)));
+    if (fluid != null) tank.rawSet(readFluidTankNbt(valueOfCompound(fluid)));
+    // `SmartFluidTankBehaviour` writes one `TankSegment` per tank under `Tanks`.
+    final tanks = tag.getList('Tanks');
+    if (tanks != null && tanks.isNotEmpty) {
+      final first = tanks.first;
+      if (first is NbtCompound) {
+        tank.rawSet(readTankSegmentNbt(valueOfCompound(first)));
+      }
+    }
   }
 
   @override
@@ -273,7 +281,11 @@ class ItemDrainBlockEntity extends CreateBlockEntity
         'HeldItem',
         TransportedStackNbt.write(held, StackNbt.write),
       );
-    tag.putCompound('Tank', compoundOf(FluidNbt.write(tank.fluid)));
+    // `SmartFluidTankBehaviour.write`: a single tank under `Tanks`, each entry a
+    // `{TankContent, Level}` segment (the legacy `Tank` key is still read).
+    tag.putList('Tanks', [
+      compoundOf(tankSegmentNbt(tank.fluid, tank.tankCapacity(0))),
+    ]);
   }
 }
 

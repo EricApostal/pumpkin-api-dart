@@ -14,6 +14,7 @@ import '../../kinetics/api.dart' show SequenceContext;
 import '../blocks/actuator_contract.dart';
 import '../blocks/actuator_runtime.dart';
 import '../core/contraption.dart';
+import '../core/nbt_map.dart';
 import '../core/structure_transform.dart';
 import '../entity/contraption_entity.dart';
 import 'gantry_contraption.dart';
@@ -94,7 +95,10 @@ class GantryContraptionEntity extends AbstractContraptionEntity {
       }
       move(movement);
       if (sequencedOffsetLimit > 0) {
-        sequencedOffsetLimit = math.max(0, sequencedOffsetLimit - movement.length);
+        sequencedOffsetLimit = math.max(
+          0,
+          sequencedOffsetLimit - movement.length,
+        );
       }
     }
 
@@ -136,10 +140,37 @@ class GantryContraptionEntity extends AbstractContraptionEntity {
   void _sendUpdate() {
     host.sendPayload('create:gantry_update', {
       'entityID': host.entityId,
-      'coord': getAnchorVec().$2,
+      'coord': _axisCoord(),
       'motion': axisMotion,
       'sequenceLimit': sequencedOffsetLimit,
     });
+  }
+
+  /// `getAxisCoord()`: the anchor coordinate along the movement axis (the packet's `coord`).
+  double _axisCoord() {
+    final anchor = getAnchorVec();
+    return movementAxis.axis.choose(anchor.$1, anchor.$2, anchor.$3);
+  }
+
+  @override
+  void writeAdditional(NbtMap compound, {bool spawnPacket = false}) {
+    super.writeAdditional(compound, spawnPacket: spawnPacket);
+    compound.putString('GantryAxis', movementAxis.name.toUpperCase());
+    if (sequencedOffsetLimit >= 0)
+      compound.putDouble('SequencedOffsetLimit', sequencedOffsetLimit);
+  }
+
+  @override
+  void readAdditional(NbtMap compound, {bool spawnData = false}) {
+    // `readEnum(compound, "GantryAxis", Direction.class)`: the Java enum name (upper case), with
+    // `Direction.values()[0]` ([Direction.down]) as the fallback.
+    movementAxis =
+        Direction.byName(compound.getString('GantryAxis').toLowerCase()) ??
+        Direction.values[0];
+    sequencedOffsetLimit = compound.contains('SequencedOffsetLimit')
+        ? compound.getDouble('SequencedOffsetLimit')
+        : -1;
+    super.readAdditional(compound, spawnData: spawnData);
   }
 
   @override

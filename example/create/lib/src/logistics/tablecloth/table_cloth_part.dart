@@ -121,10 +121,14 @@ class TableClothBlockEntity extends LgBlockEntity {
     super.read(tag, clientPacket: clientPacket);
     final items = tag.getList('Items');
     if (items != null) {
-      manuallyAddedItems = [
-        for (final entry in items)
-          if (entry is NbtCompound) stackFromNbt(entry),
-      ];
+      // `readItemList` skips empty stacks.
+      final parsed = <LStack>[];
+      for (final entry in items) {
+        if (entry is! NbtCompound) continue;
+        final stack = stackFromNbt(entry);
+        if (stack.isNotEmpty) parsed.add(stack);
+      }
+      manuallyAddedItems = parsed;
     }
     if (tag.containsKey('Facing')) {
       facing = Direction.from2DDataValue(tag.getInt('Facing') ?? 0);

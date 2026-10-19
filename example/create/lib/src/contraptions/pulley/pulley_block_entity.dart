@@ -272,26 +272,19 @@ class PulleyBlockEntity extends LinearActuatorBlockEntity {
     initialOffset = tag.getInt('InitialOffset') ?? 0;
     needsContraption = tag.getBool('NeedsContraption') ?? false;
     super.read(tag, clientPacket: clientPacket);
-    final parent = tag.getCompound('MirrorParent');
-    mirrorParent = parent == null
-        ? null
-        : (
-            parent.getInt('X') ?? 0,
-            parent.getInt('Y') ?? 0,
-            parent.getInt('Z') ?? 0,
-          );
+
+    mirrorParent = tag.containsKey('MirrorParent')
+        ? _readBlockPos(tag, 'MirrorParent')
+        : null;
     final children = tag.getList('MirrorChildren');
-    mirrorChildren = children == null
-        ? null
-        : [
+    mirrorChildren = tag.containsKey('MirrorChildren') && children != null
+        ? [
             for (final entry in children)
-              if (entry is NbtCompound)
-                (
-                  entry.getInt('X') ?? 0,
-                  entry.getInt('Y') ?? 0,
-                  entry.getInt('Z') ?? 0,
-                ),
-          ];
+              // `NBTHelper.readBlockPos(t, "Pos")`: each entry holds the position under `Pos`.
+              if (entry is NbtCompound) _readBlockPos(entry, 'Pos'),
+          ]
+        : null;
+
     if (mirrorParent != null) offset = 0;
   }
 
@@ -300,26 +293,31 @@ class PulleyBlockEntity extends LinearActuatorBlockEntity {
     tag.putInt('InitialOffset', initialOffset);
     super.write(tag, clientPacket: clientPacket);
     final parent = mirrorParent;
-    if (parent != null) {
-      tag.putCompound(
-        'MirrorParent',
-        NbtCompound()
-          ..putInt('X', parent.$1)
-          ..putInt('Y', parent.$2)
-          ..putInt('Z', parent.$3),
-      );
-    }
+    // `compound.store("MirrorParent", BlockPos.CODEC, ...)`: `BlockPos.CODEC` is an int array.
+    if (parent != null)
+      tag.putIntArray('MirrorParent', [parent.$1, parent.$2, parent.$3]);
     final children = mirrorChildren;
     if (children != null) {
       tag.putList('MirrorChildren', [
         for (final p in children)
-          NbtCompound()
-            ..putInt('X', p.$1)
-            ..putInt('Y', p.$2)
-            ..putInt('Z', p.$3),
+          NbtCompound()..putIntArray('Pos', [p.$1, p.$2, p.$3]),
       ]);
     }
   }
+}
+
+/// `NBTHelper.readBlockPos(compound, key)`: `BlockPos.CODEC` (an int array) or the legacy
+/// `{X, Y, Z}` compound.
+Pos _readBlockPos(NbtCompound tag, String key) {
+  final array = tag.getIntArray(key);
+  if (array != null && array.length >= 3) return (array[0], array[1], array[2]);
+  final compound = tag.getCompound(key);
+  if (compound == null) return posZero;
+  return (
+    compound.getInt('X') ?? 0,
+    compound.getInt('Y') ?? 0,
+    compound.getInt('Z') ?? 0,
+  );
 }
 
 /// The block entity lookup the pulley needs (avoids a direct store dependency in tests).

@@ -744,12 +744,10 @@ class DimensionalCarriageEntity {
     if (pivot != null) tag.putCompound('Pivot', pivot!.write(null));
     if (positionAnchor != null) tag.putVec3('PositionAnchor', positionAnchor!);
     if (rotationAnchors.both((v) => v != null)) {
+      // Java writes each anchor with `VecHelper.writeNBTCompound`: a compound `{V: [x, y, z]}`
+      // wrapping a double list, not an `{X, Y, Z}` compound.
       tag.putCompoundList('RotationAnchors', [
-        for (final v in rotationAnchors.toList())
-          CTag()
-            ..putDouble('X', v!.$1)
-            ..putDouble('Y', v.$2)
-            ..putDouble('Z', v.$3),
+        for (final v in rotationAnchors.toList()) CTag()..putVec3('V', v!),
       ]);
     }
     return tag;
@@ -766,8 +764,8 @@ class DimensionalCarriageEntity {
       positionAnchor = tag.getVec3('PositionAnchor');
     if (tag.contains('RotationAnchors')) {
       final list = tag.getCompoundList('RotationAnchors');
-      Vec3 readV(CTag c) =>
-          (c.getDouble('X'), c.getDouble('Y'), c.getDouble('Z'));
+      // `VecHelper.readNBTCompound`: the three doubles under `V`.
+      Vec3 readV(CTag c) => c.getVec3('V');
       rotationAnchors = Couple.create<Vec3?>(
         list.isNotEmpty ? readV(list[0]) : null,
         list.length > 1 ? readV(list[1]) : null,

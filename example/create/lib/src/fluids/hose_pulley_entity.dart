@@ -155,7 +155,8 @@ class HosePulleyBlockEntity extends KineticBlockEntity
   void write(NbtCompound tag, {required bool clientPacket}) {
     // `offset` is only ever `setValue`d, so its chase target stays at 0.
     LerpedFloatNbt.write(tag, 'Offset', offset, target: 0, force: clientPacket);
-    tag.putCompound('Tank', compoundOf(FluidNbt.write(internalTank.fluid)));
+    // `internalTank.writeToNBT`: the stack is nested under `Fluid`.
+    tag.putCompound('Tank', compoundOf(fluidTankNbt(internalTank.fluid)));
 
     final fillerNbt = <String, NbtValue>{};
     filler.write(fillerNbt);
@@ -177,7 +178,7 @@ class HosePulleyBlockEntity extends KineticBlockEntity
     offset = LerpedFloatNbt.read(tag, 'Offset');
     final tankTag = tag.getCompound('Tank');
     if (tankTag != null) {
-      internalTank.rawSet(FluidNbt.read(valueOfCompound(tankTag)));
+      internalTank.rawSet(readFluidTankNbt(valueOfCompound(tankTag)));
     }
     final fillerTag = tag.getCompound('Filler');
     if (fillerTag != null) filler.read(valueOfCompound(fillerTag).asCompound);

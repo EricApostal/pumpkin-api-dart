@@ -116,8 +116,6 @@ void registerActuatorContent(CreateRegistry registry) {
   type('elevator_contact', [
     'elevator_contact',
   ], ElevatorContactBlockEntity.new);
-  // `AllBlockEntityTypes.GANTRY_PINION` registers the type as `gantry_pinion`; the block it
-  // serves is `gantry_carriage`.
   type('gantry_pinion', ['gantry_carriage'], GantryCarriageBlockEntity.new);
   type('cart_assembler', ['cart_assembler'], CartAssemblerBlockEntity.new);
   type('chassis', [

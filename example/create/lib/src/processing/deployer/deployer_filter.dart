@@ -43,7 +43,15 @@ class DeployerFilterBehaviour extends BlockEntityBehaviour
   /// The filter stack; empty accepts everything.
   PStack filter = PStack.empty;
 
+  /// `FilteringBehaviour.count` / `upTo` (written for NBT parity; the deployer's value box does
+  /// not show a count).
+  int count = 64;
+  bool upTo = true;
+
   bool get isEmpty => filter.isEmpty;
+
+  /// `FilteringBehaviour.getMaxStackSize()`.
+  int get maxStackSize => filter.isEmpty ? 64 : filter.maxStack;
 
   /// `FilteringBehaviour.test(stack)`.
   bool test(PStack stack) => deployerFilterTest(filter, stack, owner.worldId);
@@ -51,6 +59,9 @@ class DeployerFilterBehaviour extends BlockEntityBehaviour
   /// `setFilter(stack)`.
   void setFilter(PStack stack) {
     filter = stack.isEmpty ? PStack.empty : stack.withCount(1);
+    if (!upTo && filter.isNotEmpty && count > filter.maxStack) {
+      count = filter.maxStack;
+    }
     owner.markDirty();
     owner.sendData();
   }
@@ -118,10 +129,19 @@ class DeployerFilterBehaviour extends BlockEntityBehaviour
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     filter = StackNbt.read(tag.getCompound('Filter'));
+    count = tag.getInt('FilterAmount') ?? 0;
+    upTo = tag.getBool('UpTo') ?? false;
+    // `FilteringBehaviour.read`: migrate data written before the count existed.
+    if (count == 0) {
+      upTo = true;
+      count = maxStackSize;
+    }
   }
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
-    tag.putCompound('Filter', StackNbt.write(filter));
+    tag.putCompound('Filter', StackNbt.writeOrEmpty(filter));
+    tag.putInt('FilterAmount', count);
+    tag.putBool('UpTo', upTo);
   }
 }

@@ -33,14 +33,10 @@ Player? actorPlayer(MovementContext context, World world) {
   final existing = context.temporaryData;
   if (existing is Player) return existing;
 
-  final owner = context.blockEntityData?.getString('Owner');
+  final owner = _ownerUuid(context.blockEntityData);
   Player player;
   try {
-    player = FakePlayers.create(
-      world,
-      'Deployer',
-      id: owner == null ? null : Uuids.tryParse(owner),
-    ).keep();
+    player = FakePlayers.create(world, 'Deployer', id: owner).keep();
   } on Object {
     player = FakePlayers.create(
       world,
@@ -52,9 +48,9 @@ Player? actorPlayer(MovementContext context, World world) {
   final inventory = player.getInventory();
   inventory.setSelectedSlot(slot: 0);
 
-  final saved = context.blockEntityData?.getCompoundOrNull('Inventory');
-  if (saved != null) {
-    unawaited(_loadInventory(player, _readInventory(saved)));
+  final saved = context.blockEntityData?.getList('Inventory');
+  if (saved != null && saved.isNotEmpty) {
+    unawaited(_loadInventory(player, _readActorInventory(saved)));
   }
   final held = context.data.getCompoundOrNull('HeldItem');
   if (held != null) {
@@ -110,10 +106,28 @@ Future<void> saveActorPlayer(MovementContext context, Player player) async {
     inventory[slot] = await HostStacks.read(item);
     item.dispose();
   }
-  context.blockEntityData?.putCompound('Inventory', _writeInventory(inventory));
+  context.blockEntityData?.putList(
+    'Inventory',
+    _writeActorInventory(inventory),
+  );
   // The inventory is saved: the fake player is released without dropping its contents.
   await storage.clear();
   await releaseActorPlayer(context);
+}
+
+/// The uuid in the captured data: `Owner` is the four-int `UUIDUtil.CODEC` form in Java; the
+/// canonical string of earlier versions is still accepted.
+Uuid? _ownerUuid(NbtMap? data) {
+  if (data == null) return null;
+  final value = data.getIntArray('Owner');
+  if (value.length >= 4) {
+    return Uuid(
+      high: (value[0] << 32) | (value[1] & 0xFFFFFFFF),
+      low: (value[2] << 32) | (value[3] & 0xFFFFFFFF),
+    );
+  }
+  final text = data.getString('Owner');
+  return text.isEmpty ? null : Uuids.tryParse(text);
 }
 
 /// Releases the fake player of [context] (and any still held by it).
@@ -193,23 +207,21 @@ PStack _stackFromMap(NbtMap? map) {
   return PStack(key, count, maxStack: map.getInt('Max', 64), comps: comps);
 }
 
-/// `StackNbt.writeList` on a pure [NbtMap].
-NbtMap _writeInventory(List<PStack> stacks) {
+/// The vanilla `Inventory` list of the fake player: one `{Slot, ...stack}` entry per non-empty
+/// slot (`DeployerBlockEntity.write`).
+List<NbtValue> _writeActorInventory(List<PStack> stacks) {
   final items = <NbtValue>[];
   for (var slot = 0; slot < stacks.length; slot++) {
     if (stacks[slot].isEmpty) continue;
-    final map = _stackToMap(stacks[slot])..putInt('Slot', slot);
-    items.add(map.toValue());
+    items.add((_stackToMap(stacks[slot])..putByte('Slot', slot)).toValue());
   }
-  return NbtMap()
-    ..putList('Items', items)
-    ..putInt('Size', stacks.length);
+  return items;
 }
 
-/// `StackNbt.readList` on a pure [NbtMap].
-List<PStack> _readInventory(NbtMap map, [int size = 36]) {
+/// Reads the `Inventory` list (`DeployerBlockEntity.read`).
+List<PStack> _readActorInventory(List<NbtValue> list, [int size = 36]) {
   final out = List<PStack>.filled(size, PStack.empty);
-  for (final value in map.getList('Items')) {
+  for (final value in list) {
     final entry = NbtMap.of(value);
     final slot = entry.getInt('Slot', -1);
     if (slot >= 0 && slot < size) out[slot] = _stackFromMap(entry);

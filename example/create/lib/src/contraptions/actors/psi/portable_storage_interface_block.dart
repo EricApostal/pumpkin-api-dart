@@ -152,7 +152,7 @@ abstract class PortableStorageInterfaceBlockEntity extends CreateBlockEntity {
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
     tag.putInt('Timer', transferTimer);
-    tag.putDouble('Distance', distance);
+    tag.putFloat('Distance', distance);
     tag.putBool('Powered', powered);
   }
 }

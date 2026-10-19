@@ -450,8 +450,10 @@ final class ArmBlockEntity extends KineticBlockEntity
     tag.putString('Phase', phase.javaName);
     tag.putBool('Powered', redstoneLocked);
     tag.putBool('Goggles', goggles);
-    tag.putInt('SelectionMode', selectionMode.index);
-    tag.putCompound('HeldItem', StackNbt.write(heldItem));
+    // The selection mode is a `ScrollOptionBehaviour`; Java stores it as `ScrollValue`
+    // (`ScrollValueBehaviour.write`), not as the enum name.
+    tag.putInt('ScrollValue', selectionMode.index);
+    tag.putCompound('HeldItem', StackNbt.writeOrEmpty(heldItem));
     tag.putInt('TargetPointIndex', chasedPointIndex);
     tag.putFloat('MovementProgress', chasedPointProgress);
   }
@@ -467,7 +469,7 @@ final class ArmBlockEntity extends KineticBlockEntity
     redstoneLocked = tag.getBool('Powered') ?? false;
     goggles = tag.getBool('Goggles') ?? false;
     selectionMode = ArmSelectionMode.fromOrdinal(
-      tag.getInt('SelectionMode') ?? 0,
+      tag.getInt('ScrollValue') ?? tag.getInt('SelectionMode') ?? 0,
     );
 
     final points = tag.getList('InteractionPoints');

@@ -10,60 +10,33 @@
 // was extracted from that Java tree and preserves the order, so it is the source
 // of truth. Modules still register declaratively in any order; this reorders
 // what they registered before the registry is applied to the host.
+//
+// The key lists live in `content/canonical_registry_order.dart`, which imports
+// only the manifest, so the tests can check them without the host API.
+import '../content/canonical_registry_order.dart';
 import '../core/registry.dart';
-import 'blocks.g.dart';
-import 'items.g.dart';
-import 'registries.g.dart';
 
 /// Installs the Java registration order on every id-bearing registry.
 void applyCanonicalOrder(CreateRegistry registry) {
-  final blocks = [...kBlocks]..sort((a, b) => a.index.compareTo(b.index));
-  registry.useOrder(RegistryKind.blocks, [
-    for (final b in blocks) 'create:${b.key}',
-  ]);
+  final order = canonicalRegistryOrder();
+  final covered = <RegistryKind>{};
 
-  final items = [...kItems]..sort((a, b) => a.index.compareTo(b.index));
-  registry.useOrder(RegistryKind.items, [
-    for (final i in items) 'create:${i.key}',
-  ]);
+  for (final entry in order.entries) {
+    final kind = RegistryKind.values.byName(entry.key);
+    registry.useOrder(kind, entry.value);
+    covered.add(kind);
+  }
 
-  registry.useOrder(RegistryKind.blockEntityTypes, [
-    for (final e in kBlockEntityTypes) 'create:${e.key}',
-  ]);
-  registry.useOrder(RegistryKind.entityTypes, [
-    for (final e in kEntityTypes) 'create:${e.key}',
-  ]);
-  registry.useOrder(RegistryKind.menus, [
-    for (final m in kMenuTypes) 'create:${m.key}',
-  ]);
-  registry.useOrder(RegistryKind.dataComponents, [
-    for (final c in kDataComponents) 'create:${c.key}',
-  ]);
-
-  // Registrate registers the source fluid before its flowing variant.
-  registry.useOrder(RegistryKind.fluids, [
-    for (final f in kFluids) ...[
-      'create:${f.sourceKey}',
-      'create:${f.flowingKey}',
-    ],
-  ]);
-
-  registry.useOrder(RegistryKind.damageTypes, [
-    for (final d in kDamageTypes) 'create:${d.key}',
-  ]);
-
-  // A sound event entry can register several events (`<key>_compounded_<i>`).
-  registry.useOrder(RegistryKind.sounds, [
-    for (final s in kSoundEvents)
-      for (final e in s.registeredEvents) 'create:$e',
-  ]);
-
-  registry.useOrder(RegistryKind.particles, [
-    for (final p in kParticleTypes) 'create:${p.key}',
-  ]);
-
-  registry.useOrder(RegistryKind.recipeTypes, [
-    for (final r in kRecipeTypes)
-      if (r.registersRecipeType) 'create:${r.key}',
-  ]);
+  // A kind without an order keeps its registration order, so a Create client would number its
+  // entries differently. Fail loudly instead of producing a subtly broken client sync.
+  final missing = [
+    for (final kind in RegistryKind.values)
+      if (!covered.contains(kind)) kind.name,
+  ];
+  if (missing.isNotEmpty) {
+    throw StateError(
+      'No canonical registration order for ${missing.join(', ')}; '
+      'add it to canonicalRegistryOrder().',
+    );
+  }
 }

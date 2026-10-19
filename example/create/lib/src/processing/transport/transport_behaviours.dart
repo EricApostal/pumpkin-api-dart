@@ -35,17 +35,24 @@ class BeltProcessingBehaviour extends BlockEntityBehaviour {
   }
 
   /// `handleReceivedItem`.
-  ProcessingResult handleReceivedItem(TransportedItemStack stack, TransportedItemStackHandler inventory) =>
-      _onItemEnter(stack, inventory);
+  ProcessingResult handleReceivedItem(
+    TransportedItemStack stack,
+    TransportedItemStackHandler inventory,
+  ) => _onItemEnter(stack, inventory);
 
   /// `handleHeldItem`.
-  ProcessingResult handleHeldItem(TransportedItemStack stack, TransportedItemStackHandler inventory) =>
-      _continueProcessing(stack, inventory);
+  ProcessingResult handleHeldItem(
+    TransportedItemStack stack,
+    TransportedItemStackHandler inventory,
+  ) => _continueProcessing(stack, inventory);
 
   /// `isBlocked(world, processingSpace)`: something with a collision shape sits right above
   /// the processing space (funnels do not count). [isFunnel] / [hasCollision] answer for the
   /// block at the position above.
-  static bool isBlocked({required bool isFunnelAbove, required bool hasCollisionAbove}) {
+  static bool isBlocked({
+    required bool isFunnelAbove,
+    required bool hasCollisionAbove,
+  }) {
     if (isFunnelAbove) return false;
     return hasCollisionAbove;
   }
@@ -53,36 +60,54 @@ class BeltProcessingBehaviour extends BlockEntityBehaviour {
 
 /// `TransportedItemStackHandlerBehaviour`: added by belts and depots; machines above them find
 /// it through `store.at(...)`'s `getBehaviour<TransportedItemStackHandlerBehaviour>()`.
-class TransportedItemStackHandlerBehaviour extends BlockEntityBehaviour implements TransportedItemStackHandler {
+class TransportedItemStackHandlerBehaviour extends BlockEntityBehaviour
+    implements TransportedItemStackHandler {
   static const String type = 'transported_item_stack_handler';
 
   @override
   String get id => type;
 
   /// `ProcessingCallback.applyToAllItems`.
-  final void Function(double maxDistanceFromCenter, TransportedResult? Function(TransportedItemStack) process)
+  final void Function(
+    double maxDistanceFromCenter,
+    TransportedResult? Function(TransportedItemStack) process,
+  )
   processingCallback;
-  (double, double, double) Function(TransportedItemStack transported)? positionGetter;
+  (double, double, double) Function(TransportedItemStack transported)?
+  positionGetter;
 
-  TransportedItemStackHandlerBehaviour(this.processingCallback, {this.positionGetter});
+  TransportedItemStackHandlerBehaviour(
+    this.processingCallback, {
+    this.positionGetter,
+  });
 
   /// `withStackPlacement`.
-  TransportedItemStackHandlerBehaviour withStackPlacement((double, double, double) Function(TransportedItemStack) f) {
+  TransportedItemStackHandlerBehaviour withStackPlacement(
+    (double, double, double) Function(TransportedItemStack) f,
+  ) {
     positionGetter = f;
     return this;
   }
 
   @override
-  void handleCenteredProcessingOnAllItems(double maxDistanceFromCenter, TransportedResult? Function(TransportedItemStack) process) =>
-      processingCallback(maxDistanceFromCenter, process);
+  void handleCenteredProcessingOnAllItems(
+    double maxDistanceFromCenter,
+    TransportedResult? Function(TransportedItemStack) process,
+  ) => processingCallback(maxDistanceFromCenter, process);
 
   @override
-  void handleProcessingOnAllItems(TransportedResult? Function(TransportedItemStack) process) =>
-      handleCenteredProcessingOnAllItems(.51, process);
+  void handleProcessingOnAllItems(
+    TransportedResult? Function(TransportedItemStack) process,
+  ) => handleCenteredProcessingOnAllItems(.51, process);
 
   @override
-  void handleProcessingOnItem(TransportedItemStack item, TransportedResult result) =>
-      handleCenteredProcessingOnAllItems(.51, (t) => identical(t, item) ? result : null);
+  void handleProcessingOnItem(
+    TransportedItemStack item,
+    TransportedResult result,
+  ) => handleCenteredProcessingOnAllItems(
+    .51,
+    (t) => identical(t, item) ? result : null,
+  );
 
   @override
   (double, double, double) worldPositionOf(TransportedItemStack transported) {
@@ -102,14 +127,16 @@ class DirectBeltInputBehaviour extends BlockEntityBehaviour {
   String get id => type;
 
   /// `InsertionCallback`: returns the remainder.
-  PStack Function(TransportedItemStack inserted, String side, bool simulate)? _tryInsert;
+  PStack Function(TransportedItemStack inserted, String side, bool simulate)?
+  _tryInsert;
   bool Function(String side) _canInsert = (side) => true;
   bool Function(String side) _isOccupied = (side) => false;
   bool Function() _supportsBeltFunnels = () => false;
 
   /// Used when no insertion handler was set: tries to insert [inserted] on [side] into the
   /// default storage of the owner. Set by the owner (basin: its input inventory).
-  PStack Function(TransportedItemStack inserted, String side, bool simulate)? defaultInsertion;
+  PStack Function(TransportedItemStack inserted, String side, bool simulate)?
+  defaultInsertion;
 
   DirectBeltInputBehaviour allowingBeltFunnelsWhen(bool Function() pred) {
     _supportsBeltFunnels = pred;
@@ -126,12 +153,17 @@ class DirectBeltInputBehaviour extends BlockEntityBehaviour {
     return this;
   }
 
-  DirectBeltInputBehaviour considerOccupiedWhen(bool Function(String side) pred) {
+  DirectBeltInputBehaviour considerOccupiedWhen(
+    bool Function(String side) pred,
+  ) {
     _isOccupied = pred;
     return this;
   }
 
-  DirectBeltInputBehaviour setInsertionHandler(PStack Function(TransportedItemStack inserted, String side, bool simulate) callback) {
+  DirectBeltInputBehaviour setInsertionHandler(
+    PStack Function(TransportedItemStack inserted, String side, bool simulate)
+    callback,
+  ) {
     _tryInsert = callback;
     return this;
   }
@@ -143,7 +175,11 @@ class DirectBeltInputBehaviour extends BlockEntityBehaviour {
   bool get supportsBeltFunnels => _supportsBeltFunnels();
 
   /// `handleInsertion(transported, side, simulate)`: the remainder.
-  PStack handleInsertion(TransportedItemStack transported, String side, bool simulate) {
+  PStack handleInsertion(
+    TransportedItemStack transported,
+    String side,
+    bool simulate,
+  ) {
     final h = _tryInsert ?? defaultInsertion;
     if (h == null) return transported.stack;
     return h(transported, side, simulate);
@@ -157,7 +193,10 @@ class DirectBeltInputBehaviour extends BlockEntityBehaviour {
 /// Persistence of [TransportedItemStack]s (`serializeNBT` / `read`): the field names Create's
 /// client reads from a belt's update tag.
 abstract final class TransportedStackNbt {
-  static NbtCompound write(TransportedItemStack t, NbtCompound Function(PStack) stackNbt) {
+  static NbtCompound write(
+    TransportedItemStack t,
+    NbtCompound Function(PStack) stackNbt,
+  ) {
     final nbt = NbtCompound()
       ..putCompound('Item', stackNbt(t.stack))
       ..putFloat('Pos', t.beltPosition)
@@ -166,7 +205,10 @@ abstract final class TransportedStackNbt {
       ..putFloat('PrevOffset', t.prevSideOffset)
       ..putInt('InSegment', t.insertedAt)
       ..putInt('Angle', t.angle)
-      ..putInt('InDirection', t.insertedFromIndex < 0 ? 1 : t.insertedFromIndex);
+      ..putInt(
+        'InDirection',
+        t.insertedFromIndex < 0 ? 1 : t.insertedFromIndex,
+      );
     if (t.processedBy != null) {
       nbt
         ..putString('FanProcessingType', t.processedBy!)
@@ -177,7 +219,10 @@ abstract final class TransportedStackNbt {
     return nbt;
   }
 
-  static TransportedItemStack read(NbtCompound nbt, PStack Function(NbtCompound?) stackFromNbt) {
+  static TransportedItemStack read(
+    NbtCompound nbt,
+    PStack Function(NbtCompound?) stackFromNbt,
+  ) {
     final t = TransportedItemStack(stackFromNbt(nbt.getCompound('Item')));
     t.beltPosition = nbt.getDouble('Pos') ?? 0;
     t.prevBeltPosition = nbt.getDouble('PrevPos') ?? 0;
@@ -185,7 +230,11 @@ abstract final class TransportedStackNbt {
     t.prevSideOffset = nbt.getDouble('PrevOffset') ?? 0;
     t.insertedAt = nbt.getInt('InSegment') ?? 0;
     t.angle = nbt.getInt('Angle') ?? 0;
-    t.insertedFrom = TransportedItemStack.directionByIndex(nbt.getInt('InDirection') ?? 1);
+    // `TransportedItemStack.read`: `Direction.from3DDataValue(getIntOr("InDirection", 0))`, so an
+    // absent value falls back to `down`.
+    t.insertedFrom = TransportedItemStack.directionByIndex(
+      nbt.getInt('InDirection') ?? 0,
+    );
     t.locked = nbt.getBool('Locked') ?? false;
     t.lockedExternally = nbt.getBool('LockedExternally') ?? false;
     final fan = nbt.getString('FanProcessingType');

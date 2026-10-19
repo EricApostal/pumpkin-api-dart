@@ -8194,7 +8194,7 @@ i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(self.resourceHandl
 i1.memory.storeFloat64(tmp0.toIntUnsigned(), i0.WasmF64.fromDouble(pos.$1), offset: 8);
 i1.memory.storeFloat64(tmp0.toIntUnsigned(), i0.WasmF64.fromDouble(pos.$2), offset: 16);
 i1.memory.storeFloat64(tmp0.toIntUnsigned(), i0.WasmF64.fromDouble(pos.$3), offset: 24);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(worldRef.takeHandle()), offset: 32);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(worldRef.resourceHandle), offset: 32);
 final tmp1 = _import344(tmp0);
 return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
 i1.dartFree(tmp0, const i0.WasmI32(40), const i0.WasmI32(8));
@@ -20736,7 +20736,7 @@ i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(tmp5), offset
 i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 40);
 
 }
-i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(world.takeHandle()), offset: 48);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(world.resourceHandle), offset: 48);
 final tmp7 = _import772(tmp0);
 return i1.awaitSubtask(tmp7.toIntUnsigned(), _cleanups, () {
 i1.dartFree(tmp0, const i0.WasmI32(56), const i0.WasmI32(8));
@@ -20749,7 +20749,7 @@ final self = this;
 final _cleanups = <void Function()>[];
 var tmp0 = i1.mallocAligned(const i0.WasmI32(8), const i0.WasmI32(48));
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(self.resourceHandle), offset: 0);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(worldRef.takeHandle()), offset: 4);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(worldRef.resourceHandle), offset: 4);
 i1.memory.storeFloat64(tmp0.toIntUnsigned(), i0.WasmF64.fromDouble(position.$1), offset: 8);
 i1.memory.storeFloat64(tmp0.toIntUnsigned(), i0.WasmF64.fromDouble(position.$2), offset: 16);
 i1.memory.storeFloat64(tmp0.toIntUnsigned(), i0.WasmF64.fromDouble(position.$3), offset: 24);
@@ -41110,7 +41110,7 @@ return tmp5;
 List<Player> getPlayersInWorld({required World worldRef, }) {
 final self = this;
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1107(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(worldRef.takeHandle()), tmp0);
+_import1107(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(worldRef.resourceHandle), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp4 = <Player>[];
@@ -41127,7 +41127,7 @@ return tmp4;
 /// Returns the number of online players in a specific world.
 int getPlayerCountInWorld({required World worldRef, }) {
 final self = this;
-final tmp0 = _import1108(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(worldRef.takeHandle()));
+final tmp0 = _import1108(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(worldRef.resourceHandle));
 return tmp0.toIntUnsigned();
 
 }
@@ -48466,7 +48466,7 @@ final class _Imported$PlayerInterface implements PlayerInterface {
 @override
 List<Player> getWorldPlayers({required World worldRef, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1267(i0.WasmI32.fromInt(worldRef.takeHandle()), tmp0);
+_import1267(i0.WasmI32.fromInt(worldRef.resourceHandle), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp4 = <Player>[];

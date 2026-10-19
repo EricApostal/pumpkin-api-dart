@@ -927,8 +927,9 @@ void registerFluidItems(CreateRegistry registry) {
   }
 }
 
-/// Registers the fluids of the manifest: the flowing variant first, then the
-/// still fluid that names it.
+/// Registers the fluids of the manifest. The canonical order later numbers the
+/// still fluid before its flowing variant (Java's order); the host links the two
+/// once registration closes, so the insertion order here does not matter.
 void registerFluids(CreateRegistry registry) {
   for (final def in kFluids) {
     final still = 'create:${def.sourceKey}';

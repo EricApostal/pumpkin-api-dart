@@ -40,15 +40,30 @@ context.runLater(100, (server) {
 
 ## Keeping a resource
 
-Call `keep()` on an owned resource to hold on to it, and `dispose()` when you
-are done with it:
+Call `keep()` on a resource **returned by a host function** to hold on to it, and
+`dispose()` when you are done with it:
 
 ```dart
-Player? last;
+final world = server.getWorldByName(name: 'world')!.keep();
+// ... later
+world.dispose();
+```
 
-context.listen(Events.playerJoin, (server, event) {
-  last?.dispose();
-  last = event.player.keep();
+The resources an **event** carries (`event.player`, `event.targetWorld`, ...) are
+released by the server as soon as the callback returns, whether or not you called
+`keep()`; the host deletes them from its table unconditionally. Storing one only
+gives you a dead handle, so look the object up again through a host function
+when you need it later:
+
+```dart
+String? lastWorldId;
+
+context.listen(Events.worldTick, (server, event) {
+  lastWorldId = event.targetWorld.getId();
+});
+
+context.runLater(100, (server) {
+  final world = server.getWorldByName(name: lastWorldId!);   // fresh handle
 });
 ```
 

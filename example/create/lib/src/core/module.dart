@@ -28,8 +28,10 @@ abstract class CreateModule {
   /// services, read config sections.
   void onLoad(CreateContext ctx) {}
 
-  /// Phase 3: the server finished loading (`Events.serverLoad`).
-  void onServerLoaded(CreateRuntime runtime) {}
+  /// Phase 3: the server finished loading (`Events.serverLoad`). Return a
+  /// future to keep using [CreateRuntime.server] across awaits: the server is
+  /// released when the event callback returns.
+  FutureOr<void> onServerLoaded(CreateRuntime runtime) {}
 
   /// The plugin unloads (reverse module order).
   void onUnload() {}

@@ -23,7 +23,9 @@ final class FluidSpec {
   /// registries, tanks and buckets).
   final FluidPlacement? placement;
 
-  /// Key of the registered fluid that is the flowing variant of this one.
+  /// Key of the registered fluid that is the flowing variant of this one. The
+  /// variant may be registered before or after this fluid; the host links the
+  /// two once registration closes.
   final String? flowingVariant;
 
   /// Key of the registered plugin item that is the bucket of this fluid.
@@ -91,7 +93,9 @@ final class FluidSpec {
 /// The host's fluid registry. Registration needs
 /// [Permissions.registryFluids] and only works while the server loads.
 /// Vanilla fluids have the ids `0..vanillaCount`, custom ones follow in
-/// registration order. A still fluid and its flowing variant are two entries.
+/// registration order. A still fluid and its flowing variant are two entries,
+/// in either order: [FluidSpec.flowingVariant] is resolved when registration
+/// closes.
 abstract final class FluidRegistries {
   /// Registers [fluid] and returns its id. Register the plugin block and
   /// bucket item first. Throws a [HostException] on failure.

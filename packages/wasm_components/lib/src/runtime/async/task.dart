@@ -256,7 +256,12 @@ WasmI32 _runIteration(AsyncTask task, void Function() step) {
 
   if (task._bodyDone && task._error != null) {
     // The export failed before it returned, nobody knows what to return to the
-    // host. Trap, the host reports it and ends the task.
+    // host. Trap, the host reports it and ends the task. Print the error first:
+    // the trap only carries a wasm backtrace, which names no Dart frames.
+    // ignore: avoid_print
+    print(
+      '${task.debugName} failed: ${task._error}\n${task._stackTrace}',
+    );
     _finish(task);
     Error.throwWithStackTrace(task._error!, task._stackTrace!);
   }

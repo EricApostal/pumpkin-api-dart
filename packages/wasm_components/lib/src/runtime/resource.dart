@@ -29,6 +29,7 @@ base class Resource {
   final void Function(int handle)? _drop;
   ResourceScope? _scope;
   bool _valid = true;
+  String _invalidatedBy = 'no reason recorded';
 
   /// Wraps an `own` handle that this program is now responsible for dropping.
   @protected
@@ -53,8 +54,9 @@ base class Resource {
   int get resourceHandle {
     if (!_valid) {
       throw StateError(
-        'This resource is no longer valid. Resources are released when the '
-        'callback that received them returns; call keep() to hold on to one.',
+        'This $runtimeType is no longer valid ($_invalidatedBy). Resources are '
+        'released when the callback that received them returns; call keep() to '
+        'hold on to one.',
       );
     }
     return _handle;
@@ -69,6 +71,7 @@ base class Resource {
       throw StateError('Cannot transfer ownership of a borrowed resource.');
     }
     _valid = false;
+    _invalidatedBy = 'ownership was transferred to the host';
     _scope?._unregister(this);
     _scope = null;
     return handle;
@@ -80,6 +83,7 @@ base class Resource {
     final drop = _drop;
     if (!_valid || drop == null) return;
     _valid = false;
+    _invalidatedBy = 'disposed';
     _scope?._unregister(this);
     _scope = null;
     drop(_handle);
@@ -87,6 +91,7 @@ base class Resource {
 
   void _invalidateBorrowed() {
     _valid = false;
+    _invalidatedBy = 'the call that lent it has returned';
     _scope = null;
   }
 }

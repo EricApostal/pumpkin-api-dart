@@ -142,13 +142,17 @@ final class CreatePlugin extends Plugin {
       }
     }
 
-    // Phase 3.
-    context.listen(Events.serverLoad, (server, event) {
+    // Phase 3. The listener is async and awaits every module: `server` is
+    // released when the callback returns, so work that outlives the callback
+    // must be part of it (docs/async.md).
+    context.listen(Events.serverLoad, (server, event) async {
       if (event.loadType != ServerLoadType.startup) return;
       core.worlds.refresh(server);
       for (final module in _active) {
         try {
-          module.onServerLoaded(CreateRuntime(core, server, module.name));
+          await module.onServerLoaded(
+            CreateRuntime(core, server, module.name),
+          );
         } catch (e, s) {
           log.error(
             'Module ${module.name} failed in onServerLoaded',

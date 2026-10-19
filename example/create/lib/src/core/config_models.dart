@@ -8,8 +8,10 @@ const String createModVersion = '6.0.11';
 /// The `core` section of `config.json`.
 @MappableClass()
 class CoreSettings with CoreSettingsMappable {
-  /// Declare the plugin to the host's NeoForge handshake (needed for the real
-  /// Create client). Off by default: it needs a host with the NeoForge feature.
+  /// Declare the plugin to the host's NeoForge handshake. The real Create client
+  /// needs it: NeoForge clients reject a server that does not answer the
+  /// handshake ("not running NeoForge"). The host only runs the handshake once a
+  /// plugin declares something, and non-NeoForge clients are still let in.
   final bool neoforge;
 
   /// The version of the Create mod the channels are declared for.
@@ -28,7 +30,7 @@ class CoreSettings with CoreSettingsMappable {
   final Map<String, bool> modules;
 
   const CoreSettings({
-    this.neoforge = false,
+    this.neoforge = true,
     this.modVersion = createModVersion,
     this.debugSmokeTest = false,
     this.saveIntervalTicks = 20,

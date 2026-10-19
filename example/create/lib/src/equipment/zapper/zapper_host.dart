@@ -52,8 +52,18 @@ final class HostShaperWorld implements ShaperWorld {
   Future<void> setAir(P3 pos) => _set(pos, airId);
 
   @override
-  Future<void> place(P3 pos, Object? painted, ShaperBlockData? data) =>
-      _set(pos, (painted as int?) ?? airId);
+  Future<void> place(P3 pos, Object? painted, ShaperBlockData? data) async {
+    await _set(pos, (painted as int?) ?? airId);
+    // `ZapperItem.setBlockEntityData`: the stored `shaper_block_data` is loaded into the new
+    // block entity (only safe-nbt blocks ever stored one).
+    if (data is NbtValue && data.kind == NbtKind.compound) {
+      try {
+        world.setBlockEntityNbt(pos: pos.blockPos, nbtData: BinaryNbt.write(data));
+      } on Object {
+        // a block without a block entity ignores it
+      }
+    }
+  }
 
   @override
   Future<void> setState(P3 pos, Object state) => _set(pos, state as int);
@@ -189,7 +199,7 @@ final class ZapperHost {
     PlacementPatterns.apply(affected, pattern, () => env.rng.nextBool());
     await brush
         .redirectTool(tool)
-        .run(shaper, affected, face, stateToUse, null);
+        .run(shaper, affected, face, stateToUse, StackData.blockData(stack));
     return true;
   }
 

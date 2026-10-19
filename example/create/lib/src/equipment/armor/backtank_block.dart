@@ -24,6 +24,7 @@ final class BacktankBlockEntity extends CreateBlockEntity {
   int airLevelTimer = 0;
   int capacityEnchantLevel = 0;
   String? customName;
+  bool _awarded = false;
 
   EquipmentRuntime get _rt => EquipmentRuntime.instance;
 
@@ -42,6 +43,10 @@ final class BacktankBlockEntity extends CreateBlockEntity {
     super.tick();
     final speed = _rt.env.ctx.services.find<KineticSpeedLookup>()?.speedAt(worldId, (pos.x, pos.y, pos.z)) ?? 0;
     if (speed == 0) return;
+    if (!_awarded) {
+      _awarded = true;
+      _awardNearby();
+    }
     final w = world;
     if (w == null) return;
     // `state.getValue(WATERLOGGED)`: no air is pumped under water
@@ -66,6 +71,25 @@ final class BacktankBlockEntity extends CreateBlockEntity {
       markDirty();
     }
     airLevelTimer = BacktankMath.refillTimer(abs);
+  }
+
+  /// `SmartBlockEntity.award(AllAdvancements.BACKTANK)`: players near the turning tank.
+  void _awardNearby() {
+    final env = _rt.env;
+    for (final p in env.bus.roster.players) {
+      try {
+        final w = p.getWorld();
+        final same = w.getId() == worldId;
+        w.dispose();
+        if (!same) continue;
+        final (x, y, z) = p.getPosition();
+        final dx = x - (pos.x + 0.5), dy = y - (pos.y + 0.5), dz = z - (pos.z + 0.5);
+        if (dx * dx + dy * dy + dz * dz > 10 * 10) continue;
+        unawaited(env.award(p, 'backtank'));
+      } on Object {
+        // a handle that went invalid: the player left
+      }
+    }
   }
 
   @override
@@ -157,7 +181,9 @@ final class BacktankBlockHost {
       final held = player.getInventory().getItemInHand(hand: hand);
       if (held == null) continue;
       final key = await held.getRegistryKey();
-      if (!EqItems.isBacktank(key) && key != EqItems.copperBacktankPlaceable && key != EqItems.netheriteBacktankPlaceable) {
+      if (!EqItems.isBacktank(key) &&
+          key != EqItems.copperBacktankPlaceable &&
+          key != EqItems.netheriteBacktankPlaceable) {
         continue;
       }
       await applyItemData(be, held);
@@ -216,7 +242,14 @@ final class BacktankBlockHost {
   // -- The worn item used on a block (BacktankItem.useOn -> blockItem.useOn) ----------------------
 
   /// Places the backtank block where the worn item was used. Returns true when placed.
-  Future<bool> placeFromItem(Server server, Player player, ItemStack held, Hand hand, BlockPos clicked, BlockDirection face) async {
+  Future<bool> placeFromItem(
+    Server server,
+    Player player,
+    ItemStack held,
+    Hand hand,
+    BlockPos clicked,
+    BlockDirection face,
+  ) async {
     final key = await held.getRegistryKey();
     final world = player.getWorld();
     var target = clicked;

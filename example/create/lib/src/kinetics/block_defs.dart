@@ -252,7 +252,8 @@ class GantryShaftDef extends KineticBlockDef {
 /// The radii of the rotation indicator particles (`getParticleInitialRadius` /
 /// `getParticleTargetRadius`) of a kinetic block: (initial, target).
 (double, double) rotationIndicatorRadii(String blockKey) => switch (blockKey) {
-  'create:shaft' || 'create:powered_shaft' => (.125, .35),
+  'create:shaft' => (.125, .35),
+  'create:gantry_shaft' => (.25, .35),
   'create:large_cogwheel' => (1, 1.125),
   'create:water_wheel' => (1, 1.125),
   'create:large_water_wheel' => (2.25, 2.5),

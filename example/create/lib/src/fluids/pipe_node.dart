@@ -49,7 +49,8 @@ mixin PipeNodeMixin implements PipeNodeView {
   bool get isPumpNode => false;
 
   /// `canPullFluidFrom(fluid, state, direction)`.
-  bool canPullFluidFrom(FStack fluid, BState state, Direction direction) => true;
+  bool canPullFluidFrom(FStack fluid, BState state, Direction direction) =>
+      true;
 
   @override
   bool canHaveFlowToward(BState state, Direction direction);
@@ -109,15 +110,27 @@ mixin PipeNodeMixin implements PipeNodeView {
     }
 
     if (collidingFlow.isNotEmpty) {
-      FluidReactions.handlePipeFlowCollision(world, pos, availableFlow, collidingFlow);
+      FluidReactions.handlePipeFlowCollision(
+        world,
+        pos,
+        availableFlow,
+        collidingFlow,
+      );
       return;
     }
 
     sendUpdate = false;
     for (final connection in values) {
-      final internalFluid = !identical(singleSource, connection) ? availableFlow : FStack.empty;
+      final internalFluid = !identical(singleSource, connection)
+          ? availableFlow
+          : FStack.empty;
       final side = connection.side;
-      sendUpdate |= connection.manageFlows(world, pos, internalFluid, (extracted) => canPullFluidFrom(extracted, nodeState, side));
+      sendUpdate |= connection.manageFlows(
+        world,
+        pos,
+        internalFluid,
+        (extracted) => canPullFluidFrom(extracted, nodeState, side),
+      );
     }
     if (sendUpdate) nodeSendData();
 
@@ -132,7 +145,8 @@ mixin PipeNodeMixin implements PipeNodeView {
   void pipeRead(Map<String, NbtValue> nbt, {required bool clientPacket}) {
     final map = interfaces ??= {};
     for (final face in Direction.values) {
-      if (nbt.containsKey(face.serializedName)) map.putIfAbsent(face, () => PipeConnection(face));
+      if (nbt.containsKey(face.serializedName))
+        map.putIfAbsent(face, () => PipeConnection(face));
     }
 
     // Invalid data (missing/outdated). Defer init to runtime
@@ -143,7 +157,11 @@ mixin PipeNodeMixin implements PipeNodeView {
 
     for (final connection in map.values) {
       final data = nbt.readCompound(connection.side.serializedName);
-      connection.deserialize(data ?? const {}, nodePos, clientPacket: clientPacket);
+      connection.deserialize(
+        data ?? const {},
+        nodePos,
+        clientPacket: clientPacket,
+      );
     }
   }
 
@@ -153,7 +171,9 @@ mixin PipeNodeMixin implements PipeNodeView {
     final map = interfaces;
     if (map == null) return;
     for (final connection in map.values) {
-      out[connection.side.serializedName] = connection.serialize(clientPacket: clientPacket);
+      out[connection.side.serializedName] = connection.serialize(
+        clientPacket: clientPacket,
+      );
     }
   }
 
@@ -229,7 +249,8 @@ mixin PipeNodeMixin implements PipeNodeView {
   /// Propagates a change of this pipe through the network.
   void propagateChange() {
     final world = nodeWorld;
-    if (world != null) FluidPropagator.propagateChangedPipe(world, nodePos, nodeState);
+    if (world != null)
+      FluidPropagator.propagateChangedPipe(world, nodePos, nodeState);
   }
 }
 
@@ -240,9 +261,12 @@ abstract final class PipeFlowTransfer {
 
   static String _key(String worldId, Pos pos) => '$worldId:${posKey(pos)}';
 
-  /// `cacheFlows(world, pos)`.
+  /// `cacheFlows(world, pos)`: the interfaces are taken off the old node, so the new node
+  /// created by the block change can adopt them.
   static void cacheFlows(String worldId, Pos pos, PipeNodeMixin? node) {
-    if (node != null) _cache[_key(worldId, pos)] = node.interfaces;
+    if (node == null) return;
+    _cache[_key(worldId, pos)] = node.interfaces;
+    node.interfaces = null;
   }
 
   /// `loadFlows(world, pos)`.

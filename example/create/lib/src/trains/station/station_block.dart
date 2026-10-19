@@ -13,11 +13,19 @@ const String stationBlockKey = 'create:track_station';
 /// `StationBlock.ASSEMBLING`.
 const String stationAssemblingProperty = 'assembling';
 
+/// `AllShapes.STATION`: a 16x2 plate with the marker post on it.
+final BlockShape stationShape = BlockShape.boxes([
+  BlockBox(0, 0, 0, 1, 2 / 16, 1),
+  BlockBox(1 / 16, 0, 1 / 16, 15 / 16, 13 / 16, 15 / 16),
+]);
+
 final class StationBlock {
   CreateBlock build() => manifestBlock(
     'track_station',
     blockEntityType: StationBlockEntity.type,
     placement: const [PlacementRule.inWater('waterlogged')],
+    collisionShape: stationShape,
+    selectionShape: stationShape,
     behavior: BlockBehavior(
       // `hasAnalogOutputSignal` + `getAnalogOutputSignal`: a train at the station powers it.
       onComparatorOutput: (server, e) {
@@ -26,6 +34,8 @@ final class StationBlock {
             : null;
         return be != null && be.trainPresent ? 15 : 0;
       },
+      // `isPathfindable`: the station is not a walkable path node.
+      isPathfindable: (server, e) => false,
       onUse: _use,
     ),
   );

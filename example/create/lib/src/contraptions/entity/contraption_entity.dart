@@ -160,6 +160,9 @@ abstract interface class ContraptionEntityHost {
   /// `ContraptionStallPacket`.
   void sendStall(double angle);
 
+  /// `ControlsStopControllingPacket` to the player that was driving the contraption.
+  void sendControlsAbort(String playerUuid);
+
   /// `ContraptionDisassemblyPacket`.
   void sendDisassembly(StructureTransform transform);
 
@@ -427,8 +430,14 @@ abstract class AbstractContraptionEntity implements ContraptionEntityHandle {
 
   /// `stopControlling`.
   void stopControlling(Pos controlsLocalPos) {
+    final controlling = host.controllingPlayer;
+    if (controlling != null) host.sendControlsAbort(controlling);
     host.setControllingPlayer(null);
   }
+
+  @override
+  void sendPayload(String channel, Map<String, Object?> fields) =>
+      host.sendPayload(channel, fields);
 
   // -- Interaction ----------------------------------------------------------------------------
 

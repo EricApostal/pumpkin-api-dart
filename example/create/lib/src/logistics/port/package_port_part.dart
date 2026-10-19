@@ -2,6 +2,7 @@
 // configuration and placement payloads (`PackagePortConfigurationPacket`,
 // `PackagePortPlacementPacket`).
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
@@ -45,7 +46,11 @@ CreateBlock frogportBlock() => CreateBlock(
   soundType: 'netherite_block',
   canOcclude: false,
   blockEntityType: FrogportBlockEntity.type,
-  behavior: BlockBehavior(onUse: _onUse),
+  behavior: BlockBehavior(
+    onUse: _onUse,
+    onPlaced: _onFrogportPlaced,
+    onComparatorOutput: _comparator,
+  ),
 );
 
 /// `PostboxBlock`.
@@ -61,8 +66,41 @@ CreateBlock postboxBlock(String color) => CreateBlock(
   soundType: 'wood',
   blockEntityType: PostboxBlockEntity.type,
   placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
-  behavior: BlockBehavior(onUse: _onUse),
+  behavior: BlockBehavior(onUse: _onUse, onComparatorOutput: _comparator),
 );
+
+/// `FrogportBlock.setPlacedBy`: the port looks at the player that placed it.
+Future<void> _onFrogportPlaced(
+  Server server,
+  CustomBlockPlacedEventData e,
+) async {
+  final uuid = e.player?.asString;
+  if (uuid == null) return;
+  final player = Lg.i.player(uuid);
+  if (player == null) return;
+  final be = Lg.i.store.typed<FrogportBlockEntity>(
+    e.targetWorld.getId(),
+    e.pos,
+  );
+  if (be == null) return;
+  final (px, _, pz) = player.getPosition();
+  final dx = e.pos.x + 0.5 - px;
+  final dz = e.pos.z + 0.5 - pz;
+  final yaw = math.atan2(dx, dz) * 180 / math.pi;
+  be.passiveYaw = (yaw / 11.25).round() * 11.25;
+  be.sendData();
+}
+
+Future<int?> _comparator(
+  Server server,
+  CustomBlockComparatorOutputEventData e,
+) async {
+  final be = Lg.i.store.typed<PackagePortBlockEntity>(
+    e.targetWorld.getId(),
+    e.pos,
+  );
+  return be?.comparatorOutput ?? 0;
+}
 
 Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   final be = Lg.i.store.typed<PackagePortBlockEntity>(

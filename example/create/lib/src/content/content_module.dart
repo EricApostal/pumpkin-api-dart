@@ -19,7 +19,8 @@ import 'material_content.dart';
 
 /// Registers damage types, enchantments, sounds, particles, menu types, data components, the
 /// `create:*` synced registries, tags, advancement triggers and the advancement tree, the map
-/// decoration and the entity data serializer; provides [CreateAdvancements] and [CreateSounds].
+/// decoration, the entity data serializer and the `create:simple_datagen` ingredient type; provides
+/// [CreateAdvancements] and [CreateSounds].
 ///
 /// Also registers the plain materials (`AllBlocks` ores and storage blocks, `AllItems`
 /// ingredients) that no content package owns; see `material_content.dart`.

@@ -9,11 +9,13 @@ import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
 import '../support/runtime.dart';
+import '../station/station_block_entity.dart';
 import 'fake_track_block.dart';
 import 'i_track_block.dart';
 import 'track_block.dart';
 import 'track_host.dart';
 import 'track_material.dart';
+import 'track_voxel_shapes.dart';
 
 /// Phase 1: the two blocks and their block entity types. The `track` item is registered with the
 /// block by the manifest (`blockItem: 'track'`).
@@ -25,6 +27,7 @@ void registerTrack(CreateRegistry registry) {
       'track',
       blockEntityType: TrackBlockEntityHost.type,
       placement: const [PlacementRule.inWater('waterlogged')],
+      shapeRules: trackShapeRules(),
       behavior: _trackBehavior(track),
     ),
   );
@@ -33,6 +36,8 @@ void registerTrack(CreateRegistry registry) {
       'fake_track',
       blockEntityType: FakeTrackBlockEntityHost.type,
       placement: const [PlacementRule.inWater('waterlogged')],
+      // `FakeTrackBlock.getShape` is empty (the block has no collision either).
+      selectionShape: BlockShape.empty,
       behavior: BlockBehavior(
         onRandomTick: (server, e) async {
           await FakeTrackBlock.randomTick(
@@ -96,10 +101,37 @@ BlockBehavior _trackBehavior(TrackBlock track) => BlockBehavior(
     );
     return true;
   },
+  // `useItemOn`: a click inside a station's assembly area is the station's (bogey creation and
+  // size cycling); otherwise the item still gets its use.
+  onUseWithItem: (server, e) => _trackUse(track, e),
   // `updateShape`: a portal track whose portal is gone becomes air. The host keeps the state when
   // the callback returns `null`; the portal connection is repaired on the next scheduled tick.
   onUpdateShape: (server, e) => null,
 );
+
+Future<BlockUseResult> _trackUse(
+  TrackBlock track,
+  CustomBlockUseEventData e,
+) async {
+  final worldId = Tr.i.worldId(e.targetWorld);
+  final areas = StationBlockEntity.assemblyAreas[worldId];
+  if (areas == null) return BlockUseResult.tryEmptyHand;
+
+  final pos = e.pos.toPos();
+  final state = HostBlockGetter.stateOfId(e.stateIndex);
+  for (final entry in areas.entries) {
+    if (!entry.value.isInside(pos)) continue;
+    final station = Tr.i.store.typed<StationBlockEntity>(
+      worldId,
+      entry.key.toBlockPos(),
+    );
+    if (station == null) continue;
+    if (await station.trackClicked(e.player, e.hand, track, state, pos)) {
+      return BlockUseResult.success;
+    }
+  }
+  return BlockUseResult.tryEmptyHand;
+}
 
 /// Phase 2: the material deserialisation warning.
 void loadTrack(CreateContext ctx) {

@@ -3,6 +3,7 @@
 // the load of the railways when the server is up.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/config.dart' show ConfigValue, CreateConfigs;
 import '../../api/infra.dart';
 import '../../api/infra_data.dart';
 import '../../common/vec_helper.dart' show Vec3;
@@ -10,9 +11,11 @@ import '../../core/module.dart';
 import '../../core/registry.dart';
 import '../../core/world_state.dart';
 import '../entity/train.dart';
+import '../entity/train_level.dart' show TrainSettings;
 import '../graph/dimension_palette.dart' show overworldId;
 import '../manager/create.dart';
 import '../manager/global_railway_manager.dart';
+import '../manager/manager_host.dart';
 import '../manager/railway_saved_data.dart';
 import '../station/host_ops.dart' show plainTrainsText;
 
@@ -28,7 +31,8 @@ final SavedDataType<RailwaySavedData> railwaySavedDataType =
 /// Phase 1: the manager has no registered content.
 void registerManager(CreateRegistry registry) {}
 
-/// Phase 2: the storage, the command hooks and the load error logger.
+/// Phase 2: the storage, the host network / tick hooks, the command hooks and the load error
+/// logger.
 void loadManager(CreateContext ctx) {
   Create.RAILWAYS.storage = _RailwayStorage(ctx);
   RailwaySavedData.onLoadError = (what, error, stack) => ctx.log.warn(
@@ -37,6 +41,49 @@ void loadManager(CreateContext ctx) {
     stackTrace: stack,
   );
   ctx.services.provide<RailwayCommandHooks>(_RailwayHooks());
+  _applyTrainSettings(ctx);
+  installRailwayManager(ctx);
+}
+
+/// Copies `AllConfigs.server().trains` into [TrainSettings] and keeps it in step with runtime
+/// config changes (`/create config`).
+void _applyTrainSettings(CreateContext ctx) {
+  final configs = ctx.services.find<CreateConfigs>();
+  if (configs == null) return;
+  final trains = configs.server.trains;
+  final settings = TrainSettings.current;
+
+  void copy() {
+    settings
+      ..trainsCauseDamage = trains.trainsCauseDamage.value
+      ..maxTrackPlacementLength = trains.maxTrackPlacementLength.value
+      ..maxAssemblyLength = trains.maxAssemblyLength.value
+      ..maxBogeyCount = trains.maxBogeyCount.value
+      ..manualTrainSpeedModifier = trains.manualTrainSpeedModifier.value
+      ..trainTopSpeed = trains.trainTopSpeed.value
+      ..trainTurningTopSpeed = trains.trainTurningTopSpeed.value
+      ..trainAcceleration = trains.trainAcceleration.value
+      ..poweredTrainTopSpeed = trains.poweredTrainTopSpeed.value
+      ..poweredTrainTurningTopSpeed = trains.poweredTrainTurningTopSpeed.value
+      ..poweredTrainAcceleration = trains.poweredTrainAcceleration.value;
+  }
+
+  copy();
+  for (final value in <ConfigValue<Object>>[
+    trains.trainsCauseDamage,
+    trains.maxTrackPlacementLength,
+    trains.maxAssemblyLength,
+    trains.maxBogeyCount,
+    trains.manualTrainSpeedModifier,
+    trains.trainTopSpeed,
+    trains.trainTurningTopSpeed,
+    trains.trainAcceleration,
+    trains.poweredTrainTopSpeed,
+    trains.poweredTrainTurningTopSpeed,
+    trains.poweredTrainAcceleration,
+  ]) {
+    value.onChange((_) => copy());
+  }
 }
 
 /// Phase 3: the overworld's data exists now.
@@ -45,6 +92,7 @@ void serverManagerLoaded(CreateRuntime runtime) =>
 
 /// Plugin unload.
 void unloadManager() {
+  uninstallRailwayManager();
   RailwaySavedData.onLoadError = null;
   Create.RAILWAYS.cleanUp();
 }

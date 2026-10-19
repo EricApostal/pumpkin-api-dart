@@ -20,6 +20,7 @@ CreateBlock buildAttachedActorBlock(
   List<String> tags = const [],
   BlockDrops? drops,
   bool fullCube = false,
+  bool requireSupport = true,
 }) {
   final boxes = fullCube
       ? const [BlockBox(0, 0, 0, 1, 1, 1)]
@@ -36,7 +37,7 @@ CreateBlock buildAttachedActorBlock(
 
   late final CreateBlock block;
   Future<void> placed(Server server, CustomBlockPlacedEventData e) async {
-    if (!e.moved) {
+    if (!e.moved && requireSupport) {
       final lvl = HostBlockGetter(e.targetWorld);
       final pos = e.pos.toPos();
       final facing =

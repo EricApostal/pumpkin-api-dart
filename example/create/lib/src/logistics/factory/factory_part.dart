@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/panel_support.dart';
 import '../../api/payloads.dart' show ItemStackData;
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
@@ -14,10 +15,12 @@ import '../../core/registry.dart';
 import '../host/link_keys.dart';
 import '../host/player_items.dart';
 import '../host/runtime.dart';
+import '../link/linked_item.dart';
 import '../logistics_part.dart';
 import '../model/stack.dart';
 import 'factory_panel_behaviour.dart';
 import 'factory_panel_block_entity.dart';
+import 'factory_panel_set_item_menu.dart';
 
 /// `FactoryPanelBlock`.
 CreateBlock factoryPanelBlock() => CreateBlock(
@@ -44,21 +47,144 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   );
   if (be == null) return BlockUseResult.pass;
 
-  final held = await Lg.i.read(e.item);
+  final info = BlockStates.info(e.stateIndex);
+  final slot = targetedSlot(e.cursor, info?.properties ?? const {});
+  final held = await _heldStack(e.player, e.hand);
+
+  // `FactoryPanelBlock.useItemOn`: a gauge item adds a panel to an existing gauge block.
   if (held.key == 'create:factory_gauge') {
-    final info = BlockStates.info(e.stateIndex);
-    final slot = targetedSlot(e.cursor, info?.properties ?? const {});
-    final added = be.addPanel(slot, null);
-    if (added) {
-      if (!e.sneaking) await consumeOneInHand(e.player, e.hand);
-      return BlockUseResult.success;
+    if (!LinkedItem.isTuned(held)) return BlockUseResult.success;
+    final fixed = LinkedItem.fixCtrlCopiedStack(
+      held,
+      fallbackFrequency: Lg.i.newUuid(),
+    );
+    final network = LinkedItem.networkFromStack(fixed);
+    if (be.addPanel(slot, network) &&
+        !e.sneaking &&
+        e.player.getGamemode() != GameMode.creative) {
+      await consumeOneInHand(e.player, e.hand);
     }
     return BlockUseResult.success;
   }
 
-  // An empty hand or any other item opens the configuration screen on the client; the server
-  // only needs to accept the click.
+  final behaviour = be.panels[slot];
+  if (behaviour == null || !behaviour.isActive) return BlockUseResult.pass;
+
+  // `FactoryPanelBlock.onSneakWrenched`: a sneaking wrench removes just this gauge.
+  if (e.sneaking && held.key == 'create:wrench') {
+    if (be.removePanel(slot)) {
+      if (e.player.getGamemode() != GameMode.creative) {
+        await giveToPlayer(e.player, LStack.of('create:factory_gauge'));
+      }
+      if (be.activePanels() == 0) {
+        await e.targetWorld.breakBlock(e.pos, drop: false);
+      }
+    }
+    return BlockUseResult.success;
+  }
+  if (e.sneaking) return BlockUseResult.pass;
+
+  // `FactoryPanelBehaviour.onShortInteract`: a wrench cycles the arrow path.
+  if (held.key == 'create:wrench' &&
+      (behaviour.targeting.isNotEmpty ||
+          behaviour.targetedByLinks.isNotEmpty)) {
+    _cycleArrowBend(behaviour);
+    return BlockUseResult.success;
+  }
+
+  if (behaviour.filter.isEmpty) {
+    // An empty hand opens the set-item screen (`FactoryPanelSetItemMenu`); another item is the
+    // filter.
+    if (held.isEmpty) {
+      FactoryPanelSetItemMenus.open(
+        e.player,
+        FactoryPanelPosition(e.pos.toPos(), slot),
+      );
+      return BlockUseResult.success;
+    }
+    if (behaviour.interactWith(held) &&
+        e.player.getGamemode() != GameMode.creative) {
+      await consumeOneInHand(e.player, e.hand);
+    }
+    return BlockUseResult.success;
+  }
+
+  // A configured gauge binds a linked item to its network.
+  if (_isLinkedItem(held.key)) {
+    await _assignFrequency(e.player, e.hand, behaviour.network);
+  }
+
+  // Otherwise the client opens the configuration screen; the server only accepts the click.
   return BlockUseResult.success;
+}
+
+Future<LStack> _heldStack(Player player, Hand hand) async {
+  final inventory = player.getInventory();
+  try {
+    final stack = inventory.getItemInHand(hand: hand);
+    return stack == null ? LStack.empty : await Lg.i.read(stack);
+  } finally {
+    inventory.dispose();
+  }
+}
+
+/// `LogisticallyLinkedBlockItem` subclasses (stock link, stock ticker, redstone requester).
+bool _isLinkedItem(String key) =>
+    key == 'create:stock_link' ||
+    key == 'create:stock_ticker' ||
+    key == 'create:redstone_requester';
+
+Future<void> _assignFrequency(Player player, Hand hand, String network) async {
+  final inventory = player.getInventory();
+  try {
+    final current = inventory.getItemInHand(hand: hand);
+    if (current == null) return;
+    final stack = await Lg.i.read(current);
+    if (stack.isEmpty) return;
+    final host = await Lg.i.write(LinkedItem.assignFrequency(stack, network));
+    if (host != null) await inventory.setItemInHand(hand: hand, item: host);
+  } finally {
+    inventory.dispose();
+  }
+}
+
+/// `FactoryPanelBehaviour.onShortInteract`'s wrench branch: every connection of the gauge cycles
+/// through the four arrow bend modes together.
+void _cycleArrowBend(FactoryPanelBehaviour behaviour) {
+  var sharedMode = -1;
+  var notifySelf = false;
+  for (final target in behaviour.targeting) {
+    final at = FactoryPanelBehaviour.at(behaviour.panelBE.worldId, target);
+    if (at == null) continue;
+    final connection = at.targetedBy[behaviour.getPanelPosition()];
+    if (connection == null) continue;
+    if (sharedMode == -1) sharedMode = (connection.arrowBendMode + 1) % 4;
+    connection.arrowBendMode = sharedMode;
+    at.panelBE.notifyUpdate();
+  }
+  for (final connection in behaviour.targetedByLinks.values) {
+    if (sharedMode == -1) sharedMode = (connection.arrowBendMode + 1) % 4;
+    connection.arrowBendMode = sharedMode;
+    notifySelf = true;
+  }
+  if (notifySelf) behaviour.panelBE.notifyUpdate();
+}
+
+/// The `api/panel_support.dart` view of this module's gauges.
+final class _FactoryPanelAccess implements FactoryPanelAccess {
+  final LgRuntime rt;
+
+  _FactoryPanelAccess(this.rt);
+
+  @override
+  FactoryPanelHandle? panelAt(String worldId, FactoryPanelPos position) {
+    final slot = PanelSlot.byName(position.slot.serializedName);
+    if (slot == null) return null;
+    return FactoryPanelBehaviour.at(
+      worldId,
+      FactoryPanelPosition(position.pos, slot),
+    );
+  }
 }
 
 /// `FactoryPanelBlock.getTargetedSlot(pos, state, clickLocation)`, in local click coordinates.
@@ -135,6 +261,9 @@ final class FactoryPart extends LogisticsPart {
 
   @override
   void onLoad(CreateContext ctx, LgRuntime rt) {
+    ctx.services.provide<FactoryPanelAccess>(_FactoryPanelAccess(rt));
+    FactoryPanelSetItemMenus.install(ctx, rt);
+
     // `FactoryPanelConnectionPacket`.
     rt.bus.onServerbound('create:connect_factory_panel', (player, fields) {
       final to = FactoryPanelPosition.fromMap(fields['toPos']);
@@ -142,9 +271,11 @@ final class FactoryPart extends LogisticsPart {
       if (to == null || from == null) return;
       final behaviour = FactoryPanelBehaviour.at(rt.playerWorldId(player), to);
       if (behaviour == null) return;
-      // Relocation (`relocate`) moves a gauge to another slot; the connection itself is the
-      // same. Only the connection is applied here.
-      behaviour.addConnection(from);
+      if (fields['relocate'] == true) {
+        unawaited(behaviour.moveTo(from, player));
+      } else {
+        behaviour.addConnection(from);
+      }
     });
 
     // `FactoryPanelConfigurationPacket`.

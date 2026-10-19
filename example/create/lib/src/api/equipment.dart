@@ -15,6 +15,18 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../equipment/data/equipment_components.dart';
 
+export '../equipment/potato/potato_model.dart'
+    show
+        FoodEffect,
+        PotatoBlockHitAction,
+        PotatoEntityHitAction,
+        PotatoFlight,
+        PotatoMath,
+        PotatoShot,
+        PotatoType,
+        PotatoTypes,
+        PotatoVolley;
+
 /// `BacktankUtil`.
 abstract interface class BacktankApi {
   /// `getAllWithAir(entity)`: worn backtanks with air, the emptiest first.
@@ -34,14 +46,25 @@ abstract interface class BacktankApi {
 
   /// `consumeAir(entity, backtank, amount)`: lowers the air; with [player] (the entity when it is
   /// a player) the low / depleted warning is shown.
-  Future<void> consumeAir(LivingEntity entity, ItemStack backtank, int amount, {Player? player});
+  Future<void> consumeAir(
+    LivingEntity entity,
+    ItemStack backtank,
+    int amount, {
+    Player? player,
+  });
 
   /// `canAbsorbDamage(entity, usesPerTank)`: true if the entity may use the tool for free
   /// (0 uses = unbreakable, creative, or a backtank paid for it).
-  Future<bool> canAbsorbDamage(LivingEntity entity, int usesPerTank, {Player? player});
+  Future<bool> canAbsorbDamage(
+    LivingEntity entity,
+    int usesPerTank, {
+    Player? player,
+  });
 
   /// `addBacktankSupplier`: more places to look for backtanks (curios slots, ...).
-  void addBacktankSupplier(Future<List<ItemStack>> Function(LivingEntity entity) supplier);
+  void addBacktankSupplier(
+    Future<List<ItemStack>> Function(LivingEntity entity) supplier,
+  );
 }
 
 /// `GogglesItem`.
@@ -94,7 +117,12 @@ abstract interface class ClipboardCloneable {
 
   /// `readFromClipboard(tag, player, side, simulate)`: applies the copied settings (or only checks
   /// that they would apply, with [simulate]).
-  bool readFromClipboard(NbtCompound tag, Player player, BlockDirection side, bool simulate);
+  bool readFromClipboard(
+    NbtCompound tag,
+    Player player,
+    BlockDirection side,
+    bool simulate,
+  );
 }
 
 /// A block entity with several [ClipboardCloneable]s (Create's behaviours).

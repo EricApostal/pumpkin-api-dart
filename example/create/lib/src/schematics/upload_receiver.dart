@@ -69,7 +69,8 @@ final class MemorySchematicStore implements SchematicFileStore {
   }
 
   @override
-  Uint8List read(String path) => files[path] ?? (throw StateError('no file $path'));
+  Uint8List read(String path) =>
+      files[path] ?? (throw StateError('no file $path'));
 }
 
 /// The schematic table as the receiver sees it.
@@ -107,13 +108,15 @@ final class SchematicLimits {
   });
 }
 
-class _Upload {
+/// `ServerSchematicLoader.SchematicUploadEntry`: one active upload of a player.
+class SchematicUploadEntry {
+  /// The table that receives the progress, or null when it was not available.
   final UploadTarget? target;
   final int totalBytes;
   int bytesUploaded = 0;
   int idleTime = 0;
 
-  _Upload(this.target, this.totalBytes);
+  SchematicUploadEntry(this.target, this.totalBytes);
 }
 
 /// Why an upload was refused.
@@ -136,15 +139,22 @@ final class SchematicUploadReceiver {
   void Function(String message)? warn;
   void Function(String message)? info;
 
-  final Map<String, _Upload> _active = {};
+  final Map<String, SchematicUploadEntry> _active = {};
 
-  SchematicUploadReceiver(this.store, {this.limits = const SchematicLimits(), this.warn, this.info});
+  SchematicUploadReceiver(
+    this.store, {
+    this.limits = const SchematicLimits(),
+    this.warn,
+    this.info,
+  });
 
   /// `player/name.nbt` as used for the keys and the paths below [root].
-  static String schematicId(String player, String schematic) => '$player/$schematic';
+  static String schematicId(String player, String schematic) =>
+      '$player/$schematic';
 
   /// The relative path of the file in the store.
-  static String pathOf(String player, String schematic) => '$root/$player/$schematic';
+  static String pathOf(String player, String schematic) =>
+      '$root/$player/$schematic';
 
   /// Whether [name] is a plain file name (no separators, no `..`).
   static bool isSafeName(String name) =>
@@ -156,7 +166,8 @@ final class SchematicUploadReceiver {
       name != '..' &&
       !name.contains('..');
 
-  bool isUploading(String player, String schematic) => _active.containsKey(schematicId(player, schematic));
+  bool isUploading(String player, String schematic) =>
+      _active.containsKey(schematicId(player, schematic));
 
   int get activeCount => _active.length;
 
@@ -216,11 +227,13 @@ final class SchematicUploadReceiver {
       // Too many schematics: delete the oldest file.
       final files = store.list('$root/$player');
       if (files.length >= limits.maxSchematics) {
-        final candidates = files.where((f) => !f.isDirectory).toList()..sort((a, b) => a.modified.compareTo(b.modified));
-        if (candidates.isNotEmpty) store.delete('$root/$player/${candidates.first.name}');
+        final candidates = files.where((f) => !f.isDirectory).toList()
+          ..sort((a, b) => a.modified.compareTo(b.modified));
+        if (candidates.isNotEmpty)
+          store.delete('$root/$player/${candidates.first.name}');
       }
       store.write(path, const []); // open the stream
-      _active[id] = _Upload(target, size);
+      _active[id] = SchematicUploadEntry(target, size);
       target.startUpload(schematic);
       return UploadResult.started;
     } on Object catch (e) {
@@ -248,7 +261,11 @@ final class SchematicUploadReceiver {
     try {
       store.write(pathOf(player, schematic), data, append: true);
       entry.idleTime = 0;
-      entry.target?.progress(entry.bytesUploaded / entry.totalBytes);
+      final target = entry.target;
+      // `getTable` returns null once the table block is gone.
+      if (target != null && target.isValid) {
+        target.progress(entry.bytesUploaded / entry.totalBytes);
+      }
     } on Object catch (e) {
       warn?.call('Exception thrown when uploading schematic $id: $e');
       cancel(id);
@@ -288,7 +305,9 @@ final class SchematicUploadReceiver {
       store.createDirectory(dir);
       final files = store.list(dir);
       if (files.length < limits.maxSchematics) return true;
-      final oldest = (files.toList()..sort((a, b) => a.modified.compareTo(b.modified))).first;
+      final oldest =
+          (files.toList()..sort((a, b) => a.modified.compareTo(b.modified)))
+              .first;
       store.delete('$dir/${oldest.name}');
       return true;
     } on Object catch (e) {
@@ -298,7 +317,8 @@ final class SchematicUploadReceiver {
   }
 
   /// `FilesHelper.slug`: lower case with runs of non-word characters replaced by `_`.
-  static String slug(String name) => name.toLowerCase().replaceAll(RegExp(r'[^A-Za-z0-9_]+'), '_');
+  static String slug(String name) =>
+      name.toLowerCase().replaceAll(RegExp(r'[^A-Za-z0-9_]+'), '_');
 
   /// The file name for a saved schematic (`SchematicExport.saveSchematic`): the name as given with
   /// `.nbt` when [overwrite]; otherwise the first free slug (`my_schematic.nbt`,

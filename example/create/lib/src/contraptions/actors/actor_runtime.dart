@@ -7,6 +7,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show setBlockState;
+import '../../api/payloads.dart' show ItemIdResolver;
 import '../../common/common.dart';
 import '../../core/block_entity.dart';
 import '../../core/worlds.dart';
@@ -21,7 +22,16 @@ final class ActorRuntime {
   final CreateConfigs? configs;
   final Logger log;
 
-  ActorRuntime(this.worlds, this.blockEntities, this.configs, this.log);
+  /// Resolves item keys for the wire (`ContraptionDisableActorPacket` filters).
+  final ItemIdResolver? itemIds;
+
+  ActorRuntime(
+    this.worlds,
+    this.blockEntities,
+    this.configs,
+    this.log, {
+    this.itemIds,
+  });
 
   static ActorRuntime? current;
 

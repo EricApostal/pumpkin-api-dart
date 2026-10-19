@@ -11,6 +11,13 @@
 /// ```
 library;
 
+export 'contraption/block_movement_checks.dart';
+export 'contraption/dispenser/mounted_dispense_behaviours.dart';
+export 'contraption/movement_setting.dart';
+export 'contraption/storage/item_handler_container.dart';
+export 'contraption/storage/mounted_storage_menus.dart';
+export 'contraption/storage/mounted_storage_wrappers.dart';
+export 'contraption/transformable.dart';
 export '../contraptions/blocks/actuator_contract.dart'
     show ContraptionEntityFactory, ContraptionLevelFactory, ActuatorHosts;
 export '../contraptions/core/collision.dart';

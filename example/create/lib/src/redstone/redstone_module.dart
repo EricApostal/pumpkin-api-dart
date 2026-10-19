@@ -9,9 +9,11 @@ import '../api/advancements.dart';
 import '../api/redstone.dart';
 import '../api/util.dart' hide pos;
 import '../api/wrenchable.dart';
+import '../contraptions/core/movement.dart';
 import '../core/block_entity.dart' show BlockEntityTypeSpec;
 import '../core/module.dart';
 import '../core/registry.dart';
+import 'contact_movement.dart';
 import 'diodes/diode_blocks.dart';
 import 'display/display_env.dart';
 import 'display/display_link_block.dart';
@@ -123,6 +125,8 @@ final class RedstoneModule extends CreateModule {
       rs.links,
       onReceiverActivated: (uuid) => unawaited(_awardLinkedController(rs, uuid)),
     );
+    // The redstone contact on a contraption powers the contacts it passes over.
+    MovementBehaviours.register('create:redstone_contact', const ContactMovementBehaviour());
     ctx.listen(Events.worldLoad, (server, e) => rs.links.onLoadWorld(rs.worldId(e.targetWorld)));
     ctx.listen(Events.worldUnload, (server, e) {
       if (e.cancelled) return;
@@ -201,7 +205,6 @@ final class RedstoneModule extends CreateModule {
 
     // IWrenchable defaults: rotate on click, dismantle on sneak click.
     wrench.registerDefault([
-      'create:redstone_contact',
       'create:display_link',
       'create:desk_bell',
       'create:powered_latch',
@@ -212,6 +215,20 @@ final class RedstoneModule extends CreateModule {
       'create:analog_lever',
       ...nixieBlockKeys,
     ]);
+
+    // RedstoneContactBlock.onWrenched: after the rotation, a contact in a live elevator
+    // column becomes an elevator contact.
+    wrench.register(
+      'create:redstone_contact',
+      CallbackWrenchable(
+        onWrenchedOverride: (c) async {
+          final result = await c.registry.defaultRotate(c);
+          if (result != WrenchResult.success) return result;
+          await RedstoneContactBlock.wrenchIntoElevatorContact(Lvl(c.world), c.pos.toPos());
+          return result;
+        },
+      ),
+    );
 
     // RedstoneLinkBlock.onWrenched: toggles between transmitter and receiver.
     wrench.register(

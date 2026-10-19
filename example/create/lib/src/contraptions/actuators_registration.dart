@@ -42,6 +42,7 @@ import 'elevator/elevator_contraption.dart';
 import 'elevator/elevator_packets.dart';
 import 'elevator/elevator_pulley_block_entity.dart';
 import 'entity/contraption_entity.dart';
+import 'entity/oriented_contraption_entity.dart' show OrientedContraptionHooks;
 import 'gantry/gantry_carriage.dart';
 import 'gantry/gantry_contraption.dart';
 import 'glue/super_glue_handler.dart';
@@ -115,7 +116,9 @@ void registerActuatorContent(CreateRegistry registry) {
   type('elevator_contact', [
     'elevator_contact',
   ], ElevatorContactBlockEntity.new);
-  type('gantry_carriage', ['gantry_carriage'], GantryCarriageBlockEntity.new);
+  // `AllBlockEntityTypes.GANTRY_PINION` registers the type as `gantry_pinion`; the block it
+  // serves is `gantry_carriage`.
+  type('gantry_pinion', ['gantry_carriage'], GantryCarriageBlockEntity.new);
   type('cart_assembler', ['cart_assembler'], CartAssemblerBlockEntity.new);
   type('chassis', [
     'radial_chassis',
@@ -178,6 +181,16 @@ void loadActuatorContent(CreateContext ctx) {
   );
   // The constructor installs the runtime the block entities read.
 
+  // The mounted and stabilized contraptions answer the oriented entity's questions about their
+  // rotation mode and coupling.
+  OrientedContraptionHooks.rotationLock = (c) =>
+      c is MountedContraption && c.rotationLocked;
+  OrientedContraptionHooks.pauseWhileRotating = (c) =>
+      c is MountedContraption && c.rotationPaused;
+  OrientedContraptionHooks.stabilizedFacing = (c) =>
+      c is StabilizedContraption ? c.facing : null;
+  OrientedContraptionHooks.coupledPositions = _coupledCartPositions;
+
   // Kinetic connection rules of the actuators.
   final kinetics = ctx.services.find<KineticNetworkService>();
   if (kinetics != null) {
@@ -229,6 +242,9 @@ void loadActuatorContent(CreateContext ctx) {
     wrench.registerDefault(['create:sail_frame', ...dyedSailKeys]);
     wrench.register('create:elevator_contact', elevatorContactWrenchable());
     wrench.register('create:cart_assembler', cartAssemblerWrenchable());
+    // `MechanicalPistonBlock.onWrenched`: rotate only while retracted.
+    wrench.register('create:mechanical_piston', pistonWrenchable());
+    wrench.register('create:sticky_mechanical_piston', pistonWrenchable());
   }
 
   // The white sail item places every dyed sail block (`BlankSailBlockItem.registerBlocks`).
@@ -339,12 +355,41 @@ void serverActuatorContentLoaded(CreateRuntime runtime) {
 
 /// Plugin unload.
 void unloadActuatorContent() {
+  OrientedContraptionHooks.rotationLock = null;
+  OrientedContraptionHooks.pauseWhileRotating = null;
+  OrientedContraptionHooks.stabilizedFacing = null;
+  OrientedContraptionHooks.coupledPositions = null;
   CouplingChain.next = null;
   ContraptionDisassembly.disassemble = null;
   ElevatorColumn.clear();
   CapabilityMinecartController.clear();
   clearPendingRides();
   ActuatorRuntime.maybe?.dispose();
+}
+
+/// `OrientedContraptionEntity.getCoupledCartsIfPresent`: the positions of the two coupled carts.
+(Vec3, Vec3)? _coupledCartPositions(
+  ContraptionPassengerRef vehicle,
+  String couplingId,
+) {
+  if (couplingId.isEmpty) return null;
+  final host = vehicle.hostEntity;
+  if (host is! Entity) return null;
+  final world = host.getWorld();
+  final worldId = world.getId();
+  world.dispose();
+
+  final controller = CapabilityMinecartController.byUuid(worldId, couplingId);
+  if (controller == null || !controller.isPresent) return null;
+  final otherId = controller.getCoupledCart(true);
+  if (otherId == null) return null;
+  final other = CapabilityMinecartController.byUuid(worldId, otherId);
+  if (other == null || !other.isPresent) return null;
+
+  final first = controller.cart?.position;
+  final second = other.cart?.position;
+  if (first == null || second == null) return null;
+  return (first, second);
 }
 
 /// `create:<color>_sail` keys.

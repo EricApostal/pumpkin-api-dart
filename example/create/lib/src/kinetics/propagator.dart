@@ -36,9 +36,17 @@ abstract final class RotationPropagator {
         definitionFrom.hasShaftTowards(stateFrom, direction) &&
         definitionTo.hasShaftTowards(stateTo, direction.opposite);
 
-    final connectedByGears = definitionFrom.isSmallCog && definitionTo.isSmallCog;
+    final connectedByGears =
+        definitionFrom.isSmallCog && definitionTo.isSmallCog;
 
-    final custom = from.propagateRotationTo(to, stateFrom, stateTo, diff, connectedByAxis, connectedByGears);
+    final custom = from.propagateRotationTo(
+      to,
+      stateFrom,
+      stateTo,
+      diff,
+      connectedByAxis,
+      connectedByGears,
+    );
     if (custom != 0) return custom;
 
     // KAxis <-> KAxis
@@ -49,7 +57,8 @@ abstract final class RotationPropagator {
     }
 
     // Attached encased belts
-    if (level.blocks.isChainDrive(stateFrom) && level.blocks.isChainDrive(stateTo)) {
+    if (level.blocks.isChainDrive(stateFrom) &&
+        level.blocks.isChainDrive(stateTo)) {
       final connected = areChainBlocksConnected(stateFrom, stateTo, direction);
       return connected ? chainRotationSpeedModifier(from, to) : 0;
     }
@@ -68,7 +77,8 @@ abstract final class RotationPropagator {
       if (_isLargeToSmallCog(stateFrom, stateTo, definitionTo, diff)) return -2;
     }
     if (definitionTo.isLargeCog && definitionFrom.isSmallCog) {
-      if (_isLargeToSmallCog(stateTo, stateFrom, definitionFrom, diff)) return -.5;
+      if (_isLargeToSmallCog(stateTo, stateFrom, definitionFrom, diff))
+        return -.5;
     }
 
     // Gear <-> gear
@@ -76,7 +86,9 @@ abstract final class RotationPropagator {
       if (diff.manhattan != 1) return 0;
       if (definitionTo.isLargeCog) return 0;
       if (direction.axis == definitionFrom.rotationAxis(stateFrom)) return 0;
-      if (definitionFrom.rotationAxis(stateFrom) == definitionTo.rotationAxis(stateTo)) return -1;
+      if (definitionFrom.rotationAxis(stateFrom) ==
+          definitionTo.rotationAxis(stateTo))
+        return -1;
     }
 
     return 0;
@@ -99,7 +111,9 @@ abstract final class RotationPropagator {
   static KAxis chainConnectionAxis(KState state) {
     final axis = state.axisOf('axis') ?? KAxis.y;
     final connectionAlongFirst = state.flag('axis_along_first');
-    return connectionAlongFirst ? (axis == KAxis.x ? KAxis.y : KAxis.x) : (axis == KAxis.z ? KAxis.y : KAxis.z);
+    return connectionAlongFirst
+        ? (axis == KAxis.x ? KAxis.y : KAxis.x)
+        : (axis == KAxis.z ? KAxis.y : KAxis.z);
   }
 
   /// `ChainDriveBlock.getRotationSpeedModifier`.
@@ -117,10 +131,20 @@ abstract final class RotationPropagator {
     final level = from.level;
 
     // Rotation speed controller <-> large gear
-    if (_isLargeCogToSpeedController(level, stateFrom, stateTo, to.kpos - from.kpos)) {
+    if (_isLargeCogToSpeedController(
+      level,
+      stateFrom,
+      stateTo,
+      to.kpos - from.kpos,
+    )) {
       return speedControllerConveyedSpeed(from, to, true);
     }
-    if (_isLargeCogToSpeedController(level, stateTo, stateFrom, from.kpos - to.kpos)) {
+    if (_isLargeCogToSpeedController(
+      level,
+      stateTo,
+      stateFrom,
+      from.kpos - to.kpos,
+    )) {
       return speedControllerConveyedSpeed(to, from, false);
     }
 
@@ -129,22 +153,37 @@ abstract final class RotationPropagator {
   }
 
   /// `SpeedControllerBlockEntity.getConveyedSpeed`.
-  static double speedControllerConveyedSpeed(KineticNode cogWheel, KineticNode controller, bool targetingController) {
+  static double speedControllerConveyedSpeed(
+    KineticNode cogWheel,
+    KineticNode controller,
+    bool targetingController,
+  ) {
     if (controller is! SpeedControllerNode) return 0;
 
     final speed = controller.theoreticalSpeed;
     final wheelSpeed = cogWheel.theoreticalSpeed;
-    final desiredOutputSpeed = speedControllerDesiredOutput(cogWheel, controller, targetingController);
+    final desiredOutputSpeed = speedControllerDesiredOutput(
+      cogWheel,
+      controller,
+      targetingController,
+    );
 
     final compareSpeed = targetingController ? speed : wheelSpeed;
-    if (desiredOutputSpeed >= 0 && compareSpeed >= 0) return math.max(desiredOutputSpeed, compareSpeed);
-    if (desiredOutputSpeed < 0 && compareSpeed < 0) return math.min(desiredOutputSpeed, compareSpeed);
+    if (desiredOutputSpeed >= 0 && compareSpeed >= 0)
+      return math.max(desiredOutputSpeed, compareSpeed);
+    if (desiredOutputSpeed < 0 && compareSpeed < 0)
+      return math.min(desiredOutputSpeed, compareSpeed);
     return desiredOutputSpeed;
   }
 
   /// `SpeedControllerBlockEntity.getDesiredOutputSpeed`.
-  static double speedControllerDesiredOutput(KineticNode cogWheel, KineticNode controller, bool targetingController) {
-    final targetSpeed = (controller as SpeedControllerNode).targetSpeedValue.toDouble();
+  static double speedControllerDesiredOutput(
+    KineticNode cogWheel,
+    KineticNode controller,
+    bool targetingController,
+  ) {
+    final targetSpeed = (controller as SpeedControllerNode).targetSpeedValue
+        .toDouble();
     final speed = controller.theoreticalSpeed;
     final wheelSpeed = cogWheel.theoreticalSpeed;
 
@@ -166,8 +205,14 @@ abstract final class RotationPropagator {
     return targetSpeed;
   }
 
-  static bool _isLargeToLargeGear(KineticLevel level, KState from, KState to, KPos diff) {
-    if (!level.blocks.isLargeCog(from) || !level.blocks.isLargeCog(to)) return false;
+  static bool _isLargeToLargeGear(
+    KineticLevel level,
+    KState from,
+    KState to,
+    KPos diff,
+  ) {
+    if (!level.blocks.isLargeCog(from) || !level.blocks.isLargeCog(to))
+      return false;
     final fromAxis = from.axisOf('axis');
     final toAxis = to.axisOf('axis');
     if (fromAxis == null || toAxis == null || fromAxis == toAxis) return false;
@@ -187,7 +232,12 @@ abstract final class RotationPropagator {
     return be.shaftHalvesModifier(direction);
   }
 
-  static bool _isLargeToSmallCog(KState from, KState to, KineticBlockDef defTo, KPos diff) {
+  static bool _isLargeToSmallCog(
+    KState from,
+    KState to,
+    KineticBlockDef defTo,
+    KPos diff,
+  ) {
     final axisFrom = from.axisOf('axis');
     if (axisFrom == null) return false;
     if (axisFrom != defTo.rotationAxis(to)) return false;
@@ -199,8 +249,15 @@ abstract final class RotationPropagator {
     return true;
   }
 
-  static bool _isLargeCogToSpeedController(KineticLevel level, KState from, KState to, KPos diff) {
-    if (!level.blocks.isLargeCog(from) || !to.isCreate('rotation_speed_controller')) return false;
+  static bool _isLargeCogToSpeedController(
+    KineticLevel level,
+    KState from,
+    KState to,
+    KPos diff,
+  ) {
+    if (!level.blocks.isLargeCog(from) ||
+        !to.isCreate('rotation_speed_controller'))
+      return false;
     if (diff != const KPos(0, -1, 0)) return false;
     final axis = from.axisOf('axis');
     if (axis == null || axis.isVertical) return false;
@@ -228,9 +285,12 @@ abstract final class RotationPropagator {
 
       if (newSpeed == 0 && oppositeSpeed == 0) continue;
 
-      final incompatible = newSpeed.sign != speedOfNeighbour.sign && (newSpeed != 0 && speedOfNeighbour != 0);
+      final incompatible =
+          newSpeed.sign != speedOfNeighbour.sign &&
+          (newSpeed != 0 && speedOfNeighbour != 0);
 
-      final tooFast = newSpeed.abs() > maxSpeed || oppositeSpeed.abs() > maxSpeed;
+      final tooFast =
+          newSpeed.abs() > maxSpeed || oppositeSpeed.abs() > maxSpeed;
       // Check for both the new speed and the opposite speed, just in case
 
       final speedChangedTooOften = currentTE.flickerScore > maxFlickerScore;
@@ -261,13 +321,16 @@ abstract final class RotationPropagator {
         // Current faster, overpower the neighbours' tree
         if (newSpeed.abs() >= speedOfNeighbour.abs()) {
           // Do not overpower you own network -> cycle
-          if (!currentTE.hasNetwork || currentTE.network == neighbourTE.network) {
+          if (!currentTE.hasNetwork ||
+              currentTE.network == neighbourTE.network) {
             final epsilon = speedOfNeighbour.abs() / 256 / 256;
-            if (newSpeed.abs() > speedOfNeighbour.abs() + epsilon) level.destroyBlock(pos);
+            if (newSpeed.abs() > speedOfNeighbour.abs() + epsilon)
+              level.destroyBlock(pos);
             continue;
           }
 
-          if (currentTE.hasSource && currentTE.source == neighbourTE.kpos) currentTE.removeSource();
+          if (currentTE.hasSource && currentTE.source == neighbourTE.kpos)
+            currentTE.removeSource();
 
           final prevSpeed = neighbourTE.speed;
           neighbourTE.setSource(currentTE.kpos);
@@ -291,7 +354,11 @@ abstract final class RotationPropagator {
   }
 
   /// Removes the given entity from the network.
-  static void handleRemoved(KineticLevel level, KPos pos, KineticNode? removedBE) {
+  static void handleRemoved(
+    KineticLevel level,
+    KPos pos,
+    KineticNode? removedBE,
+  ) {
     if (removedBE == null) return;
     if (removedBE.theoreticalSpeed == 0) return;
 
@@ -346,21 +413,31 @@ abstract final class RotationPropagator {
     }
   }
 
-  static KineticNode? _findConnectedNeighbour(KineticNode currentTE, KPos neighbourPos) {
+  static KineticNode? _findConnectedNeighbour(
+    KineticNode currentTE,
+    KPos neighbourPos,
+  ) {
     final level = currentTE.level;
     final neighbourState = level.stateAt(neighbourPos);
     if (level.blocks.defFor(neighbourState) == null) return null;
     final neighbourKBE = level.nodeAt(neighbourPos);
     if (neighbourKBE == null) return null;
     if (level.blocks.defFor(neighbourKBE.blockState) == null) return null;
-    if (!isConnected(currentTE, neighbourKBE) && !isConnected(neighbourKBE, currentTE)) return null;
+    if (!isConnected(currentTE, neighbourKBE) &&
+        !isConnected(neighbourKBE, currentTE))
+      return null;
     return neighbourKBE;
   }
 
   static bool isConnected(KineticNode from, KineticNode to) {
     final stateFrom = from.blockState;
     final stateTo = to.blockState;
-    return _isLargeCogToSpeedController(from.level, stateFrom, stateTo, to.kpos - from.kpos) ||
+    return _isLargeCogToSpeedController(
+          from.level,
+          stateFrom,
+          stateTo,
+          to.kpos - from.kpos,
+        ) ||
         getRotationSpeedModifier(from, to) != 0 ||
         from.isCustomConnection(to, stateFrom, stateTo);
   }

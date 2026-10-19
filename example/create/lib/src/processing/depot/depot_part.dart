@@ -1,10 +1,12 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/payloads.dart';
+import '../../contraptions/core/movement.dart';
 import '../../core/module.dart';
 import '../processing_part.dart';
 import '../processing_runtime.dart';
 import 'api.dart';
+import 'mounted_depot_interaction.dart';
 
 /// The depot.
 ///
@@ -20,6 +22,12 @@ final class DepotPart extends ProcessingPart {
   @override
   void onLoad(CreateContext ctx, ProcessingRuntime rt) {
     ctx.services.provide<DepotApi>(DepotApi());
+
+    // `AllBlocks.DEPOT`: a player swaps the item on a depot of a contraption.
+    MovingInteractions.register(
+      'create:depot',
+      const MountedDepotInteractionBehaviour(),
+    );
 
     final bus = ctx.services.find<PayloadBus>();
     if (bus == null) return;

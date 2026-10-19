@@ -20,6 +20,7 @@ final class HostPrinterView implements PrinterTargetView {
 
   static final Map<int, bool> _conductors = {};
   static final Map<int, double> _hardness = {};
+  static final Map<int, bool> _blockEntities = {};
 
   @override
   bool isLoaded(Pos p) => world.isLoaded(pos: p.toBlockPos());
@@ -37,7 +38,23 @@ final class HostPrinterView implements PrinterTargetView {
   BState stateAt(Pos p) => _getter.stateAt(p);
 
   @override
-  String? blockEntityTypeAt(Pos p) => hooks.blockEntityTypeOf(stateAt(p).key);
+  String? blockEntityTypeAt(Pos p) {
+    final state = stateAt(p);
+    final custom = hooks.blockEntityTypeOf(state.key);
+    if (custom != null) return custom;
+    return hasBlockEntity(state) ? 'minecraft:block_entity' : null;
+  }
+
+  @override
+  bool hasBlockEntity(BState state) {
+    final id = stateIdOf(state);
+    if (id == null) return false;
+    // `block-state.block-entity-type` is a u16 with `u16::MAX` for "none".
+    return _blockEntities.putIfAbsent(id, () {
+      final info = BlockRegistry.stateFromId(id);
+      return info != null && info.blockEntityType != 0xffff;
+    });
+  }
 
   @override
   double destroySpeed(BState state) {
@@ -83,12 +100,29 @@ List<int>? prepareBlockEntityData(
     return null;
   }
   if (data == null) return null;
+  final isSign = Tags.block(state.key, 'minecraft:all_signs');
+  final isLectern = state.key == 'minecraft:lectern';
+  // `BlockEntityType.onlyOpCanSetNbt` (`BlockEntityTypes.OP_ONLY_CUSTOM_DATA`) after the type
+  // processors: signs and lecterns are filtered above instead of dropped.
+  if (!isSign && !isLectern && _opOnlyBlocks.contains(state.key)) return null;
   return processSchematicNbt(
     data,
-    isSign: Tags.block(state.key, 'minecraft:all_signs'),
+    isSign: isSign,
     isClipboard: state.key == 'create:clipboard',
+    isLectern: isLectern,
+    isCreativeCrate: state.key == 'create:creative_crate',
   );
 }
+
+/// The blocks whose block entity data only operators may set (`OP_ONLY_CUSTOM_DATA`). Mob
+/// spawners are exempt (catnip's `NBTProcessors` keeps them) and signs/lecterns are processed
+/// above.
+const Set<String> _opOnlyBlocks = {
+  'minecraft:command_block',
+  'minecraft:chain_command_block',
+  'minecraft:repeating_command_block',
+  'minecraft:trial_spawner',
+};
 
 /// `BlockHelper.placeSchematicBlock`: places [state] at [target] with the block entity [data].
 /// Returns false when nothing was placed.

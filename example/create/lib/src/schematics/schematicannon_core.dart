@@ -15,7 +15,17 @@ import 'schematic_world.dart';
 enum CannonState { stopped, paused, running }
 
 /// `ConfigureSchematicannonPacket.Option`.
-enum CannonOption { dontReplace, replaceSolid, replaceAny, replaceEmpty, skipMissing, skipBlockEntities, play, pause, stop }
+enum CannonOption {
+  dontReplace,
+  replaceSolid,
+  replaceAny,
+  replaceEmpty,
+  skipMissing,
+  skipBlockEntities,
+  play,
+  pause,
+  stop,
+}
 
 /// Slot numbers of the cannon inventory.
 abstract final class CannonSlot {
@@ -86,7 +96,10 @@ abstract interface class CannonEnv {
   List<int>? prepareBlockEntityData(BState state, List<int>? nbt);
 
   /// The written book / clipboard for the checklist.
-  Future<SlotStack> createChecklistStack(MaterialChecklist checklist, {required bool clipboard});
+  Future<SlotStack> createChecklistStack(
+    MaterialChecklist checklist, {
+    required bool clipboard,
+  });
 
   /// Whether [stack] is a clipboard item (slot 2 accepts clipboards and books).
   bool isClipboard(SlotStack stack);
@@ -100,7 +113,10 @@ final class SchematicannonCore {
   static const int neighbourChecking = 100;
   static const int maxAnchorDistance = 256;
 
-  final List<SlotStack> inventory = List.filled(CannonSlot.count, SlotStack.empty);
+  final List<SlotStack> inventory = List.filled(
+    CannonSlot.count,
+    SlotStack.empty,
+  );
 
   bool sendUpdate = false;
   bool dontUpdateChecklist = false;
@@ -139,7 +155,9 @@ final class SchematicannonCore {
       case CannonSlot.checklistOutput:
         return false;
       case CannonSlot.bookInput:
-        return env.isClipboard(stack) || stack.item == 'minecraft:book' || stack.item == 'minecraft:written_book';
+        return env.isClipboard(stack) ||
+            stack.item == 'minecraft:book' ||
+            stack.item == 'minecraft:written_book';
       case CannonSlot.gunpowder:
         return stack.item == 'minecraft:gunpowder';
     }
@@ -147,7 +165,8 @@ final class SchematicannonCore {
   }
 
   /// `getShotsPerGunpowder`.
-  int shotsPerGunpowder(CannonEnv env) => env.hasCreativeCrate ? 0 : env.shotsPerGunpowder;
+  int shotsPerGunpowder(CannonEnv env) =>
+      env.hasCreativeCrate ? 0 : env.shotsPerGunpowder;
 
   // ---- tick -------------------------------------------------------------------------------
 
@@ -185,7 +204,9 @@ final class SchematicannonCore {
     final blueprint = inventory[CannonSlot.blueprint];
     blockSkipped = false;
 
-    if (blueprint.isEmpty && statusMsg != 'idle' && inventory[CannonSlot.blueprintOutput].isEmpty) {
+    if (blueprint.isEmpty &&
+        statusMsg != 'idle' &&
+        inventory[CannonSlot.blueprintOutput].isEmpty) {
       state = CannonState.stopped;
       statusMsg = 'idle';
       sendUpdate = true;
@@ -198,7 +219,11 @@ final class SchematicannonCore {
       return;
     }
 
-    if (state == CannonState.paused && !positionNotLoaded && missingItem == null && remainingFuel > 0) return;
+    if (state == CannonState.paused &&
+        !positionNotLoaded &&
+        missingItem == null &&
+        remainingFuel > 0)
+      return;
 
     // Initialize printer
     if (!printer.isLoaded) {
@@ -253,7 +278,11 @@ final class SchematicannonCore {
 
     // Get item requirement
     final requirement = printer.getCurrentRequirement();
-    if (requirement.isInvalid || !printer.shouldPlaceCurrent(env.view, (p, s, be, r, ro, n) => shouldPlace(env, p, s, be, r, ro, n))) {
+    if (requirement.isInvalid ||
+        !printer.shouldPlaceCurrent(
+          env.view,
+          (p, s, be, r, ro, n) => shouldPlace(env, p, s, be, r, ro, n),
+        )) {
       sendUpdate = statusMsg != 'searching';
       statusMsg = 'searching';
       blockSkipped = true;
@@ -290,13 +319,16 @@ final class SchematicannonCore {
     final icon = requirement.isEmpty || requiredItems.isEmpty
         ? SlotStack.empty
         : SlotStack(requiredItems.first.item, requiredItems.first.count);
-    printer.handleCurrentTarget((target, blockState, nbt) {
-      statusMsg = blockState.key != 'minecraft:air' ? 'placing' : 'clearing';
-      launchBlockOrBelt(env, target, icon, blockState, nbt);
-    }, (target, entity) {
-      statusMsg = 'placing';
-      launchEntity(env, target, icon, entity);
-    });
+    printer.handleCurrentTarget(
+      (target, blockState, nbt) {
+        statusMsg = blockState.key != 'minecraft:air' ? 'placing' : 'clearing';
+        launchBlockOrBelt(env, target, icon, blockState, nbt);
+      },
+      (target, entity) {
+        statusMsg = 'placing';
+        launchEntity(env, target, icon, entity);
+      },
+    );
 
     printerCooldown = env.cannonDelay;
     remainingFuel -= 1;
@@ -321,7 +353,10 @@ final class SchematicannonCore {
         state = CannonState.stopped;
         statusMsg = 'schematicErrored';
         inventory[CannonSlot.blueprint] = SlotStack.empty;
-        inventory[CannonSlot.blueprintOutput] = const SlotStack('create:empty_schematic', 1);
+        inventory[CannonSlot.blueprintOutput] = const SlotStack(
+          'create:empty_schematic',
+          1,
+        );
         printer.resetSchematic();
         sendUpdate = true;
         return;
@@ -329,7 +364,10 @@ final class SchematicannonCore {
         state = CannonState.stopped;
         statusMsg = 'schematicExpired';
         inventory[CannonSlot.blueprint] = SlotStack.empty;
-        inventory[CannonSlot.blueprintOutput] = const SlotStack('create:empty_schematic', 1);
+        inventory[CannonSlot.blueprintOutput] = const SlotStack(
+          'create:empty_schematic',
+          1,
+        );
         printer.resetSchematic();
         sendUpdate = true;
         return;
@@ -343,12 +381,16 @@ final class SchematicannonCore {
       state = CannonState.stopped;
       statusMsg = 'schematicExpired';
       inventory[CannonSlot.blueprint] = SlotStack.empty;
-      inventory[CannonSlot.blueprintOutput] = const SlotStack('create:empty_schematic', 1);
+      inventory[CannonSlot.blueprintOutput] = const SlotStack(
+        'create:empty_schematic',
+        1,
+      );
       printer.resetSchematic();
       sendUpdate = true;
       return;
     }
-    if (printer.anchor!.distSqr(env.cannonPos) >= maxAnchorDistance * maxAnchorDistance) {
+    if (printer.anchor!.distSqr(env.cannonPos) >=
+        maxAnchorDistance * maxAnchorDistance) {
       state = CannonState.stopped;
       statusMsg = 'targetOutsideRange';
       printer.resetSchematic();
@@ -369,8 +411,10 @@ final class SchematicannonCore {
       }
     }
     inventory[CannonSlot.blueprint] = SlotStack.empty;
-    inventory[CannonSlot.blueprintOutput] =
-        SlotStack('create:empty_schematic', inventory[CannonSlot.blueprintOutput].count + 1);
+    inventory[CannonSlot.blueprintOutput] = SlotStack(
+      'create:empty_schematic',
+      inventory[CannonSlot.blueprintOutput].count + 1,
+    );
     state = CannonState.stopped;
     statusMsg = 'finished';
     resetPrinter();
@@ -389,10 +433,23 @@ final class SchematicannonCore {
 
   // ---- placement rules ------------------------------------------------------------------
 
-  bool shouldPlace(CannonEnv env, Pos pos, BState st, List<int>? be, BState toReplace, BState? toReplaceOther, bool isNormalCube) {
-    if (pos.distSqr(env.cannonPos) < 4) return false; // pos.closerThan(getBlockPos(), 2f)
-    bool hasBe(BState s) => env.requirements.blockEntityTypeOf(s.key) != null;
-    if (!replaceBlockEntities && (hasBe(toReplace) || (toReplaceOther != null && hasBe(toReplaceOther)))) return false;
+  bool shouldPlace(
+    CannonEnv env,
+    Pos pos,
+    BState st,
+    List<int>? be,
+    BState toReplace,
+    BState? toReplaceOther,
+    bool isNormalCube,
+  ) {
+    if (pos.distSqr(env.cannonPos) < 4)
+      return false; // pos.closerThan(getBlockPos(), 2f)
+    // `toReplace.hasBlockEntity()`: vanilla block entities must be protected too, not only the
+    // Create ones known to the requirement registries.
+    final toReplaceHasBe = env.view.hasBlockEntity(toReplace);
+    final otherHasBe =
+        toReplaceOther != null && env.view.hasBlockEntity(toReplaceOther);
+    if (!replaceBlockEntities && (toReplaceHasBe || otherHasBe)) return false;
     if (shouldIgnoreBlockState(env, st, be)) return false;
     final placingAir = st.isAir;
     if (replaceMode == 3) return true;
@@ -400,13 +457,15 @@ final class SchematicannonCore {
     if (replaceMode == 1 &&
         (isNormalCube ||
             (!env.view.isRedstoneConductor(toReplace) &&
-                (toReplaceOther == null || !env.view.isRedstoneConductor(toReplaceOther)))) &&
+                (toReplaceOther == null ||
+                    !env.view.isRedstoneConductor(toReplaceOther)))) &&
         !placingAir) {
       return true;
     }
     if (replaceMode == 0 &&
         !env.view.isRedstoneConductor(toReplace) &&
-        (toReplaceOther == null || !env.view.isRedstoneConductor(toReplaceOther)) &&
+        (toReplaceOther == null ||
+            !env.view.isRedstoneConductor(toReplaceOther)) &&
         !placingAir) {
       return true;
     }
@@ -429,7 +488,13 @@ final class SchematicannonCore {
 
   // ---- launching ---------------------------------------------------------------------------
 
-  void launchBlockOrBelt(CannonEnv env, Pos target, SlotStack icon, BState blockState, List<int>? nbt) {
+  void launchBlockOrBelt(
+    CannonEnv env,
+    Pos target,
+    SlotStack icon,
+    BState blockState,
+    List<int>? nbt,
+  ) {
     if (blockState.key == 'create:belt') {
       var st = stripBeltIfNotLast(blockState);
       if (st.key == 'create:belt') {
@@ -453,7 +518,13 @@ final class SchematicannonCore {
       }
       return;
     }
-    launchBlock(env, target, icon, blockState, env.prepareBlockEntityData(blockState, nbt));
+    launchBlock(
+      env,
+      target,
+      icon,
+      blockState,
+      env.prepareBlockEntityData(blockState, nbt),
+    );
   }
 
   static int _beltLength(List<int>? nbt) {
@@ -463,7 +534,9 @@ final class SchematicannonCore {
 
   static int _beltCasing(List<int>? nbt) {
     final parsed = nbt == null ? null : BinaryNbt.read(nbt);
-    final c = parsed?.root.kind == NbtKind.compound ? parsed!.root.asCompound['Casing'] : null;
+    final c = parsed?.root.kind == NbtKind.compound
+        ? parsed!.root.asCompound['Casing']
+        : null;
     if (c == null || c.kind != NbtKind.string) return 0;
     return switch (c.value as String) {
       'ANDESITE' => 1,
@@ -481,24 +554,47 @@ final class SchematicannonCore {
 
   void launchBelt(CannonEnv env, Pos target, BState st, List<int> casings) {
     blocksPlaced++;
-    flyingBlocks.add(LaunchedBelt.launch(env.cannonPos, target, const SlotStack('create:belt_connector', 1), st, casings));
+    flyingBlocks.add(
+      LaunchedBelt.launch(
+        env.cannonPos,
+        target,
+        const SlotStack('create:belt_connector', 1),
+        st,
+        casings,
+      ),
+    );
     env.playFiringSound();
   }
 
-  void launchBlock(CannonEnv env, Pos target, SlotStack stack, BState st, List<int>? data) {
+  void launchBlock(
+    CannonEnv env,
+    Pos target,
+    SlotStack stack,
+    BState st,
+    List<int>? data,
+  ) {
     if (!st.isAir) blocksPlaced++;
-    flyingBlocks.add(LaunchedBlock.launch(env.cannonPos, target, stack, st, data));
+    flyingBlocks.add(
+      LaunchedBlock.launch(env.cannonPos, target, stack, st, data),
+    );
     env.playFiringSound();
   }
 
-  void launchEntity(CannonEnv env, Pos target, SlotStack stack, SchematicEntity entity) {
+  void launchEntity(
+    CannonEnv env,
+    Pos target,
+    SlotStack stack,
+    SchematicEntity entity,
+  ) {
     blocksPlaced++;
     final abs = (
       entity.relativePos.$1 + printer.anchor!.$1,
       entity.relativePos.$2 + printer.anchor!.$2,
       entity.relativePos.$3 + printer.anchor!.$3,
     );
-    flyingBlocks.add(LaunchedEntity.launch(env.cannonPos, target, stack, entity, abs));
+    flyingBlocks.add(
+      LaunchedEntity.launch(env.cannonPos, target, stack, entity, abs),
+    );
     env.playFiringSound();
   }
 
@@ -514,7 +610,9 @@ final class SchematicannonCore {
     }
     if (remainingFuel > 0) return;
     if (!inventory[CannonSlot.gunpowder].isEmpty) {
-      inventory[CannonSlot.gunpowder] = inventory[CannonSlot.gunpowder].shrink(1);
+      inventory[CannonSlot.gunpowder] = inventory[CannonSlot.gunpowder].shrink(
+        1,
+      );
     } else if (!await env.takeExternalGunpowder()) {
       return;
     }
@@ -548,7 +646,10 @@ final class SchematicannonCore {
       dontUpdateChecklist = true;
       final extracted = paper;
       inventory[CannonSlot.bookInput] = paper.shrink(1);
-      var stack = await env.createChecklistStack(checklist, clipboard: env.isClipboard(extracted));
+      var stack = await env.createChecklistStack(
+        checklist,
+        clipboard: env.isClipboard(extracted),
+      );
       stack = stack.withCount(inventory[CannonSlot.checklistOutput].count + 1);
       inventory[CannonSlot.checklistOutput] = stack;
       sendUpdate = true;

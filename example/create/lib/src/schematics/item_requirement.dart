@@ -1,6 +1,8 @@
 // What it takes to place a block or an entity (pure): `ItemRequirement` and the
 // `SchematicRequirementRegistries` of Create's schematic API.
 import '../api/block_state.dart';
+import '../common/binary_nbt.dart';
+import '../core/nbt.dart';
 
 /// `ItemRequirement.ItemUseType`.
 enum ItemUseType { consume, damage }
@@ -16,7 +18,12 @@ final class StackRequirement {
   /// [componentsMatch]; null means any components.
   final Object? strictComponents;
 
-  const StackRequirement(this.item, this.count, this.usage, {this.strictComponents});
+  const StackRequirement(
+    this.item,
+    this.count,
+    this.usage, {
+    this.strictComponents,
+  });
 
   /// `matches(other)`: the same item (and the same components when strict).
   bool matches(String otherItem, {Object? otherComponents}) {
@@ -25,10 +32,12 @@ final class StackRequirement {
     return componentsMatch(strictComponents, otherComponents);
   }
 
-  static bool componentsMatch(Object? a, Object? b) => a == b || (a is Map && b is Map && a.toString() == b.toString());
+  static bool componentsMatch(Object? a, Object? b) =>
+      a == b || (a is Map && b is Map && a.toString() == b.toString());
 
   @override
-  String toString() => '${usage == ItemUseType.damage ? 'damage ' : ''}$count x $item';
+  String toString() =>
+      '${usage == ItemUseType.damage ? 'damage ' : ''}$count x $item';
 }
 
 /// `ItemRequirement`.
@@ -46,8 +55,11 @@ final class ItemRequirement {
 
   const ItemRequirement(this.requiredItems) : _kind = _Kind.items;
 
-  factory ItemRequirement.of1(ItemUseType usage, String item, [int count = 1]) =>
-      ItemRequirement([StackRequirement(item, count, usage)]);
+  factory ItemRequirement.of1(
+    ItemUseType usage,
+    String item, [
+    int count = 1,
+  ]) => ItemRequirement([StackRequirement(item, count, usage)]);
 
   bool get isEmpty => _kind == _Kind.none;
   bool get isInvalid => _kind == _Kind.invalid;
@@ -61,18 +73,25 @@ final class ItemRequirement {
   }
 
   @override
-  String toString() => isEmpty ? 'none' : (isInvalid ? 'invalid' : requiredItems.join(', '));
+  String toString() =>
+      isEmpty ? 'none' : (isInvalid ? 'invalid' : requiredItems.join(', '));
 }
 
 enum _Kind { none, invalid, items }
 
 /// A block requirement supplied by a module (`SpecialBlockItemRequirement` /
 /// `SchematicRequirementRegistries.BLOCKS`). [nbt] is the block entity data (binary NBT) or null.
-typedef BlockRequirement = ItemRequirement Function(BState state, List<int>? nbt);
+typedef BlockRequirement = ItemRequirement Function(
+  BState state,
+  List<int>? nbt,
+);
 
 /// `SchematicRequirementRegistries.BLOCK_ENTITIES`: extra items a block entity needs, added to the
 /// block's own requirement.
-typedef BlockEntityRequirement = ItemRequirement Function(BState state, List<int>? nbt);
+typedef BlockEntityRequirement = ItemRequirement Function(
+  BState state,
+  List<int>? nbt,
+);
 
 /// `SchematicRequirementRegistries.ENTITIES`: requirement of an entity by its type key, given the
 /// entity NBT (binary).
@@ -106,22 +125,46 @@ final class SchematicRequirements {
   /// `ItemRequirement.defaultOf`.
   ItemRequirement defaultOf(BState state) {
     final key = state.key;
-    if (key == 'minecraft:air' || key == 'minecraft:cave_air' || key == 'minecraft:void_air') {
+    if (key == 'minecraft:air' ||
+        key == 'minecraft:cave_air' ||
+        key == 'minecraft:void_air') {
       return ItemRequirement.none;
     }
     // Tall grass and large ferns do not exist as items: use two blades.
-    if (key == 'minecraft:tall_grass') return ItemRequirement.of1(ItemUseType.consume, 'minecraft:short_grass', 2);
-    if (key == 'minecraft:large_fern') return ItemRequirement.of1(ItemUseType.consume, 'minecraft:fern', 2);
+    if (key == 'minecraft:tall_grass')
+      return ItemRequirement.of1(
+        ItemUseType.consume,
+        'minecraft:short_grass',
+        2,
+      );
+    if (key == 'minecraft:large_fern')
+      return ItemRequirement.of1(ItemUseType.consume, 'minecraft:fern', 2);
     if (key == 'minecraft:farmland' || key == 'minecraft:dirt_path') {
       return ItemRequirement.of1(ItemUseType.consume, 'minecraft:dirt');
     }
     final item = itemOfBlock(key);
     if (item == null || item == 'minecraft:air') return ItemRequirement.invalid;
     // double slab needs two items
-    if (state['type'] == 'double' && key.endsWith('_slab')) return ItemRequirement.of1(ItemUseType.consume, item, 2);
-    if (key == 'minecraft:turtle_egg') return ItemRequirement.of1(ItemUseType.consume, item, state.intValue('eggs'));
-    if (key == 'minecraft:sea_pickle') return ItemRequirement.of1(ItemUseType.consume, item, state.intValue('pickles'));
-    if (key == 'minecraft:snow') return ItemRequirement.of1(ItemUseType.consume, item, state.intValue('layers'));
+    if (state['type'] == 'double' && key.endsWith('_slab'))
+      return ItemRequirement.of1(ItemUseType.consume, item, 2);
+    if (key == 'minecraft:turtle_egg')
+      return ItemRequirement.of1(
+        ItemUseType.consume,
+        item,
+        state.intValue('eggs'),
+      );
+    if (key == 'minecraft:sea_pickle')
+      return ItemRequirement.of1(
+        ItemUseType.consume,
+        item,
+        state.intValue('pickles'),
+      );
+    if (key == 'minecraft:snow')
+      return ItemRequirement.of1(
+        ItemUseType.consume,
+        item,
+        state.intValue('layers'),
+      );
     return ItemRequirement.of1(ItemUseType.consume, item);
   }
 
@@ -129,14 +172,84 @@ final class SchematicRequirements {
   ItemRequirement ofEntity(String typeKey, List<int> nbt) {
     final custom = entities[typeKey];
     if (custom != null) return custom(nbt);
+    final root = _readEntity(nbt);
     switch (typeKey) {
       case 'minecraft:item_frame':
-        return ItemRequirement.of1(ItemUseType.consume, 'minecraft:item_frame');
       case 'minecraft:glow_item_frame':
-        return ItemRequirement.of1(ItemUseType.consume, 'minecraft:glow_item_frame');
+        final frame = ItemRequirement.of1(ItemUseType.consume, typeKey);
+        final displayed = _readStack(root?['Item']);
+        if (displayed == null) return frame;
+        return frame.union(
+          ItemRequirement([
+            StackRequirement(
+              displayed.$1,
+              displayed.$2,
+              ItemUseType.consume,
+              strictComponents: displayed.$3,
+            ),
+          ]),
+        );
       case 'minecraft:armor_stand':
-        return ItemRequirement.of1(ItemUseType.consume, 'minecraft:armor_stand');
+        final requirements = <StackRequirement>[
+          const StackRequirement(
+            'minecraft:armor_stand',
+            1,
+            ItemUseType.consume,
+          ),
+        ];
+        // `ArmorStand.getItemBySlot` for every hand and humanoid armor slot.
+        final equipment = root?['equipment'];
+        if (equipment != null && equipment.kind == NbtKind.compound) {
+          for (final entry in equipment.asCompound.values) {
+            final item = _readStack(entry);
+            if (item == null) continue;
+            requirements.add(
+              StackRequirement(
+                item.$1,
+                item.$2,
+                ItemUseType.consume,
+                strictComponents: item.$3,
+              ),
+            );
+          }
+        }
+        return ItemRequirement(requirements);
     }
     return ItemRequirement.invalid;
   }
+}
+
+Map<String, NbtValue>? _readEntity(List<int> nbt) {
+  try {
+    final parsed = BinaryNbt.read(nbt);
+    return parsed != null && parsed.root.kind == NbtKind.compound
+        ? parsed.root.asCompound
+        : null;
+  } on Object {
+    // A malformed entity tag has no extra requirement.
+    return null;
+  }
+}
+
+/// `(item key, count, components)` of a saved item stack, or `null` for an empty/unknown stack.
+(String, int, Map<String, NbtValue>?)? _readStack(NbtValue? value) {
+  if (value == null || value.kind != NbtKind.compound) return null;
+  final map = value.asCompound;
+  final id = map['id'];
+  if (id == null || id.kind != NbtKind.string) return null;
+  final item = id.value as String;
+  if (item == 'minecraft:air') return null;
+  final countValue = map['count'];
+  final count = countValue != null && countValue.value is int
+      ? countValue.value as int
+      : 1;
+  if (count <= 0) return null;
+  final components = map['components'];
+  return (
+    item,
+    count,
+    components != null && components.kind == NbtKind.compound
+        ? components.asCompound
+        : null,
+  );
 }

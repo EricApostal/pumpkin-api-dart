@@ -12,8 +12,11 @@ import '../common/direction.dart';
 const List<String> _sides = ['north', 'east', 'south', 'west'];
 
 /// The state after `mirror` and then `rotation`, the order of `StructureTemplate.placeInWorld`.
-BState transformState(BState state, BlockMirror mirror, BlockRotation rotation) =>
-    rotateState(mirrorState(state, mirror), rotation);
+BState transformState(
+  BState state,
+  BlockMirror mirror,
+  BlockRotation rotation,
+) => rotateState(mirrorState(state, mirror), rotation);
 
 /// `BlockState.rotate(Rotation)`.
 BState rotateState(BState s, BlockRotation r) {
@@ -25,12 +28,15 @@ BState rotateState(BState s, BlockRotation r) {
   final facing = s['facing'];
   if (facing != null) {
     final d = Direction.byName(facing);
-    if (d != null && !_noFacingRotation(s)) changed['facing'] = r.rotate(d).serializedName;
+    if (d != null && !_noFacingRotation(s))
+      changed['facing'] = r.rotate(d).serializedName;
   }
 
   // axis: only the horizontal axes swap on a quarter turn
   final axis = s['axis'];
-  if (axis != null && (r == BlockRotation.clockwise90 || r == BlockRotation.counterclockwise90)) {
+  if (axis != null &&
+      (r == BlockRotation.clockwise90 ||
+          r == BlockRotation.counterclockwise90)) {
     if (axis == 'x') changed['axis'] = 'z';
     if (axis == 'z') changed['axis'] = 'x';
   }
@@ -39,7 +45,8 @@ BState rotateState(BState s, BlockRotation r) {
   final rotation = s['rotation'];
   if (rotation != null) {
     final v = int.tryParse(rotation);
-    if (v != null && v >= 0 && v < 16) changed['rotation'] = '${r.rotateInt(v, 16)}';
+    if (v != null && v >= 0 && v < 16)
+      changed['rotation'] = '${r.rotateInt(v, 16)}';
   }
 
   // north / east / south / west carry a value per side (fences, walls, redstone, vines, panes)
@@ -60,7 +67,9 @@ BState rotateState(BState s, BlockRotation r) {
   final orientation = s['orientation'];
   if (orientation != null) {
     final o = _parseOrientation(orientation);
-    if (o != null) changed['orientation'] = '${r.rotate(o.$1).serializedName}_${r.rotate(o.$2).serializedName}';
+    if (o != null)
+      changed['orientation'] =
+          '${r.rotate(o.$1).serializedName}_${r.rotate(o.$2).serializedName}';
   }
 
   if (changed.isEmpty) return s;
@@ -76,10 +85,15 @@ BState mirrorState(BState s, BlockMirror m) {
   final shape = s['shape'];
 
   // Stairs mirror their corner shapes.
-  if (facing != null && shape != null && _stairShapes.contains(shape) && s.has('half')) {
+  if (facing != null &&
+      shape != null &&
+      _stairShapes.contains(shape) &&
+      s.has('half')) {
     final d = Direction.byName(facing);
     if (d != null) {
-      final onMirroredAxis = (m == BlockMirror.leftRight && d.axis == Axis.z) || (m == BlockMirror.frontBack && d.axis == Axis.x);
+      final onMirroredAxis =
+          (m == BlockMirror.leftRight && d.axis == Axis.z) ||
+          (m == BlockMirror.frontBack && d.axis == Axis.x);
       if (onMirroredAxis) {
         final rotated = rotateState(s, BlockRotation.clockwise180);
         return rotated.setValue('shape', switch (shape) {
@@ -112,7 +126,8 @@ BState mirrorState(BState s, BlockMirror m) {
   final rotation = s['rotation'];
   if (rotation != null) {
     final v = int.tryParse(rotation);
-    if (v != null && v >= 0 && v < 16) out = out.setValue('rotation', '${m.mirrorInt(v, 16)}');
+    if (v != null && v >= 0 && v < 16)
+      out = out.setValue('rotation', '${m.mirrorInt(v, 16)}');
   }
 
   if (_sides.every(s.has)) {
@@ -131,12 +146,24 @@ BState mirrorState(BState s, BlockMirror m) {
     out = out.setValue('shape', _mirrorRail(shape, m));
   }
 
+  // `ChestBlock.mirror` keeps a double chest together by swapping its left and right halves.
+  final type = s['type'];
+  if (type == 'left') {
+    out = out.setValue('type', 'right');
+  } else if (type == 'right') {
+    out = out.setValue('type', 'left');
+  }
+
+  // `FrontAndTop` mirroring (`OctahedralGroup`): both the front and the top are mirrored, which
+  // is not the same as rotating by the top's axis (the top is often vertical).
   final orientation = s['orientation'];
   if (orientation != null) {
     final o = _parseOrientation(orientation);
     if (o != null) {
-      final r = m.getRotation(o.$2);
-      if (r != BlockRotation.none) out = rotateState(out, r);
+      out = out.setValue(
+        'orientation',
+        '${m.mirrorDirection(o.$1).serializedName}_${m.mirrorDirection(o.$2).serializedName}',
+      );
     }
   }
   return out;
@@ -149,11 +176,25 @@ bool _noFacingRotation(BState s) => false;
 // ---- rails -----------------------------------------------------------------------------------
 
 const Set<String> _railShapes = {
-  'north_south', 'east_west', 'ascending_east', 'ascending_west', 'ascending_north', 'ascending_south',
-  'south_east', 'south_west', 'north_west', 'north_east',
+  'north_south',
+  'east_west',
+  'ascending_east',
+  'ascending_west',
+  'ascending_north',
+  'ascending_south',
+  'south_east',
+  'south_west',
+  'north_west',
+  'north_east',
 };
 
-const Set<String> _stairShapes = {'straight', 'inner_left', 'inner_right', 'outer_left', 'outer_right'};
+const Set<String> _stairShapes = {
+  'straight',
+  'inner_left',
+  'inner_right',
+  'outer_left',
+  'outer_right',
+};
 
 String _rotateRail(String shape, BlockRotation r) {
   switch (r) {

@@ -18,6 +18,11 @@
 ///   [GenericItemFilling], [FillingBySpout], [PotionFluidHandler].
 library;
 
+export 'behaviour/spouting/spouting.dart';
+export 'boiler/blaze_burner_fuel.dart';
+export 'boiler/boiler_heater.dart';
+export 'effect/open_pipe_effect_handler.dart';
+export 'transfer/create_fluid_handler.dart';
 export '../fluids/fluid_helper.dart';
 export '../fluids/fluid_host.dart'
     show

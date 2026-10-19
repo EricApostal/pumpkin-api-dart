@@ -170,7 +170,7 @@ final class CreatePlugin extends Plugin {
       }
     }
     log.info(
-      'Create loaded: ${_active.length} modules, ${core.registry.blocks.length} blocks, '
+      'Create loaded: ${_active.length} modules, ${core.ids.all(RegistryKind.blocks).length} blocks, '
       '${core.registry.items.length} items, ${core.registry.payloads.ids.length} channels.',
     );
   }

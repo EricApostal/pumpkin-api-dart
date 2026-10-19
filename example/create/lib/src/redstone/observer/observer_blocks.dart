@@ -324,6 +324,9 @@ final class SmartObserverBlock {
 
 // -- Threshold switch ------------------------------------------------------------------------------------
 
+/// `ThresholdSwitchBlockEntity.ThresholdType`: what the observed block provides.
+enum ThresholdType { unsupported, item, fluid, custom }
+
 /// `ThresholdSwitchBlockEntity`.
 final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
   static const String type = 'create:stockpile_switch';
@@ -485,16 +488,43 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
     }
   }
 
-  /// `format(value, stacks)` for the screen: the unit text.
+  /// `format(value, stacks)` for the screen: the unit text, or the probe's own format.
   Txt format(int value, bool stacks) {
-    final suffix = handlerKind == 'item'
+    final type = typeOfCurrentTarget;
+    if (type == ThresholdType.custom) {
+      final w = world;
+      final props = w == null ? null : Lvl(w).info(_pos)?.properties;
+      if (w != null && props != null) {
+        final target = _pos.relative(targetDirectionOf(props));
+        for (final probe in _probes) {
+          final observation = probe.observation(worldId, target);
+          if (observation != null) return observation.format(value);
+        }
+      }
+    }
+    final suffix = type == ThresholdType.item
         ? (stacks ? 'create.schedule.condition.threshold.stacks' : 'create.schedule.condition.threshold.items')
         : 'create.schedule.condition.threshold.buckets';
     return Txt.literal('$value ').append(Txt.translate(suffix));
   }
 
-  /// `getTypeOfCurrentTarget`: `item`, `fluid`, `custom` or `unsupported`.
-  String handlerKind = 'unsupported';
+  /// `getTypeOfCurrentTarget`: item, fluid, custom (a probe observation) or unsupported.
+  ThresholdType get typeOfCurrentTarget {
+    final w = world;
+    final props = w == null ? null : Lvl(w).info(_pos)?.properties;
+    if (w == null || props == null) return ThresholdType.unsupported;
+    final target = _pos.relative(targetDirectionOf(props));
+    final targetPos = target.toBlockPos();
+    if (ItemHandlers.at(w, targetPos) != null) return ThresholdType.item;
+    if (w.fluidHandlerAt(targetPos) != null) return ThresholdType.fluid;
+    for (final probe in _probes) {
+      if (probe.observation(worldId, target) != null) return ThresholdType.custom;
+    }
+    return ThresholdType.unsupported;
+  }
+
+  List<ObservableProbe> get _probes =>
+      Rs.i.ctx.services.find<ObservableRegistry>()?.probes ?? const <ObservableProbe>[];
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {

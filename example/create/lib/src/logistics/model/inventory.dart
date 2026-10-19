@@ -180,6 +180,25 @@ Future<List<LStack>> readAll(ItemInv inv) async => [
   for (var i = 0; i < inv.slots; i++) await inv.stackAt(i),
 ];
 
+/// `ItemHelper.calcRedstoneFromInventory`: the analog signal of an inventory (a container's
+/// comparator output). A slot whose limit is 0 does not count; one filled slot adds one to the
+/// signal even when the average fill is below 1/14.
+int calcRedstoneFromInventory(Iterable<LStack> stacks, {int slotLimit = 64}) {
+  var filled = 0;
+  var fill = 0.0;
+  var slots = 0;
+  for (final stack in stacks) {
+    slots++;
+    if (slotLimit <= 0) continue;
+    if (stack.isEmpty) continue;
+    final limit = slotLimit < stack.maxStack ? slotLimit : stack.maxStack;
+    fill += stack.count / limit;
+    filled++;
+  }
+  if (slots == 0) return 0;
+  return (fill / slots * 14).floor() + (filled > 0 ? 1 : 0);
+}
+
 // ------------------------------------------------------------------------------------------------
 // InventoryIdentifier
 

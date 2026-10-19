@@ -10,10 +10,12 @@ import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/block_state.dart';
 import '../../api/decoration.dart' show DoorControlBehaviour;
 import '../../api/redstone.dart' show RedstoneDisplayApi;
 import '../../api/trains.dart';
 import '../../common/bounds.dart';
+import '../../common/data.dart' show Iterate;
 import '../../common/direction.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
@@ -22,7 +24,9 @@ import '../../core/block_entity.dart';
 import '../../core/nbt.dart' show NetworkNbt;
 import '../../redstone/support/text.dart'
     show Txt, plainTextOfJson, tryParseJson;
+import '../bogey/abstract_bogey_block.dart';
 import '../bogey/abstract_bogey_block_entity.dart';
+import '../bogey/bogey_blocks.dart' show railwayCasingKey;
 import '../graph/edge_point_type.dart';
 import '../manager/create.dart';
 import '../manager/global_railway_manager.dart' show RailwayHooks;
@@ -30,7 +34,7 @@ import '../schedule/schedule_item.dart'
     show ScheduleItem, scheduleItemKey, trainScheduleComponent;
 import '../support/runtime.dart';
 import '../util/uuid.dart';
-import 'host_ops.dart' show trainsLang;
+import 'host_ops.dart' show sendOverlay, shrinkHeld, trainsLang;
 import 'station_block.dart';
 
 /// `StationBlockEntity`.
@@ -252,6 +256,124 @@ final class StationBlockEntity extends CreateBlockEntity {
 
   /// `isValidBogeyOffset(i)`.
   bool isValidBogeyOffset(int i) => assembly.isValidBogeyOffset(i);
+
+  /// `trackClicked(player, hand, track, state, pos)`: a click on the assembly track. Inside the
+  /// assembly area this either cycles the size of an existing bogey or places a new one from the
+  /// railway casing in the player's hand. Returns `true` when the click was handled.
+  Future<bool> trackClicked(
+    Player player,
+    Hand hand,
+    ITrackBlock track,
+    BState state,
+    Pos pos,
+  ) async {
+    refreshAssemblyInfo();
+    final level = _trackLevel;
+    final w = world;
+    if (level == null || w == null) return false;
+
+    final area = assemblyAreas[worldId]?[_pos];
+    if (area == null || !area.isInside(pos)) return false;
+
+    final upNormal = track.getUpNormal(level, pos, state);
+    final up = posContaining(upNormal);
+    final down = posContaining((-upNormal.$1, -upNormal.$2, -upNormal.$3));
+    final bogeyOffset = pos.distManhattan(edgePoint.getGlobalPosition()) - 1;
+
+    if (!isValidBogeyOffset(bogeyOffset)) {
+      // Too close to an existing bogey: cycle that bogey's size instead.
+      final direction = assembly.assemblyDirection;
+      if (direction == null) return false;
+      for (final upsideDown in Iterate.falseAndTrue) {
+        for (var i = -1; i <= 1; i++) {
+          final bogeyPos =
+              pos.relative(direction, i) + (upsideDown ? down : up);
+          final blockState = level.stateAt(bogeyPos);
+          final bogey = AbstractBogeyBlock.byKey(blockState.key);
+          if (bogey == null) continue;
+          final oldBE = store.typed<AbstractBogeyBlockEntity>(
+            worldId,
+            bogeyPos.toBlockPos(),
+          );
+          if (oldBE == null) continue;
+
+          final oldData = oldBE.getBogeyData();
+          final newBlock = oldBE.getNextSize();
+          if (newBlock.key == bogey.key) {
+            sendOverlay(
+              player,
+              trainsLang('create.bogey.style.no_other_sizes'),
+            );
+          }
+          await level.setBlock(bogeyPos, newBlock);
+          final newBE = store.typed<AbstractBogeyBlockEntity>(
+            worldId,
+            bogeyPos.toBlockPos(),
+          );
+          if (newBE == null) continue;
+          newBE.setBogeyData(oldData);
+          // `IWrenchable.playRotateSound(level, bogeyPos)`.
+          w.playCustomSound(
+            soundName: 'create:wrench_rotate',
+            category: SoundCategory.blocks,
+            pos: bogeyPos.center,
+            volume: 1,
+            pitch: level.random.nextDouble() * 0.5 + 0.5,
+          );
+          return true;
+        }
+      }
+      return false;
+    }
+
+    final heldKey = await player
+        .getInventory()
+        .getItemInHand(hand: hand)
+        ?.getRegistryKey();
+    if (player.getGamemode() != GameMode.creative &&
+        heldKey != railwayCasingKey) {
+      sendOverlay(player, trainsLang('create.train_assembly.requires_casing'));
+      return false;
+    }
+
+    final anchorState = track.getBogeyAnchor(level, pos, state);
+    final anchorBogey = AbstractBogeyBlock.byKey(anchorState.key);
+    final upsideDown =
+        player.getPitch() < 0 &&
+        anchorBogey != null &&
+        anchorBogey.canBeUpsideDown();
+
+    final targetPos = upsideDown ? pos + down : pos + up;
+    if (w.getBlockState(pos: targetPos.toBlockPos()).hardness == -1) {
+      return false;
+    }
+
+    await level.destroyBlock(targetPos, true);
+
+    var bogeyAnchor = anchorState;
+    final bogey = AbstractBogeyBlock.byKey(bogeyAnchor.key);
+    if (bogey != null) {
+      bogeyAnchor = bogey.getVersion(bogeyAnchor, upsideDown);
+    }
+    bogeyAnchor = withWater(level, bogeyAnchor, pos)!;
+    await level.setBlock(targetPos, bogeyAnchor);
+    sendOverlay(player, trainsLang('create.train_assembly.bogey_created'));
+
+    // `SoundType.NETHERITE_BLOCK`: the standard bogeys use it (`AllBlocks.SMALL_BOGEY`).
+    w.playCustomSound(
+      soundName: 'minecraft:block.netherite_block.place',
+      category: SoundCategory.blocks,
+      pos: pos.center,
+      volume: 1,
+      pitch: 0.8,
+    );
+
+    if (player.getGamemode() != GameMode.creative) {
+      await shrinkHeld(player, hand);
+    }
+
+    return true;
+  }
 
   /// `tryEnterAssemblyMode()`.
   bool tryEnterAssemblyMode() {
@@ -543,11 +665,21 @@ final class StationBlockEntity extends CreateBlockEntity {
       var bogeySpacing = 0;
       final secondBogeyPos = contraption.getSecondBogeyPos();
       if (secondBogeyPos != null) {
-        if (bogeyIndex == assembly.bogeyCount - 1) {
+        final expectedSecondPos =
+            (assembly.upsideDownBogeys![bogeyIndex + 1]
+                    ? trackPosition + upsideDownOffset
+                    : bogeyPosOffset)
+                .relative(
+                  assembly.assemblyDirection!,
+                  locations[bogeyIndex + 1] + 1,
+                );
+        if (bogeyIndex == assembly.bogeyCount - 1 ||
+            secondBogeyPos != expectedSecondPos) {
           _exception(
             const TrainAssemblyException(
               'train_assembly.not_connected_in_order',
             ),
+            contraptions.length + 1,
           );
           return;
         }
@@ -569,6 +701,7 @@ final class StationBlockEntity extends CreateBlockEntity {
       } else if (!firstType.allowsSingleBogeyCarriage()) {
         _exception(
           const TrainAssemblyException('train_assembly.single_bogey_carriage'),
+          contraptions.length + 1,
         );
         return;
       }
@@ -632,6 +765,12 @@ final class StationBlockEntity extends CreateBlockEntity {
     failedCarriageIndex = carriage;
     lastException = exception;
     sendData();
+  }
+
+  @override
+  void onRemoved() {
+    assemblyAreas[worldId]?.remove(_pos);
+    super.onRemoved();
   }
 
   /// `transform(be, transform)`.

@@ -53,6 +53,10 @@ abstract interface class ContraptionEntityHandle {
   /// `MountedStorageSyncPacket` to the clients tracking the entity.
   void sendStorageSync(StorageSync sync);
 
+  /// Sends a clientbound payload (`create:contraption_actor_toggle`) to the clients tracking the
+  /// entity.
+  void sendPayload(String channel, Map<String, Object?> fields);
+
   /// `onContraptionStalled()`.
   void onContraptionStalled();
 }
@@ -247,12 +251,12 @@ class Contraption {
 
     if (level.isOutsideBuildHeight(pos)) return true;
     if (!level.isLoaded(pos)) throw AssemblyException.unloadedChunk(pos);
-    if (_isAnchoringBlockAt(pos)) return true;
+    if (isAnchoringBlockAt(pos)) return true;
 
     final state = level.stateAt(pos);
     if (!BlockMovementChecks.isMovementNecessary(state, level, pos))
       return true;
-    if (!_movementAllowed(state, level, pos))
+    if (!movementAllowed(state, level, pos))
       throw AssemblyException.unmovableBlock(pos, state);
 
     if (isChassisState(state) &&
@@ -326,8 +330,8 @@ class Contraption {
     for (final offset in Direction.values) {
       final offsetPos = pos.relative(offset);
       final blockState = level.stateAt(offsetPos);
-      if (_isAnchoringBlockAt(offsetPos)) continue;
-      if (!_movementAllowed(blockState, level, offsetPos)) {
+      if (isAnchoringBlockAt(offsetPos)) continue;
+      if (!movementAllowed(blockState, level, offsetPos)) {
         if (offset == forcedDirection)
           throw AssemblyException.unmovableBlock(pos, state);
         continue;
@@ -760,10 +764,19 @@ class Contraption {
         : const [Direction.south, Direction.north];
   }
 
-  bool _movementAllowed(BState state, ContraptionLevel level, Pos pos) =>
+  /// `movementAllowed`: whether a block of the structure may be captured. Subclasses add the
+  /// rules of their kind (`MountedContraption` checks secondary cart assemblers).
+  bool movementAllowed(BState state, ContraptionLevel level, Pos pos) =>
       BlockMovementChecks.isMovementAllowed(state, level, pos);
 
-  bool _isAnchoringBlockAt(Pos pos) => pos == anchor;
+  /// `isAnchoringBlockAt`: the blocks that belong to the controller and are never captured.
+  /// `PistonContraption` extends this to its extension poles.
+  bool isAnchoringBlockAt(Pos pos) => pos == anchor;
+
+  /// `shouldUpdateAfterMovement`: whether the placed block notifies its neighbours on disassembly.
+  /// Java also skips blocks that own a POI; the host owns those and does not expose the check.
+  bool shouldUpdateAfterMovement(StructureBlockInfo info) =>
+      !_isDoor(info.state);
 
   // -- Entity integration ---------------------------------------------------------------------
 
@@ -1335,6 +1348,7 @@ class Contraption {
     }
 
     for (final block in blocks.values) {
+      if (!shouldUpdateAfterMovement(block)) continue;
       final targetPos = transform.applyPos(block.pos);
       level.updateNeighbours(targetPos, block.state);
     }

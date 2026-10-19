@@ -26,7 +26,10 @@ class BracketedKineticBlockEntity extends SimpleKineticBlockEntity {
   BracketedKineticBlockEntity(super.worldId, super.pos) {
     brackets = addBehaviour(
       BracketedBlockEntityBehaviour(
-        canHave: (state) => state.key == 'create:shaft' || state.key == 'create:cogwheel' || state.key == 'create:large_cogwheel',
+        canHave: (state) =>
+            state.key == 'create:shaft' ||
+            state.key == 'create:cogwheel' ||
+            state.key == 'create:large_cogwheel',
       ),
     );
   }
@@ -40,7 +43,11 @@ class BracketedKineticBlockEntity extends SimpleKineticBlockEntity {
     unawaited(() async {
       final bracket = await brackets.removeBracket(inOnReplacedContext: true);
       if (bracket == null) return;
-      await w.dropItem((pos.x + .5, pos.y + .5, pos.z + .5), ItemStacks.plain(bracket.key));
+      await w.dropItem((
+        pos.x + .5,
+        pos.y + .5,
+        pos.z + .5,
+      ), ItemStacks.plain(bracket.key));
     }());
   }
 }
@@ -67,7 +74,8 @@ abstract class SplitShaftBlockEntity extends DirectionalShaftHalvesBlockEntity {
   double getRotationSpeedModifier(Dir face);
 
   @override
-  double shaftHalvesModifier(Dir direction) => getRotationSpeedModifier(direction);
+  double shaftHalvesModifier(Dir direction) =>
+      getRotationSpeedModifier(direction);
 
   bool get poweredState => blockState.flag('powered');
 }
@@ -78,7 +86,12 @@ class GearshiftBlockEntity extends SplitShaftBlockEntity {
 
   @override
   double getRotationSpeedModifier(Dir face) {
-    return gearshiftModifier(hasSource: hasSource, face: face, sourceFacing: sourceFacing, powered: poweredState);
+    return gearshiftModifier(
+      hasSource: hasSource,
+      face: face,
+      sourceFacing: sourceFacing,
+      powered: poweredState,
+    );
   }
 }
 
@@ -88,7 +101,12 @@ class ClutchBlockEntity extends SplitShaftBlockEntity {
 
   @override
   double getRotationSpeedModifier(Dir face) {
-    return clutchModifier(hasSource: hasSource, face: face, sourceFacing: sourceFacing, powered: poweredState);
+    return clutchModifier(
+      hasSource: hasSource,
+      face: face,
+      sourceFacing: sourceFacing,
+      powered: poweredState,
+    );
   }
 }
 
@@ -111,7 +129,8 @@ class SequencedGearshiftBlockEntity extends SplitShaftBlockEntity {
     if (currentInstructionDuration < 0) return;
     if (timer < currentInstructionDuration) {
       timer++;
-      currentInstructionProgress += getInstruction(currentInstruction)!.getTickProgress(speedValue);
+      currentInstructionProgress += getInstruction(currentInstruction)!
+          .getTickProgress(speedValue);
       return;
     }
     run(currentInstruction + 1);
@@ -128,7 +147,10 @@ class SequencedGearshiftBlockEntity extends SplitShaftBlockEntity {
     if (speed == 0) run(-1);
 
     // Update the instruction time with regard to the new speed.
-    currentInstructionDuration = instruction.getDuration(currentInstructionProgress, theoreticalSpeed);
+    currentInstructionDuration = instruction.getDuration(
+      currentInstructionProgress,
+      theoreticalSpeed,
+    );
     timer = 0;
   }
 
@@ -166,7 +188,8 @@ class SequencedGearshiftBlockEntity extends SplitShaftBlockEntity {
 
   void run(int instructionIndex) {
     final instruction = getInstruction(instructionIndex);
-    if (instruction == null || instruction.instruction == SequencerInstructions.end) {
+    if (instruction == null ||
+        instruction.instruction == SequencerInstructions.end) {
       if (modifier != 0) detachKinetics();
       currentInstruction = -1;
       currentInstructionDuration = -1;
@@ -181,7 +204,11 @@ class SequencedGearshiftBlockEntity extends SplitShaftBlockEntity {
     currentInstructionDuration = instruction.getDuration(0, theoreticalSpeed);
     currentInstruction = instructionIndex;
     currentInstructionProgress = 0;
-    sequenceContext = SequenceContext.fromGearshift(instruction.instruction, theoreticalSpeed * modifier, instruction.value);
+    sequenceContext = SequenceContext.fromGearshift(
+      instruction.instruction,
+      theoreticalSpeed * modifier,
+      instruction.value,
+    );
     timer = 0;
     setStateAsync(blockState.set('state', '${instructionIndex + 1}'));
   }
@@ -196,7 +223,8 @@ class SequencedGearshiftBlockEntity extends SplitShaftBlockEntity {
     }
   }
 
-  Instruction? getInstruction(int index) => index >= 0 && index < instructions.length ? instructions[index] : null;
+  Instruction? getInstruction(int index) =>
+      index >= 0 && index < instructions.length ? instructions[index] : null;
 
   @override
   void copySequenceContextFrom(KineticNode sourceBE) {}
@@ -232,15 +260,21 @@ class SequencedGearshiftBlockEntity extends SplitShaftBlockEntity {
       instructions = [
         for (final e in list)
           if (e is NbtCompound)
-            Instruction(SequencerInstructions.fromJavaName(e.getString('Type')), e.getInt('Value') ?? 0)
-              ..speedModifier = InstructionSpeedModifiers.fromJavaName(e.getString('Modifier')),
+            Instruction(
+                SequencerInstructions.fromJavaName(e.getString('Type')),
+                e.getInt('Value') ?? 0,
+              )
+              ..speedModifier = InstructionSpeedModifiers.fromJavaName(
+                e.getString('Modifier'),
+              ),
       ];
     }
     super.read(tag, clientPacket: clientPacket);
   }
 
   @override
-  double getRotationSpeedModifier(Dir face) => (!hasSource || face == sourceFacing) ? 1 : modifier.toDouble();
+  double getRotationSpeedModifier(Dir face) =>
+      (!hasSource || face == sourceFacing) ? 1 : modifier.toDouble();
 
   int get modifier {
     if (currentInstruction >= instructions.length) return 0;
@@ -251,7 +285,8 @@ class SequencedGearshiftBlockEntity extends SplitShaftBlockEntity {
 // -- Chain drives -----------------------------------------------------------------
 
 /// `ChainGearshiftBlockEntity`: the adjustable chain gearshift's ratio follows the redstone signal.
-class ChainGearshiftBlockEntity extends KineticBlockEntity implements ChainModifierNode {
+class ChainGearshiftBlockEntity extends KineticBlockEntity
+    implements ChainModifierNode {
   int signal = 0;
   bool signalChanged = false;
 
@@ -392,7 +427,11 @@ class StressGaugeBlockEntity extends GaugeBlockEntity {
   StressGaugeBlockEntity(super.worldId, super.pos);
 
   @override
-  void updateFromNetwork(double maxStress, double currentStress, int networkSize) {
+  void updateFromNetwork(
+    double maxStress,
+    double currentStress,
+    int networkSize,
+  ) {
     super.updateFromNetwork(maxStress, currentStress, networkSize);
 
     if (runtime.settings.disableStress) {
@@ -455,13 +494,16 @@ class TurntableBlockEntity extends KineticBlockEntity {
 }
 
 /// `SpeedControllerBlockEntity`.
-class SpeedControllerBlockEntity extends KineticBlockEntity implements SpeedControllerNode, ValueSettingsHost {
+class SpeedControllerBlockEntity extends KineticBlockEntity
+    implements SpeedControllerNode, ValueSettingsHost {
   static const int defaultSpeed = 16;
 
   late final ScrollValueBehaviour targetSpeed;
 
   SpeedControllerBlockEntity(super.worldId, super.pos) {
-    final max = KineticsRuntime.isLoaded ? runtime.settings.maxRotationSpeed : 256;
+    final max = KineticsRuntime.isLoaded
+        ? runtime.settings.maxRotationSpeed
+        : 256;
     targetSpeed = addBehaviour(
       KineticScrollValueBehaviour()
         ..between(-max, max)
@@ -487,7 +529,12 @@ class SpeedControllerBlockEntity extends KineticBlockEntity implements SpeedCont
 /// `CuckooClockBlockEntity`: plays the pig / creeper animation at noon and in
 /// the evening (the creeper "surprise" explodes the mysterious clock).
 class CuckooClockBlockEntity extends KineticBlockEntity {
-  static const List<String> animationNames = ['PIG', 'CREEPER', 'SURPRISE', 'NONE'];
+  static const List<String> animationNames = [
+    'PIG',
+    'CREEPER',
+    'SURPRISE',
+    'NONE',
+  ];
 
   String animationType = 'NONE';
   double animationProgress = 0;
@@ -497,6 +544,9 @@ class CuckooClockBlockEntity extends KineticBlockEntity {
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
+    // The framework writes the save tag before the client tag of the same flush,
+    // so the flag is only cleared by the client write (Java's `write` sees only
+    // one of the two).
     if (clientPacket && _sendAnimationUpdate) {
       tag.putString('Animation', animationType);
       _sendAnimationUpdate = false;
@@ -521,17 +571,24 @@ class CuckooClockBlockEntity extends KineticBlockEntity {
 
     if (animationType == 'NONE') {
       if (hours == 12 && minutes < 5) startAnimation('PIG');
-      if (hours == 18 && minutes < 36 && minutes > 31) startAnimation('CREEPER');
+      if (hours == 18 && minutes < 36 && minutes > 31)
+        startAnimation('CREEPER');
     } else {
       final value = animationProgress;
       animationProgress = value + 1;
       if (value > 100) animationType = 'NONE';
 
-      if (animationType == 'SURPRISE' && (animationProgress - 50).abs() < 1e-5) {
+      if (animationType == 'SURPRISE' &&
+          (animationProgress - 50).abs() < 1e-5) {
         final center = (pos.x + .5, pos.y + .5, pos.z + .5);
         unawaited(() async {
           await w.breakBlock(pos, drop: false);
-          await w.createExplosion(pos: center, power: 3, createFire: false, interaction: ExplosionInteraction.block);
+          await w.createExplosion(
+            pos: center,
+            power: 3,
+            createFire: false,
+            interaction: ExplosionInteraction.block,
+          );
         }());
       }
     }
@@ -539,7 +596,8 @@ class CuckooClockBlockEntity extends KineticBlockEntity {
 
   void startAnimation(String animation) {
     animationType = animation;
-    if (blockState.isCreate('mysterious_cuckoo_clock')) animationType = 'SURPRISE';
+    if (blockState.isCreate('mysterious_cuckoo_clock'))
+      animationType = 'SURPRISE';
     animationProgress = 0;
     _sendAnimationUpdate = true;
     sendData();

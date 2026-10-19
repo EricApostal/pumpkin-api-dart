@@ -40,26 +40,37 @@ final class PackagePortTarget {
     this.flipped = false,
   });
 
-  Map<String, dynamic> toMap() => {
-    'type': type.id,
-    'relativePos': [relativePos.$1, relativePos.$2, relativePos.$3],
-    'chainPos': chainPos,
-    'connection': connection == null
-        ? null
-        : [connection!.$1, connection!.$2, connection!.$3],
-    'flipped': flipped,
-  };
+  /// The private JSON form, using the field names of the Java codec (`type`, `relative_pos` and,
+  /// for a chain conveyor, `chain_pos`, `connection`, `flipped`).
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'type': 'create:${type.id}',
+      'relative_pos': [relativePos.$1, relativePos.$2, relativePos.$3],
+    };
+    if (type == PackagePortTargetType.chainConveyor) {
+      map['chain_pos'] = chainPos;
+      final c = connection;
+      if (c != null) map['connection'] = [c.$1, c.$2, c.$3];
+      map['flipped'] = flipped;
+    }
+    return map;
+  }
 
   static PackagePortTarget? fromMap(Object? value) {
     if (value is! Map) return null;
-    final type = PackagePortTargetType.byId(value['type'] as String? ?? '');
-    final pos = value['relativePos'];
+    final rawType = value['type'] as String? ?? '';
+    final type = PackagePortTargetType.byId(
+      rawType.startsWith('create:') ? rawType.substring(7) : rawType,
+    );
+    // The old private form used camelCase keys; keep reading it.
+    final pos = value['relative_pos'] ?? value['relativePos'];
     if (type == null || pos is! List || pos.length != 3) return null;
     final connection = value['connection'];
     return PackagePortTarget(
       type,
       (pos[0] as int, pos[1] as int, pos[2] as int),
-      chainPos: (value['chainPos'] as num?)?.toDouble() ?? 0,
+      chainPos:
+          ((value['chain_pos'] ?? value['chainPos']) as num?)?.toDouble() ?? 0,
       connection: connection is List && connection.length == 3
           ? (connection[0] as int, connection[1] as int, connection[2] as int)
           : null,

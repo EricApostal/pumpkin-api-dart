@@ -4,6 +4,7 @@
 /// block state transform (`transformState`, `rotateState`, `mirrorState`).
 library;
 
+export 'schematic/requirements.dart';
 export '../schematics/item_requirement.dart';
 export '../schematics/schematic_hooks.dart';
 export '../schematics/state_transform.dart';

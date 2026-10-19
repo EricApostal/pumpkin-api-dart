@@ -24,7 +24,15 @@ final class HookCtx {
   final CreateBlock block;
   final KState state;
 
-  HookCtx(this.server, this.rt, this.world, this.worldId, this.pos, this.block, this.state);
+  HookCtx(
+    this.server,
+    this.rt,
+    this.world,
+    this.worldId,
+    this.pos,
+    this.block,
+    this.state,
+  );
 
   KPos get kpos => KPos(pos.x, pos.y, pos.z);
 
@@ -42,16 +50,45 @@ final class HookCtx {
     return e is T ? e as T : null;
   }
 
-  Future<void> setState(KState s, {Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal}) {
-    if (flags.contains(BlockFlagsFlag.skipShapeUpdate)) rt.keepKineticInfo.add('$worldId:${kpos.packed}');
+  Future<void> setState(
+    KState s, {
+    Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal,
+  }) {
+    if (flags.contains(BlockFlagsFlag.skipShapeUpdate)) {
+      rt.keepKineticInfo.add('$worldId:${kpos.packed}');
+    }
     return setKState(rt, world, pos, s, flags: flags);
   }
 }
 
-HookCtx makeCtx(Server server, CreateBlock block, World world, BlockPos pos, int stateIndex) {
+HookCtx makeCtx(
+  Server server,
+  CreateBlock block,
+  World world,
+  BlockPos pos,
+  int stateIndex,
+) {
   final rt = KineticsRuntime.instance;
   final worldId = rt.worlds.touch(world);
-  return HookCtx(server, rt, world, worldId, pos, block, stateOfEvent(block, stateIndex));
+  return HookCtx(
+    server,
+    rt,
+    world,
+    worldId,
+    pos,
+    block,
+    stateOfEvent(block, stateIndex),
+  );
+}
+
+/// `ProperWaterloggedBlock.updateShape` (`updateWater`): a waterlogged kinetic
+/// block keeps its fluid ticking when a neighbour changes. Returns `null` so the
+/// block state stays as it is.
+int? waterloggedUpdateShape(HookCtx c, CustomBlockUpdateShapeEventData e) {
+  if (c.state.flag('waterlogged')) {
+    c.world.scheduleFluidFlow(c.pos, delayTicks: 5);
+  }
+  return null;
 }
 
 /// Builds the behaviour. [blockRef] returns the block this behaviour belongs to
@@ -59,17 +96,22 @@ HookCtx makeCtx(Server server, CreateBlock block, World world, BlockPos pos, int
 BlockBehavior buildKineticBehavior(
   CreateBlock Function() blockRef, {
   KineticBlockSpec Function()? specRef,
-  FutureOr<void> Function(HookCtx c, CustomBlockNeighborUpdateEventData e)? neighbor,
+  FutureOr<void> Function(HookCtx c, CustomBlockNeighborUpdateEventData e)?
+  neighbor,
   FutureOr<void> Function(HookCtx c)? scheduledTick,
   int? Function(HookCtx c, CustomBlockUpdateShapeEventData e)? updateShape,
   FutureOr<BlockUseResult> Function(HookCtx c, CustomBlockUseEventData e)? use,
   FutureOr<bool> Function(HookCtx c, CustomBlockCanPlaceEventData e)? canPlace,
   int? Function(HookCtx c)? comparator,
-  FutureOr<void> Function(HookCtx c, CustomBlockEntityStepEventData e)? entityStep,
-  FutureOr<void> Function(HookCtx c, CustomBlockStateReplacedEventData e)? replaced,
+  FutureOr<void> Function(HookCtx c, CustomBlockEntityStepEventData e)?
+  entityStep,
+  FutureOr<void> Function(HookCtx c, CustomBlockStateReplacedEventData e)?
+  replaced,
   FutureOr<void> Function(HookCtx c, CustomBlockPlacedEventData e)? afterPlaced,
-  FutureOr<bool> Function(HookCtx c, CustomBlockPlayerWillDestroyEventData e)? willDestroy,
-  FutureOr<ItemStack?> Function(HookCtx c, CustomBlockCloneItemEventData e)? cloneItem,
+  FutureOr<bool> Function(HookCtx c, CustomBlockPlayerWillDestroyEventData e)?
+  willDestroy,
+  FutureOr<ItemStack?> Function(HookCtx c, CustomBlockCloneItemEventData e)?
+  cloneItem,
   bool pathfindable = true,
 }) {
   return BlockBehavior(
@@ -79,7 +121,9 @@ BlockBehavior buildKineticBehavior(
       final be = c.be;
       if (be != null && e.oldStateId != null) {
         final old = c.rt.states.decode(e.oldStateId!);
-        final keep = c.rt.keepKineticInfo.remove('${c.worldId}:${c.kpos.packed}');
+        final keep = c.rt.keepKineticInfo.remove(
+          '${c.worldId}:${c.kpos.packed}',
+        );
         applyKineticBlockChange(c.rt, be, old, c.state, keepInfo: keep);
       }
       final playerId = e.player;
@@ -93,32 +137,62 @@ BlockBehavior buildKineticBehavior(
     },
     onNeighborUpdate: neighbor == null
         ? null
-        : (server, e) => neighbor(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex), e),
+        : (server, e) => neighbor(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
     onScheduledTick: scheduledTick == null
         ? null
-        : (server, e) => scheduledTick(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex)),
+        : (server, e) => scheduledTick(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+          ),
     onUpdateShape: updateShape == null
         ? null
-        : (server, e) => updateShape(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex), e),
-    onUse: use == null ? null : (server, e) => use(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex), e),
+        : (server, e) => updateShape(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
+    onUse: use == null
+        ? null
+        : (server, e) => use(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
     onCanPlace: canPlace == null
         ? null
-        : (server, e) => canPlace(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex), e),
+        : (server, e) => canPlace(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
     onComparatorOutput: comparator == null
         ? null
-        : (server, e) => comparator(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex)),
+        : (server, e) => comparator(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+          ),
     onEntityStep: entityStep == null
         ? null
-        : (server, e) => entityStep(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex), e),
+        : (server, e) => entityStep(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
     onStateReplaced: replaced == null
         ? null
-        : (server, e) => replaced(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.oldStateIndex), e),
+        : (server, e) => replaced(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.oldStateIndex),
+            e,
+          ),
     onPlayerWillDestroy: willDestroy == null
         ? null
-        : (server, e) => willDestroy(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex), e),
+        : (server, e) => willDestroy(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
     onCloneItem: cloneItem == null
         ? null
-        : (server, e) => cloneItem(makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex), e),
+        : (server, e) => cloneItem(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
     isPathfindable: pathfindable ? null : (server, e) => false,
   );
 }
@@ -128,7 +202,13 @@ Future<void> _placementFix(
   HookCtx c,
   CustomBlockPlacedEventData e,
   Uuid playerId,
-  FutureOr<KState> Function(PlacementContext ctx, KState placed, UseRecord? use, World world) fix,
+  FutureOr<KState> Function(
+    PlacementContext ctx,
+    KState placed,
+    UseRecord? use,
+    World world,
+  )
+  fix,
 ) async {
   final player = server.getPlayerByUuid(id: playerId);
   if (player == null) return;

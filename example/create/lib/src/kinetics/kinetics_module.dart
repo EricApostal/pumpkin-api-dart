@@ -119,6 +119,19 @@ final class KineticsModule extends CreateModule {
       if (!e.cancelled) rt.forgetWorld(e.targetWorld.getId());
     });
 
+    // `GearboxBlock.getDrops`: a gearbox with a horizontal axis drops the vertical
+    // gearbox item, which the datapack loot table (always `create:gearbox`) cannot
+    // express. Keep the rolled loot when the block did not survive the break.
+    ctx.host.intercept(Events.lootModify, (server, e) {
+      if (e.source != 'block' || e.loot.isEmpty) return e;
+      final stateId = e.blockState;
+      if (stateId == null) return e;
+      final state = rt.states.decode(stateId);
+      if (state.block != 'create:gearbox') return e;
+      if ((state.axisOf('axis') ?? KAxis.y) == KAxis.y) return e;
+      return e.copyWith(loot: [ItemStacks.plain('create:vertical_gearbox')]);
+    });
+
     // The vertical gearbox item places the gearbox block (VerticalGearboxItem).
     if (ctx.ids.of(RegistryKind.items, 'create:vertical_gearbox') != null) {
       try {

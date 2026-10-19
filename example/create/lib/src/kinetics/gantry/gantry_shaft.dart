@@ -137,10 +137,13 @@ KineticBlockSpec gantryShaftSpec() {
           ...updated.props,
         });
       },
-      scheduledTick: (c) {
+      scheduledTick: (c) async {
+        // A wrench rotation re-runs `neighborChanged` (`GantryShaftBlock.onWrenched`);
+        // the wrench hook cannot await the redstone query, so it schedules this.
+        if (_scheduledPowerUpdates.remove(_powerKey(c))) await _updatePower(c);
         c.beOf<GantryShaftBlockEntity>()?.checkAttachedCarriageBlocks();
       },
-      neighbor: _neighbor,
+      neighbor: (c, e) => _updatePower(c),
     ),
   );
   spec = KineticBlockSpec(
@@ -215,8 +218,26 @@ Future<KState> _placement(
   return state.setFlag('powered', powered);
 }
 
+/// Positions (`worldId:packed`) whose gantry shaft must re-evaluate its powered
+/// state next tick (`GantryShaftBlock.onWrenched` calls `neighborChanged`).
+final Set<String> _scheduledPowerUpdates = {};
+
+String _powerKey(HookCtx c) => '${c.worldId}:${c.kpos.packed}';
+
+/// Schedules the `neighborChanged` of `GantryShaftBlock.onWrenched` after a wrench
+/// rotation; the wrench hook is synchronous and cannot await the redstone query.
+void scheduleGantryShaftPowerUpdate(
+  KineticsRuntime rt,
+  World world,
+  BlockPos pos,
+) {
+  final key = '${rt.worlds.touch(world)}:${toKPos(pos).packed}';
+  if (!_scheduledPowerUpdates.add(key)) return;
+  world.scheduleTick(pos, const Duration(milliseconds: 50));
+}
+
 /// `GantryShaftBlock.neighborChanged`: the powered state of the whole line follows redstone.
-Future<void> _neighbor(HookCtx c, CustomBlockNeighborUpdateEventData e) async {
+Future<void> _updatePower(HookCtx c) async {
   final state = c.level.stateAt(c.kpos);
   if (state.block != gantryShaftKey) return;
   final previouslyPowered = state.flag('powered');

@@ -12,7 +12,10 @@ extension NbtCompoundRead on Map<String, NbtValue> {
     final v = this[key];
     if (v == null) return null;
     return switch (v.kind) {
-      NbtKind.byte || NbtKind.short || NbtKind.int || NbtKind.long => v.value as int,
+      NbtKind.byte ||
+      NbtKind.short ||
+      NbtKind.int ||
+      NbtKind.long => v.value as int,
       NbtKind.float || NbtKind.double => (v.value as double).toInt(),
       _ => null,
     };
@@ -22,7 +25,10 @@ extension NbtCompoundRead on Map<String, NbtValue> {
     final v = this[key];
     if (v == null) return null;
     return switch (v.kind) {
-      NbtKind.byte || NbtKind.short || NbtKind.int || NbtKind.long => (v.value as int).toDouble(),
+      NbtKind.byte ||
+      NbtKind.short ||
+      NbtKind.int ||
+      NbtKind.long => (v.value as int).toDouble(),
       NbtKind.float || NbtKind.double => v.value as double,
       _ => null,
     };
@@ -45,12 +51,16 @@ extension NbtCompoundRead on Map<String, NbtValue> {
 
   List<NbtValue>? readList(String key) {
     final v = this[key];
-    return v != null && v.kind == NbtKind.list ? v.value as List<NbtValue> : null;
+    return v != null && v.kind == NbtKind.list
+        ? v.value as List<NbtValue>
+        : null;
   }
 
   List<int>? readIntArray(String key) {
     final v = this[key];
-    return v != null && v.kind == NbtKind.intArray ? v.value as List<int> : null;
+    return v != null && v.kind == NbtKind.intArray
+        ? v.value as List<int>
+        : null;
   }
 }
 
@@ -74,9 +84,13 @@ NbtValue posToNbt((int, int, int) p) => NbtValue.intArray([p.$1, p.$2, p.$3]);
 abstract final class FluidNbt {
   static NbtValue write(FStack stack) {
     if (stack.isEmpty) return NbtValue.emptyCompound();
-    final tag = <String, NbtValue>{'id': NbtValue.string(stack.fluid), 'amount': NbtValue.int32(stack.amount)};
+    final tag = <String, NbtValue>{
+      'id': NbtValue.string(stack.fluid),
+      'amount': NbtValue.int32(stack.amount),
+    };
     final potion = PotionFluidData.decode(stack.data);
-    if (potion != null) tag['components'] = NbtValue.compound(potion.toComponents());
+    if (potion != null)
+      tag['components'] = NbtValue.compound(potion.toComponents());
     return NbtValue.compound(tag);
   }
 
@@ -85,10 +99,57 @@ abstract final class FluidNbt {
     final tag = value.asCompound;
     final id = tag.readString('id') ?? tag.readString('FluidName');
     final amount = tag.readInt('amount') ?? tag.readInt('Amount') ?? 0;
-    if (id == null || id.isEmpty || id == 'minecraft:empty' || amount <= 0) return FStack.empty;
+    if (id == null || id.isEmpty || id == 'minecraft:empty' || amount <= 0)
+      return FStack.empty;
     List<int>? data;
     final components = tag.readCompound('components');
-    if (components != null) data = PotionFluidData.fromComponents(components)?.encode();
+    if (components != null)
+      data = PotionFluidData.fromComponents(components)?.encode();
     return FStack(id, amount, data);
   }
 }
+
+/// The NBT of a `CreateFluidTank` (`CreateFluidTank.writeToNBT` / `readFromNBT`): the fluid
+/// stack under `Fluid`, empty for an empty tank.
+NbtValue fluidTankNbt(FStack stack) =>
+    NbtValue.compound({'Fluid': FluidNbt.write(stack)});
+
+FStack readFluidTankNbt(NbtValue? value) {
+  final compound = value != null && value.kind == NbtKind.compound
+      ? value.asCompound
+      : null;
+  return FluidNbt.read(compound?['Fluid']);
+}
+
+/// One `SmartFluidTankBehaviour.TankSegment`: `{TankContent, Level}` (`TankSegment.writeNBT`).
+/// [level] defaults to the fill fraction, which is what the client animates towards; the port
+/// does not keep the per-tank `LerpedFloat`, so the steady value is written.
+NbtValue tankSegmentNbt(FStack stack, int capacity, {double? level}) {
+  final fill = capacity <= 0
+      ? 0.0
+      : (stack.amount / capacity).clamp(0.0, 1.0).toDouble();
+  final value = (level ?? fill).toDouble();
+  return NbtValue.compound({
+    'TankContent': fluidTankNbt(stack),
+    'Level': NbtValue.compound({
+      'Speed': NbtValue.float(0),
+      'Target': NbtValue.float(value),
+      'Value': NbtValue.float(value),
+    }),
+  });
+}
+
+FStack readTankSegmentNbt(NbtValue? value) {
+  final compound = value != null && value.kind == NbtKind.compound
+      ? value.asCompound
+      : null;
+  return readFluidTankNbt(compound?['TankContent']);
+}
+
+/// A `SmartFluidTankBehaviour` list: one `TankSegment` per tank under `InputTanks` / `OutputTanks`
+/// or `Tanks`.
+NbtValue tankSegmentListNbt(List<FStack> stacks, List<int> capacities) =>
+    NbtValue.list([
+      for (var i = 0; i < stacks.length; i++)
+        tankSegmentNbt(stacks[i], i < capacities.length ? capacities[i] : 0),
+    ]);

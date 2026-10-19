@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../host/nbt_codecs.dart';
 import '../host/runtime.dart';
 import '../model/manager.dart';
 import '../model/orders.dart';
@@ -33,13 +34,13 @@ class RedstoneRequesterBlockEntity extends StockCheckingBlockEntity {
     _state
       ..clear()
       ..addAll(map);
-    redstonePowered = map['powered'] == true;
-    lastRequestSucceeded = map['success'] == true;
-    allowPartialRequests = map['allowPartial'] == true;
-    encodedTargetAdress = map['address'] as String? ?? '';
-    encodedRequest = map['request'] is Map
+    redstonePowered = map['Powered'] == true;
+    lastRequestSucceeded = map['Success'] == true;
+    allowPartialRequests = map['AllowPartial'] == true;
+    encodedTargetAdress = map['EncodedAddress'] as String? ?? '';
+    encodedRequest = map['EncodedRequest'] is Map
         ? PackageOrderWithCraftsMapper.fromMap(
-            (map['request'] as Map).cast<String, dynamic>(),
+            (map['EncodedRequest'] as Map).cast<String, dynamic>(),
           )
         : PackageOrderWithCrafts.empty();
   }
@@ -47,12 +48,45 @@ class RedstoneRequesterBlockEntity extends StockCheckingBlockEntity {
   @override
   Map<String, dynamic> stateToMap() => {
     ...super.stateToMap(),
-    'powered': redstonePowered,
-    'success': lastRequestSucceeded,
-    'allowPartial': allowPartialRequests,
-    'address': encodedTargetAdress,
-    'request': encodedRequest.toMap(),
+    'Powered': redstonePowered,
+    'Success': lastRequestSucceeded,
+    'AllowPartial': allowPartialRequests,
+    'EncodedAddress': encodedTargetAdress,
+    'EncodedRequest': encodedRequest.toMap(),
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    tag
+      ..putBool('Powered', redstonePowered)
+      ..putBool('Success', lastRequestSucceeded)
+      ..putBool('AllowPartial', allowPartialRequests)
+      ..putString('EncodedAddress', encodedTargetAdress)
+      ..putCompound(
+        'EncodedRequest',
+        orderWithCraftsToNbt(encodedRequest, client: clientPacket),
+      );
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    if (tag.containsKey('Powered')) {
+      redstonePowered = tag.getBool('Powered') ?? false;
+    }
+    if (tag.containsKey('Success')) {
+      lastRequestSucceeded = tag.getBool('Success') ?? false;
+    }
+    if (tag.containsKey('AllowPartial')) {
+      allowPartialRequests = tag.getBool('AllowPartial') ?? false;
+    }
+    if (tag.containsKey('EncodedAddress')) {
+      encodedTargetAdress = tag.getString('EncodedAddress') ?? '';
+    }
+    final request = tag.getCompound('EncodedRequest');
+    if (request != null) encodedRequest = orderWithCraftsFromNbt(request);
+  }
 
   /// `onRedstonePowerChanged()`.
   void onRedstonePowerChanged() {

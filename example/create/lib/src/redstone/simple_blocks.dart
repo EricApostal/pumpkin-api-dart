@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/util.dart' hide pos;
+import '../contraptions/elevator/elevator_column.dart';
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
 import 'lamp_logic.dart';
@@ -74,8 +75,35 @@ final class RedstoneContactBlock {
         props = {...props, ...placed};
       }
     }
+    // `RedstoneContactItem.getPlacementState`: a contact placed into an existing elevator
+    // column becomes an elevator contact with the properties both blocks share.
+    if (await placeAsElevatorContact(lvl, pos, props)) return;
     final valid = validContact(lvl, pos, _facing(props, Direction.up));
     if ((props['powered'] == 'true') != valid) lvl.scheduleTick(pos, 1);
+  }
+
+  /// `RedstoneContactItem.getPlacementState` / `RedstoneContactBlock.onWrenched`: an
+  /// existing elevator column turns the placed contact into an elevator contact
+  /// (`BlockHelper.copyProperties` keeps `facing` and `powered`).
+  static Future<bool> placeAsElevatorContact(Lvl lvl, Pos pos, Map<String, String> props) async {
+    final facing = _facing(props, Direction.up);
+    if (facing.axis.isVertical) return false;
+    if (ElevatorColumn.get(lvl.id, ColumnCoords(pos.x, pos.z, facing)) == null) return false;
+    final state = BlockStates.withProperties('create:elevator_contact', {
+      'facing': facing.serializedName,
+      'powered': props['powered'] ?? 'false',
+    });
+    if (state == null) return false;
+    await lvl.setState(pos, state, neighbors: true);
+    return true;
+  }
+
+  /// `RedstoneContactBlock.onWrenched`: after the rotation, a contact that is part of a
+  /// live elevator column turns into an elevator contact.
+  static Future<void> wrenchIntoElevatorContact(Lvl lvl, Pos pos) async {
+    final info = lvl.info(pos);
+    if (info == null || info.key != 'create:redstone_contact') return;
+    await placeAsElevatorContact(lvl, pos, info.properties);
   }
 
   Future<void> _onNeighborUpdate(Server server, CustomBlockNeighborUpdateEventData e) async {

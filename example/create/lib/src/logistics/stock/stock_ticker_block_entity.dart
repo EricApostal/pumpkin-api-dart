@@ -6,6 +6,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart' hide pos;
 import '../host/lg_block_entity.dart';
+import '../host/nbt_codecs.dart';
+import '../host/nbt_util.dart';
 import '../host/runtime.dart';
 import '../link/packager_link_block_entity.dart';
 import '../model/inventory.dart';
@@ -24,15 +26,27 @@ abstract class StockCheckingBlockEntity extends LgBlockEntity {
 
   @override
   void readState(Map<String, dynamic> map) {
-    behaviour.freqId = map['freq'] as String? ?? behaviour.freqId;
-    behaviour.redstonePower = map['power'] as int? ?? 0;
+    behaviour.freqId = map['Freq'] as String? ?? behaviour.freqId;
+    behaviour.redstonePower = map['Power'] as int? ?? 0;
   }
 
   @override
   Map<String, dynamic> stateToMap() => {
-    'freq': behaviour.freqId,
-    'power': behaviour.redstonePower,
+    'Freq': behaviour.freqId,
+    'Power': behaviour.redstonePower,
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    behaviour.write(tag, clientPacket: clientPacket);
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    behaviour.read(tag, clientPacket: clientPacket);
+  }
 
   @override
   void initialize() {
@@ -88,6 +102,10 @@ class StockTickerBlockEntity extends StockCheckingBlockEntity {
 
   final MemoryInv receivedPayments = MemoryInv(27, limit: 64);
   final List<LStack> categories = [];
+
+  /// `hiddenCategoriesByPlayer`: the category indices a player hid in the stock keeper.
+  final Map<String, List<int>> hiddenCategoriesByPlayer = {};
+
   String previouslyUsedAddress = '';
   int activeLinks = 0;
 
@@ -104,20 +122,32 @@ class StockTickerBlockEntity extends StockCheckingBlockEntity {
     _state
       ..clear()
       ..addAll(map);
-    previouslyUsedAddress = map['previousAddress'] as String? ?? '';
+    previouslyUsedAddress = map['PreviousAddress'] as String? ?? '';
     categories
       ..clear()
       ..addAll([
-        for (final c in (map['categories'] as List<dynamic>? ?? const []))
+        for (final c in (map['Categories'] as List<dynamic>? ?? const []))
           if (c is String) _stack(c),
       ]);
-    final payments = map['payments'] as List<dynamic>? ?? const [];
+    final payments = map['ReceivedPayments'] as List<dynamic>? ?? const [];
     for (var i = 0; i < receivedPayments.slots && i < payments.length; i++) {
       receivedPayments.stacks[i] = payments[i] is String
           ? _stack(payments[i] as String)
           : LStack.empty;
     }
-    activeLinks = map['activeLinks'] as int? ?? 0;
+    activeLinks = map['ActiveLinks'] as int? ?? 0;
+    hiddenCategoriesByPlayer.clear();
+    for (final entry
+        in (map['HiddenCategories'] as List<dynamic>? ?? const [])) {
+      if (entry is! Map) continue;
+      final id = entry['Id'];
+      final indices = entry['Indices'];
+      if (id is! String || indices is! List) continue;
+      hiddenCategoriesByPlayer[id] = [
+        for (final i in indices)
+          if (i is int) i,
+      ];
+    }
   }
 
   static LStack _stack(String json) {
@@ -131,13 +161,66 @@ class StockTickerBlockEntity extends StockCheckingBlockEntity {
   @override
   Map<String, dynamic> stateToMap() => {
     ...super.stateToMap(),
-    'previousAddress': previouslyUsedAddress,
-    'categories': [for (final c in categories) c.toJson()],
-    'payments': [
+    'PreviousAddress': previouslyUsedAddress,
+    'Categories': [for (final c in categories) c.toJson()],
+    'ReceivedPayments': [
       for (final s in receivedPayments.stacks) s.isEmpty ? null : s.toJson(),
     ],
-    'activeLinks': activeLinks,
+    'ActiveLinks': activeLinks,
+    'HiddenCategories': [
+      for (final e in hiddenCategoriesByPlayer.entries)
+        {'Id': e.key, 'Indices': e.value},
+    ],
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    tag.putString('PreviousAddress', previouslyUsedAddress);
+    tag.putCompound(
+      'ReceivedPayments',
+      itemHandlerToNbt(receivedPayments, client: clientPacket),
+    );
+    tag.putList('Categories', [
+      for (final stack in categories) stackToNbt(stack, client: clientPacket),
+    ]);
+    tag.putList('HiddenCategories', [
+      for (final entry in hiddenCategoriesByPlayer.entries)
+        NbtCompound()
+          ..putIntArray('Id', uuidToInts(entry.key))
+          ..putIntArray('Indices', entry.value),
+    ]);
+    // Java only sends the link count to the client.
+    if (clientPacket) tag.putInt('ActiveLinks', activeLinks);
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    if (tag.containsKey('PreviousAddress')) {
+      previouslyUsedAddress = tag.getString('PreviousAddress') ?? '';
+    }
+    final payments = tag.getCompound('ReceivedPayments');
+    if (payments != null) itemHandlerFromNbt(payments, receivedPayments);
+    final categoryList = tag.getList('Categories');
+    if (categoryList != null) {
+      categories
+        ..clear()
+        ..addAll([
+          for (final entry in categoryList)
+            if (entry is NbtCompound) stackFromNbt(entry),
+        ]);
+    }
+    hiddenCategoriesByPlayer.clear();
+    for (final entry in tag.getList('HiddenCategories') ?? const <Object>[]) {
+      if (entry is! NbtCompound) continue;
+      final id = entry.getIntArray('Id');
+      if (id == null || id.length < 4) continue;
+      hiddenCategoriesByPlayer[uuidFromInts(id)] =
+          entry.getIntArray('Indices') ?? const [];
+    }
+    if (clientPacket) activeLinks = tag.getInt('ActiveLinks') ?? activeLinks;
+  }
 
   @override
   Future<InventorySummary> getRecentSummary() async {

@@ -73,6 +73,90 @@ List<(Pos, int)> walkNixies(Pos start, NixieAt at) {
 /// `charOrEmpty`.
 String charOrEmpty(String string, int index) => string.length <= index ? ' ' : string.substring(index, index + 1);
 
+/// `NixieTubeBlockEntity.ComputerSignal.TubeDisplay`: the colour, blink and glow of one
+/// tube of a ComputerCraft controlled row. Seven bytes, two per nixie tube.
+final class TubeDisplay {
+  static const int encodedSize = 7;
+
+  int r;
+  int g;
+  int b;
+  int blinkPeriod;
+  int blinkOffTime;
+  int glowWidth;
+  int glowHeight;
+
+  TubeDisplay({
+    this.r = 63,
+    this.g = 63,
+    this.b = 63,
+    this.blinkPeriod = 0,
+    this.blinkOffTime = 0,
+    this.glowWidth = 1,
+    this.glowHeight = 1,
+  });
+
+  /// `decode(data, offset)`: the seven bytes are unsigned (`byte` in Java).
+  void decode(List<int> data, int offset) {
+    if (data.length < offset + encodedSize) return;
+    r = data[offset] & 0xFF;
+    g = data[offset + 1] & 0xFF;
+    b = data[offset + 2] & 0xFF;
+    blinkPeriod = data[offset + 3] & 0xFF;
+    blinkOffTime = data[offset + 4] & 0xFF;
+    glowWidth = data[offset + 5] & 0xFF;
+    glowHeight = data[offset + 6] & 0xFF;
+  }
+
+  /// `encode(data, offset)`.
+  void encode(List<int> data, int offset) {
+    if (data.length < offset + encodedSize) return;
+    data[offset] = r & 0xFF;
+    data[offset + 1] = g & 0xFF;
+    data[offset + 2] = b & 0xFF;
+    data[offset + 3] = blinkPeriod & 0xFF;
+    data[offset + 4] = blinkOffTime & 0xFF;
+    data[offset + 5] = glowWidth & 0xFF;
+    data[offset + 6] = glowHeight & 0xFF;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is TubeDisplay &&
+      other.r == r &&
+      other.g == g &&
+      other.b == b &&
+      other.blinkPeriod == blinkPeriod &&
+      other.blinkOffTime == blinkOffTime &&
+      other.glowWidth == glowWidth &&
+      other.glowHeight == glowHeight;
+
+  @override
+  int get hashCode => Object.hash(r, g, b, blinkPeriod, blinkOffTime, glowWidth, glowHeight);
+}
+
+/// `NixieTubeBlockEntity.ComputerSignal`: the two tube displays of a computer controlled
+/// nixie tube row (`ComputerSignal` in the client update tag).
+final class ComputerSignal {
+  TubeDisplay first = TubeDisplay();
+  TubeDisplay second = TubeDisplay();
+
+  /// `decode(encoded)`: a short array leaves the displays at their defaults.
+  void decode(List<int> encoded) {
+    if (encoded.length < TubeDisplay.encodedSize * 2) return;
+    first.decode(encoded, 0);
+    second.decode(encoded, TubeDisplay.encodedSize);
+  }
+
+  /// `encode()`: the 14 bytes of the two displays.
+  List<int> encode() {
+    final encoded = List<int>.filled(TubeDisplay.encodedSize * 2, 0);
+    first.encode(encoded, 0);
+    second.encode(encoded, TubeDisplay.encodedSize);
+    return encoded;
+  }
+}
+
 /// `updateDisplayedStrings`: the two characters of the tube. [customText] is the resolved
 /// text when a custom text is set.
 (String, String) displayedStrings({String? customText, required int nixieIndex, required int redstoneStrength}) {

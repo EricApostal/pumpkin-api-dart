@@ -10,13 +10,16 @@ import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
+import '../filter/filter_menu_session.dart' show FilterMenuKind;
 import '../host/player_items.dart';
 import '../host/runtime.dart';
 import '../host/link_keys.dart';
+import '../link/linked_item.dart';
 import '../logistics_part.dart';
 import '../model/manager.dart';
 import '../model/orders.dart';
 import '../model/stack.dart';
+import '../requester/auto_request_data.dart';
 import 'stock_ticker_block_entity.dart';
 
 /// `StockTickerBlock`.
@@ -96,8 +99,17 @@ final class StockPart extends LogisticsPart {
       final order = decodeOrder(fields['order']);
       final address = fields['address'] as String? ?? '';
       if (fields['encodeRequester'] == true) {
-        // Programming a redstone requester item needs item components; see the requester part.
+        unawaited(_programRequester(player, be, order, address));
         return;
+      }
+      if (!order.isEmpty) {
+        // `WiFiEffectPacket.send(player.level(), pos)`: the keeper's link flashes.
+        final world = be.world;
+        if (world != null) {
+          rt.bus.sendToTracking('create:packager_link_effect', world, be.pos, {
+            'pos': be.pos,
+          });
+        }
       }
       unawaited(
         be.broadcastPackageRequest(RequestType.player, order, null, address),
@@ -141,7 +153,7 @@ final class StockPart extends LogisticsPart {
       be.notifyUpdate();
     });
 
-    // `StockKeeperCategoryRefundPacket`: give the payments of one category back.
+    // `StockKeeperCategoryRefundPacket`: the removed category's filter item is given back.
     bus.onServerbound('create:refund_stock_keeper_category', (player, fields) {
       final pos = fields['pos'] as Pos;
       final be = rt.store.typed<StockTickerBlockEntity>(
@@ -152,8 +164,69 @@ final class StockPart extends LogisticsPart {
       unawaited(_refundCategory(player, be, fields['filter']));
     });
 
-    // `StockKeeperCategoryHidingPacket`: a client side display preference; nothing to do here.
-    bus.onServerbound('create:stock_keeper_hide_category', (player, fields) {});
+    // `StockKeeperCategoryHidingPacket`: a per-player display preference of the stock keeper.
+    bus.onServerbound('create:stock_keeper_hide_category', (player, fields) {
+      final pos = fields['pos'] as Pos;
+      final be = rt.store.typed<StockTickerBlockEntity>(
+        rt.playerWorldId(player),
+        pos.toBlockPos(),
+      );
+      if (be == null) return;
+      final uuid = player.getId().asString;
+      final indices = fields['indices'];
+      if (indices is! List || indices.isEmpty) {
+        be.hiddenCategoriesByPlayer.remove(uuid);
+        return;
+      }
+      be.hiddenCategoriesByPlayer[uuid] = [
+        for (final i in indices)
+          if (i is int) i,
+      ];
+      be.notifyUpdate();
+    });
+  }
+
+  /// `RedstoneRequesterBlock.programRequester`: writes the order and the keeper's network onto
+  /// the redstone requester (or table cloth) in the player's main hand.
+  Future<void> _programRequester(
+    Player player,
+    StockTickerBlockEntity be,
+    PackageOrderWithCrafts order,
+    String address,
+  ) async {
+    final inventory = player.getInventory();
+    try {
+      final held = inventory.getItemInHand(hand: Hand.right);
+      if (held == null) return;
+      final stack = await Lg.i.read(held);
+      if (stack.isEmpty) return;
+
+      final isRequester = stack.key == 'create:redstone_requester';
+      final isTableCloth = stack.key.endsWith('_table_cloth');
+      if (!isRequester && !isTableCloth) return;
+
+      final data = AutoRequestData(
+        order,
+        address,
+        (be.pos.x, be.pos.y, be.pos.z),
+        Lg.i.playerWorldId(player),
+        false,
+      );
+      var out = stack.withComp(
+        'create:auto_request_data',
+        data.encode(Lg.i.wire),
+      );
+      if (isRequester) {
+        out = LinkedItem.assignFrequency(out, be.behaviour.freqId);
+      }
+
+      final host = await Lg.i.write(out);
+      if (host != null) {
+        await inventory.setItemInHand(hand: Hand.right, item: host);
+      }
+    } finally {
+      inventory.dispose();
+    }
   }
 
   Future<void> _sendStock(Player player, StockTickerBlockEntity be) async {
@@ -178,13 +251,9 @@ final class StockPart extends LogisticsPart {
     if (filterField is! ItemStackData) return;
     final filter = Lg.i.wire.fromData(filterField);
     if (filter.isEmpty) return;
-    for (var slot = 0; slot < be.receivedPayments.slots; slot++) {
-      final stack = be.receivedPayments.at(slot);
-      if (stack.isEmpty) continue;
-      if (!filter.sameItemSameComponents(stack)) continue;
-      be.receivedPayments.set(slot, LStack.empty);
-      await giveToPlayer(player, stack);
-    }
+    // Only filter items are category filters.
+    if (FilterMenuKind.of(filter.key) == null) return;
+    await giveToPlayer(player, filter);
     be.notifyUpdate();
   }
 }

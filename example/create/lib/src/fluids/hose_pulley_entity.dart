@@ -5,6 +5,7 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../common/nbt_convert.dart';
+import '../common/direction.dart';
 import '../common/pos.dart';
 import '../core/nbt.dart';
 import '../kinetics/kinetic_block_entity.dart';
@@ -16,11 +17,13 @@ import 'fluid_stack.dart';
 import 'fluid_storage.dart';
 import 'fluid_world.dart';
 import 'hose_pulley_handler.dart';
+import 'lerped_float_nbt.dart';
 import 'nbt_util.dart';
+import 'pipe_block_entities.dart' show blockStateOf;
 
 /// `HosePulleyBlockEntity`.
 class HosePulleyBlockEntity extends KineticBlockEntity
-    implements FluidCapable, ManipulationHost {
+    implements FluidCapable, ManipulationHost, SidedFluidCapable {
   HosePulleyBlockEntity(super.worldId, super.pos) {
     internalTank = SmartFluidTank(1500, _onTankContentsChanged);
     drainer = FluidDraining(this);
@@ -67,6 +70,15 @@ class HosePulleyBlockEntity extends KineticBlockEntity
 
   @override
   FluidStorage? get fluidHandler => handler;
+
+  /// `HosePulleyBlockEntity.registerCapabilities`: the handler is only reachable from the
+  /// side the hose pulley has its pipe towards.
+  @override
+  FluidStorage? fluidHandlerAt(Direction? side) {
+    if (side == null) return handler;
+    final facing = blockStateOf(this).dir('facing') ?? Direction.north;
+    return facing.counterClockWise == side ? handler : null;
+  }
 
   void _onTankContentsChanged(FStack contents) {}
 
@@ -141,7 +153,8 @@ class HosePulleyBlockEntity extends KineticBlockEntity
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
-    tag.putDouble('Offset', offset);
+    // `offset` is only ever `setValue`d, so its chase target stays at 0.
+    LerpedFloatNbt.write(tag, 'Offset', offset, target: 0, force: clientPacket);
     tag.putCompound('Tank', compoundOf(FluidNbt.write(internalTank.fluid)));
 
     final fillerNbt = <String, NbtValue>{};
@@ -161,7 +174,7 @@ class HosePulleyBlockEntity extends KineticBlockEntity
 
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
-    offset = tag.getDouble('Offset') ?? 0;
+    offset = LerpedFloatNbt.read(tag, 'Offset');
     final tankTag = tag.getCompound('Tank');
     if (tankTag != null) {
       internalTank.rawSet(FluidNbt.read(valueOfCompound(tankTag)));

@@ -9,7 +9,7 @@ import '../common/direction.dart';
 import '../common/nbt_convert.dart';
 import '../common/pos.dart';
 import '../core/block_entity.dart';
-import '../core/nbt.dart' show NbtKind;
+import '../decoration/block_entities.dart' show WhistleBlockEntity;
 import '../kinetics/runtime.dart' show SteamEngineBoilerSource;
 import 'boiler.dart';
 import 'connectivity.dart';
@@ -40,6 +40,9 @@ class FluidTankBlockEntity extends CreateBlockEntity
   static const int syncRate = 8;
 
   late final SmartFluidTank tank;
+
+  /// `fluidCapability`: the handler the pipe network sees, cached like Java's field.
+  FluidStorage? _capability;
 
   @override
   bool get isRemoved => removed;
@@ -105,6 +108,7 @@ class FluidTankBlockEntity extends CreateBlockEntity
   void setController(Pos controller) {
     if (_controller == controller) return;
     _controller = controller;
+    _capability = null;
     updateCapability = true;
     markDirty();
     sendData();
@@ -115,10 +119,12 @@ class FluidTankBlockEntity extends CreateBlockEntity
     updateConnectivity = true;
     if (!keepContents) applyFluidTankSize(1);
     _controller = null;
+    _capability = null;
     width = 1;
     height = 1;
     boiler.clear();
     onFluidStackChanged(tank.fluid);
+    markDirty();
     final state = blockStateOf(this);
     if (PipeBlocks.isTank(state)) {
       setFluidBlock(
@@ -138,6 +144,7 @@ class FluidTankBlockEntity extends CreateBlockEntity
 
   @override
   void notifyMultiUpdated() {
+    _capability = null;
     final state = blockStateOf(this);
     if (PipeBlocks.isTank(state)) {
       setFluidBlock(
@@ -212,7 +219,12 @@ class FluidTankBlockEntity extends CreateBlockEntity
       FluidsRuntime.instance.award(worldId, partPos, advancement);
 
   @override
-  int? whistlePitchAt(Pos pos) => null;
+  int? whistlePitchAt(Pos pos) {
+    final be = store.at(worldId, BlockPos(x: pos.$1, y: pos.$2, z: pos.$3));
+    if (be is! WhistleBlockEntity) return null;
+    final size = blockStateAt(worldId, pos)['size'];
+    return size == null ? null : be.pitchId(size);
+  }
 
   // -- Lifecycle ---------------------------------------------------------------------------
 
@@ -240,7 +252,7 @@ class FluidTankBlockEntity extends CreateBlockEntity
 
     if (updateCapability) {
       updateCapability = false;
-      // The handler is computed on demand; nothing is cached.
+      _capability = null;
     }
     if (updateConnectivity) updateConnectivityNow();
     if (isController) boiler.tick(this);
@@ -259,9 +271,33 @@ class FluidTankBlockEntity extends CreateBlockEntity
     ConnectivityHandler.splitMulti(TankMultiWorld(store, worldId), this);
   }
 
-  /// `onFluidStackChanged(fluid)`.
+  /// `onFluidStackChanged(fluid)`: distributes the light over the tank blocks, brightest where
+  /// the fluid is (the other way round for fluids lighter than air).
   void onFluidStackChanged(FStack fluid) {
-    luminosity = (FluidHelper.lightLevel(fluid) / 1.2).floor();
+    final level = (FluidHelper.lightLevel(fluid) / 1.2).floor();
+    final reversed = FluidHelper.isLighterThanAir(fluid);
+    final maxY = (fillState * height + 1).floor();
+
+    for (var yOffset = 0; yOffset < height; yOffset++) {
+      final isBright = reversed ? height - yOffset <= maxY : yOffset < maxY;
+      final actualLuminosity = isBright ? level : (level > 0 ? 1 : 0);
+      for (var xOffset = 0; xOffset < width; xOffset++) {
+        for (var zOffset = 0; zOffset < width; zOffset++) {
+          final p = partPos.offset(xOffset, yOffset, zOffset);
+          final be = store.at(worldId, BlockPos(x: p.$1, y: p.$2, z: p.$3));
+          if (be is! FluidTankBlockEntity) continue;
+          be.setLuminosity(actualLuminosity);
+        }
+      }
+    }
+
+    sendData();
+  }
+
+  /// `setLuminosity(luminosity)`.
+  void setLuminosity(int luminosity) {
+    if (this.luminosity == luminosity) return;
+    this.luminosity = luminosity;
     sendData();
   }
 
@@ -328,7 +364,11 @@ class FluidTankBlockEntity extends CreateBlockEntity
     if (!isController) return;
     final wasBoiler = boiler.isActive;
     final changed = boiler.evaluate(this);
-    if (wasBoiler != boiler.isActive && boiler.isActive) setWindows(false);
+    if (wasBoiler != boiler.isActive) {
+      // The handler changes between the tank and the boiler.
+      _capability = null;
+      if (boiler.isActive) setWindows(false);
+    }
     if (changed) {
       sendData();
       boiler.checkPipeOrganAdvancement(this);
@@ -343,11 +383,14 @@ class FluidTankBlockEntity extends CreateBlockEntity
     be.boiler.needsHeatLevelUpdate = true;
   }
 
-  /// The handler of this block entity (`Capabilities.Fluid.BLOCK`).
+  /// The handler of this block entity (`Capabilities.Fluid.BLOCK`). The controller caches its
+  /// handler like Java's `fluidCapability`; a part always delegates to the controller.
   @override
   FluidStorage? get fluidHandler {
-    if (isController) return boiler.isActive ? boiler.createHandler() : tank;
-    return controllerBe?.fluidHandler;
+    if (!isController) {
+      return controllerBe?.fluidHandler ?? const EmptyFluidStorage();
+    }
+    return _capability ??= boiler.isActive ? boiler.createHandler() : tank;
   }
 
   /// `getTankInventory()`.
@@ -419,6 +462,7 @@ class FluidTankBlockEntity extends CreateBlockEntity
 
     forceFluidLevelUpdate = tag.getBool('ForceFluidLevel') ?? true;
     updateCapability = true;
+    _capability = null;
   }
 
   @override
@@ -446,9 +490,7 @@ class FluidTankBlockEntity extends CreateBlockEntity
         ..putBool('Window', window)
         ..putInt('Size', width)
         ..putInt('Height', height);
-      final fluid = FluidNbt.write(tank.fluid);
-      if (fluid.kind == NbtKind.compound)
-        tag.putCompound('TankContent', compoundOf(fluid));
+      tag.putCompound('TankContent', compoundOf(FluidNbt.write(tank.fluid)));
     }
     tag.putInt('Luminosity', luminosity);
 

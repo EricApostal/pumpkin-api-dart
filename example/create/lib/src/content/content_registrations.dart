@@ -3,6 +3,7 @@
 // advancements. All from the manifest, in the order of the Java registries.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../api/data/all_ingredients.dart';
 import '../core/registry.dart';
 import '../manifest/manifest.dart';
 import 'advancement_data.dart';
@@ -71,6 +72,10 @@ void registerGlobalContent(CreateRegistry registry, AdvancementTree advancements
     if (!r.syncedToClient) continue;
     registry.syncedRegistry('create:${r.key}', [for (final e in r.entries) 'create:${e.key}']);
   }
+
+  // `AllIngredients`: NeoForge's ingredient type registry, which the host does not know. The id
+  // must reach Java clients so recipes encoded with `create:simple_datagen` can be decoded.
+  registry.neoForgeRegistry('neoforge:ingredient_type', AllIngredients.ingredientTypes);
 
   // Tags.
   for (final t in manifestTags()) {

@@ -8,12 +8,14 @@ import '../../api/blocks.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
 import '../basin/basin_block_entity.dart';
+import '../common/stack.dart';
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
 import '../recipe/heat.dart';
 import '../../core/blocks.dart';
 import '../support/kinetics_bridge.dart';
 import 'blaze_burner_block_entity.dart';
+import 'insert_result.dart';
 
 /// `BlazeBurnerBlock`.
 abstract final class BlazeBurnerBlock {
@@ -106,6 +108,49 @@ abstract final class BlazeBurnerBlock {
     HeatLevel.smouldering => 8,
     _ => 15,
   };
+
+  /// `BlazeBurnerBlock.tryInsert`: feeds one item of [stack] to the burner at [pos]. The caller
+  /// consumes the item (the returned [InsertResult.object] is the container to give back).
+  static InsertResult tryInsert(
+    World world,
+    Pos pos,
+    PStack stack, {
+    bool doNotConsume = false,
+    bool forceOverflow = false,
+    bool simulate = false,
+  }) {
+    if (stack.isEmpty) return InsertResult.fail;
+    final rt = ProcessingRuntime.instance;
+    final worldId = rt.worlds.touch(world);
+    final be = rt.store.typed<BlazeBurnerBlockEntity>(
+      worldId,
+      pos.toBlockPos(),
+    );
+    if (be == null) return InsertResult.fail;
+    // Java has no block entity on an unlit burner; this port keeps one, so it is rejected here.
+    if (heatLevelOf(HostBlockGetter(world).stateAt(pos)) == HeatLevel.none) {
+      return InsertResult.fail;
+    }
+
+    if (be.isCreativeFuel(stack)) {
+      if (!simulate) be.applyCreativeFuel();
+      return InsertResult.success;
+    }
+    if (!be.tryUpdateFuel(
+      stack,
+      forceOverflow: forceOverflow,
+      simulate: simulate,
+    )) {
+      return InsertResult.fail;
+    }
+    if (doNotConsume) return InsertResult.success;
+
+    final remainder = craftingRemainderOf(stack.key);
+    return InsertResult(
+      InsertResultType.success,
+      remainder == null ? PStack.empty : PStack(remainder, 1),
+    );
+  }
 
   static CreateBlock build() => createBlockFromManifest(
     'blaze_burner',
@@ -227,20 +272,34 @@ abstract final class BlazeBurnerBlock {
     final stack = await HostStacks.read(e.item);
     if (stack.isEmpty) return BlockUseResult.tryEmptyHand;
 
-    final before = stack.count;
-    final remainder = be.tryInsertFuel(
+    final result = tryInsert(
+      e.targetWorld,
+      pos,
       stack,
       doNotConsume: e.player.isCreative,
       forceOverflow: true,
     );
-    if (remainder.count == before) return BlockUseResult.tryEmptyHand;
+    if (!result.succeeded) return BlockUseResult.tryEmptyHand;
 
     if (!e.player.isCreative) {
       await _shrinkHeld(e.player, e.hand);
-      final remainderKey = craftingRemainderOf(stack.key);
-      if (remainderKey != null) await e.player.giveItem(remainderKey);
+      if (result.object.isNotEmpty) {
+        await _giveStack(e.player, e.targetWorld, result.object);
+      }
     }
     return BlockUseResult.success;
+  }
+
+  /// `Inventory.placeItemBackInInventory`: gives the container back, dropping what does not fit.
+  static Future<void> _giveStack(
+    Player player,
+    World world,
+    PStack stack,
+  ) async {
+    final host = await HostStacks.write(stack);
+    if (host == null) return;
+    final left = await player.give(host);
+    if (left != null) await world.dropItem(player.getPosition(), left);
   }
 
   /// `ItemStack.shrink(1)` on the stack in [hand].

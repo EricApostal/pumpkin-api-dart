@@ -6,11 +6,14 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart';
+import '../../contraptions/behaviours/bell_movement_behaviour.dart';
+import '../../contraptions/core/movement.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../host/env.dart';
 import '../host/runtime.dart';
 import '../model/dir.dart';
+import 'bell_movement.dart';
 
 const String peculiarBellEntityType = 'create:peculiar_bell';
 const String hauntedBellEntityType = 'create:cursed_bell';
@@ -96,6 +99,11 @@ final class BellHost {
     ctx.listen(Events.worldTick, (server, e) => _tick = e.tick);
     ctx.listen(Events.playerTick, _onPlayerTick);
     ctx.listen(Events.projectileHit, _onProjectileHit);
+
+    // `AllBlocks`: the peculiar bell uses the vanilla bell actor; the haunted bell also sends
+    // soul pulses to the blocks it travels over.
+    MovementBehaviours.register('create:peculiar_bell', const BellMovementBehaviour());
+    MovementBehaviours.register('create:haunted_bell', HauntedBellMovementBehaviour(env));
   }
 
   // -- HauntedBellPulser -------------------------------------------------------------------------
@@ -168,6 +176,13 @@ final class BellHost {
   Future<bool> ring(World world, BlockPos pos, Dir direction, bool haunted, Player? player) async {
     final be = _be(world, pos);
     if (be == null || !be.ring(direction)) return false;
+    if (player != null) {
+      try {
+        player.incrementCustomStatistic(stat: CustomStatistic.bellRing, amount: 1);
+      } on Object {
+        // the statistic is not available on this host
+      }
+    }
     if (haunted) {
       env.playSoundAtBlock(world, pos.p3, 'haunted_bell_use', volume: 4);
       if (player != null) await env.award(player, 'haunted_bell');

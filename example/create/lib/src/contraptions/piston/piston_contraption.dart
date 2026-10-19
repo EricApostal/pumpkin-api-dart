@@ -156,6 +156,13 @@ class PistonContraption extends TranslatingContraption {
   }
 
   @override
+  bool isAnchoringBlockAt(Pos pos) {
+    final box = _pistonExtensionCollisionBox;
+    if (box == null) return super.isAnchoringBlockAt(pos);
+    return box.contains(VecHelper.getCenterOf(pos - anchor));
+  }
+
+  @override
   bool addToInitialFrontier(
     ContraptionLevel level,
     Pos pos,

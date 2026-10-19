@@ -68,6 +68,16 @@ class EntityLauncher {
         Axis.y,
       );
 
+  /// `EntityLauncher.applyMotion`: the velocity a living entity gets when it is launched.
+  Vec3 motionFor(Direction facing) {
+    final motion = VecHelper.rotate(
+      (0.0, _yMotion, _xMotion),
+      AngleHelper.horizontalAngle(facing),
+      Axis.y,
+    );
+    return (motion.$1 * .91, motion.$2 * .98, motion.$3 * .91);
+  }
+
   double x(double t) =>
       (_xMotion * -10.6033 * (-1 + math.pow(0.91, t))).toDouble();
 

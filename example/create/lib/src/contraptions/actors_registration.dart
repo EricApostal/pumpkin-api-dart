@@ -4,7 +4,7 @@
 // (`contraptions_module.dart`) calls these in its phases.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../api/payloads.dart' show PayloadBus;
+import '../api/payloads.dart' show HostItemStacks, PayloadBus;
 import '../api/wrenchable.dart';
 import '../common/common.dart';
 import '../core/block_entity.dart';
@@ -29,6 +29,7 @@ import 'actors/seat/seat_interaction_behaviour.dart';
 import 'actors/seat/seat_movement_behaviour.dart';
 import 'actors/train_controls/controls_behaviour.dart';
 import 'actors/train_controls/controls_block.dart';
+import 'bearing/stabilized_bearing_movement_behaviour.dart';
 import 'behaviours/all_movement_behaviours.dart';
 import 'core/movement.dart';
 
@@ -102,6 +103,7 @@ void loadActorContent(CreateContext ctx) {
     ctx.blockEntities,
     ctx.services.find<CreateConfigs>(),
     ctx.log,
+    itemIds: HostItemStacks.resolverFor(() => ctx.ids),
   );
   ActorRuntime.install(runtime);
   ctx.services.provide<ActorRuntime>(runtime);
@@ -144,6 +146,14 @@ void loadActorContent(CreateContext ctx) {
       buttons,
       fields['press'] == true,
     );
+  });
+
+  // `RollerBlockItem.place`: the roller moves on top of the clicked block when the block below it
+  // is full on top.
+  ctx.host.intercept(Events.playerUseBlock, (server, e) async {
+    if (e.cancelled) return e;
+    if (await useRollerItem(server, e)) return e.cancel();
+    return e;
   });
 
   // The contraption controls actor tells the core how to apply its filters.
@@ -256,5 +266,12 @@ void _registerBehaviours() {
   MovingInteractions.register(
     'create:controls',
     const ControlsInteractionBehaviour(),
+  );
+
+  // `AllBlocks.MECHANICAL_BEARING.onRegister(movementBehaviour(new
+  // StabilizedBearingMovementBehaviour()))`.
+  MovementBehaviours.register(
+    'create:mechanical_bearing',
+    const StabilizedBearingMovementBehaviour(),
   );
 }

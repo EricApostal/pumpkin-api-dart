@@ -20,6 +20,9 @@
 /// * Per machine API: see the exports below.
 library;
 
+export 'boiler/blaze_burner_fuel.dart';
+export 'data/all_ingredients.dart';
+export 'data/all_triggers.dart';
 export '../processing/common/capabilities.dart';
 export '../processing/common/stack.dart';
 export '../processing/common/storage.dart';
@@ -36,10 +39,12 @@ export '../processing/recipe/output.dart';
 export '../processing/recipe/recipe.dart';
 export '../processing/recipe/recipe_applier.dart';
 export '../processing/recipe/recipe_book.dart';
-export '../processing/recipe/recipe_json.dart' show RecipeParseException, parseIngredient, parseOutput, parseRecipe;
+export '../processing/recipe/recipe_json.dart'
+    show RecipeParseException, parseIngredient, parseOutput, parseRecipe;
 export '../processing/recipe/recipe_type.dart';
 export '../processing/recipe/sequenced.dart';
-export '../processing/sequenced_items.dart' show sequencedAssemblyItemKeys, sequencedBarColor, sequencedBarWidth;
+export '../processing/sequenced_items.dart'
+    show sequencedAssemblyItemKeys, sequencedBarColor, sequencedBarWidth;
 export '../processing/transport/transport_behaviours.dart';
 export '../processing/transport/transported_stack.dart';
 // Per machine families (each file is owned by its part):

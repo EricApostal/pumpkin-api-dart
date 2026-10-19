@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../api/util.dart' hide pos;
 import '../host/lg_block_entity.dart';
 import '../host/lvl.dart';
+import '../host/nbt_util.dart';
 import '../host/runtime.dart';
 import '../host/state_props.dart';
 import '../model/inventory.dart';
@@ -170,6 +171,22 @@ class LogisticallyLinkedBehaviour implements LogisticsLink {
 
   bool mayAdministrate(String playerUuid) =>
       Lg.i.global.mayAdministrate(freqId, playerUuid);
+
+  /// `LogisticallyLinkedBehaviour.write`.
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    tag
+      ..putIntArray('Freq', uuidToInts(freqId))
+      ..putInt('Power', redstonePower)
+      ..putBool('Added', addedGlobally);
+  }
+
+  /// `LogisticallyLinkedBehaviour.read`.
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    final freq = tag.getIntArray('Freq');
+    if (freq != null && freq.length >= 4) freqId = uuidFromInts(freq);
+    redstonePower = tag.getInt('Power') ?? 0;
+    addedGlobally = tag.getBool('Added') ?? false;
+  }
 }
 
 /// `PackagerLinkBlockEntity`.
@@ -193,19 +210,37 @@ class PackagerLinkBlockEntity extends LgBlockEntity implements LinkedHost {
     _state
       ..clear()
       ..addAll(map);
-    placedBy = map['placedBy'] as String?;
-    behaviour.freqId = map['freq'] as String? ?? behaviour.freqId;
-    behaviour.redstonePower = map['power'] as int? ?? 0;
-    behaviour.addedGlobally = map['added'] as bool? ?? false;
+    placedBy = map['PlacedBy'] as String?;
+    behaviour.freqId = map['Freq'] as String? ?? behaviour.freqId;
+    behaviour.redstonePower = map['Power'] as int? ?? 0;
+    behaviour.addedGlobally = map['Added'] as bool? ?? false;
   }
 
   @override
   Map<String, dynamic> stateToMap() => {
-    'freq': behaviour.freqId,
-    'power': behaviour.redstonePower,
-    'added': behaviour.addedGlobally,
-    'placedBy': placedBy,
+    'Freq': behaviour.freqId,
+    'Power': behaviour.redstonePower,
+    'Added': behaviour.addedGlobally,
+    'PlacedBy': placedBy,
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    behaviour.write(tag, clientPacket: clientPacket);
+    final placed = placedBy;
+    if (placed != null) tag.putIntArray('PlacedBy', uuidToInts(placed));
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    behaviour.read(tag, clientPacket: clientPacket);
+    final placed = tag.getIntArray('PlacedBy');
+    if (placed != null && placed.length >= 4) {
+      placedBy = uuidFromInts(placed);
+    }
+  }
 
   /// This block entity's position as a [Pos].
   Pos get _pos => pos.toPos();

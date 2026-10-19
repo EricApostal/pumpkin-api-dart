@@ -72,6 +72,7 @@ final class FluidsRuntime {
       store,
       config,
       onAward: (pos, advancement) => award(worldId, pos, advancement),
+      serverProvider: () => serverProvider?.call(),
     );
   }
 

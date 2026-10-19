@@ -141,6 +141,10 @@ final class CreateWorldgen {
       ),
     );
     context.onFeaturePlace(feature.key, (server, event) {
+      // `ConfigPlacementFilter` reads the flag for every placement, so a change made through
+      // `/catnip config` stops (and re-enables) the striated ores without a restart. Zinc is
+      // placed by the host, so it can only be skipped at registration.
+      if (configs.common.worldGen.disable.value) return;
       try {
         final worldId = event.targetWorld.getId();
         final seed = seeds.lookup(worldId) ?? _ensureSeed(event.targetWorld, event.seed);

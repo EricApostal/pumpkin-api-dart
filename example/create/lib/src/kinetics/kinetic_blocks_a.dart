@@ -33,7 +33,8 @@ Dir steamEngineConnectedDirection(KState engine) => switch (engine['face']) {
 };
 
 /// `SteamEngineBlock.getShaftPos`.
-KPos steamEngineShaftPos(KState engine, KPos pos) => pos.relative(steamEngineConnectedDirection(engine), 2);
+KPos steamEngineShaftPos(KState engine, KPos pos) =>
+    pos.relative(steamEngineConnectedDirection(engine), 2);
 
 /// `SteamEngineBlock.isShaftValid`.
 bool steamEngineShaftValid(KState engine, KState shaft) =>
@@ -41,7 +42,11 @@ bool steamEngineShaftValid(KState engine, KState shaft) =>
     shaft.axisOf('axis') != steamEngineConnectedDirection(engine).axis;
 
 /// `PoweredShaftBlock.stillValid`.
-bool poweredShaftStillValid(KState state, KPos pos, KState Function(KPos) stateAt) {
+bool poweredShaftStillValid(
+  KState state,
+  KPos pos,
+  KState Function(KPos) stateAt,
+) {
   final axis = state.axisOf('axis');
   for (final d in Dir.values) {
     if (d.axis == axis) continue;
@@ -83,11 +88,13 @@ Future<BlockUseResult?> tryEncase(
 }
 
 /// The result when a use was not handled.
-BlockUseResult unhandled(CustomBlockUseEventData e) => e.withItem ? BlockUseResult.tryEmptyHand : BlockUseResult.pass;
+BlockUseResult unhandled(CustomBlockUseEventData e) =>
+    e.withItem ? BlockUseResult.tryEmptyHand : BlockUseResult.pass;
 
 /// The encased shaft for [variant] (`andesite` / `brass`) with [axis]
 /// (`EncasedShaftBlock.handleEncasing`).
-KState encasedShaftState(String variant, KAxis axis) => KState('create:${variant}_encased_shaft', {'axis': axis.name});
+KState encasedShaftState(String variant, KAxis axis) =>
+    KState('create:${variant}_encased_shaft', {'axis': axis.name});
 
 /// The encased cogwheel for [variant] with shafts towards neighbours that have one
 /// (`EncasedCogwheelBlock.handleEncasing`).
@@ -99,11 +106,10 @@ KState encasedCogwheelState(
   bool large,
   KAxis axis,
 ) {
-  var s = KState('create:$variant${large ? '_encased_large_cogwheel' : '_encased_cogwheel'}', {
-    'axis': axis.name,
-    'top_shaft': 'false',
-    'bottom_shaft': 'false',
-  });
+  var s = KState(
+    'create:$variant${large ? '_encased_large_cogwheel' : '_encased_cogwheel'}',
+    {'axis': axis.name, 'top_shaft': 'false', 'bottom_shaft': 'false'},
+  );
   for (final d in Dir.inAxis(axis)) {
     final adjacent = stateAt(pos.relative(d));
     final def = blocks.defFor(adjacent);
@@ -116,25 +122,45 @@ KState encasedCogwheelState(
 
 /// `ShaftBlock.PlacementHelper` / `PoweredShaftBlock.useItemOn`: a shaft, cogwheel or
 /// large cogwheel used on a shaft extends the line.
-Future<BlockUseResult?> shaftPlacementHelper(HookCtx c, CustomBlockUseEventData e) async {
+Future<BlockUseResult?> shaftPlacementHelper(
+  HookCtx c,
+  CustomBlockUseEventData e,
+) async {
   if (!e.withItem) return null;
   final item = await _heldItem(e);
-  if (item != 'create:shaft' && item != 'create:cogwheel' && item != 'create:large_cogwheel') return null;
+  if (item != 'create:shaft' &&
+      item != 'create:cogwheel' &&
+      item != 'create:large_cogwheel')
+    return null;
   final block = c.rt.kineticBlocks[item];
   if (block == null) return null;
   final w = helperWorldFor(c.rt, c.worldId, c.world);
-  final hit = (c.pos.x + e.cursor.$1, c.pos.y + e.cursor.$2, c.pos.z + e.cursor.$3);
+  final hit = (
+    c.pos.x + e.cursor.$1,
+    c.pos.y + e.cursor.$2,
+    c.pos.z + e.cursor.$3,
+  );
   final offset = shaftPoleOffset(
     w,
     c.kpos,
     c.state,
     hit,
     pickType: item == 'create:shaft'
-        ? (s, at) => poweredShaftStillValid(s, at, c.level.stateAt) ? s.withBlock('create:powered_shaft') : s
+        ? (s, at) => poweredShaftStillValid(s, at, c.level.stateAt)
+              ? s.withBlock('create:powered_shaft')
+              : s
         : null,
   );
   if (!offset.success) return null;
-  final placed = await placeOffset(c.rt, c.world, c.worldId, offset, block, e.player, e.hand);
+  final placed = await placeOffset(
+    c.rt,
+    c.world,
+    c.worldId,
+    offset,
+    block,
+    e.player,
+    e.hand,
+  );
   return placed ? BlockUseResult.success : null;
 }
 
@@ -146,19 +172,29 @@ KineticBlockSpec shaftSpec() {
   block = createBlockFromManifest(
     'shaft',
     blockEntityType: 'create:simple_kinetic',
-    placement: [PlacementRule.clickedAxis('axis'), PlacementRule.inWater('waterlogged')],
+    placement: [
+      PlacementRule.clickedAxis('axis'),
+      PlacementRule.inWater('waterlogged'),
+    ],
     behavior: buildKineticBehavior(
       () => block,
       specRef: () => spec,
       pathfindable: false,
+      updateShape: waterloggedUpdateShape,
       use: (c, e) async {
         if (e.sneaking) return unhandled(e);
         final axis = c.state.axisOf('axis') ?? KAxis.y;
-        final encased = await tryEncase(c, e, (variant) => encasedShaftState(variant, axis));
+        final encased = await tryEncase(
+          c,
+          e,
+          (variant) => encasedShaftState(variant, axis),
+        );
         if (encased != null) return encased;
 
         // A metal girder on a horizontal shaft.
-        if (e.withItem && axis != KAxis.y && await _heldItem(e) == 'create:metal_girder') {
+        if (e.withItem &&
+            axis != KAxis.y &&
+            await _heldItem(e) == 'create:metal_girder') {
           final girder = KState('create:metal_girder_encased_shaft', {
             'axis': axis == KAxis.z ? 'z' : 'x',
             'waterlogged': c.state['waterlogged'] ?? 'false',
@@ -182,7 +218,8 @@ KineticBlockSpec shaftSpec() {
     def: const AxisBlockDef(),
     placement: (ctx, placed, use, world) {
       var s = placed.set('axis', rotatedPillarAxis(ctx).name);
-      if (poweredShaftStillValid(s, ctx.pos, ctx.stateAt)) s = s.withBlock('create:powered_shaft');
+      if (poweredShaftStillValid(s, ctx.pos, ctx.stateAt))
+        s = s.withBlock('create:powered_shaft');
       return s;
     },
   );
@@ -211,18 +248,28 @@ KineticBlockSpec cogwheelSpec({required bool large}) {
   block = createBlockFromManifest(
     key,
     blockEntityType: 'create:simple_kinetic',
-    placement: [PlacementRule.clickedAxis('axis'), PlacementRule.inWater('waterlogged')],
+    placement: [
+      PlacementRule.clickedAxis('axis'),
+      PlacementRule.inWater('waterlogged'),
+    ],
     behavior: buildKineticBehavior(
       () => block,
       specRef: () => spec,
       pathfindable: false,
+      updateShape: waterloggedUpdateShape,
       canPlace: (c, e) async {
         final player = e.player;
         if (player == null) return true;
         final pc = await placementContextFor(c, player, e.face, e.pos);
         if (pc == null) return true;
         final axis = cogwheelAxis(pc, large: large);
-        return isValidCogwheelPosition(large, pc.stateAt, c.rt.blocks, pc.pos, axis);
+        return isValidCogwheelPosition(
+          large,
+          pc.stateAt,
+          c.rt.blocks,
+          pc.pos,
+          axis,
+        );
       },
       use: (c, e) async {
         if (e.sneaking) return unhandled(e);
@@ -230,7 +277,14 @@ KineticBlockSpec cogwheelSpec({required bool large}) {
         final encased = await tryEncase(
           c,
           e,
-          (variant) => encasedCogwheelState(c.rt.blocks, c.level.stateAt, c.kpos, variant, large, axis),
+          (variant) => encasedCogwheelState(
+            c.rt.blocks,
+            c.level.stateAt,
+            c.kpos,
+            variant,
+            large,
+            axis,
+          ),
         );
         return encased ?? unhandled(e);
       },
@@ -239,17 +293,25 @@ KineticBlockSpec cogwheelSpec({required bool large}) {
   spec = KineticBlockSpec(
     block,
     def: AxisBlockDef(smallCog: !large, largeCog: large, dedicatedCog: true),
-    placement: (ctx, placed, use, world) => placed.set('axis', cogwheelAxis(ctx, large: large).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('axis', cogwheelAxis(ctx, large: large).name),
   );
   return spec;
 }
 
 /// Builds a placement context for the placement of a block by [player] at [pos].
-Future<PlacementContext?> placementContextFor(HookCtx c, Uuid player, BlockDirection? face, BlockPos pos) async {
+Future<PlacementContext?> placementContextFor(
+  HookCtx c,
+  Uuid player,
+  BlockDirection? face,
+  BlockPos pos,
+) async {
   final p = c.server.getPlayerByUuid(id: player);
   if (p == null) return null;
   final record = c.rt.useRecords.matching(player.asString, pos);
-  final clicked = record?.face ?? (face == null ? Dir.up : Dir.fromName(face.name) ?? Dir.up);
+  final clicked =
+      record?.face ??
+      (face == null ? Dir.up : Dir.fromName(face.name) ?? Dir.up);
   return PlacementContext(
     pos: KPos(pos.x, pos.y, pos.z),
     clickedFace: clicked,
@@ -275,7 +337,8 @@ KineticBlockSpec encasedShaftSpec(String variant) {
   spec = KineticBlockSpec(
     block,
     def: const AxisBlockDef(),
-    placement: (ctx, placed, use, world) => placed.set('axis', encasedShaftAxis(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('axis', encasedShaftAxis(ctx).name),
   );
   return spec;
 }
@@ -285,7 +348,9 @@ KineticBlockSpec encasedCogwheelSpec(String variant, {required bool large}) {
   late final KineticBlockSpec spec;
   block = createBlockFromManifest(
     '${variant}_encased${large ? '_large' : ''}_cogwheel',
-    blockEntityType: large ? 'create:encased_large_cogwheel' : 'create:encased_cogwheel',
+    blockEntityType: large
+        ? 'create:encased_large_cogwheel'
+        : 'create:encased_cogwheel',
     placement: [PlacementRule.clickedAxis('axis')],
     behavior: buildKineticBehavior(
       () => block,
@@ -295,14 +360,21 @@ KineticBlockSpec encasedCogwheelSpec(String variant, {required bool large}) {
         if (player == null) return true;
         final pc = await placementContextFor(c, player, e.face, e.pos);
         if (pc == null) return true;
-        return isValidCogwheelPosition(large, pc.stateAt, c.rt.blocks, pc.pos, encasedCogwheelAxis(pc));
+        return isValidCogwheelPosition(
+          large,
+          pc.stateAt,
+          c.rt.blocks,
+          pc.pos,
+          encasedCogwheelAxis(pc),
+        );
       },
     ),
   );
   spec = KineticBlockSpec(
     block,
     def: EncasedCogDef(large: large),
-    placement: (ctx, placed, use, world) => placed.set('axis', encasedCogwheelAxis(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('axis', encasedCogwheelAxis(ctx).name),
   );
   return spec;
 }
@@ -313,14 +385,23 @@ KineticBlockSpec gearboxSpec() {
   block = createBlockFromManifest(
     'gearbox',
     blockEntityType: 'create:gearbox',
-    behavior: buildKineticBehavior(() => block, specRef: () => spec),
+    behavior: buildKineticBehavior(
+      () => block,
+      specRef: () => spec,
+      // `GearboxBlock.getCloneItemStack`: a horizontal gearbox is picked as the
+      // vertical gearbox item.
+      cloneItem: (c, e) => (c.state.axisOf('axis') ?? KAxis.y) == KAxis.y
+          ? null
+          : ItemStacks.plain('create:vertical_gearbox'),
+    ),
   );
   spec = KineticBlockSpec(
     block,
     def: const GearboxDef(),
     // VerticalGearboxItem: the vertical gearbox turns horizontal next to shafts.
     placement: (ctx, placed, use, world) {
-      if (use?.itemKey != 'create:vertical_gearbox') return placed.set('axis', 'y');
+      if (use?.itemKey != 'create:vertical_gearbox')
+        return placed.set('axis', 'y');
       KAxis? preferred;
       for (final side in Dir.horizontals) {
         final nPos = ctx.pos.relative(side);
@@ -335,7 +416,9 @@ KineticBlockSpec gearboxSpec() {
           }
         }
       }
-      final axis = preferred == null ? ctx.horizontal.clockWise(KAxis.y).axis : (preferred == KAxis.x ? KAxis.z : KAxis.x);
+      final axis = preferred == null
+          ? ctx.horizontal.clockWise(KAxis.y).axis
+          : (preferred == KAxis.x ? KAxis.z : KAxis.x);
       return placed.set('axis', axis.name);
     },
   );
@@ -366,12 +449,18 @@ KineticBlockSpec gearshiftSpec({required bool clutch}) {
         if (clutch) {
           await c.setState(
             state.toggle('powered'),
-            flags: const {BlockFlagsFlag.notifyListeners, BlockFlagsFlag.skipShapeUpdate},
+            flags: const {
+              BlockFlagsFlag.notifyListeners,
+              BlockFlagsFlag.skipShapeUpdate,
+            },
           );
           _detachKinetics(c, reAttachNextTick: previouslyPowered);
         } else {
           _detachKinetics(c, reAttachNextTick: true);
-          await c.setState(state.toggle('powered'), flags: const {BlockFlagsFlag.notifyListeners});
+          await c.setState(
+            state.toggle('powered'),
+            flags: const {BlockFlagsFlag.notifyListeners},
+          );
         }
       },
       scheduledTick: (c) {
@@ -385,7 +474,9 @@ KineticBlockSpec gearshiftSpec({required bool clutch}) {
     def: const AxisBlockDef(),
     placement: (ctx, placed, use, world) async {
       final axis = encasedShaftAxis(ctx);
-      final powered = await world.hasRedstoneNeighborSignal(BlockPos(x: ctx.pos.x, y: ctx.pos.y, z: ctx.pos.z));
+      final powered = await world.hasRedstoneNeighborSignal(
+        BlockPos(x: ctx.pos.x, y: ctx.pos.y, z: ctx.pos.z),
+      );
       return placed.setAll({'axis': axis.name, 'powered': '$powered'});
     },
   );
@@ -398,7 +489,11 @@ void _detachKinetics(HookCtx c, {required bool reAttachNextTick}) {
   if (be == null) return;
   be.detachKinetics();
   if (reAttachNextTick) {
-    c.world.scheduleTick(c.pos, const Duration(milliseconds: 50), priority: TickPriority.extremelyHigh);
+    c.world.scheduleTick(
+      c.pos,
+      const Duration(milliseconds: 50),
+      priority: TickPriority.extremelyHigh,
+    );
   }
 }
 
@@ -410,7 +505,9 @@ KineticBlockSpec chainDriveSpec({required bool gearshift}) {
   final key = gearshift ? 'adjustable_chain_gearshift' : 'encased_chain_drive';
   block = createBlockFromManifest(
     key,
-    blockEntityType: gearshift ? 'create:adjustable_chain_gearshift' : 'create:encased_shaft',
+    blockEntityType: gearshift
+        ? 'create:adjustable_chain_gearshift'
+        : 'create:encased_shaft',
     placement: [PlacementRule.clickedAxis('axis')],
     behavior: buildKineticBehavior(
       () => block,
@@ -418,9 +515,17 @@ KineticBlockSpec chainDriveSpec({required bool gearshift}) {
       updateShape: (c, e) {
         final neighbour = c.rt.states.decode(e.neighborStateId);
         final dir = Dir.fromName(e.direction.name)!;
-        final updated = chainDriveUpdateShape(c.state, dir, neighbour, c.rt.blocks);
+        final updated = chainDriveUpdateShape(
+          c.state,
+          dir,
+          neighbour,
+          c.rt.blocks,
+        );
         if (updated == c.state) return null;
-        return block.layout.indexOf({...block.definition.defaultState, ...updated.props});
+        return block.layout.indexOf({
+          ...block.definition.defaultState,
+          ...updated.props,
+        });
       },
       neighbor: gearshift
           ? (c, e) async {
@@ -432,7 +537,10 @@ KineticBlockSpec chainDriveSpec({required bool gearshift}) {
               if (state.flag('powered') != signal) {
                 await c.setState(
                   state.toggle('powered'),
-                  flags: const {BlockFlagsFlag.notifyListeners, BlockFlagsFlag.skipShapeUpdate},
+                  flags: const {
+                    BlockFlagsFlag.notifyListeners,
+                    BlockFlagsFlag.skipShapeUpdate,
+                  },
                 );
               }
             }
@@ -443,6 +551,19 @@ KineticBlockSpec chainDriveSpec({required bool gearshift}) {
               if (be != null) unawaited(be.neighbourChanged());
             }
           : null,
+      scheduledTick: gearshift
+          ? (c) async {
+              // `ChainDriveBlock.updateAfterWrenched` re-reads POWERED; the wrench
+              // hook is synchronous, so the redstone query happens here.
+              final state = c.level.stateAt(c.kpos);
+              if (state.block != key) return;
+              final powered = await c.world.hasRedstoneNeighborSignal(c.pos);
+              if (state.flag('powered') == powered) return;
+              // Java applies the wrenched state through `switchToBlockState`,
+              // which re-propagates when POWERED changes the kinetic state.
+              await switchKinetic(c, state.toggle('powered'));
+            }
+          : null,
     ),
   );
   spec = KineticBlockSpec(
@@ -450,11 +571,19 @@ KineticBlockSpec chainDriveSpec({required bool gearshift}) {
     def: gearshift ? const ChainGearshiftDef() : const AxisBlockDef(),
     placement: (ctx, placed, use, world) async {
       final placedAxis = ctx.nearestLooking.axis;
-      final axis = ctx.sneaking ? placedAxis : (preferredAxis(ctx) ?? placedAxis);
-      final base = placed.setAll({'axis': axis.name, 'part': 'none', 'axis_along_first': 'true'});
+      final axis = ctx.sneaking
+          ? placedAxis
+          : (preferredAxis(ctx) ?? placedAxis);
+      final base = placed.setAll({
+        'axis': axis.name,
+        'part': 'none',
+        'axis_along_first': 'true',
+      });
       var s = chainDriveSettle(base, ctx.pos, ctx.stateAt, ctx.blocks);
       if (gearshift) {
-        final powered = await world.hasRedstoneNeighborSignal(BlockPos(x: ctx.pos.x, y: ctx.pos.y, z: ctx.pos.z));
+        final powered = await world.hasRedstoneNeighborSignal(
+          BlockPos(x: ctx.pos.x, y: ctx.pos.y, z: ctx.pos.z),
+        );
         s = s.set('powered', '$powered');
       }
       return s;

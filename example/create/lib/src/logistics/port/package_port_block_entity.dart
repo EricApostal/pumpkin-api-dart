@@ -5,14 +5,20 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart' hide pos;
+import '../../conveyance/chain/chain_conveyor_block_entity.dart';
+import '../../conveyance/chain/chain_conveyor_logic.dart';
+import '../../conveyance/chain/chain_conveyor_port.dart';
+import '../../conveyance/items/item_data.dart';
 import '../host/host_inventory.dart';
 import '../host/lg_block_entity.dart';
 import '../host/lvl.dart';
+import '../host/nbt_codecs.dart';
 import '../host/runtime.dart';
 import '../model/inventory.dart';
 import '../model/package.dart';
 import '../model/stack.dart';
 import '../packager/packager_block_entity.dart';
+import 'conveyance_items.dart';
 import 'package_port_target.dart';
 
 /// A frogport that can be woken by the packager below it (`FrogportBlockEntity`).
@@ -51,10 +57,10 @@ abstract class PackagePortBlockEntity extends LgBlockEntity {
     _state
       ..clear()
       ..addAll(map);
-    acceptsPackages = map['acceptsPackages'] as bool? ?? true;
-    addressFilter = map['addressFilter'] as String? ?? '';
-    target = PackagePortTarget.fromMap(map['target']);
-    final stacks = map['inventory'];
+    acceptsPackages = map['AcceptsPackages'] as bool? ?? true;
+    addressFilter = map['AddressFilter'] as String? ?? '';
+    target = PackagePortTarget.fromMap(map['Target']);
+    final stacks = map['Inventory'];
     if (stacks is List) {
       for (var i = 0; i < packages.slots && i < stacks.length; i++) {
         packages.stacks[i] = stacks[i] is String
@@ -74,23 +80,68 @@ abstract class PackagePortBlockEntity extends LgBlockEntity {
 
   @override
   Map<String, dynamic> stateToMap() => {
-    'acceptsPackages': acceptsPackages,
-    'addressFilter': addressFilter,
-    'target': target?.toMap(),
-    'inventory': [
+    'AcceptsPackages': acceptsPackages,
+    'AddressFilter': addressFilter,
+    'Target': target?.toMap(),
+    'Inventory': [
       for (final s in packages.stacks) s.isEmpty ? null : s.toJson(),
     ],
   };
 
-  /// `filterChanged()`.
-  void filterChanged() {}
-
-  /// `getComparatorOutput()`.
-  int get comparatorOutput {
-    final nonEmpty = packages.nonEmpty().length;
-    if (nonEmpty == 0) return 0;
-    return (1 + (14 * nonEmpty) ~/ packages.slots).clamp(0, 15);
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    final t = target;
+    if (t != null) {
+      tag.putCompound('Target', packagePortTargetToNbt(t));
+    }
+    tag
+      ..putString('AddressFilter', addressFilter)
+      ..putBool('AcceptsPackages', acceptsPackages)
+      ..putCompound(
+        'Inventory',
+        itemHandlerToNbt(packages, client: clientPacket),
+      );
   }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    final targetTag = tag.getCompound('Target');
+    if (targetTag != null) target = packagePortTargetFromNbt(targetTag);
+    if (tag.containsKey('AddressFilter')) {
+      addressFilter = tag.getString('AddressFilter') ?? '';
+    }
+    if (tag.containsKey('AcceptsPackages')) {
+      acceptsPackages = tag.getBool('AcceptsPackages') ?? false;
+    }
+    final inventory = tag.getCompound('Inventory');
+    if (inventory != null) itemHandlerFromNbt(inventory, packages);
+  }
+
+  /// `filterChanged()`: the target has to learn the new address filter.
+  void filterChanged() {
+    deregisterTarget();
+    registerTarget();
+  }
+
+  /// `lazyTick()`: keep the port registered with its target (the target may have been replaced).
+  @override
+  void lazyTick() {
+    super.lazyTick();
+    registerTarget();
+  }
+
+  /// `PackagePortTarget.register`: the target blocks belong to other modules; the concrete port
+  /// (`FrogportBlockEntity`, `PostboxBlockEntity`) knows which target it can talk to.
+  void registerTarget() {}
+
+  /// `PackagePortTarget.deregister`.
+  void deregisterTarget() {}
+
+  /// `getComparatorOutput()`: the fill of the eighteen package slots.
+  int get comparatorOutput =>
+      calcRedstoneFromInventory(packages.stacks, slotLimit: packages.limit);
 
   /// `drop(box)`.
   void drop(LStack box) {
@@ -110,7 +161,14 @@ abstract class PackagePortBlockEntity extends LgBlockEntity {
       world == null ? 'minecraft:air' : Lvl(world!).blockKey(pos.toPos());
 
   @override
+  void onUnload() {
+    deregisterTarget();
+    super.onUnload();
+  }
+
+  @override
   void onRemoved() {
+    deregisterTarget();
     for (final stack in packages.nonEmpty()) {
       drop(stack);
     }
@@ -121,7 +179,7 @@ abstract class PackagePortBlockEntity extends LgBlockEntity {
 
 /// `FrogportBlockEntity`.
 class FrogportBlockEntity extends PackagePortBlockEntity
-    implements FrogportPuller {
+    implements FrogportPuller, ChainConveyorPort {
   static const String type = 'create:package_frogport';
 
   double passiveYaw = 0;
@@ -135,16 +193,111 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   @override
   void readState(Map<String, dynamic> map) {
     super.readState(map);
-    passiveYaw = (map['passiveYaw'] as num?)?.toDouble() ?? 0;
-    failedLastExport = map['failedLastExport'] == true;
+    passiveYaw = (map['PlacedYaw'] as num?)?.toDouble() ?? 0;
+    failedLastExport = map['FailedLastExport'] == true;
   }
 
   @override
   Map<String, dynamic> stateToMap() => {
     ...super.stateToMap(),
-    'passiveYaw': passiveYaw,
-    'failedLastExport': failedLastExport,
+    'PlacedYaw': passiveYaw,
+    'FailedLastExport': failedLastExport,
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    tag.putFloat('PlacedYaw', passiveYaw);
+    if (failedLastExport) {
+      // `NBTHelper.putMarker`: an empty compound marks a boolean flag.
+      tag.putCompound('FailedLastExport', NbtCompound());
+    }
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    if (tag.containsKey('PlacedYaw')) {
+      passiveYaw = tag.getDouble('PlacedYaw') ?? 0;
+    }
+    if (tag.containsKey('FailedLastExport')) failedLastExport = true;
+  }
+
+  // -- ChainConveyorPort ----------------------------------------------------------------------
+
+  /// The client animation is not simulated on the server; packages move immediately.
+  @override
+  bool get isAnimationInProgress => false;
+
+  /// `sendAnticipate()`: a client particle effect.
+  @override
+  void sendAnticipate() {}
+
+  /// `startAnimation(box, deposit: false)` from the chain: the port catches the package.
+  @override
+  void startAnimation(ItemValue package) {
+    final box = fromItemValue(package, Lg.i.wire);
+    if (box.isEmpty) return;
+    if (packages.insertStackedNow(box).isNotEmpty) drop(box);
+    markDirty();
+  }
+
+  ChainConveyorBlockEntity? get _chainConveyor {
+    final t = target;
+    if (t == null) return null;
+    return store.typed<ChainConveyorBlockEntity>(
+      worldId,
+      (pos.toPos() + t.relativePos).toBlockPos(),
+    );
+  }
+
+  /// `PackagePortTarget.ChainConveyorFrogportTarget.register`.
+  @override
+  void registerTarget() {
+    final t = target;
+    if (t == null || t.type != PackagePortTargetType.chainConveyor) return;
+    final chain = _chainConveyor;
+    if (chain == null) return;
+    final filter = filterString;
+    final offset = -t.relativePos;
+    if (filter == null) {
+      chain.removePort(offset);
+      return;
+    }
+    chain.receivePortInfo(offset, t.chainPos, t.connection, filter);
+  }
+
+  @override
+  void deregisterTarget() {
+    final t = target;
+    if (t == null || t.type != PackagePortTargetType.chainConveyor) return;
+    _chainConveyor?.removePort(-t.relativePos);
+  }
+
+  /// `PackagePortTarget.export` of a chain conveyor target.
+  bool _exportToTarget(LStack box, {required bool simulate}) {
+    final t = target;
+    if (t == null || t.type != PackagePortTargetType.chainConveyor) {
+      return false;
+    }
+    final chain = _chainConveyor;
+    if (chain == null) return false;
+    final connection = t.connection;
+    if (connection != null && !chain.connections.contains(connection)) {
+      return false;
+    }
+    if (simulate) {
+      return chain.speed != 0 && chain.canAcceptPackagesFor(connection);
+    }
+    final package = ChainConveyorPackage(
+      t.chainPos,
+      toItemValue(box, Lg.i.wire),
+      ChainConveyorPackage.nextNetId(),
+    );
+    return connection == null
+        ? chain.addLoopingPackage(package)
+        : chain.addTravellingPackage(package, connection);
+  }
 
   @override
   void lazyTick() {
@@ -162,6 +315,17 @@ class FrogportBlockEntity extends PackagePortBlockEntity
     final w = world;
     if (w == null) return;
     final below = pos.toPos().below;
+
+    // A packager below exposes its tray as an inventory: inserting a package unpacks it.
+    final belowBe = store.at(worldId, below.toBlockPos());
+    if (belowBe is PackagerBlockEntity) {
+      for (var slot = 0; slot < packages.slots; slot++) {
+        if (packages.at(slot).isEmpty) continue;
+        unawaited(_pushIntoPackager(belowBe, slot));
+      }
+      return;
+    }
+
     final inv = hostInvAt(
       w,
       below.toBlockPos(),
@@ -174,6 +338,29 @@ class FrogportBlockEntity extends PackagePortBlockEntity
       if (stack.isEmpty) continue;
       unawaited(_pushOne(inv, slot));
     }
+  }
+
+  /// `PackagerItemHandler.insertItem`: the packager takes the package and unpacks it.
+  Future<void> _pushIntoPackager(PackagerBlockEntity packager, int slot) async {
+    final box = packages.at(slot);
+    if (box.isEmpty) return;
+    if (packager.heldBox.isNotEmpty ||
+        packager.queuedExitingPackages.isNotEmpty ||
+        packager.animationTicks != 0) {
+      failedLastExport = true;
+      return;
+    }
+    if (!await packager.unwrapBox(box, simulate: true)) {
+      failedLastExport = true;
+      return;
+    }
+    if (!await packager.unwrapBox(box, simulate: false)) {
+      failedLastExport = true;
+      return;
+    }
+    packages.extractNow(slot, 1);
+    markDirty();
+    await packager.triggerStockCheck();
   }
 
   Future<void> _pushOne(ItemInv target, int slot) async {
@@ -194,6 +381,8 @@ class FrogportBlockEntity extends PackagePortBlockEntity
 
   Future<void> _pull() async {
     if (target == null) return;
+    // `tryPullingFromOwnAndAdjacentInventories`: only pull when the target can take a package.
+    if (!_exportToTarget(PackageStyles.defaultBox(), simulate: true)) return;
     if (await _tryPullingFrom(packages)) return;
 
     final w = world;
@@ -210,7 +399,7 @@ class FrogportBlockEntity extends PackagePortBlockEntity
         final box = below.heldBox;
         below.heldBox = LStack.empty;
         below.notifyUpdate();
-        startAnimation(box, deposit: true);
+        startAnimationFor(box, deposit: true);
         return;
       }
     }
@@ -235,14 +424,14 @@ class FrogportBlockEntity extends PackagePortBlockEntity
         continue;
       final taken = await handler.extract(slot, 1);
       if (taken.isEmpty) continue;
-      startAnimation(taken, deposit: true);
+      startAnimationFor(taken, deposit: true);
       return true;
     }
     return false;
   }
 
-  /// `startAnimation(box, deposit)`: the port forwards the package at once.
-  void startAnimation(LStack box, {required bool deposit}) {
+  /// `startAnimation(box, deposit)`; the client animation is skipped, the transfer is immediate.
+  void startAnimationFor(LStack box, {required bool deposit}) {
     if (!PackageItem.isPackage(box)) return;
     if (deposit) {
       _deposit(box);
@@ -252,9 +441,7 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   }
 
   void _deposit(LStack box) {
-    // The target blocks (chain conveyor, train station) belong to other modules; a package that
-    // cannot be exported is dropped at the port.
-    drop(box);
+    if (!_exportToTarget(box, simulate: false)) drop(box);
   }
 }
 
@@ -264,7 +451,28 @@ class PostboxBlockEntity extends PackagePortBlockEntity {
 
   bool forceFlag = false;
 
+  /// `sendParticles`: the client-only `Particles` marker of the update tag.
+  bool sendParticles = false;
+
   PostboxBlockEntity(super.worldId, super.pos);
+
+  /// `spawnParticles()`.
+  void spawnParticles() => sendParticles = true;
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    if (clientPacket && sendParticles) {
+      tag.putCompound('Particles', NbtCompound());
+    }
+    sendParticles = false;
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    sendParticles = clientPacket && tag.containsKey('Particles');
+  }
 
   /// `onOpenChange(open)`.
   void onOpenChange(bool open) {

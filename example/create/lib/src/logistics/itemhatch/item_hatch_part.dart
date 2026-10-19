@@ -44,16 +44,19 @@ class ItemHatchBlockEntity extends LgBlockEntity {
 
   @override
   Map<String, dynamic> stateToMap() => {
-    'filter': filtering.filterItem.isEmpty
+    'Filter': filtering.filterItem.isEmpty
         ? null
         : filtering.filterItem.toJson(),
   };
 
   @override
-  void onLoad() {
-    super.onLoad();
-    final saved = state['filter'];
-    if (saved is String) filtering.setFilter(LStackMapper.fromJson(saved));
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    // The behaviour reads the Java `Filter` key; the JSON is only the fallback for old saves.
+    if (!tag.containsKey('Filter')) {
+      final saved = state['Filter'];
+      if (saved is String) filtering.setFilter(LStackMapper.fromJson(saved));
+    }
   }
 
   @override
@@ -99,6 +102,14 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
 
   final inventory = playerInventory(e.player);
   final depositInHand = !e.sneaking;
+  if (!depositInHand) {
+    // A sneaking use with a wrench belongs to the wrench, not to the hatch.
+    final held = await Lg.i.read(e.item);
+    if (held.key == 'create:wrench') {
+      inventory.dispose();
+      return BlockUseResult.tryEmptyHand;
+    }
+  }
   final selected = e.player.getSelectedSlot();
   var anyInserted = false;
 

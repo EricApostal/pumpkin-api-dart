@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/redstone.dart' show ClipboardApi;
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
@@ -30,6 +31,9 @@ final class NixieTubeBlockEntity extends CreateBlockEntity {
   Object? _rawCustomText;
   Object? _parsedCustomText;
   int nixieIndex = 0;
+
+  /// `computerSignal`: the display of a ComputerCraft controlled row (client update tag).
+  ComputerSignal? computerSignal;
 
   NixieTubeBlockEntity(super.worldId, super.pos);
 
@@ -105,6 +109,7 @@ final class NixieTubeBlockEntity extends CreateBlockEntity {
     } else {
       tag.putInt('RedstoneStrength', redstoneStrength);
     }
+    if (clientPacket && computerSignal != null) tag.putByteArray('ComputerSignal', computerSignal!.encode());
   }
 
   @override
@@ -124,6 +129,10 @@ final class NixieTubeBlockEntity extends CreateBlockEntity {
       clearCustomText();
     }
     if (_parsedCustomText == null) redstoneStrength = tag.getInt('RedstoneStrength') ?? 0;
+    if (clientPacket) {
+      final bytes = tag.getByteArray('ComputerSignal');
+      computerSignal = bytes == null ? null : (ComputerSignal()..decode(bytes));
+    }
   }
 }
 
@@ -322,7 +331,8 @@ final class NixieTubeBlocks {
 
 /// `ClipboardEntry.getLastViewedEntries(stack).getFirst().text` as plain text, `null` when the
 /// clipboard has no entry. The clipboard format lives in the equipment module.
-Future<String?> clipboardFirstEntryText(ItemStack stack) async => null;
+Future<String?> clipboardFirstEntryText(ItemStack stack) async =>
+    Rs.i.ctx.services.find<ClipboardApi>()?.firstEntryText(stack);
 
 /// Redirect so the entity can use the pure function with a short name.
 (String, String) displayedStringsOf({String? customText, required int nixieIndex, required int redstoneStrength}) =>

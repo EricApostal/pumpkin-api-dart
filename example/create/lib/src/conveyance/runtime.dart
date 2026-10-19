@@ -70,6 +70,20 @@ final class ConveyanceRuntime {
 
   ConveyanceRuntime(this.ctx) {
     _instance = this;
+    // The host's placement event does not carry the click (the `BlockPlaceContext`), so the last
+    // block click of each player is kept for the blocks whose placement depends on it.
+    ctx.host.intercept(Events.playerUseBlock, (server, e) async {
+      clicks[e.player.uuidString] = ClickContext(
+        e.blockPos.toPos(),
+        d.Direction.values[e.face.index],
+        e.cursor,
+        e.sneaking,
+        e.hand,
+        serverTick,
+      );
+      return e;
+    });
+    ctx.listen(Events.serverTickStart, (server, _) => serverTick++);
   }
 
   void dispose() {

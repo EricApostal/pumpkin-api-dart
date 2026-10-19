@@ -11,14 +11,18 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../api/block_state.dart';
 import '../api/blocks.dart' show HostBlockGetter;
 import '../api/config.dart' show CreateConfigs;
+import '../api/effect/open_pipe_effect_handler.dart' as api_effect;
 import '../common/bounds.dart';
 import '../common/direction.dart';
 import '../common/host_bridge.dart';
 import '../common/pos.dart';
 import '../core/block_entity.dart';
+import '../decoration/bracketed_behaviour.dart';
 import 'fluid_stack.dart';
 import 'fluid_storage.dart';
 import 'fluid_world.dart';
+import 'open_pipe_effects.dart';
+import 'potion_data.dart';
 
 /// A block entity of this module that exposes a fluid handler to the pipe logic
 /// (`Capabilities.Fluid.BLOCK` of the Create block entity). The host world's
@@ -27,6 +31,12 @@ import 'fluid_world.dart';
 abstract interface class FluidCapable {
   /// The handler of this block entity, `null` while it has none.
   FluidStorage? get fluidHandler;
+}
+
+/// A [FluidCapable] whose handler depends on the side it is seen from
+/// (`Capabilities.Fluid.BLOCK` with a context); checked before [FluidCapable].
+abstract interface class SidedFluidCapable {
+  FluidStorage? fluidHandlerAt(Direction? side);
 }
 
 /// The module's [FStack] from the host's stack (`null` is empty).
@@ -128,6 +138,10 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   /// `AdvancementBehaviour.tryAward(level, pos, advancement)`.
   final void Function(Pos pos, String advancement)? onAward;
 
+  /// Resolves the server for the effects only players can receive (`MilkEffectHandler`,
+  /// `PotionEffectHandler`, `TeaEffectHandler`); `null` while the server is gone.
+  final Server? Function()? serverProvider;
+
   final math.Random _random = math.Random();
   final HostBlockGetter _blocks;
   final Map<(int, int, int, int), HostFluidStorage> _handlers = {};
@@ -138,6 +152,7 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
     this.store,
     this.config, {
     this.onAward,
+    this.serverProvider,
   }) : _blocks = HostBlockGetter(world);
 
   /// `Level.getGameTime()`.
@@ -205,6 +220,8 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   @override
   FluidStorage? fluidCapability(Pos p, Direction? side) {
     final be = store.at(worldId, p.toBlockPos());
+    if (be is SidedFluidCapable)
+      return (be as SidedFluidCapable).fluidHandlerAt(side);
     if (be is FluidCapable) return (be as FluidCapable).fluidHandler;
     final key = (p.$1, p.$2, p.$3, side?.index ?? -1);
     final cached = _handlers[key];
@@ -221,7 +238,13 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   }
 
   @override
-  bool hasBracket(Pos p) => false;
+  bool hasBracket(Pos p) {
+    final be = store.at(worldId, p.toBlockPos());
+    return be
+            ?.getBehaviour<BracketedBlockEntityBehaviour>()
+            ?.isBracketPresent ??
+        false;
+  }
 
   @override
   bool isUnbreakable(Pos p) => world.getBlock(pos: p.toBlockPos()).hardness < 0;
@@ -302,22 +325,135 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
 
   @override
   void applyOpenPipeEffect(FStack fluid, Aabb area) {
-    final still = FluidKeys.still(fluid.fluid);
-    final lava = still == FluidKeys.lava;
-    final water = still == FluidKeys.water;
-    if (!lava && !water) return;
-    final entities = world.getEntitiesInBox(
+    // Handlers registered through the public API (`OpenPipeEffectHandler.REGISTRY`) run first.
+    final external = api_effect.OpenPipeEffects.of(
+      FluidKeys.still(fluid.fluid),
+    );
+    if (external != null) {
+      external.apply(area, fluid);
+      return;
+    }
+
+    final effect = OpenPipeEffects.ofWorld(this, fluid.fluid);
+    if (effect == null) return;
+    if (!OpenPipeEffects.shouldApply(gameTime, effect)) return;
+
+    switch (effect) {
+      case OpenPipeEffect.water:
+        // `WaterEffectHandler`: entities stop burning and open fire is doused.
+        for (final snapshot in _entitiesIn(area)) {
+          final entity = world.getEntityById(id: snapshot.id);
+          if (entity == null || entity.getFireTicks() <= 0) continue;
+          entity.setFireTicks(ticks: 0);
+        }
+        for (final pos in OpenPipeEffects.positionsIn(area)) {
+          final state = OpenPipeEffects.dousedState(this, pos);
+          if (state == null) continue;
+          final current = stateAt(pos);
+          if (current.key == 'minecraft:campfire' ||
+              current.key == 'minecraft:soul_campfire') {
+            playSound(pos, 'minecraft:entity.generic.extinguish_fire');
+          }
+          setBlock(pos, state);
+        }
+      case OpenPipeEffect.lava:
+        // `LavaEffectHandler`: everything that is not fire immune burns for 3 s.
+        for (final snapshot in _entitiesIn(area)) {
+          if (_fireImmune.contains(snapshot.entityType.wireName)) continue;
+          final entity = world.getEntityById(id: snapshot.id);
+          if (entity == null) continue;
+          entity.setFireTicks(ticks: 300);
+        }
+      case OpenPipeEffect.milk:
+        _forEachPlayerIn(area, (player) => player.clearEffects());
+      case OpenPipeEffect.potion:
+        final data = PotionFluidData.decode(fluid.data);
+        if (data == null) return;
+        final effects = PotionEffects.of(data);
+        if (effects.isEmpty) return;
+        _forEachPlayerIn(area, (player) {
+          for (final e in effects) {
+            final type = _statusEffectType(e.effect);
+            if (type == null) continue;
+            unawaited(
+              player
+                  .addEffect(
+                    effect: StatusEffectInstance(
+                      effectType: type,
+                      duration: e.duration,
+                      amplifier: e.amplifier,
+                      ambient: e.ambient,
+                      showParticles: e.visible,
+                      showIcon: true,
+                    ),
+                  )
+                  .catchError((Object _) {}),
+            );
+          }
+        });
+      case OpenPipeEffect.tea:
+        _forEachPlayerIn(area, (player) {
+          unawaited(
+            player
+                .addEffect(
+                  effect: const StatusEffectInstance(
+                    effectType: StatusEffectType.haste,
+                    duration: 21,
+                    amplifier: 0,
+                    ambient: false,
+                    showParticles: false,
+                    showIcon: false,
+                  ),
+                )
+                .catchError((Object _) {}),
+          );
+        });
+    }
+  }
+
+  /// The entities whose position is inside [area] (`getEntities(null, area)`).
+  List<EntitySnapshot> _entitiesIn(Aabb area) => [
+    for (final snapshot in world.getEntitiesInBox(
       min: (area.minX, area.minY, area.minZ),
       max: (area.maxX, area.maxY, area.maxZ),
       filter: const EntityFilterAll(),
-    );
-    for (final snapshot in entities) {
+    ))
+      if (area.contains(snapshot.position)) snapshot,
+  ];
+
+  /// Runs [action] for every player in [area].
+  void _forEachPlayerIn(Aabb area, void Function(Player player) action) {
+    final server = serverProvider?.call();
+    if (server == null) return;
+    for (final snapshot in world.getEntitiesInBox(
+      min: (area.minX, area.minY, area.minZ),
+      max: (area.maxX, area.maxY, area.maxZ),
+      filter: const EntityFilterPlayers(),
+    )) {
       if (!area.contains(snapshot.position)) continue;
-      final entity = world.getEntityById(id: snapshot.id);
-      if (entity == null) continue;
-      entity.setFireTicks(ticks: lava ? 300 : 0);
+      final player = server.getPlayerByUuid(id: snapshot.uuid);
+      if (player != null) action(player);
     }
   }
+
+  static StatusEffectType? _statusEffectType(String id) {
+    final path = id.contains(':') ? id.substring(id.indexOf(':') + 1) : id;
+    return StatusEffectType.fromWireName(path.replaceAll('_', '-'));
+  }
+
+  /// The vanilla entities of `Entity.fireImmune()`.
+  static const Set<String> _fireImmune = {
+    'blaze',
+    'magma-cube',
+    'ghast',
+    'wither',
+    'wither-skeleton',
+    'zombified-piglin',
+    'piglin',
+    'piglin-brute',
+    'strider',
+    'ender-dragon',
+  };
 
   @override
   void splash(Pos p, FStack fluid) {

@@ -39,6 +39,12 @@ class MountedContraption extends Contraption {
 
   MountedContraption([this.rotationMode = CartMovementMode.rotate]);
 
+  /// `rotationMode == ROTATION_LOCKED`: the cart keeps the contraption's orientation fixed.
+  bool get rotationLocked => rotationMode == CartMovementMode.rotationLocked;
+
+  /// `rotationMode == ROTATE_PAUSED`: the actors do not tick while the contraption rotates.
+  bool get rotationPaused => rotationMode == CartMovementMode.rotatePaused;
+
   @override
   String get typeId => 'create:mounted';
 

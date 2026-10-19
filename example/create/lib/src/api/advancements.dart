@@ -8,6 +8,7 @@ library;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+export 'data/all_triggers.dart';
 export '../content/advancement_ids.dart';
 
 /// Awards Create's advancements.

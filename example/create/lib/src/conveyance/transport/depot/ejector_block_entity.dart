@@ -1,8 +1,8 @@
 // `EjectorBlockEntity` (server behaviour): the weighted ejector. It charges with items (a depot
 // behaviour), winds up with the kinetic speed and launches its contents along the `EntityLauncher`
-// trajectory to the target (a direct belt input, or an item entity). The entity launch loop itself
-// is client driven (the client launches the local player and reports it back); the server ports the
-// handlers of those reports: `deployElytra` (the player glides) and the `EJECTOR_MAXED` award.
+// trajectory to the target (a direct belt input, or an item entity). Non-player entities standing
+// on it are launched as well; players are launched by their own client, which reports the result
+// back through `deployElytra` and the `EJECTOR_MAXED` award.
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -21,7 +21,9 @@ import '../../../api/kinetics.dart'
 import '../../../common/direction.dart';
 import '../../../common/host_bridge.dart';
 import '../../../common/pos.dart';
+import '../../../processing/transport/transport_behaviours.dart' as pt;
 import '../../behaviours/belt_interfaces.dart';
+import '../../behaviours/processing_bridge.dart';
 import '../../belt/transported_item.dart';
 import '../../items/item_codec.dart';
 import '../../items/item_data.dart';
@@ -75,6 +77,12 @@ class EjectorBlockEntity extends KineticBlockEntity {
   }
 
   ConveyanceRuntime get rt => ConveyanceRuntime.i;
+
+  @override
+  void initialize() {
+    super.initialize();
+    rt.fire('Ejector signal', updateSignal);
+  }
 
   BState get state => rt.stateAt(worldId, this.pos.toPos());
 
@@ -138,12 +146,14 @@ class EjectorBlockEntity extends KineticBlockEntity {
   /// `activate`.
   void activate() {
     _launch = true;
+    nudgeEntities();
   }
 
   /// `activateDeferred`.
   Future<void> activateDeferred() async {
     if (_state != _EjectorState.charged) return;
     await launchItems();
+    await launchEntities();
     _state = _EjectorState.launching;
     lidProgress = 1;
     final world = this.world;
@@ -155,6 +165,50 @@ class EjectorBlockEntity extends KineticBlockEntity {
         volume: .35,
         pitch: 1,
       );
+    }
+  }
+
+  /// The box `new AABB(worldPosition).inflate(-1/16, 0, -1/16)`.
+  List<EntitySnapshot> _entitiesOnEjector(World world) =>
+      world.getEntitiesInBox(
+        min: (this.pos.x + 1 / 16, this.pos.y.toDouble(), this.pos.z + 1 / 16),
+        max: (
+          this.pos.x + 1 - 1 / 16,
+          this.pos.y + 1.0,
+          this.pos.z + 1 - 1 / 16,
+        ),
+        filter: const EntityFilterAll(),
+      );
+
+  /// `nudgeEntities`: living entities on the ejector are lifted out of its lid.
+  void nudgeEntities() {
+    final world = this.world;
+    if (world == null) return;
+    for (final snapshot in _entitiesOnEjector(world)) {
+      if (snapshot.entityType == EntityType.player) continue;
+      final entity = world.getEntityById(id: snapshot.id);
+      entity?.moveBy((0, .125, 0));
+    }
+  }
+
+  /// The server half of Java's `activateDeferred`: every non-player, non-item entity standing on
+  /// the ejector is moved to its lid and given the launch velocity. Packages are left alone, like
+  /// Java's `PackageEntity` exception.
+  Future<void> launchEntities() async {
+    final world = this.world;
+    if (world == null) return;
+    final facing = getFacing();
+    for (final snapshot in _entitiesOnEjector(world)) {
+      if (snapshot.entityType == EntityType.item ||
+          snapshot.entityType == EntityType.player)
+        continue;
+      final entity = world.getEntityById(id: snapshot.id);
+      if (entity == null || entity.pluginTypeKey == 'create:package') continue;
+      await entity.teleport(
+        pos: (this.pos.x + .5, this.pos.y + 1.0, this.pos.z + .5),
+        worldRef: world,
+      );
+      entity.setVelocity(velocity: launcher.motionFor(facing));
     }
   }
 
@@ -270,9 +324,13 @@ class EjectorBlockEntity extends KineticBlockEntity {
       .aboveBy(launcher.verticalDistance)
       .relative(getFacing(), math.max(1, launcher.horizontalDistance));
 
+  /// `getTargetOpenInv`: the direct belt input of the block the ejector aims at. Machines that
+  /// expose the behaviour rather than implementing [DirectBeltInput] are adapted like funnels do.
   DirectBeltInput? getTargetDirectInput() {
     final be = rt.beAt(worldId, getTargetPos());
-    return be is DirectBeltInput ? be as DirectBeltInput : null;
+    if (be is DirectBeltInput) return be as DirectBeltInput;
+    final behaviour = be?.getBehaviour<pt.DirectBeltInputBehaviour>();
+    return behaviour == null ? null : DirectInputAdapter(behaviour);
   }
 
   Future<void> placeItemAtTarget(double maxTime, _Launched entry) async {

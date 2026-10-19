@@ -14,14 +14,18 @@ import '../common/pos.dart';
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
 import '../core/registry.dart';
+import '../decoration/bracketed_behaviour.dart';
 import '../kinetics/behavior_builder.dart';
 import '../kinetics/block_defs.dart';
 import '../kinetics/geometry.dart' show Dir, KAxis, KState;
 import '../processing/common/stack.dart' show PStack;
 import '../processing/host/stack_host.dart' show HostStacks;
+import '../processing/transport/transport_behaviours.dart'
+    show DirectBeltInputBehaviour, TransportedItemStack;
 import '../manifest/manifest.dart';
 import '../manifest/registries.g.dart' show kFluids;
 import 'drain.dart';
+import 'fluid_helper.dart';
 import 'fluid_host.dart';
 import 'fluid_propagator.dart';
 import 'fluid_runtime.dart';
@@ -170,8 +174,13 @@ BlockBehavior _pipeBehavior(
     },
     onScheduledTick: (server, e) =>
         propagate(e.targetWorld, posOf(e.pos), stateOfEvent(e.stateIndex)),
-    onStateReplaced: (server, e) =>
-        propagate(e.targetWorld, posOf(e.pos), stateOfEvent(e.oldStateIndex)),
+    onStateReplaced: (server, e) async {
+      final world = e.targetWorld;
+      final p = posOf(e.pos);
+      propagate(world, p, stateOfEvent(e.oldStateIndex));
+      // `FluidPipeBlock.affectNeighborsAfterRemoval`: the bracket comes back.
+      await _dropBracket(world, e.pos);
+    },
     onUse: smart
         ? (server, e) async {
             final be = FluidsRuntime.instance.store.at(
@@ -190,14 +199,41 @@ BlockBehavior _pipeBehavior(
             if (bucket != null) {
               pipe.filterFluid = bucket.fluid;
             } else {
-              pipe.filterFluid = null;
+              // `FilteringBehaviour.forFluids`: any item with a fluid handler filters that fluid.
+              final handler = e.item.fluidHandler;
+              final drained = handler == null
+                  ? null
+                  : await handler.drain(maxAmount: 1000, simulate: true);
+              pipe.filterFluid = drained == null || drained.amount <= 0
+                  ? null
+                  : fromHostFluid(drained).fluid;
             }
             pipe.sendData();
             propagate(e.targetWorld, posOf(e.pos), stateOfEvent(e.stateIndex));
             return BlockUseResult.success;
           }
         : null,
+    // `EncasedPipeBlock` / `GlassFluidPipeBlock.getCloneItemStack`: the plain pipe.
+    onCloneItem: encased || straight
+        ? (server, e) =>
+              ItemStack.create(registryKey: 'create:fluid_pipe', count: 1)
+        : null,
   );
+}
+
+/// `FluidPipeBlock.removeBracket`: drops the bracket item of a pipe that is removed.
+Future<void> _dropBracket(World world, BlockPos pos) async {
+  final runtime = FluidsRuntime.instance;
+  final worldId = runtime.worlds.touch(world);
+  final bracket = runtime.store
+      .at(worldId, pos)
+      ?.getBehaviour<BracketedBlockEntityBehaviour>();
+  final removed = await bracket?.removeBracket(inOnReplacedContext: true);
+  if (removed == null) return;
+  final stack = await HostStacks.write(PStack(removed.key, 1));
+  if (stack != null) {
+    await world.dropItem((pos.x + .5, pos.y + .5, pos.z + .5), stack);
+  }
 }
 
 // -- Tanks -----------------------------------------------------------------------------------
@@ -221,18 +257,18 @@ CreateBlock _tankBlock(
         await _tryTankMultiPlace(server, e, block, blockEntityType);
       },
       onNeighborUpdate: (server, e) {
-        // `updateShape`: a change below refreshes the boiler temperature.
+        // `updateShape`: a change below refreshes the boiler temperature; a steam engine or
+        // whistle next to the tank changes the boiler itself.
         final world = e.targetWorld;
         final p = posOf(e.pos);
-        final below = p.below;
-        final stateBelow = fluidWorldOf(world).stateAt(below);
-        if (!PipeBlocks.isTank(stateBelow)) {
-          final be = FluidsRuntime.instance.store.at(
-            FluidsRuntime.instance.worlds.touch(world),
-            e.pos,
-          );
-          if (be is FluidTankBlockEntity) be.updateBoilerTemperature();
-        }
+        final stateBelow = fluidWorldOf(world).stateAt(p.below);
+        final be = FluidsRuntime.instance.store.at(
+          FluidsRuntime.instance.worlds.touch(world),
+          e.pos,
+        );
+        if (be is! FluidTankBlockEntity) return;
+        if (!PipeBlocks.isTank(stateBelow)) be.updateBoilerTemperature();
+        be.controllerBe?.updateBoilerState();
       },
       onStateReplaced: (server, e) {
         final be = FluidsRuntime.instance.store.at(
@@ -263,65 +299,113 @@ int fractionToRedstoneLevel(double fraction) {
   return math.min(15, (fraction * 14).floor() + 1);
 }
 
-/// `FluidTankBlock.useItemOn`: moves fluid between the held item and the tank.
+/// `FluidTankBlock.useItemOn`: moves fluid between the held item and the tank. Like Java, a
+/// regular tank only accepts a hand interaction from a creative player; a creative tank works for
+/// everyone and copies the fluid it is given.
 Future<BlockUseResult> _tankUse(
   bool creative,
   CustomBlockUseEventData e,
 ) async {
   if (!e.withItem) return BlockUseResult.tryEmptyHand;
-  final worldId = FluidsRuntime.instance.worlds.touch(e.targetWorld);
-  final be = FluidsRuntime.instance.store.at(worldId, e.pos);
+  final player = e.player;
+  if (!player.isCreative && !creative) return BlockUseResult.tryEmptyHand;
+
+  final runtime = FluidsRuntime.instance;
+  final worldId = runtime.worlds.touch(e.targetWorld);
+  final be = runtime.store.at(worldId, e.pos);
   if (be is! FluidTankBlockEntity) return BlockUseResult.pass;
   final controller = be.controllerBe;
   final storage = controller?.fluidHandler ?? be.fluidHandler;
   if (storage == null) return BlockUseResult.tryEmptyHand;
 
-  final inventory = e.player.getInventory();
+  final inventory = player.getInventory();
   final items = inventory.asInventory();
   final slot = inventory.getSelectedSlot();
   final stack = items.getItem(slot: slot);
   if (stack == null) return BlockUseResult.tryEmptyHand;
-  final handler = stack.fluidHandler;
-  if (handler == null) return BlockUseResult.tryEmptyHand;
 
-  // Item -> tank.
-  final drained = await handler.drain(maxAmount: 1000, simulate: true);
-  if (drained != null && drained.amount > 0) {
-    final accepted = storage.fill(fromHostFluid(drained), simulate: true);
-    if (accepted > 0) {
-      final actual = await handler.drain(maxAmount: accepted, simulate: false);
-      if (actual != null) {
-        if (creative && be is CreativeFluidTankBlockEntity) {
-          be.setContainedFluid(fromHostFluid(actual));
-        } else {
-          storage.fill(fromHostFluid(actual), simulate: false);
-        }
-        await items.setItem(slot: slot, item: stack);
-        controller?.sendDataImmediately();
-        return BlockUseResult.success;
+  final itemKey = await stack.getRegistryKey();
+  final count = await stack.getCount();
+  if (count <= 0) return BlockUseResult.tryEmptyHand;
+  final item = FluidItemSpec(itemKey, count);
+  final emptying = GenericItemEmptying(runtime.rules, runtime.recipes);
+  final filling = GenericItemFilling(runtime.rules);
+  final previous = storage.fluidInTank(0);
+
+  var exchanged = false;
+  var toItem = false;
+
+  // `FluidHelper.tryEmptyItemIntoBE`.
+  if (emptying.canItemBeEmptied(item)) {
+    final (fluid, _, _) = emptying.emptyItem(item, simulate: true);
+    if (fluid.isNotEmpty &&
+        storage.fill(fluid, simulate: true) == fluid.amount) {
+      final (emptied, _, _) = emptying.emptyItem(item, simulate: false);
+      storage.fill(emptied, simulate: false);
+      if (creative &&
+          be is CreativeFluidTankBlockEntity &&
+          emptied.isNotEmpty) {
+        be.setContainedFluid(emptied);
       }
+      exchanged = true;
     }
   }
 
-  // Tank -> item.
-  final contained = storage.fluidInTank(0);
-  if (contained.isNotEmpty) {
-    final fits = await handler.fill(
-      stack: toHostFluid(contained),
-      simulate: true,
-    );
-    if (fits > 0) {
-      if (creative && be is CreativeFluidTankBlockEntity)
+  // `FluidHelper.tryFillItemFromBE`.
+  if (!exchanged && filling.canItemBeFilled(item)) {
+    for (var i = 0; i < storage.tanks; i++) {
+      final fluid = storage.fluidInTank(i);
+      if (fluid.isEmpty) continue;
+      final required = filling.getRequiredAmountForItem(
+        item.withCount(1),
+        fluid,
+      );
+      if (required == -1 || required > fluid.amount) continue;
+      final (result, _, _) = filling.fillItem(required, item, fluid);
+      if (result.isEmpty) continue;
+      storage.drainFluid(fluid.withAmount(required), simulate: false);
+      // A creative player keeps the fluid; a creative tank gives the item back to everyone.
+      if (!player.isCreative) {
+        final out = await HostStacks.write(PStack(result.key, result.count));
+        if (out != null) await items.give(out);
+      }
+      if (creative && be is CreativeFluidTankBlockEntity) {
         be.setContainedFluid(FStack.empty);
-      final taken = storage.drain(fits, simulate: false);
-      await handler.fill(stack: toHostFluid(taken), simulate: false);
-      await items.setItem(slot: slot, item: stack);
-      controller?.sendDataImmediately();
+      }
+      exchanged = true;
+      toItem = true;
+      break;
+    }
+  }
+
+  if (!exchanged) {
+    // A recognised item is consumed without an exchange (`InteractionResult.SUCCESS`).
+    if (emptying.canItemBeEmptied(item) || filling.canItemBeFilled(item)) {
       return BlockUseResult.success;
     }
+    return BlockUseResult.tryEmptyHand;
   }
 
-  return BlockUseResult.tryEmptyHand;
+  final fluidInTank = storage.fluidInTank(0);
+  final sound = toItem
+      ? FluidHelper.getFillSound(previous)
+      : FluidHelper.getEmptySound(fluidInTank);
+  final capacity = FluidTankBlockEntity.capacityMultiplier * 16;
+  var pitch = capacity == 0
+      ? 0.5
+      : (1 - fluidInTank.amount / capacity).clamp(0.0, 1.0);
+  pitch /= 1.5;
+  pitch += .5;
+  pitch += (runtime.random.nextDouble() - .5) / 4;
+  runtime
+      .levelOf(worldId)
+      ?.playSound((e.pos.x, e.pos.y, e.pos.z), sound, volume: .5, pitch: pitch);
+
+  if (!fluidInTank.isSameFluid(previous)) {
+    controller?.sendDataImmediately();
+    controller?.markDirty();
+  }
+  return BlockUseResult.success;
 }
 
 /// `FluidTankItem.tryMultiPlace`: placing a tank on the top or bottom of a wider
@@ -446,6 +530,10 @@ CreateBlock _drainBlock() {
     behavior: BlockBehavior(
       onComparatorOutput: (server, e) => _tankLevelOf(e),
       onUse: (server, e) => _drainUse(e),
+      onLandedUpon: (server, e) async {
+        await _drainLanded(e);
+        return e.damageMultiplier;
+      },
     ),
   );
   return block;
@@ -477,6 +565,12 @@ Future<BlockUseResult> _drainUse(CustomBlockUseEventData e) async {
     final stack = items.getItem(slot: slot);
     if (stack != null) {
       final key = await stack.getRegistryKey();
+      // `ItemDrainBlock.useItemOn`: a block item without a fluid handler is left to the
+      // vanilla placement, so the drain does not swallow it.
+      if (BlockRegistry.resolveState(key) != null &&
+          stack.fluidHandler == null) {
+        return BlockUseResult.tryEmptyHand;
+      }
       final count = await stack.getCount();
       final item = FluidItemSpec(key, count);
       final emptying = GenericItemEmptying(
@@ -515,9 +609,53 @@ Future<BlockUseResult> _drainUse(CustomBlockUseEventData e) async {
     if (stack != null) await e.player.getInventory().asInventory().give(stack);
     be.heldItem = null;
     be.sendData();
-    return BlockUseResult.success;
   }
-  return BlockUseResult.tryEmptyHand;
+  // `ItemDrainBlock.useItemOn` consumes a held-item click; the empty hand goes on to
+  // vanilla (`useWithoutItem` passes).
+  return e.withItem ? BlockUseResult.success : BlockUseResult.tryEmptyHand;
+}
+
+/// `ItemDrainBlock.fallOn`: a dropped item landing on the drain is handed to its belt input.
+Future<void> _drainLanded(CustomBlockLandedEventData e) async {
+  final world = e.targetWorld;
+  final entity = world.getEntityById(id: e.entityId);
+  if (entity == null) return;
+  final item = entity.asItem();
+  if (item == null) return;
+
+  final p = entity.getPosition();
+  final blockPos = BlockPos(x: p.$1.floor(), y: p.$2.floor(), z: p.$3.floor());
+  final be = FluidsRuntime.instance.store.at(
+    FluidsRuntime.instance.worlds.touch(world),
+    blockPos,
+  );
+  final input = be?.getBehaviour<DirectBeltInputBehaviour>();
+  if (input == null) return;
+
+  final velocity = entity.getVelocity();
+  final length = math.sqrt(
+    velocity.$1 * velocity.$1 + velocity.$3 * velocity.$3,
+  );
+  if (length < 1e-4) return;
+  final nearest = Direction.nearest(
+    velocity.$1 / length,
+    0,
+    velocity.$3 / length,
+  );
+
+  final stack = await HostStacks.read(item.getStack());
+  if (stack.isEmpty) return;
+  final remainder = input.handleInsertion(
+    TransportedItemStack(stack),
+    nearest.serializedName,
+    false,
+  );
+  if (remainder.isEmpty) {
+    item.discard();
+  } else if (remainder.count != stack.count) {
+    final out = await HostStacks.write(remainder);
+    if (out != null) await item.setStack(stack: out);
+  }
 }
 
 // -- Block entity types ----------------------------------------------------------------------

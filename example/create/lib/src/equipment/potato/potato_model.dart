@@ -30,10 +30,11 @@ sealed class PotatoEntityHitAction {
         return FoodEffectsAction(
           effects: [
             for (final e in (food['effects'] as List? ?? const []))
-              FoodEffect(
-                effect: ((e as Map)['effect'] as Map).cast<String, Object?>(),
-                probability: ((e['probability'] as num?) ?? 1).toDouble(),
-              ),
+              if (e is Map && e['effect'] is Map)
+                FoodEffect(
+                  effect: (e['effect'] as Map).cast<String, Object?>(),
+                  probability: ((e['probability'] as num?) ?? 1).toDouble(),
+                ),
           ],
           recoverable: json['recoverable'] as bool,
         );

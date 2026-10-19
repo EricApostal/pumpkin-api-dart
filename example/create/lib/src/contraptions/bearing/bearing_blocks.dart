@@ -28,6 +28,7 @@ List<CreateBlock> buildBearingBlocks() => [
   manifestBlock(
     'mechanical_bearing',
     placement: const [PlacementRule.clickedFace('facing')],
+    behavior: bearingEmptyHandBehavior(mechanicalBearing),
   ),
   manifestBlock(
     'windmill_bearing',
@@ -60,7 +61,7 @@ BlockBehavior bearingEmptyHandBehavior(String blockKey) => BlockBehavior(
       }
       return BlockUseResult.success;
     }
-    final be = runtime.store.typed<WindmillBearingBlockEntity>(worldId, pos);
+    final be = runtime.store.typed<MechanicalBearingBlockEntity>(worldId, pos);
     if (be == null) return BlockUseResult.pass;
     if (be.running) {
       be.disassemble();

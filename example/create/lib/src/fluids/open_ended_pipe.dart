@@ -2,6 +2,7 @@
 // them out of it, and applies the effects of the spilled fluid to the entities below. It acts as
 // a tank of 1000 mB for the pipe network. Create 26.x does this inside a transaction; without
 // transactions the world changes are applied when the call is not a simulation.
+import '../api/effect/open_pipe_effect_handler.dart' as api_effect;
 import '../common/bounds.dart';
 import '../common/data.dart';
 import '../common/direction.dart';
@@ -14,6 +15,7 @@ import 'fluid_stack.dart';
 import 'fluid_storage.dart';
 import 'fluid_world.dart';
 import 'nbt_util.dart';
+import 'open_pipe_effects.dart';
 import 'vanilla_fluid_targets.dart';
 
 class OpenEndedPipe extends FlowSource {
@@ -24,7 +26,10 @@ class OpenEndedPipe extends FlowSource {
   late final OpenEndFluidHandler fluidHandler;
   bool wasPulling = false;
 
-  OpenEndedPipe(BlockFace face) : pos = face.pos, outputPos = face.connectedPos, super(face) {
+  OpenEndedPipe(BlockFace face)
+    : pos = face.pos,
+      outputPos = face.connectedPos,
+      super(face) {
     var box = Aabb.ofBlock(outputPos).expandTowards(0, -1, 0);
     if (face.face == Direction.down) box = box.expandTowards(0, -1, 0);
     aoe = box;
@@ -50,14 +55,24 @@ class OpenEndedPipe extends FlowSource {
   NbtValue serializeNbt() => NbtValue.compound({
     'Fluid': FluidNbt.write(fluidHandler.fluid),
     'Pulling': NbtValue.byte(wasPulling ? 1 : 0),
-    'Location': NbtValue.compound({'pos': posToNbt(location.pos), 'face': NbtValue.string(location.face.serializedName)}),
+    'Location': NbtValue.compound({
+      'pos': posToNbt(location.pos),
+      'direction': NbtValue.string(location.face.serializedName),
+    }),
   });
 
-  static OpenEndedPipe fromNbt(Map<String, NbtValue> compound, Pos blockEntityPos, Direction fallbackSide) {
+  static OpenEndedPipe fromNbt(
+    Map<String, NbtValue> compound,
+    Pos blockEntityPos,
+    Direction fallbackSide,
+  ) {
     var face = fallbackSide;
     final loc = compound.readCompound('Location');
     if (loc != null) {
-      final name = loc.readString('face') ?? loc.readString('Face');
+      final name =
+          loc.readString('direction') ??
+          loc.readString('face') ??
+          loc.readString('Face');
       if (name != null) {
         face = Direction.values.firstWhere(
           (d) => d.serializedName == name.toLowerCase(),
@@ -81,9 +96,17 @@ class OpenEndedPipe extends FlowSource {
     final fluidState = world.fluidAt(outputPos);
     final waterlog = state.has('waterlogged');
 
-    final drainBlock = VanillaFluidTargets.drainBlock(world, outputPos, state, simulate: simulate);
+    final drainBlock = VanillaFluidTargets.drainBlock(
+      world,
+      outputPos,
+      state,
+      simulate: simulate,
+    );
     if (drainBlock.isNotEmpty) {
-      if (!simulate && state.has('honey_level') && drainBlock.fluid == FluidKeys.honey) world.award(pos, 'honey_drain');
+      if (!simulate &&
+          state.has('honey_level') &&
+          drainBlock.fluid == FluidKeys.honey)
+        world.award(pos, 'honey_drain');
       return drainBlock;
     }
 
@@ -118,8 +141,15 @@ class OpenEndedPipe extends FlowSource {
     if (fluid.isEmpty) return false;
     if (!FluidHelper.hasBlockState(fluid.fluid)) return true;
 
-    if (!fluidState.isEmpty && FluidHelper.convertToStill(fluidState.fluid) != FluidHelper.convertToStill(fluid.fluid)) {
-      FluidReactions.handlePipeSpillCollision(world, outputPos, fluid.fluid, fluidState);
+    if (!fluidState.isEmpty &&
+        FluidHelper.convertToStill(fluidState.fluid) !=
+            FluidHelper.convertToStill(fluid.fluid)) {
+      FluidReactions.handlePipeSpillCollision(
+        world,
+        outputPos,
+        fluid.fluid,
+        fluidState,
+      );
       return false;
     }
 
@@ -131,7 +161,12 @@ class OpenEndedPipe extends FlowSource {
 
     if (world.waterEvaporates && FluidHelper.isWater(fluid.fluid)) {
       final r = world.nextDouble() - world.nextDouble();
-      world.playSound(outputPos, 'minecraft:block.fire.extinguish', volume: 0.5, pitch: 2.6 + r * 0.8);
+      world.playSound(
+        outputPos,
+        'minecraft:block.fire.extinguish',
+        volume: 0.5,
+        pitch: 2.6 + r * 0.8,
+      );
       return true;
     }
 
@@ -162,14 +197,12 @@ class OpenEndFluidHandler extends FluidTank {
 
   OpenEndFluidHandler(this._pipe) : super(1000);
 
-  /// Effects of fluids by still fluid key (`OpenPipeEffectHandler.REGISTRY`): only the key is
-  /// needed here, the application is the world's (`FluidWorld.applyOpenPipeEffect`).
-  static final Set<String> effectFluids = {FluidKeys.water, FluidKeys.lava, FluidKeys.milk, FluidKeys.potion, FluidKeys.tea};
-
-  /// Registers a fluid that has an open pipe effect (see `OpenPipeEffects`).
-  static void registerEffectFluid(String fluid) => effectFluids.add(FluidKeys.still(fluid));
-
-  bool _hasEffect(String fluid) => effectFluids.contains(FluidKeys.still(fluid));
+  /// Effects of fluids are looked up in [OpenPipeEffects] (`OpenPipeEffectHandler.REGISTRY`),
+  /// including handlers registered through the public API; the application itself is the
+  /// world's (`FluidWorld.applyOpenPipeEffect`).
+  bool _hasEffect(FluidWorld world, String fluid) =>
+      api_effect.OpenPipeEffects.of(FluidKeys.still(fluid)) != null ||
+      OpenPipeEffects.ofWorld(world, fluid) != null;
 
   @override
   int fill(FStack resource, {required bool simulate}) {
@@ -182,7 +215,11 @@ class OpenEndFluidHandler extends FluidTank {
     if (!_pipe.provideFluidToSpace(resource, simulate: true)) return 0;
     if (simulate) {
       final replaced = fluid.isNotEmpty && !fluid.isSameFluid(resource);
-      final toFill = _hasEffect(resource.fluid) && !FluidHelper.hasBlockState(fluid.fluid) ? 1 : resource.amount;
+      final toFill =
+          _hasEffect(world, resource.fluid) &&
+              !FluidHelper.hasBlockState(fluid.fluid)
+          ? 1
+          : resource.amount;
       final room = capacity - (replaced ? 0 : fluidAmount);
       final f = toFill < room ? toFill : room;
       return !isValidStack(resource) || f < 0 ? 0 : f;
@@ -191,23 +228,27 @@ class OpenEndFluidHandler extends FluidTank {
     final containedFluidStack = fluid;
     final hasBlockState = FluidHelper.hasBlockState(containedFluidStack.fluid);
     var containedWasReplaced = false;
-    if (containedFluidStack.isNotEmpty && !containedFluidStack.isSameFluid(resource)) {
+    if (containedFluidStack.isNotEmpty &&
+        !containedFluidStack.isSameFluid(resource)) {
       setFluid(FStack.empty);
       containedWasReplaced = true;
     }
 
     if (_pipe.wasPulling) _pipe.wasPulling = false;
 
-    final effect = _hasEffect(resource.fluid);
+    final effect = _hasEffect(world, resource.fluid);
     var toFill = resource.amount;
     if (effect && !hasBlockState) toFill = 1;
 
     final current = fluid;
-    var filled = toFill < capacity - current.amount ? toFill : capacity - current.amount;
+    var filled = toFill < capacity - current.amount
+        ? toFill
+        : capacity - current.amount;
     if (!isValidStack(resource) || filled < 0) filled = 0;
     if (filled > 0) setFluid(resource.withAmount(current.amount + filled));
 
-    if (effect) world.applyOpenPipeEffect(resource.withAmount(toFill), _pipe.aoe);
+    if (effect)
+      world.applyOpenPipeEffect(resource.withAmount(toFill), _pipe.aoe);
 
     if (fluidAmount == 1000 || !hasBlockState) {
       final FStack toPlace;
@@ -233,7 +274,8 @@ class OpenEndFluidHandler extends FluidTank {
   }
 
   @override
-  FStack drain(int maxDrain, {required bool simulate}) => _drainInner(maxDrain, null, simulate);
+  FStack drain(int maxDrain, {required bool simulate}) =>
+      _drainInner(maxDrain, null, simulate);
 
   FStack _drainInner(int amountIn, FStack? filter, bool simulate) {
     final world = _pipe.world;
@@ -249,15 +291,24 @@ class OpenEndFluidHandler extends FluidTank {
 
     final drainedFromWorld = _pipe.removeFluidFromSpace(simulate: true);
     if (drainedFromWorld.isEmpty) return FStack.empty;
-    if (filter != null && !drainedFromWorld.isSameFluid(filter.withAmount(drainedFromWorld.amount))) return FStack.empty;
+    if (filter != null &&
+        !drainedFromWorld.isSameFluid(
+          filter.withAmount(drainedFromWorld.amount),
+        ))
+      return FStack.empty;
 
     final remainder = drainedFromWorld.amount - amount;
-    final result = drainedFromWorld.withAmount(amount < drainedFromWorld.amount ? amount : drainedFromWorld.amount);
+    final result = drainedFromWorld.withAmount(
+      amount < drainedFromWorld.amount ? amount : drainedFromWorld.amount,
+    );
     if (simulate) return result;
 
     if (remainder > 0) {
-      if (fluid.isNotEmpty && !fluid.isSameFluid(drainedFromWorld)) setFluid(FStack.empty);
-      final newAmount = capacity < fluidAmount + remainder ? capacity : fluidAmount + remainder;
+      if (fluid.isNotEmpty && !fluid.isSameFluid(drainedFromWorld))
+        setFluid(FStack.empty);
+      final newAmount = capacity < fluidAmount + remainder
+          ? capacity
+          : fluidAmount + remainder;
       setFluid(drainedFromWorld.withAmount(newAmount));
     }
     _pipe.removeFluidFromSpace(simulate: false);
@@ -267,7 +318,9 @@ class OpenEndFluidHandler extends FluidTank {
   FStack _drainFromTank(int amount, FStack? filter, bool simulate) {
     final contained = fluid;
     if (contained.isEmpty) return FStack.empty;
-    if (filter != null && !contained.isSameFluid(filter.withAmount(contained.amount))) return FStack.empty;
+    if (filter != null &&
+        !contained.isSameFluid(filter.withAmount(contained.amount)))
+      return FStack.empty;
     final drained = amount < contained.amount ? amount : contained.amount;
     final result = contained.withAmount(drained);
     if (!simulate) {

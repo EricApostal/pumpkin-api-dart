@@ -113,7 +113,11 @@ abstract interface class KineticNode {
   double calculateStressApplied();
   double calculateAddedStressCapacity();
 
-  void updateFromNetwork(double maxStress, double currentStress, int networkSize);
+  void updateFromNetwork(
+    double maxStress,
+    double currentStress,
+    int networkSize,
+  );
   void onSpeedChanged(double previousSpeed);
   void setSource(KPos source);
   void removeSource();
@@ -133,7 +137,11 @@ abstract interface class KineticNode {
   );
 
   /// `addPropagationLocations`.
-  List<KPos> addPropagationLocations(KineticBlockDef block, KState state, List<KPos> neighbours);
+  List<KPos> addPropagationLocations(
+    KineticBlockDef block,
+    KState state,
+    List<KPos> neighbours,
+  );
 
   /// `isCustomConnection`.
   bool isCustomConnection(KineticNode other, KState state, KState otherState);
@@ -272,6 +280,8 @@ mixin KineticNodeMixin implements KineticNode {
       final src = source!;
       if (!level.isLoaded(src)) return;
       final sourceBE = level.nodeAt(src);
+      // Java compares the protected `speed` field (the theoretical speed), not
+      // `getSpeed()`: an overstressed source still drives its network.
       if (sourceBE == null || sourceBE.theoreticalSpeed == 0) {
         removeSource();
         detachKinetics();
@@ -286,7 +296,11 @@ mixin KineticNodeMixin implements KineticNode {
   }
 
   @override
-  void updateFromNetwork(double maxStress, double currentStress, int networkSize) {
+  void updateFromNetwork(
+    double maxStress,
+    double currentStress,
+    int networkSize,
+  ) {
     networkDirty = false;
     capacity = maxStress;
     stress = currentStress;
@@ -374,7 +388,8 @@ mixin KineticNodeMixin implements KineticNode {
   bool get isSpeedRequirementFulfilled {
     final def = level.blocks.defFor(blockState);
     if (def == null) return true;
-    return speed.abs() >= def.minimumRequiredSpeedLevel.speedValue(level.settings);
+    return speed.abs() >=
+        def.minimumRequiredSpeedLevel.speedValue(level.settings);
   }
 
   /// `clearKineticInformation()`.
@@ -406,7 +421,11 @@ mixin KineticNodeMixin implements KineticNode {
   ) => 0;
 
   @override
-  List<KPos> addPropagationLocations(KineticBlockDef block, KState state, List<KPos> neighbours) {
+  List<KPos> addPropagationLocations(
+    KineticBlockDef block,
+    KState state,
+    List<KPos> neighbours,
+  ) {
     if (!canPropagateDiagonally(block, state)) return neighbours;
     final axis = block.rotationAxis(state);
     for (var z = -1; z <= 1; z++) {
@@ -422,9 +441,11 @@ mixin KineticNodeMixin implements KineticNode {
   }
 
   @override
-  bool isCustomConnection(KineticNode other, KState state, KState otherState) => false;
+  bool isCustomConnection(KineticNode other, KState state, KState otherState) =>
+      false;
 
-  bool canPropagateDiagonally(KineticBlockDef block, KState state) => block.isSmallCog;
+  bool canPropagateDiagonally(KineticBlockDef block, KState state) =>
+      block.isSmallCog;
 
   @override
   double shaftHalvesModifier(Dir direction) => 1;

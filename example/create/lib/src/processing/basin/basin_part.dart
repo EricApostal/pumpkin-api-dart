@@ -3,6 +3,7 @@
 // it through `BasinOperatingBlockEntity`.
 import '../../api/wrenchable.dart';
 import '../../common/direction.dart';
+import '../../contraptions/core/movement.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
@@ -10,6 +11,7 @@ import '../processing_part.dart';
 import '../processing_runtime.dart';
 import 'basin_block.dart';
 import 'basin_block_entity.dart';
+import 'basin_movement.dart';
 
 /// The basin.
 final class BasinPart extends ProcessingPart {
@@ -26,6 +28,11 @@ final class BasinPart extends ProcessingPart {
         create: (worldId, pos) => BasinBlockEntity(worldId, pos),
       ),
     );
+  }
+
+  @override
+  void onLoad(CreateContext ctx, ProcessingRuntime rt) {
+    MovementBehaviours.register(BasinBlock.key, const BasinMovementBehaviour());
   }
 
   @override

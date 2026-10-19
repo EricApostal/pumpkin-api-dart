@@ -2,10 +2,12 @@
 // contraption controls, and the click that toggles a whole actor type.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../api/payloads.dart' show ItemStackData;
 import '../../../common/common.dart';
 import '../../core/contraption.dart';
 import '../../core/movement.dart';
 import '../../core/nbt_map.dart';
+import '../../elevator/elevator_contraption.dart';
 import '../../storage/stacks.dart';
 import '../actor_runtime.dart';
 import 'contraption_controls_block.dart';
@@ -17,6 +19,13 @@ final class ContraptionControlsMovement extends MovementBehaviour {
   /// The controls themselves cannot be disabled by other controls.
   @override
   StoredStack? canBeDisabledVia(MovementContext context) => null;
+
+  /// `startMoving`: an elevator controls block never keeps a filter.
+  @override
+  void startMoving(MovementContext context) {
+    if (context.contraption is ElevatorContraption)
+      context.blockEntityData?.remove('Filter');
+  }
 
   @override
   void stopMoving(MovementContext context) {
@@ -64,6 +73,30 @@ final class ContraptionControlsMovingInteraction
     final actor = _actorAt(contraption, localPos);
     if (actor == null) return true;
 
+    // `elevatorInteraction`: the elevator selects its floor through `ElevatorTargetFloorPacket`;
+    // the server click only plays the feedback sounds.
+    if (contraption is ElevatorContraption) {
+      final position = actor.position;
+      final world = actors?.worldOf(actor);
+      if (world != null && position != null) {
+        world.playCustomSound(
+          soundName: 'create:controller_click',
+          category: SoundCategory.blocks,
+          pos: position,
+          volume: 1,
+          pitch: 1.5,
+        );
+        world.playCustomSound(
+          soundName: 'create:contraption_assemble',
+          category: SoundCategory.blocks,
+          pos: position,
+          volume: .75,
+          pitch: .8,
+        );
+      }
+      return true;
+    }
+
     final filter =
         ContraptionControlsMovement.getFilter(actor) ?? StoredStack.empty;
     var disable = true;
@@ -96,6 +129,7 @@ final class ContraptionControlsMovingInteraction
         if (ContraptionControlsMovement.isSameFilter(stack, filter)) continue;
         if (contraption.isActorTypeDisabled(stack)) continue;
         disabledActors.add(stack);
+        _sendToggle(contraption, stack, true);
       }
     }
 
@@ -104,6 +138,7 @@ final class ContraptionControlsMovingInteraction
 
     contraption.setActorsActive(filter, !disable);
     ContraptionControlsBlockEntity.sendStatus(player, filter, !disable);
+    _sendToggle(contraption, filter, disable);
 
     final position = actor.position;
     final world = actors?.worldOf(actor);
@@ -117,6 +152,31 @@ final class ContraptionControlsMovingInteraction
       );
     }
     return true;
+  }
+
+  /// `ContraptionDisableActorPacket` to the clients tracking the contraption.
+  static void _sendToggle(
+    Contraption contraption,
+    StoredStack filter,
+    bool disable,
+  ) {
+    final entity = contraption.entity;
+    if (entity == null) return;
+    final ids = actors?.itemIds;
+    var stack = ItemStackData.empty;
+    if (filter.isNotEmpty && ids != null) {
+      try {
+        stack = ItemStackData.of(filter.item, ids, count: filter.count);
+      } on ArgumentError {
+        // An item the id table does not know cannot be sent; the empty filter means "all".
+        stack = ItemStackData.empty;
+      }
+    }
+    entity.sendPayload('create:contraption_actor_toggle', {
+      'entityId': entity.entityId,
+      'filter': stack,
+      'enable': !disable,
+    });
   }
 
   /// The actor context of the clicked block.

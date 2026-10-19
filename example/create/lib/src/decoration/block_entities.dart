@@ -2,9 +2,11 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/blocks.dart';
+import '../api/contraption/transformable.dart';
 import '../common/direction.dart' as d;
 import '../common/host_bridge.dart';
 import '../common/pos.dart';
+import '../contraptions/core/nbt_map.dart';
 import '../core/block_entity.dart';
 import 'copycat.dart';
 import 'door.dart';
@@ -142,7 +144,9 @@ final class CopycatBlockEntity extends CreateBlockEntity {
           );
     if (accepted != null && material.key == accepted.key) return;
     // Panels also accept bars and trapdoors (`isAcceptedRegardless`).
-    if (candidate != null && (isBarsMaterial(candidate.defaultState) || isTrapdoorMaterial(candidate.defaultState)) &&
+    if (candidate != null &&
+        (isBarsMaterial(candidate.defaultState) ||
+            isTrapdoorMaterial(candidate.defaultState)) &&
         material.key == candidate.defaultState.key) {
       return;
     }
@@ -155,6 +159,60 @@ final class CopycatBlockEntity extends CreateBlockEntity {
     super.write(tag, clientPacket: clientPacket);
     tag.putCompound('Item', saveItemKey(_consumedItem));
     tag.putCompound('Material', _stateToNbt(_material));
+  }
+}
+
+/// Transforms the `{Name, Properties}` block state stored under [key] in [nbt] like a moved
+/// contraption does. Both `CopycatBlockEntity` and `BracketedBlockEntityBehaviour` store their
+/// state in that form.
+void _transformStateInPlace(
+  NbtMap nbt,
+  String key,
+  StructureTransform transform,
+) {
+  final compound = nbt.getCompoundOrNull(key);
+  if (compound == null) return;
+  final name = compound.getString('Name');
+  if (name.isEmpty) return;
+  final props = <String, String>{};
+  final properties = compound.getCompoundOrNull('Properties');
+  if (properties != null) {
+    for (final property in properties.keys) {
+      final value = properties.getString(property);
+      if (value.isNotEmpty) props[property] = value;
+    }
+  }
+  final transformed = transform.applyState(BState(name, props));
+  final out = NbtMap()..putString('Name', transformed.key);
+  if (transformed.props.isNotEmpty) {
+    final outProperties = NbtMap();
+    transformed.props.forEach(outProperties.putString);
+    out.putCompound('Properties', outProperties);
+  }
+  nbt.putCompound(key, out);
+}
+
+/// `CopycatBlockEntity.transform`: the material follows a contraption that rotates or mirrors it.
+void registerCopycatTransform() {
+  MovedBlockTransformerRegistries.registerBlockEntity(
+    CopycatBlockEntity.type,
+    (nbt, transform) => _transformStateInPlace(nbt, 'Material', transform),
+  );
+}
+
+/// `BracketedBlockEntityBehaviour.transformBracket`: the bracket follows a moved contraption.
+/// The type keys are the block entities that carry the behaviour (shafts/cogwheels and pipes).
+void registerBracketTransform() {
+  for (final type in const [
+    'create:simple_kinetic',
+    'create:fluid_pipe',
+    'create:encased_fluid_pipe',
+    'create:glass_fluid_pipe',
+  ]) {
+    MovedBlockTransformerRegistries.registerBlockEntity(
+      type,
+      (nbt, transform) => _transformStateInPlace(nbt, 'Bracket', transform),
+    );
   }
 }
 
@@ -216,19 +274,23 @@ Future<void> updatePlacardNeighbours(World world, Pos pos, BState state) async {
     'floor' => d.Direction.up,
     _ => state.dir('facing'),
   };
-  if (connected != null) await world.notifyNeighbors(pos.relative(connected.opposite).toBlockPos());
+  if (connected != null)
+    await world.notifyNeighbors(pos.relative(connected.opposite).toBlockPos());
 }
 
 // -- Sliding door ----------------------------------------------------------------------------
 
 /// `SlidingDoorBlockEntity`: only the lower half has one. It keeps the door's animation clock so
 /// the block model comes back once the closing animation is over.
-final class SlidingDoorBlockEntity extends CreateBlockEntity implements DoorDeferrable {
+final class SlidingDoorBlockEntity extends CreateBlockEntity
+    implements DoorDeferrable {
   static const String type = 'create:sliding_door';
 
   SlidingDoorBlockEntity(super.worldId, super.pos);
 
-  late final SlidingDoorAnimation _animation = SlidingDoorAnimation(open: _isOpen());
+  late final SlidingDoorAnimation _animation = SlidingDoorAnimation(
+    open: _isOpen(),
+  );
 
   @override
   bool get deferUpdate => _animation.deferUpdate;

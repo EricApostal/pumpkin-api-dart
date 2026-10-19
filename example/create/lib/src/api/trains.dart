@@ -21,6 +21,7 @@ import '../trains/entity/carriage_contraption.dart';
 import '../trains/entity/train_level.dart';
 import '../trains/station/global_station.dart';
 
+export 'contraption/train/train_hat_info_provider.dart';
 export '../trains/entity/carriage.dart';
 export '../trains/entity/carriage_bogey.dart';
 export '../trains/entity/carriage_contraption.dart';

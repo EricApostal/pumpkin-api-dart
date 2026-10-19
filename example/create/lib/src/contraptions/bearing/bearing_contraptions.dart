@@ -10,7 +10,6 @@ import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../core/contraption.dart';
 import '../core/level.dart';
-import '../core/movement_checks.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_info.dart';
 import '../entity/controlled_contraption_entity.dart'
@@ -29,12 +28,10 @@ class BearingContraption extends Contraption implements BearingContraptionLike {
 
   @override
   Future<bool> assemble(ContraptionLevel level, Pos pos) async {
-    // Java searches from the block in front of the bearing. The core treats [anchor] as the
-    // controller block and skips it, so the first carried block is seeded through
-    // [addToInitialFrontier] and captured after the search.
+    // Java searches from the block in front of the bearing; that block is the anchor of the
+    // structure (local position zero) and is captured by the search itself.
     final offset = pos.relative(facing);
     if (!searchMovedStructure(level, offset, null)) return false;
-    _captureFirstBlock(level, offset);
     startMoving(level);
     expandBoundsAroundAxis(facing.axis);
     if (isWindmill && sailBlocks < level.settings.minimumWindmillSails)
@@ -46,33 +43,9 @@ class BearingContraption extends Contraption implements BearingContraptionLike {
     return true;
   }
 
-  /// The core's structure search never captures its anchor (the "controller"); for a bearing the
-  /// anchor is the first block of the structure, so it is captured here.
-  void _captureFirstBlock(ContraptionLevel level, Pos anchorPos) {
-    if (blocks.containsKey(posZero)) return;
-    if (!BlockMovementChecks.isMovementNecessary(
-      level.stateAt(anchorPos),
-      level,
-      anchorPos,
-    ))
-      return;
-    addBlock(level, anchorPos, capture(level, anchorPos));
-  }
-
+  /// The bearing block itself (behind the anchor) stays in the world.
   @override
-  bool addToInitialFrontier(
-    ContraptionLevel level,
-    Pos pos,
-    Direction? forcedDirection,
-    Queue<Pos> frontier,
-  ) {
-    // [pos] is the skipped anchor; continue the search from its neighbours.
-    for (final direction in Direction.values) {
-      final next = pos.relative(direction);
-      if (!frontier.contains(next)) frontier.add(next);
-    }
-    return true;
-  }
+  bool isAnchoringBlockAt(Pos pos) => pos == anchor.relative(facing.opposite);
 
   @override
   bool canBeStabilized(Direction facing, Pos localPos) {
@@ -183,36 +156,17 @@ class ClockworkContraption extends Contraption {
   /// `assemble` for the clockwork: `searchMovedStructure(world, pos.relative(direction, offset+1))`.
   bool assembleSync(ContraptionLevel level, Pos pos) {
     final start = pos.relative(facing, offset + 1);
-    if (!searchMovedStructure(level, start, null)) return false;
-    // Same anchor limitation as the bearing: the core skips the first block.
-    if (!blocks.containsKey(posZero) &&
-        BlockMovementChecks.isMovementNecessary(
-          level.stateAt(start),
-          level,
-          start,
-        )) {
-      addBlock(level, start, capture(level, start));
-    }
-    return true;
+    return searchMovedStructure(level, start, null);
   }
 
   @override
   Future<bool> assemble(ContraptionLevel level, Pos pos) async =>
       assembleSync(level, pos);
 
+  /// The clockwork bearing block itself (behind the first arm block) stays in the world.
   @override
-  bool addToInitialFrontier(
-    ContraptionLevel level,
-    Pos pos,
-    Direction? forcedDirection,
-    Queue<Pos> frontier,
-  ) {
-    for (final direction in Direction.values) {
-      final next = pos.relative(direction);
-      if (!frontier.contains(next)) frontier.add(next);
-    }
-    return true;
-  }
+  bool isAnchoringBlockAt(Pos pos) =>
+      pos == anchor.relative(facing.opposite, offset + 1);
 
   @override
   bool moveBlock(
@@ -281,32 +235,14 @@ class StabilizedContraption extends Contraption {
   Future<bool> assemble(ContraptionLevel level, Pos pos) async {
     final offset = pos.relative(facing);
     if (!searchMovedStructure(level, offset, null)) return false;
-    if (!blocks.containsKey(posZero) &&
-        BlockMovementChecks.isMovementNecessary(
-          level.stateAt(offset),
-          level,
-          offset,
-        )) {
-      addBlock(level, offset, capture(level, offset));
-    }
     startMoving(level);
     if (blocks.isEmpty) return false;
     return true;
   }
 
+  /// A stabilized sub-contraption has no controller block in its structure.
   @override
-  bool addToInitialFrontier(
-    ContraptionLevel level,
-    Pos pos,
-    Direction? forcedDirection,
-    Queue<Pos> frontier,
-  ) {
-    for (final direction in Direction.values) {
-      final next = pos.relative(direction);
-      if (!frontier.contains(next)) frontier.add(next);
-    }
-    return true;
-  }
+  bool isAnchoringBlockAt(Pos pos) => false;
 
   @override
   bool canBeStabilized(Direction facing, Pos localPos) => false;

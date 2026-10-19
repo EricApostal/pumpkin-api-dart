@@ -611,8 +611,12 @@ abstract final class BlockRegistryChecks {
   static const maxBoxes = 64;
   static const maxLuminance = 15;
 
-  /// The limit of the host's `u16` ids: block ids and state ids.
-  static const maxIds = 65536;
+  /// The limit of the host's block ids (`u16`).
+  static const maxBlockIds = 65536;
+
+  /// The limit of the host's block state ids: they travel as signed 32-bit
+  /// VarInts in the Java protocol.
+  static const maxStateIds = 1 << 31;
 
   static final RegExp _namespace = RegExp(r'^[a-z0-9_.\-]+$');
   static final RegExp _path = RegExp(r'^[a-z0-9_.\-/]+$');

@@ -34,6 +34,7 @@ CreateBlock redstoneRequesterBlock() => CreateBlock(
     onNeighborUpdate: _onNeighborUpdate,
     onPlaced: _onPlaced,
     onUse: _onUse,
+    onComparatorOutput: _comparator,
   ),
 );
 
@@ -78,6 +79,17 @@ Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
     state: BlockStates.setValues(e.stateIndex, {'axis': axis}),
     updateFlags: BlockUpdateFlags.clientsOnly,
   );
+}
+
+Future<int?> _comparator(
+  Server server,
+  CustomBlockComparatorOutputEventData e,
+) async {
+  final be = Lg.i.store.typed<RedstoneRequesterBlockEntity>(
+    e.targetWorld.getId(),
+    e.pos,
+  );
+  return be != null && be.lastRequestSucceeded ? 15 : 0;
 }
 
 Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {

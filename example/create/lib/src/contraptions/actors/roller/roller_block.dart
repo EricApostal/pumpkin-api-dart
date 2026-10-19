@@ -2,10 +2,13 @@
 // material and the rolling mode, and shares them with the rollers next to it.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../api/blocks.dart'
+    show BState, HostBlockGetter, setBlockState, toDirection;
 import '../../../common/common.dart';
 import '../../../common/host_bridge.dart';
 import '../../../core/block_entity.dart';
 import '../../../core/blocks.dart';
+import '../../mounted/minecart_contraption_item.dart' show shrinkHeld;
 import '../../storage/stacks.dart';
 import '../actor_runtime.dart';
 import '../attached_actor_block.dart';
@@ -84,7 +87,10 @@ final class RollerBlockEntity extends CreateBlockEntity {
       if (w.getBlockStateId(pos: otherPos.toBlockPos()) !=
           w.getBlockStateId(pos: this.pos))
         continue;
-      final other = store.typed<RollerBlockEntity>(worldId, otherPos.toBlockPos());
+      final other = store.typed<RollerBlockEntity>(
+        worldId,
+        otherPos.toBlockPos(),
+      );
       if (other == null) continue;
       acceptSharedValues(other.mode, other.filterStack);
       shareValuesToAdjacent();
@@ -114,7 +120,10 @@ final class RollerBlockEntity extends CreateBlockEntity {
         if (w.getBlockStateId(pos: otherPos.toBlockPos()) !=
             w.getBlockStateId(pos: this.pos))
           break;
-        final other = store.typed<RollerBlockEntity>(worldId, otherPos.toBlockPos());
+        final other = store.typed<RollerBlockEntity>(
+          worldId,
+          otherPos.toBlockPos(),
+        );
         if (other == null) break;
         other.acceptSharedValues(mode, filterStack);
       }
@@ -149,11 +158,59 @@ final class RollerBlockEntity extends CreateBlockEntity {
   }
 }
 
+/// `RollerBlockItem.place`: when the block below the clicked block is full on top, the roller is
+/// placed on top of the clicked block instead of on the clicked face. Returns true when the
+/// interaction was handled (the caller cancels the event).
+Future<bool> useRollerItem(Server server, PlayerUseBlockEventData e) async {
+  final String itemKey;
+  try {
+    itemKey = await e.item.getRegistryKey();
+  } on Object {
+    return false;
+  }
+  if (itemKey != 'create:mechanical_roller') return false;
+
+  final world = e.player.getWorld();
+  final getter = HostBlockGetter(world);
+  final clicked = e.blockPos.toPos();
+  if (!getter.isFaceSturdy(clicked.below, Direction.up)) return false;
+
+  final face = toDirection(e.face);
+  var target = clicked.above;
+  if (!getter.canBeReplaced(target)) {
+    target = target.relative(face);
+    if (!getter.canBeReplaced(target)) return false;
+  }
+
+  // `RollerBlock.getStateForPlacement`: always the horizontal look direction, turned around.
+  final facing = Direction.fromYRot(e.player.getYaw()).opposite;
+
+  final state = BState('create:mechanical_roller', {
+    'facing': facing.serializedName,
+    'waterlogged': '${getter.isWater(target)}',
+  });
+  await setBlockState(world, target, state);
+
+  if (e.player.getGamemode() != GameMode.creative) {
+    await shrinkHeld(e.player, e.hand, e.item);
+  }
+  world.playCustomSound(
+    soundName: 'minecraft:block.stone.place',
+    category: SoundCategory.blocks,
+    pos: target.center,
+    volume: 1,
+    pitch: 1,
+  );
+  return true;
+}
+
 /// `RollerBlock`.
 CreateBlock buildRollerBlock() => buildAttachedActorBlock(
   'mechanical_roller',
   blockEntityType: RollerBlockEntity.type,
   fullCube: true,
+  // `RollerBlock.canSurvive` returns true: the roller needs no support.
+  requireSupport: false,
   behavior: BlockBehavior(
     onPlaced: (server, e) async {
       final runtime = actors;

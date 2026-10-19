@@ -3,7 +3,10 @@
 // generic item filling of `FillingBySpout`.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../api/behaviour/spouting/spouting.dart';
+import '../common/direction.dart';
 import '../common/nbt_convert.dart';
+import '../common/pos.dart';
 import '../core/block_entity.dart';
 import '../processing/common/stack.dart';
 import '../processing/transport/transport_behaviours.dart';
@@ -14,7 +17,8 @@ import 'generic_item_fluid.dart';
 import 'nbt_util.dart';
 
 /// `SpoutBlockEntity`.
-class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
+class SpoutBlockEntity extends CreateBlockEntity
+    implements FluidCapable, SidedFluidCapable {
   /// `FILLING_TIME`.
   static const int fillingTime = 20;
 
@@ -26,6 +30,17 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
 
   /// `sendSplash`: the client plays the splash effect on the next sync.
   bool sendSplash = false;
+
+  /// `customProcess`: the block below the spout that is being filled, `null` for the
+  /// item path.
+  BlockSpoutingBehaviour? customProcess;
+  Pos? customPos;
+
+  /// `createdSweetRoll`, `createdHoneyApple`, `createdChocolateBerries`: the foods the
+  /// spout filled, for `AllAdvancements.FOODS`.
+  bool createdSweetRoll = false;
+  bool createdHoneyApple = false;
+  bool createdChocolateBerries = false;
 
   SpoutBlockEntity(super.worldId, super.pos) {
     tank = SmartFluidTank(1000, (_) => sendData());
@@ -42,6 +57,11 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
 
   @override
   FluidStorage? get fluidHandler => tank;
+
+  /// `SpoutBlockEntity.registerCapabilities`: no handler from below.
+  @override
+  FluidStorage? fluidHandlerAt(Direction? side) =>
+      side == Direction.down ? null : tank;
 
   static FluidItemSpec _item(PStack stack) => stack.isEmpty
       ? FluidItemSpec.empty
@@ -69,8 +89,9 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
     TransportedItemStack transported,
     TransportedItemStackHandler handler,
   ) {
-    if (processingTicks != -1 && processingTicks != 5)
+    if (processingTicks != -1 && processingTicks != 5) {
       return ProcessingResult.hold;
+    }
     final item = _item(transported.stack);
     if (!spout.canItemBeFilled(item)) return ProcessingResult.pass;
     if (tank.isEmpty) return ProcessingResult.hold;
@@ -108,7 +129,10 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
             ? TransportedResult.convertToAll([output])
             : TransportedResult.convertToAndLeaveHeld([output], held),
       );
+      _trackFood(result.key);
     }
+    // `SpoutBlockEntity.whenItemHeld` awards SPOUT after every finished process.
+    _award('spout');
 
     tank.setFluid(leftFluid);
     sendSplash = true;
@@ -116,10 +140,68 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
     return ProcessingResult.hold;
   }
 
+  /// `AllAdvancements.FOODS`: the three food items of the spout.
+  void _trackFood(String itemKey) {
+    if (itemKey == 'create:chocolate_berries') {
+      createdChocolateBerries = true;
+    } else if (itemKey == 'create:honeyed_apple') {
+      createdHoneyApple = true;
+    } else if (itemKey == 'create:sweet_roll') {
+      createdSweetRoll = true;
+    }
+    if (createdChocolateBerries && createdHoneyApple && createdSweetRoll) {
+      _award('foods');
+    }
+  }
+
+  void _award(String advancement) =>
+      FluidsRuntime.instance.award(worldId, posOf, advancement);
+
+  Pos get posOf => (this.pos.x, this.pos.y, this.pos.z);
+
   @override
   void tick() {
     super.tick();
-    if (processingTicks >= 0) processingTicks--;
+    final level = FluidsRuntime.instance.levelOf(worldId);
+    if (level == null) return;
+    final current = tank.fluid;
+    final below = posOf.belowBy(2);
+
+    // `BlockSpoutingBehaviour`: while idle, a block below the spout may accept fluid.
+    if (processingTicks == -1 && current.isNotEmpty) {
+      final state = level.stateAt(below);
+      final behaviour = BlockSpoutingBehaviour.get(state.key);
+      if (behaviour != null &&
+          behaviour.fillBlock(level, below, this, current, simulate: true) >
+              0) {
+        processingTicks = fillingTime;
+        customProcess = behaviour;
+        customPos = below;
+        sendData();
+      }
+    }
+
+    if (processingTicks >= 0) {
+      processingTicks--;
+      if (processingTicks == 5 && customProcess != null) {
+        final behaviour = customProcess!;
+        final target = customPos ?? below;
+        customProcess = null;
+        customPos = null;
+        final filled = behaviour.fillBlock(
+          level,
+          target,
+          this,
+          current,
+          simulate: false,
+        );
+        if (filled > 0) {
+          tank.setFluid(current.shrink(filled));
+          sendSplash = true;
+          sendData();
+        }
+      }
+    }
   }
 
   void _playSound(String sound, {double volume = 1, double pitch = 1}) {
@@ -129,7 +211,7 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
       w.playCustomSound(
         soundName: sound,
         category: SoundCategory.blocks,
-        pos: (pos.x + .5, pos.y + .5, pos.z + .5),
+        pos: (this.pos.x + .5, this.pos.y + .5, this.pos.z + .5),
         volume: volume,
         pitch: pitch,
       );
@@ -142,6 +224,11 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
     processingTicks = tag.getInt('ProcessingTicks') ?? -1;
+    customProcess = null;
+    customPos = null;
+    createdChocolateBerries = tag.getBool('ChocolateBerries') ?? false;
+    createdHoneyApple = tag.getBool('HoneyApple') ?? false;
+    createdSweetRoll = tag.getBool('SweetRoll') ?? false;
     final fluid = tag.getCompound('Tank');
     if (fluid != null) tank.rawSet(FluidNbt.read(valueOfCompound(fluid)));
   }
@@ -155,5 +242,8 @@ class SpoutBlockEntity extends CreateBlockEntity implements FluidCapable {
       tag.putBool('Splash', true);
       sendSplash = false;
     }
+    if (createdChocolateBerries) tag.putBool('ChocolateBerries', true);
+    if (createdHoneyApple) tag.putBool('HoneyApple', true);
+    if (createdSweetRoll) tag.putBool('SweetRoll', true);
   }
 }

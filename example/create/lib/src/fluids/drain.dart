@@ -20,7 +20,8 @@ import 'generic_item_fluid.dart';
 import 'nbt_util.dart';
 
 /// `ItemDrainBlockEntity`.
-class ItemDrainBlockEntity extends CreateBlockEntity implements FluidCapable {
+class ItemDrainBlockEntity extends CreateBlockEntity
+    implements FluidCapable, SidedFluidCapable {
   /// `FILLING_TIME`.
   static const int fillingTime = 20;
 
@@ -35,6 +36,11 @@ class ItemDrainBlockEntity extends CreateBlockEntity implements FluidCapable {
 
   /// `internalTank.allowInsertion()` / `forbidInsertion()`.
   bool _allowInsertion = false;
+
+  /// The item handlers of the horizontal sides (`ItemDrainItemHandler`).
+  late final Map<Direction, ItemDrainItemHandler> itemHandlers = {
+    for (final d in Direction.horizontals) d: ItemDrainItemHandler(this, d),
+  };
 
   ItemDrainBlockEntity(super.worldId, super.pos) {
     tank = SmartFluidTank(
@@ -63,6 +69,11 @@ class ItemDrainBlockEntity extends CreateBlockEntity implements FluidCapable {
 
   @override
   FluidStorage? get fluidHandler => tank;
+
+  /// `ItemDrainBlockEntity.registerCapabilities`: no handler from above.
+  @override
+  FluidStorage? fluidHandlerAt(Direction? side) =>
+      side == Direction.up ? null : tank;
 
   PStack get heldItemStack => heldItem?.stack ?? PStack.empty;
 
@@ -97,12 +108,13 @@ class ItemDrainBlockEntity extends CreateBlockEntity implements FluidCapable {
     copy.beltPosition = d != null && d.axis == Axis.y ? .5 : 0;
     copy.prevSideOffset = copy.sideOffset;
     copy.prevBeltPosition = copy.beltPosition;
-    _setHeldItem(copy, side);
+    setHeldItem(copy, side);
     sendData();
     return returned;
   }
 
-  void _setHeldItem(TransportedItemStack item, String side) {
+  /// `setHeldItem(heldItem, insertedFrom)`.
+  void setHeldItem(TransportedItemStack item, String side) {
     item.insertedFrom = side;
     heldItem = item;
   }
@@ -157,6 +169,14 @@ class ItemDrainBlockEntity extends CreateBlockEntity implements FluidCapable {
       if (!input.canInsertFromSide(side.serializedName)) return;
       final returned = input.handleInsertion(held, side.serializedName, false);
       if (returned.isEmpty) {
+        // `ItemDrainBlockEntity.tick`: a drain feeding another drain awards CHAINED_DRAIN.
+        if (be is ItemDrainBlockEntity) {
+          FluidsRuntime.instance.award(worldId, (
+            this.pos.x,
+            this.pos.y,
+            this.pos.z,
+          ), 'chained_drain');
+        }
         heldItem = null;
         sendData();
         return;
@@ -168,7 +188,10 @@ class ItemDrainBlockEntity extends CreateBlockEntity implements FluidCapable {
       return;
     }
 
-    // No belt: eject the item into the world.
+    // No belt: eject the item into the world unless the next block is a solid wall
+    // (`BlockHelper.hasBlockSolidSide`).
+    final level = FluidsRuntime.instance.levelOf(worldId);
+    if (level != null && level.isFaceSturdy(next, side.opposite)) return;
     final ejected = held.stack;
     heldItem = null;
     sendData();
@@ -252,4 +275,78 @@ class ItemDrainBlockEntity extends CreateBlockEntity implements FluidCapable {
       );
     tag.putCompound('Tank', compoundOf(FluidNbt.write(tank.fluid)));
   }
+}
+
+/// `ItemDrainItemHandler`: the one slot item view of the drain seen from [side]. The host API
+/// only exposes fixed plugin inventories, so this view is not attached as a block capability;
+/// it keeps the exact insert / extract semantics of the Java handler for the drain's own code.
+final class ItemDrainItemHandler {
+  final ItemDrainBlockEntity blockEntity;
+  final Direction side;
+
+  const ItemDrainItemHandler(this.blockEntity, this.side);
+
+  /// `getSlots()`.
+  int get slots => 1;
+
+  /// `getStackInSlot(slot)`.
+  PStack getStackInSlot(int slot) => blockEntity.heldItemStack;
+
+  /// `insertItem(slot, stack, simulate)`: the remainder.
+  PStack insertItem(int slot, PStack stack, {required bool simulate}) {
+    if (blockEntity.heldItemStack.isNotEmpty) return stack;
+
+    var inserted = stack;
+    PStack returned;
+    if (inserted.count > 1 &&
+        blockEntity.emptying.canItemBeEmptied(
+          FluidItemSpec(inserted.key, inserted.count),
+        )) {
+      returned = inserted.withCount(inserted.count - 1);
+      inserted = inserted.withCount(1);
+    } else {
+      // `ItemHelper.limitCountToMaxStackSize`.
+      final max = inserted.maxCount;
+      if (inserted.count > max) {
+        returned = inserted.withCount(inserted.count - max);
+        inserted = inserted.withCount(max);
+      } else {
+        returned = PStack.empty;
+      }
+    }
+
+    if (!simulate) {
+      blockEntity.setHeldItem(
+        TransportedItemStack(inserted),
+        side.opposite.serializedName,
+      );
+      blockEntity.sendData();
+    }
+    return returned;
+  }
+
+  /// `extractItem(slot, amount, simulate)`.
+  PStack extractItem(int slot, int amount, {required bool simulate}) {
+    final held = blockEntity.heldItem;
+    if (held == null || amount <= 0) return PStack.empty;
+    final extracted = held.stack.withCount(
+      amount < held.stack.count ? amount : held.stack.count,
+    );
+    if (!simulate) {
+      final left = held.stack.count - extracted.count;
+      if (left <= 0) {
+        blockEntity.heldItem = null;
+      } else {
+        held.stack = held.stack.withCount(left);
+      }
+      blockEntity.sendData();
+    }
+    return extracted;
+  }
+
+  /// `getSlotLimit(slot)`.
+  int getSlotLimit(int slot) => 64;
+
+  /// `isItemValid(slot, stack)`.
+  bool isItemValid(int slot, PStack stack) => true;
 }

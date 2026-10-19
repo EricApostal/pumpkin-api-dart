@@ -35,23 +35,42 @@ class FactoryPanelBlockEntity extends LgBlockEntity {
     _state
       ..clear()
       ..addAll(map);
-    restocker = map['restocker'] == true;
-    final stored = map['panels'];
-    if (stored is! Map) return;
+    restocker = map['Restocker'] == true;
     for (final slot in PanelSlot.values) {
-      final data = stored[slot.serializedName];
-      if (data is Map) panels[slot]!.readFromMap(data.cast<String, dynamic>());
+      final data = map[slot.serializedName];
+      if (data is! Map) continue;
+      final behaviour = panels[slot]!;
+      behaviour.slot = slot;
+      behaviour.readFromMap(data.cast<String, dynamic>());
     }
   }
 
   @override
   Map<String, dynamic> stateToMap() => {
-    'restocker': restocker,
-    'panels': {
-      for (final entry in panels.entries)
-        if (entry.value.active) entry.key.serializedName: entry.value.toMap(),
-    },
+    'Restocker': restocker,
+    for (final entry in panels.entries)
+      if (entry.value.active) entry.key.serializedName: entry.value.toMap(),
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    tag.putBool('Restocker', restocker);
+    if (clientPacket && redraw) {
+      // `NBTHelper.putMarker`: the client rebuilds the panel shape and clears the marker.
+      tag.putCompound('Redraw', NbtCompound());
+      redraw = false;
+    }
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    if (tag.containsKey('Restocker')) {
+      restocker = tag.getBool('Restocker') ?? false;
+    }
+    if (clientPacket && tag.containsKey('Redraw')) redraw = true;
+  }
 
   Lvl? get _lvl => world == null ? null : Lvl(world!);
 

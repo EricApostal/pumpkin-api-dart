@@ -66,7 +66,10 @@ class SteamEngineBlockEntity extends CreateBlockEntity {
   /// `isValid()`: the block behind is a fluid tank.
   bool get isValid {
     final facing = steamEngineConnectedDirection(blockState).opposite;
-    return runtime.level(worldId).stateAt(kpos.relative(facing)).isCreate('fluid_tank');
+    return runtime
+        .level(worldId)
+        .stateAt(kpos.relative(facing))
+        .isCreate('fluid_tank');
   }
 
   @override
@@ -82,14 +85,21 @@ class SteamEngineBlockEntity extends CreateBlockEntity {
       if ((shaft.kpos - kpos) != shaft.enginePos) return;
       if (shaft.engineEfficiency == 0) return;
       final facing = steamEngineConnectedDirection(blockState);
-      if (w.isLoaded(pos: BlockPos(x: pos.x + facing.opposite.dx, y: pos.y + facing.opposite.dy, z: pos.z + facing.opposite.dz))) {
+      if (w.isLoaded(
+        pos: BlockPos(
+          x: pos.x + facing.opposite.dx,
+          y: pos.y + facing.opposite.dy,
+          z: pos.z + facing.opposite.dz,
+        ),
+      )) {
         shaft.update(kpos, 0, 0);
       }
       return;
     }
 
     final shaftState = shaft.blockState;
-    final targetAxis = runtime.blocks.defFor(shaftState)?.rotationAxis(shaftState) ?? KAxis.x;
+    final targetAxis =
+        runtime.blocks.defFor(shaftState)?.rotationAxis(shaftState) ?? KAxis.x;
     final verticalTarget = targetAxis == KAxis.y;
 
     final state = blockState;
@@ -99,17 +109,30 @@ class SteamEngineBlockEntity extends CreateBlockEntity {
 
     final efficiency = efficiencyRaw.clamp(0.0, 1.0);
 
-    var conveyedSpeedLevel = efficiency == 0 ? 1 : (verticalTarget ? 1 : convertToDirection(1, facing).toInt());
+    var conveyedSpeedLevel = efficiency == 0
+        ? 1
+        : (verticalTarget ? 1 : convertToDirection(1, facing).toInt());
     if (targetAxis == KAxis.z) conveyedSpeedLevel *= -1;
-    if (movementDirection.getValue() == RotationDirection.counterClockwise.index) conveyedSpeedLevel *= -1;
+    if (movementDirection.getValue() ==
+        RotationDirection.counterClockwise.index) {
+      conveyedSpeedLevel *= -1;
+    }
 
     final shaftSpeed = shaft.theoreticalSpeed;
-    if (shaft.hasSource && shaftSpeed != 0 && conveyedSpeedLevel != 0 && (shaftSpeed > 0) != (conveyedSpeedLevel > 0)) {
+    if (shaft.hasSource &&
+        shaftSpeed != 0 &&
+        conveyedSpeedLevel != 0 &&
+        (shaftSpeed > 0) != (conveyedSpeedLevel > 0)) {
       movementDirection.setValue(1 - movementDirection.getValue());
       conveyedSpeedLevel *= -1;
     }
 
-    shaft.update(kpos, conveyedSpeedLevel, efficiency, engineBlock: state.block);
+    shaft.update(
+      kpos,
+      conveyedSpeedLevel,
+      efficiency,
+      engineBlock: state.block,
+    );
   }
 
   @override
@@ -131,6 +154,7 @@ KineticBlockSpec steamEngineBlockSpec() {
       () => block,
       specRef: () => spec,
       pathfindable: false,
+      updateShape: waterloggedUpdateShape,
       use: (c, e) async {
         // SteamEngineBlock.PlacementHelper: a shaft goes on the engine's output.
         if (!e.withItem) return BlockUseResult.pass;
@@ -149,7 +173,15 @@ KineticBlockSpec steamEngineBlockSpec() {
           steamEngineShaftPos,
         );
         if (!offset.success) return BlockUseResult.tryEmptyHand;
-        final placed = await placeOffset(c.rt, c.world, c.worldId, offset, poweredBlock, player, e.hand);
+        final placed = await placeOffset(
+          c.rt,
+          c.world,
+          c.worldId,
+          offset,
+          poweredBlock,
+          player,
+          e.hand,
+        );
         return placed ? BlockUseResult.success : BlockUseResult.tryEmptyHand;
       },
       afterPlaced: (c, e) async {
@@ -173,7 +205,10 @@ KineticBlockSpec steamEngineBlockSpec() {
         final shaftPos = steamEngineShaftPos(c.state, c.kpos);
         final shaftState = c.level.stateAt(shaftPos);
         if (shaftState.isCreate('powered_shaft')) {
-          c.world.scheduleTick(BlockPos(x: shaftPos.x, y: shaftPos.y, z: shaftPos.z), const Duration(milliseconds: 50));
+          c.world.scheduleTick(
+            BlockPos(x: shaftPos.x, y: shaftPos.y, z: shaftPos.z),
+            const Duration(milliseconds: 50),
+          );
         }
       },
       canPlace: (c, e) async {
@@ -187,7 +222,8 @@ KineticBlockSpec steamEngineBlockSpec() {
   );
   spec = KineticBlockSpec(
     block,
-    placement: (ctx, placed, use, world) => _steamEnginePlacement(ctx, base: placed) ?? placed,
+    placement: (ctx, placed, use, world) =>
+        _steamEnginePlacement(ctx, base: placed) ?? placed,
   );
   return spec;
 }
@@ -195,16 +231,27 @@ KineticBlockSpec steamEngineBlockSpec() {
 /// `FaceAttachedHorizontalDirectionalBlock.getStateForPlacement` with the engine's
 /// `canSurvive` (attached to a fluid tank).
 KState? _steamEnginePlacement(PlacementContext ctx, {KState? base}) {
-  final start = base ?? const KState('create:steam_engine', {'face': 'floor', 'facing': 'north', 'waterlogged': 'false'});
+  final start =
+      base ??
+      const KState('create:steam_engine', {
+        'face': 'floor',
+        'facing': 'north',
+        'waterlogged': 'false',
+      });
   // The nearest looking directions in order.
   for (final direction in _lookOrder(ctx)) {
     KState s;
     if (direction.axis == KAxis.y) {
-      s = start.setAll({'face': direction == Dir.up ? 'ceiling' : 'floor', 'facing': ctx.horizontal.name});
+      s = start.setAll({
+        'face': direction == Dir.up ? 'ceiling' : 'floor',
+        'facing': ctx.horizontal.name,
+      });
     } else {
       s = start.setAll({'face': 'wall', 'facing': direction.opposite.name});
     }
-    final attachedTo = ctx.pos.relative(steamEngineConnectedDirection(s).opposite);
+    final attachedTo = ctx.pos.relative(
+      steamEngineConnectedDirection(s).opposite,
+    );
     if (ctx.stateAt(attachedTo).isCreate('fluid_tank')) return s;
   }
   return null;

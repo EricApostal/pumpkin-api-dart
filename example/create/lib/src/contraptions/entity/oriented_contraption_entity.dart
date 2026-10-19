@@ -27,8 +27,12 @@ abstract final class OrientedContraptionHooks {
   /// The facing of a stabilized (sub)contraption, `null` for a normal one.
   static Direction? Function(Contraption contraption)? stabilizedFacing;
 
-  /// The two cart positions of a coupled minecart (`getCoupledCartsIfPresent`).
-  static (Vec3, Vec3)? Function(ContraptionPassengerRef vehicle)?
+  /// The two cart positions of a coupled minecart (`getCoupledCartsIfPresent`). [couplingId] is
+  /// the coupling id saved on the entity.
+  static (Vec3, Vec3)? Function(
+    ContraptionPassengerRef vehicle,
+    String couplingId,
+  )?
   coupledPositions;
 
   /// `powerFurnaceCartWithFuelFromStorage(riding)`.
@@ -232,7 +236,10 @@ class OrientedContraptionEntity extends AbstractContraptionEntity {
 
     if (stalled) return;
     if (isOnCoupling) {
-      final coupled = OrientedContraptionHooks.coupledPositions?.call(riding);
+      final coupled = OrientedContraptionHooks.coupledPositions?.call(
+        riding,
+        couplingId ?? '',
+      );
       if (coupled == null) return;
       return;
     }
@@ -247,7 +254,10 @@ class OrientedContraptionEntity extends AbstractContraptionEntity {
     bool isOnCoupling,
   ) {
     if (isOnCoupling) {
-      final coupled = OrientedContraptionHooks.coupledPositions?.call(riding);
+      final coupled = OrientedContraptionHooks.coupledPositions?.call(
+        riding,
+        couplingId ?? '',
+      );
       if (coupled == null) return false;
       final (a, b) = coupled;
       final diffX = a.$1 - b.$1;

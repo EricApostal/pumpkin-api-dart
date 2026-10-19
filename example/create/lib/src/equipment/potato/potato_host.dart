@@ -58,8 +58,7 @@ final class PotatoHost {
     ctx.listen(Events.entityRemove, (server, e) => _live.remove(e.entityId));
   }
 
-  PotatoType? typeForItem(String itemKey) =>
-      types.forItem(itemKey, inTag: (tag, key) => Tags.item(key, tag));
+  PotatoType? typeForItem(String itemKey) => types.forItem(itemKey, inTag: (tag, key) => Tags.item(key, tag));
 
   // -- PotatoCannonItem.use ----------------------------------------------------------------
 
@@ -82,7 +81,13 @@ final class PotatoHost {
     final look = player.lookDirection;
     final mainHand = hand.isMain;
     final barrel = PotatoMath.barrel(eyePos: eye, yRotDeg: yaw, xRotDeg: pitch, mainHand: mainHand, rightArmMain: true);
-    final correction = PotatoMath.correction(eyePos: eye, yRotDeg: yaw, xRotDeg: pitch, mainHand: mainHand, rightArmMain: true);
+    final correction = PotatoMath.correction(
+      eyePos: eye,
+      yRotDeg: yaw,
+      xRotDeg: pitch,
+      mainHand: mainHand,
+      rightArmMain: true,
+    );
     final volley = PotatoMath.volley(type: type, lookVec: look, correction: correction, nextFloat: env.rng.nextDouble);
     final recovery = PotatoMath.recoveryChance(await customEnchantLevel(held, 'create:potato_recovery'));
 
@@ -94,7 +99,8 @@ final class PotatoHost {
       if (ammoSlot >= 0) await shrinkSlot(inv.asInventory(), ammoSlot, 1);
     }
     final living = player.asEntity().asLiving();
-    final free = living != null && await backtanks.canAbsorbDamage(living, env.settings.maxPotatoCannonShots, player: player);
+    final free =
+        living != null && await backtanks.canAbsorbDamage(living, env.settings.maxPotatoCannonShots, player: player);
     if (!free) await hurtHeld(player, hand, 1);
     await _applyCooldown(player, hand, type.reloadTicks);
     await _sendPackets(player, world, barrel, look.vnorm, ammoStack, hand, volley.soundPitch);
@@ -167,7 +173,10 @@ final class PotatoHost {
     };
     final others = env.bus.playersTracking(world.getId(), barrel.toBlockPos().p3);
     final uuid = player.getId().asString;
-    env.bus.sendClientboundAll('create:potato_cannon', [for (final p in others) if (p.getId().asString != uuid) p], fields(false));
+    env.bus.sendClientboundAll('create:potato_cannon', [
+      for (final p in others)
+        if (p.getId().asString != uuid) p,
+    ], fields(false));
     env.bus.sendClientbound('create:potato_cannon', player, fields(true));
   }
 
@@ -237,15 +246,17 @@ final class PotatoHost {
     final step = proj.flight.stepFree();
     final end = start.vplus(step);
 
-    // Nearest hit along the segment: entity (not the owner for a few ticks, not itself) or block.
+    // Nearest hit along the segment: entity (not itself) or block.
     final blockHit = world.rayTraceBlock(start: start, end: end, includeFluids: false);
     final blockDist = blockHit == null ? double.infinity : start.vdist(blockHit.hitPos);
     RayTraceEntityResult? entityHit;
     for (final r in world.rayTraceEntities(start: start, end: end)) {
       final id = r.entity.getId();
       if (id == e.entityId) continue;
-      if (_live.containsKey(id) && proj.flight.tickCount < 10) continue; // fresh volley mates
-      if (proj.ownerUuid != null && proj.flight.tickCount < 5 && r.entity.getUuid().asString == proj.ownerUuid) continue;
+      // `if (tickCount < 10 && target.tickCount < 10) return;`: projectiles of the same volley
+      // pass through each other while both are fresh.
+      final other = _live[id];
+      if (other != null && proj.flight.tickCount < 10 && other.flight.tickCount < 10) continue;
       if (r.entity.isItem()) continue;
       if (entityHit == null || r.distance < entityHit.distance) entityHit = r;
     }
@@ -326,7 +337,9 @@ final class PotatoHost {
           // The Java action spawns a falling block; drop it down to the first solid support instead.
           var y = place.y;
           while (y > world.getMinY() + 1) {
-            final under = world.getBlockState(pos: BlockPos(x: place.x, y: y - 1, z: place.z));
+            final under = world.getBlockState(
+              pos: BlockPos(x: place.x, y: y - 1, z: place.z),
+            );
             if (!under.replaceable) break;
             y--;
           }
@@ -338,14 +351,22 @@ final class PotatoHost {
   }
 
   /// `onHitEntity`.
-  Future<void> _onHitEntity(Server server, World world, Entity entity, _Projectile proj, RayTraceEntityResult hit) async {
+  Future<void> _onHitEntity(
+    Server server,
+    World world,
+    Entity entity,
+    _Projectile proj,
+    RayTraceEntityResult hit,
+  ) async {
     final type = proj.flight.type;
     final target = hit.entity;
     final living = target.asLiving();
     final targetId = target.getId();
+    final targetType = target.getType();
     if (living != null && living.isDead()) return;
 
-    // Two projectiles colliding: the advancement when different types hit each other.
+    // Two projectiles colliding: the advancement when different types hit each other, and the
+    // target projectile is destroyed (`PotatoProjectileEntity.hurtServer`).
     final otherProj = _live[targetId];
     if (otherProj != null) {
       if (proj.flight.tickCount < 10 && otherProj.flight.tickCount < 10) return;
@@ -356,11 +377,13 @@ final class PotatoHost {
           if (p != null) await env.award(p, 'potato_cannon_collide');
         }
       }
+      _kill(target, targetId);
     }
     _pop(world, hit.hitPos);
-    final targetType = target.getType();
     if (type.preEntityHit != null) {
-      await _entityHitAction(server, world, proj, target, living, type.preEntityHit!);
+      // `if (type.preEntityHit(stack, ray)) return;`: a consuming pre-hit action stops the hit.
+      final consumed = await _entityHitAction(server, world, proj, target, living, type.preEntityHit!);
+      if (consumed) return;
     }
     final isEnderman = targetType == EntityType.enderman;
     final damage = PotatoMath.damage(type, 1);
@@ -406,7 +429,12 @@ final class PotatoHost {
       // Re-base the offset on the hit position, `position() - target.position()`.
       proj.flight.stuckOffset = proj.flight.pos.vminus(target.getPosition());
       proj.stuckEntityId = targetId;
-      entity.setPositionRotationDelta(pos: proj.flight.pos, yaw: entity.getYaw(), pitch: entity.getPitch(), velocity: vzero);
+      entity.setPositionRotationDelta(
+        pos: proj.flight.pos,
+        yaw: entity.getYaw(),
+        pitch: entity.getPitch(),
+        velocity: vzero,
+      );
     } else {
       _kill(entity, entity.getId());
     }
@@ -490,7 +518,10 @@ final class PotatoHost {
     final (ex, ey, ez) = target.getPosition();
     for (var i = 0; i < 16; i++) {
       final tx = ex + (env.rng.nextDouble() - 0.5) * diameter;
-      final ty = (ey + (env.rng.nextInt(diameter.toInt()) - (diameter / 2).toInt())).clamp(0.0, world.getMinY() + 384 - 1.0);
+      final ty = (ey + (env.rng.nextInt(diameter.toInt()) - (diameter / 2).toInt())).clamp(
+        0.0,
+        world.getMinY() + 384 - 1.0,
+      );
       final tz = ez + (env.rng.nextDouble() - 0.5) * diameter;
       final feet = BlockPos(x: tx.floor(), y: ty.floor(), z: tz.floor());
       if (!world.isLoaded(pos: feet)) continue;

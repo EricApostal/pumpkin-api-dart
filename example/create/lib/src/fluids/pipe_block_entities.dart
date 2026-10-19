@@ -11,6 +11,7 @@ import '../api/blocks.dart' show HostBlockGetter;
 import '../common/direction.dart';
 import '../common/pos.dart';
 import '../core/block_entity.dart';
+import '../decoration/bracketed_behaviour.dart';
 import '../kinetics/geometry.dart' show Dir;
 import '../kinetics/kinetic_block_entity.dart';
 import 'fluid_host.dart';
@@ -18,6 +19,7 @@ import 'fluid_propagator.dart';
 import 'fluid_runtime.dart';
 import 'fluid_transport_behaviour.dart';
 import 'fluid_world.dart';
+import 'lerped_float_nbt.dart';
 import 'pipe_blocks.dart';
 import 'pump_logic.dart';
 
@@ -38,6 +40,12 @@ BState blockStateOf(CreateBlockEntity be) {
 class FluidPipeBlockEntity extends CreateBlockEntity {
   FluidPipeBlockEntity(super.worldId, super.pos) {
     addBehaviour(StandardPipeTransportBehaviour());
+    // `FluidPipeBlockEntity.canHaveBracket`: the encased pipe has no bracket.
+    addBehaviour(
+      BracketedBlockEntityBehaviour(
+        canHave: (state) => !PipeBlocks.isEncased(state),
+      ),
+    );
   }
 
   FluidTransportBehaviour get transport =>
@@ -48,7 +56,12 @@ class FluidPipeBlockEntity extends CreateBlockEntity {
 class StraightPipeBlockEntity extends CreateBlockEntity {
   StraightPipeBlockEntity(super.worldId, super.pos) {
     addBehaviour(createTransportBehaviour());
+    if (addsBracket) addBehaviour(BracketedBlockEntityBehaviour());
   }
+
+  /// `StraightPipeBlockEntity.addBehaviours` adds the bracket; the smart pipe
+  /// (`SmartFluidPipeBlockEntity`) does not.
+  bool get addsBracket => true;
 
   /// The behaviour of the block; subclasses replace it.
   FluidTransportBehaviour createTransportBehaviour() =>
@@ -61,6 +74,9 @@ class StraightPipeBlockEntity extends CreateBlockEntity {
 /// `SmartFluidPipeBlockEntity`: a straight pipe with a fluid filter.
 class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
   SmartFluidPipeBlockEntity(super.worldId, super.pos);
+
+  @override
+  bool get addsBracket => false;
 
   /// The fluid the filter accepts, `null` for any fluid (`FilteringBehaviour.forFluids`).
   String? filterFluid;
@@ -130,13 +146,19 @@ class FluidValveBlockEntity extends KineticBlockEntity {
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
-    tag.putDouble('Pointer', pointer);
+    LerpedFloatNbt.write(
+      tag,
+      'Pointer',
+      pointer,
+      target: speed > 0 ? 1 : 0,
+      speed: chaseSpeed,
+    );
   }
 
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    pointer = tag.getDouble('Pointer') ?? 0;
+    pointer = LerpedFloatNbt.read(tag, 'Pointer');
   }
 }
 

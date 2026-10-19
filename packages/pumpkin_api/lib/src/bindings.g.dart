@@ -10527,15 +10527,15 @@ case 6: {
 final tmp36 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 8);
 int? tmp38;
 if (tmp36.toBool()) {
-  final tmp37 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 10);
+  final tmp37 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
 
   tmp38 = tmp37.toIntUnsigned();
 } else {
   
   tmp38 = null;
 }
-final tmp39 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 12);
-final tmp40 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 13);
+final tmp39 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 16);
+final tmp40 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 17);
   final tmp41 = EndermanData(carriedBlockState: tmp38, isScreaming: tmp39.toBool(), isStaring: tmp40.toBool(), );
 
 tmp61 = MobDataEnderman(tmp41);
@@ -10716,7 +10716,7 @@ if (tmp23 != null) {
 final tmp20 = tmp23;
 
 tmp21 = const i0.WasmI32(1);
-tmp22 = i0.WasmI32.uint16FromInt(tmp20);
+tmp22 = i0.WasmI32.fromInt(tmp20);
 } else {
 
 tmp21 = const i0.WasmI32(0);
@@ -11657,30 +11657,30 @@ return tmp0.toIntUnsigned();
 /// X and Z must be in the range [0, 15].
 BlockState getBlockState({required BlockPos pos, }) {
 final self = this;
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(72));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
 _import493(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
-final tmp1 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 0);
-final tmp2 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 2);
-final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
-final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
-final tmp5 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 12);
-final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 13);
-final tmp7 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 16);
-final tmp8 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 20);
-final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 21);
-final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 22);
-final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 23);
-final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 24);
-final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 25);
-final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 26);
-final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 27);
-final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
-final tmp19 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 32);
-final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
-final tmp21 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 36);
-final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
+final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
+final tmp2 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+final tmp5 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 16);
+final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 17);
+final tmp7 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 20);
+final tmp8 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 24);
+final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 25);
+final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 26);
+final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 27);
+final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
+final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
+final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
+final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 31);
+final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 32);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 33);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
+final tmp19 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 36);
+final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 38);
+final tmp21 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
+final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
 final tmp32 = <BoundingBox>[];
 for (var i = 0; i < tmp22.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp21.toIntUnsigned() + i * 48);
@@ -11696,8 +11696,8 @@ final tmp30 = (tmp27.toDouble(), tmp28.toDouble(), tmp29.toDouble(), );
 
 tmp32.add(tmp31);
 }
-final tmp33 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
-final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp33 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
 final tmp44 = <BoundingBox>[];
 for (var i = 0; i < tmp34.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp33.toIntUnsigned() + i * 48);
@@ -11713,17 +11713,17 @@ final tmp42 = (tmp39.toDouble(), tmp40.toDouble(), tmp41.toDouble(), );
 
 tmp44.add(tmp43);
 }
-final tmp45 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
-final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
-final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 54);
-final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 55);
-final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
-final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
-final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
-final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
-final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
-final tmp54 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 64);
-final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 68);
+final tmp45 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
+final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
+final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
+final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
+final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
+final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
+final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 62);
+final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 63);
+final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 64);
+final tmp54 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 68);
+final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 72);
 final tmp61 = <(String, String, )>[];
 for (var i = 0; i < tmp55.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp54.toIntUnsigned() + i * 16);
@@ -11736,7 +11736,7 @@ final tmp60 = (i1.AllocatedString.read(tmp56, tmp57), i1.AllocatedString.read(tm
 tmp61.add(tmp60);
 }
   final tmp62 = BlockState(id: tmp1.toIntUnsigned(), blockId: tmp2.toIntUnsigned(), blockName: i1.AllocatedString.read(tmp3, tmp4), luminance: tmp5.toIntUnsigned(), opacity: tmp6.toIntUnsigned(), hardness: tmp7.toDouble(), isAir: tmp8.toBool(), isLiquid: tmp9.toBool(), isSolid: tmp10.toBool(), isFullCube: tmp11.toBool(), pistonBehavior: WorldPistonBehavior.values[tmp12.toIntUnsigned()], hasRandomTicks: tmp13.toBool(), burnable: tmp14.toBool(), toolRequired: tmp15.toBool(), sidedTransparency: tmp16.toBool(), replaceable: tmp17.toBool(), isSolidBlock: tmp18.toBool(), blockEntityType: tmp19.toIntUnsigned(), instrument: NoteblockInstrument.values[tmp20.toIntUnsigned()], collisionShapes: tmp32, outlineShapes: tmp44, downSideSolid: tmp45.toBool(), upSideSolid: tmp46.toBool(), northSideSolid: tmp47.toBool(), southSideSolid: tmp48.toBool(), westSideSolid: tmp49.toBool(), eastSideSolid: tmp50.toBool(), downCenterSolid: tmp51.toBool(), upCenterSolid: tmp52.toBool(), mapColor: tmp53.toIntUnsigned(), properties: tmp61, );
-i1.dartFree(tmp0, const i0.WasmI32(72), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(76), const i0.WasmI32(4));
 return tmp62;
 
 }
@@ -11744,14 +11744,14 @@ return tmp62;
 /// X and Z must be in the range [0, 15].
 void setBlockState({required BlockPos pos, required int state, }) {
 final self = this;
-_import494(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.uint16FromInt(state));
+_import494(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.fromInt(state));
 
 }
 /// Gets the block at the specified position relative to the chunk.
 /// X and Z must be in the range [0, 15].
 Block getBlock({required BlockPos pos, }) {
 final self = this;
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(56));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
 _import495(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
 final tmp1 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
@@ -11763,24 +11763,24 @@ final tmp7 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 24);
 final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 28);
 final tmp9 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 32);
 final tmp10 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 36);
-final tmp11 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 38);
-final tmp12 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
-final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp11 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
+final tmp12 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
 final tmp15 = <int>[];
 for (var i = 0; i < tmp13.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp12.toIntUnsigned() + i * 2);
-final tmp14 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp12.toIntUnsigned() + i * 4);
+final tmp14 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp15.add(tmp14.toIntUnsigned());
 }
-final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 48);
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 49);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 50);
-final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 51);
+final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 54);
+final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 55);
 Flammable? tmp23;
 if (tmp19.toBool()) {
-  final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
-final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
+  final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
+final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
   final tmp22 = Flammable(spreadChance: tmp20.toIntUnsigned(), burnChance: tmp21.toIntUnsigned(), );
 
   tmp23 = tmp22;
@@ -11789,7 +11789,7 @@ final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
   tmp23 = null;
 }
   final tmp24 = Block(id: tmp1.toIntUnsigned(), name: i1.AllocatedString.read(tmp2, tmp3), hardness: tmp4.toDouble(), blastResistance: tmp5.toDouble(), mapColor: tmp6.toIntUnsigned(), slipperiness: tmp7.toDouble(), velocityMultiplier: tmp8.toDouble(), jumpVelocityMultiplier: tmp9.toDouble(), itemId: tmp10.toIntUnsigned(), defaultStateId: tmp11.toIntUnsigned(), stateIds: tmp15, isSolid: tmp16.toBool(), isAir: tmp17.toBool(), isFlammable: tmp18.toBool(), flammable: tmp23, );
-i1.dartFree(tmp0, const i0.WasmI32(56), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(60), const i0.WasmI32(4));
 return tmp24;
 
 }
@@ -11798,7 +11798,7 @@ return tmp24;
 void setBlock({required BlockPos pos, required Block block, }) {
 final self = this;
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(72));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(self.resourceHandle), offset: 0);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.x), offset: 4);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.y), offset: 8);
@@ -11815,36 +11815,36 @@ i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.slipper
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.velocityMultiplier), offset: 44);
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.jumpVelocityMultiplier), offset: 48);
 i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.itemId), offset: 52);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.defaultStateId), offset: 54);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(block.defaultStateId), offset: 56);
 final tmp2 = block.stateIds.length;
-final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(2), i0.WasmI32.fromInt(2 * tmp2));
+final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(4 * tmp2));
 for (var i = 0; i < tmp2; i++) {
 final tmp4 = block.stateIds[i];
-final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 2);
-i1.memory.storeInt16(elementPtr.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp4), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 4);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp4), offset: 0);
 
 }
 final tmp5 = i0.WasmI32.fromInt(tmp2);
-_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(2 * tmp2), const i0.WasmI32(2)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 60);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 56);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 64);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 65);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 66);
+_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(4 * tmp2), const i0.WasmI32(4)); });
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 64);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 60);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 68);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 69);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 70);
 final tmp8 = block.flammable;
 if (tmp8 != null) {
 final tmp7 = tmp8;
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 67);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 68);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 69);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 71);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 72);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 73);
 
 } else {
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 67);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 71);
 
 }
 _import496(tmp0);
 for (final cleanup in _cleanups) { cleanup(); }
-i1.dartFree(tmp0, const i0.WasmI32(72), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(76), const i0.WasmI32(4));
 
 }
 /// Sets the block by block ID at the specified position relative to the chunk using its default state.
@@ -15376,30 +15376,30 @@ return tmp0.toIntUnsigned();
 /// Gets detailed block state information at the specified position.
 BlockState getBlockState({required BlockPos pos, }) {
 final self = this;
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(72));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
 _import536(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
-final tmp1 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 0);
-final tmp2 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 2);
-final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
-final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
-final tmp5 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 12);
-final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 13);
-final tmp7 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 16);
-final tmp8 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 20);
-final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 21);
-final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 22);
-final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 23);
-final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 24);
-final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 25);
-final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 26);
-final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 27);
-final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
-final tmp19 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 32);
-final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
-final tmp21 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 36);
-final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
+final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
+final tmp2 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+final tmp5 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 16);
+final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 17);
+final tmp7 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 20);
+final tmp8 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 24);
+final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 25);
+final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 26);
+final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 27);
+final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
+final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
+final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
+final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 31);
+final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 32);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 33);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
+final tmp19 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 36);
+final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 38);
+final tmp21 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
+final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
 final tmp32 = <BoundingBox>[];
 for (var i = 0; i < tmp22.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp21.toIntUnsigned() + i * 48);
@@ -15415,8 +15415,8 @@ final tmp30 = (tmp27.toDouble(), tmp28.toDouble(), tmp29.toDouble(), );
 
 tmp32.add(tmp31);
 }
-final tmp33 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
-final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp33 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
 final tmp44 = <BoundingBox>[];
 for (var i = 0; i < tmp34.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp33.toIntUnsigned() + i * 48);
@@ -15432,17 +15432,17 @@ final tmp42 = (tmp39.toDouble(), tmp40.toDouble(), tmp41.toDouble(), );
 
 tmp44.add(tmp43);
 }
-final tmp45 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
-final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
-final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 54);
-final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 55);
-final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
-final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
-final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
-final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
-final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
-final tmp54 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 64);
-final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 68);
+final tmp45 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
+final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
+final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
+final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
+final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
+final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
+final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 62);
+final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 63);
+final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 64);
+final tmp54 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 68);
+final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 72);
 final tmp61 = <(String, String, )>[];
 for (var i = 0; i < tmp55.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp54.toIntUnsigned() + i * 16);
@@ -15455,7 +15455,7 @@ final tmp60 = (i1.AllocatedString.read(tmp56, tmp57), i1.AllocatedString.read(tm
 tmp61.add(tmp60);
 }
   final tmp62 = BlockState(id: tmp1.toIntUnsigned(), blockId: tmp2.toIntUnsigned(), blockName: i1.AllocatedString.read(tmp3, tmp4), luminance: tmp5.toIntUnsigned(), opacity: tmp6.toIntUnsigned(), hardness: tmp7.toDouble(), isAir: tmp8.toBool(), isLiquid: tmp9.toBool(), isSolid: tmp10.toBool(), isFullCube: tmp11.toBool(), pistonBehavior: WorldPistonBehavior.values[tmp12.toIntUnsigned()], hasRandomTicks: tmp13.toBool(), burnable: tmp14.toBool(), toolRequired: tmp15.toBool(), sidedTransparency: tmp16.toBool(), replaceable: tmp17.toBool(), isSolidBlock: tmp18.toBool(), blockEntityType: tmp19.toIntUnsigned(), instrument: NoteblockInstrument.values[tmp20.toIntUnsigned()], collisionShapes: tmp32, outlineShapes: tmp44, downSideSolid: tmp45.toBool(), upSideSolid: tmp46.toBool(), northSideSolid: tmp47.toBool(), southSideSolid: tmp48.toBool(), westSideSolid: tmp49.toBool(), eastSideSolid: tmp50.toBool(), downCenterSolid: tmp51.toBool(), upCenterSolid: tmp52.toBool(), mapColor: tmp53.toIntUnsigned(), properties: tmp61, );
-i1.dartFree(tmp0, const i0.WasmI32(72), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(76), const i0.WasmI32(4));
 return tmp62;
 
 }
@@ -15463,17 +15463,17 @@ return tmp62;
 Future<void> setBlockState({required BlockPos pos, required int state, required Set<BlockFlagsFlag> updateFlags, }) {
 final self = this;
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(20));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(24));
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(self.resourceHandle), offset: 0);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.x), offset: 4);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.y), offset: 8);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.z), offset: 12);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(state), offset: 16);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(state), offset: 16);
 final tmp1 = i0.WasmI32.fromInt((updateFlags.contains(BlockFlagsFlag.notifyNeighbors) ? 1 : 0) | (updateFlags.contains(BlockFlagsFlag.notifyListeners) ? 2 : 0) | (updateFlags.contains(BlockFlagsFlag.forceState) ? 4 : 0) | (updateFlags.contains(BlockFlagsFlag.skipDrops) ? 8 : 0) | (updateFlags.contains(BlockFlagsFlag.moved) ? 16 : 0) | (updateFlags.contains(BlockFlagsFlag.skipRedstoneWireStateReplacement) ? 32 : 0) | (updateFlags.contains(BlockFlagsFlag.skipBlockEntityReplacedCallback) ? 64 : 0) | (updateFlags.contains(BlockFlagsFlag.skipBlockAddedCallback) ? 128 : 0) | (updateFlags.contains(BlockFlagsFlag.skipShapeUpdate) ? 256 : 0) | (updateFlags.contains(BlockFlagsFlag.updateIndirectNeighbours) ? 512 : 0));
-i1.memory.storeInt16(tmp0.toIntUnsigned(), tmp1, offset: 18);
+i1.memory.storeInt16(tmp0.toIntUnsigned(), tmp1, offset: 20);
 final tmp2 = _import537(tmp0);
 return i1.awaitSubtask(tmp2.toIntUnsigned(), _cleanups, () {
-i1.dartFree(tmp0, const i0.WasmI32(20), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(24), const i0.WasmI32(4));
 });
 
 }
@@ -15494,7 +15494,7 @@ final elementPtr = i0.WasmI32.fromInt(tmp91.toIntUnsigned() + i * 68);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp92.pos.x), offset: 0);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp92.pos.y), offset: 4);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp92.pos.z), offset: 8);
-i1.memory.storeInt16(elementPtr.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp92.state), offset: 12);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp92.state), offset: 12);
 final tmp6 = tmp92.blockEntityNbt;
 if (tmp6 != null) {
 final tmp1 = tmp6;
@@ -15889,18 +15889,18 @@ return i1.awaitSubtask(tmp0.toIntUnsigned(), _cleanups, () {
 Future<void> markAndNotify({required BlockPos pos, required int oldState, required int newState, required Set<BlockFlagsFlag> updateFlags, }) {
 final self = this;
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(24));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(28));
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(self.resourceHandle), offset: 0);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.x), offset: 4);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.y), offset: 8);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.z), offset: 12);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(oldState), offset: 16);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(newState), offset: 18);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(oldState), offset: 16);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(newState), offset: 20);
 final tmp1 = i0.WasmI32.fromInt((updateFlags.contains(BlockFlagsFlag.notifyNeighbors) ? 1 : 0) | (updateFlags.contains(BlockFlagsFlag.notifyListeners) ? 2 : 0) | (updateFlags.contains(BlockFlagsFlag.forceState) ? 4 : 0) | (updateFlags.contains(BlockFlagsFlag.skipDrops) ? 8 : 0) | (updateFlags.contains(BlockFlagsFlag.moved) ? 16 : 0) | (updateFlags.contains(BlockFlagsFlag.skipRedstoneWireStateReplacement) ? 32 : 0) | (updateFlags.contains(BlockFlagsFlag.skipBlockEntityReplacedCallback) ? 64 : 0) | (updateFlags.contains(BlockFlagsFlag.skipBlockAddedCallback) ? 128 : 0) | (updateFlags.contains(BlockFlagsFlag.skipShapeUpdate) ? 256 : 0) | (updateFlags.contains(BlockFlagsFlag.updateIndirectNeighbours) ? 512 : 0));
-i1.memory.storeInt16(tmp0.toIntUnsigned(), tmp1, offset: 20);
+i1.memory.storeInt16(tmp0.toIntUnsigned(), tmp1, offset: 24);
 final tmp2 = _import542(tmp0);
 return i1.awaitSubtask(tmp2.toIntUnsigned(), _cleanups, () {
-i1.dartFree(tmp0, const i0.WasmI32(24), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(28), const i0.WasmI32(4));
 });
 
 }
@@ -15949,7 +15949,7 @@ return tmp9;
 /// Gets the block type at the specified position.
 Block getBlock({required BlockPos pos, }) {
 final self = this;
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(56));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
 _import544(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
 final tmp1 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
@@ -15961,24 +15961,24 @@ final tmp7 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 24);
 final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 28);
 final tmp9 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 32);
 final tmp10 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 36);
-final tmp11 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 38);
-final tmp12 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
-final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp11 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
+final tmp12 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
 final tmp15 = <int>[];
 for (var i = 0; i < tmp13.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp12.toIntUnsigned() + i * 2);
-final tmp14 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp12.toIntUnsigned() + i * 4);
+final tmp14 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp15.add(tmp14.toIntUnsigned());
 }
-final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 48);
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 49);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 50);
-final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 51);
+final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 54);
+final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 55);
 Flammable? tmp23;
 if (tmp19.toBool()) {
-  final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
-final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
+  final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
+final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
   final tmp22 = Flammable(spreadChance: tmp20.toIntUnsigned(), burnChance: tmp21.toIntUnsigned(), );
 
   tmp23 = tmp22;
@@ -15987,7 +15987,7 @@ final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
   tmp23 = null;
 }
   final tmp24 = Block(id: tmp1.toIntUnsigned(), name: i1.AllocatedString.read(tmp2, tmp3), hardness: tmp4.toDouble(), blastResistance: tmp5.toDouble(), mapColor: tmp6.toIntUnsigned(), slipperiness: tmp7.toDouble(), velocityMultiplier: tmp8.toDouble(), jumpVelocityMultiplier: tmp9.toDouble(), itemId: tmp10.toIntUnsigned(), defaultStateId: tmp11.toIntUnsigned(), stateIds: tmp15, isSolid: tmp16.toBool(), isAir: tmp17.toBool(), isFlammable: tmp18.toBool(), flammable: tmp23, );
-i1.dartFree(tmp0, const i0.WasmI32(56), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(60), const i0.WasmI32(4));
 return tmp24;
 
 }
@@ -16149,7 +16149,7 @@ return tmp9;
 Future<void> setBlock({required BlockPos pos, required Block block, required Set<BlockFlagsFlag> updateFlags, }) {
 final self = this;
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(80));
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(self.resourceHandle), offset: 0);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.x), offset: 4);
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.y), offset: 8);
@@ -16166,38 +16166,38 @@ i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.slipper
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.velocityMultiplier), offset: 44);
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.jumpVelocityMultiplier), offset: 48);
 i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.itemId), offset: 52);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.defaultStateId), offset: 54);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(block.defaultStateId), offset: 56);
 final tmp2 = block.stateIds.length;
-final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(2), i0.WasmI32.fromInt(2 * tmp2));
+final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(4 * tmp2));
 for (var i = 0; i < tmp2; i++) {
 final tmp4 = block.stateIds[i];
-final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 2);
-i1.memory.storeInt16(elementPtr.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp4), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 4);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp4), offset: 0);
 
 }
 final tmp5 = i0.WasmI32.fromInt(tmp2);
-_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(2 * tmp2), const i0.WasmI32(2)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 60);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 56);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 64);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 65);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 66);
+_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(4 * tmp2), const i0.WasmI32(4)); });
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 64);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 60);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 68);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 69);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 70);
 final tmp8 = block.flammable;
 if (tmp8 != null) {
 final tmp7 = tmp8;
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 67);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 68);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 69);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 71);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 72);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 73);
 
 } else {
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 67);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 71);
 
 }
 final tmp9 = i0.WasmI32.fromInt((updateFlags.contains(BlockFlagsFlag.notifyNeighbors) ? 1 : 0) | (updateFlags.contains(BlockFlagsFlag.notifyListeners) ? 2 : 0) | (updateFlags.contains(BlockFlagsFlag.forceState) ? 4 : 0) | (updateFlags.contains(BlockFlagsFlag.skipDrops) ? 8 : 0) | (updateFlags.contains(BlockFlagsFlag.moved) ? 16 : 0) | (updateFlags.contains(BlockFlagsFlag.skipRedstoneWireStateReplacement) ? 32 : 0) | (updateFlags.contains(BlockFlagsFlag.skipBlockEntityReplacedCallback) ? 64 : 0) | (updateFlags.contains(BlockFlagsFlag.skipBlockAddedCallback) ? 128 : 0) | (updateFlags.contains(BlockFlagsFlag.skipShapeUpdate) ? 256 : 0) | (updateFlags.contains(BlockFlagsFlag.updateIndirectNeighbours) ? 512 : 0));
-i1.memory.storeInt16(tmp0.toIntUnsigned(), tmp9, offset: 72);
+i1.memory.storeInt16(tmp0.toIntUnsigned(), tmp9, offset: 76);
 final tmp10 = _import553(tmp0);
 return i1.awaitSubtask(tmp10.toIntUnsigned(), _cleanups, () {
-i1.dartFree(tmp0, const i0.WasmI32(76), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(80), const i0.WasmI32(4));
 });
 
 }
@@ -18022,7 +18022,7 @@ return tmp0.toIntUnsigned();
 /// Sets the block state ID at local coordinates (0..16, y, 0..16).
 void setBlockStateId({required int x, required int y, required int z, required int stateId, }) {
 final self = this;
-_import622(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.uint8FromInt(x), i0.WasmI32.fromInt(y), i0.WasmI32.uint8FromInt(z), i0.WasmI32.uint16FromInt(stateId));
+_import622(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.uint8FromInt(x), i0.WasmI32.fromInt(y), i0.WasmI32.uint8FromInt(z), i0.WasmI32.fromInt(stateId));
 
 }
 /// Gets the block state ID at local coordinates (0..16, y, 0..16).
@@ -18035,19 +18035,19 @@ return tmp0.toIntUnsigned();
 /// Fills an entire horizontal 16x16 layer at the given Y level with a block state ID.
 void fillLayer({required int y, required int stateId, }) {
 final self = this;
-_import624(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(y), i0.WasmI32.uint16FromInt(stateId));
+_import624(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(y), i0.WasmI32.fromInt(stateId));
 
 }
 /// Fills a vertical column from min-y to max-y at local (x, z) with a block state ID.
 void fillRange({required int x, required int minY, required int maxY, required int z, required int stateId, }) {
 final self = this;
-_import625(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.uint8FromInt(x), i0.WasmI32.fromInt(minY), i0.WasmI32.fromInt(maxY), i0.WasmI32.uint8FromInt(z), i0.WasmI32.uint16FromInt(stateId));
+_import625(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.uint8FromInt(x), i0.WasmI32.fromInt(minY), i0.WasmI32.fromInt(maxY), i0.WasmI32.uint8FromInt(z), i0.WasmI32.fromInt(stateId));
 
 }
 /// Fills a 3D cuboid with a block state ID.
 void fillCuboid({required int minX, required int minY, required int minZ, required int maxX, required int maxY, required int maxZ, required int stateId, }) {
 final self = this;
-_import626(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.uint8FromInt(minX), i0.WasmI32.fromInt(minY), i0.WasmI32.uint8FromInt(minZ), i0.WasmI32.uint8FromInt(maxX), i0.WasmI32.fromInt(maxY), i0.WasmI32.uint8FromInt(maxZ), i0.WasmI32.uint16FromInt(stateId));
+_import626(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.uint8FromInt(minX), i0.WasmI32.fromInt(minY), i0.WasmI32.uint8FromInt(minZ), i0.WasmI32.uint8FromInt(maxX), i0.WasmI32.fromInt(maxY), i0.WasmI32.uint8FromInt(maxZ), i0.WasmI32.fromInt(stateId));
 
 }
 /// Sets the biome at local coordinates (0..16, y, 0..16).
@@ -18425,7 +18425,7 @@ return tmp0.toIntUnsigned();
 }
 void setBlockStateId({required int stateId, }) {
 final self = this;
-_import659(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.uint16FromInt(stateId));
+_import659(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(stateId));
 
 }
 DisplayEntity get display => getDisplay();
@@ -20606,9 +20606,9 @@ _import759(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(particle.
 }
 /// Visuals & Client Overrides
 /// Sends a temporary fake block change to the player's client without modifying the server world.
-void sendBlockChange({required BlockPos pos, required int blockId, }) {
+void sendBlockChange({required BlockPos pos, required int stateId, }) {
 final self = this;
-_import760(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.uint16FromInt(blockId));
+_import760(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.fromInt(stateId));
 
 }
 /// Resets a temporary fake block change by resending the actual world block at that position.
@@ -39060,30 +39060,30 @@ return tmp4;
 i1.Result<void, String> setBlockPermutation({required BlockState blockData, required BlockPos blockLocation, }) {
 final self = this;
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(88));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(92));
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(self.resourceHandle), offset: 0);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(blockData.id), offset: 4);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(blockData.blockId), offset: 6);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockData.id), offset: 4);
+i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(blockData.blockId), offset: 8);
 final tmp1 = i1.AllocatedString.allocateUtf16(blockData.blockName);
 _cleanups.add(tmp1.free);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.packedLength, offset: 12);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.ptr, offset: 8);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(blockData.luminance), offset: 16);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(blockData.opacity), offset: 17);
-i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(blockData.hardness), offset: 20);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isAir), offset: 24);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isLiquid), offset: 25);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isSolid), offset: 26);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isFullCube), offset: 27);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockData.pistonBehavior.index), offset: 28);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.hasRandomTicks), offset: 29);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.burnable), offset: 30);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.toolRequired), offset: 31);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.sidedTransparency), offset: 32);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.replaceable), offset: 33);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isSolidBlock), offset: 34);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(blockData.blockEntityType), offset: 36);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockData.instrument.index), offset: 38);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.packedLength, offset: 16);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.ptr, offset: 12);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(blockData.luminance), offset: 20);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(blockData.opacity), offset: 21);
+i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(blockData.hardness), offset: 24);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isAir), offset: 28);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isLiquid), offset: 29);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isSolid), offset: 30);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isFullCube), offset: 31);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockData.pistonBehavior.index), offset: 32);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.hasRandomTicks), offset: 33);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.burnable), offset: 34);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.toolRequired), offset: 35);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.sidedTransparency), offset: 36);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.replaceable), offset: 37);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.isSolidBlock), offset: 38);
+i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(blockData.blockEntityType), offset: 40);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockData.instrument.index), offset: 42);
 final tmp2 = blockData.collisionShapes.length;
 final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(8), i0.WasmI32.fromInt(48 * tmp2));
 for (var i = 0; i < tmp2; i++) {
@@ -39099,8 +39099,8 @@ i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp4.ma
 }
 final tmp5 = i0.WasmI32.fromInt(tmp2);
 _cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(48 * tmp2), const i0.WasmI32(8)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 44);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 40);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 48);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 44);
 final tmp6 = blockData.outlineShapes.length;
 final tmp7 = i1.mallocAligned(i0.WasmI32.fromInt(8), i0.WasmI32.fromInt(48 * tmp6));
 for (var i = 0; i < tmp6; i++) {
@@ -39116,17 +39116,17 @@ i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp8.ma
 }
 final tmp9 = i0.WasmI32.fromInt(tmp6);
 _cleanups.add(() { i1.dartFree(tmp7, i0.WasmI32.fromInt(48 * tmp6), const i0.WasmI32(8)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp9, offset: 52);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp7, offset: 48);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.downSideSolid), offset: 56);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.upSideSolid), offset: 57);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.northSideSolid), offset: 58);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.southSideSolid), offset: 59);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.westSideSolid), offset: 60);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.eastSideSolid), offset: 61);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.downCenterSolid), offset: 62);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.upCenterSolid), offset: 63);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(blockData.mapColor), offset: 64);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp9, offset: 56);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp7, offset: 52);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.downSideSolid), offset: 60);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.upSideSolid), offset: 61);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.northSideSolid), offset: 62);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.southSideSolid), offset: 63);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.westSideSolid), offset: 64);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.eastSideSolid), offset: 65);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.downCenterSolid), offset: 66);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(blockData.upCenterSolid), offset: 67);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(blockData.mapColor), offset: 68);
 final tmp12 = blockData.properties.length;
 final tmp13 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(16 * tmp12));
 for (var i = 0; i < tmp12; i++) {
@@ -39144,11 +39144,11 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp11.ptr, offset: 8);
 }
 final tmp15 = i0.WasmI32.fromInt(tmp12);
 _cleanups.add(() { i1.dartFree(tmp13, i0.WasmI32.fromInt(16 * tmp12), const i0.WasmI32(4)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp15, offset: 72);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp13, offset: 68);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockLocation.x), offset: 76);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockLocation.y), offset: 80);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockLocation.z), offset: 84);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp15, offset: 76);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp13, offset: 72);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockLocation.x), offset: 80);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockLocation.y), offset: 84);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(blockLocation.z), offset: 88);
 var tmp16 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
 _import1036(tmp0, tmp16);
 for (final cleanup in _cleanups) { cleanup(); }
@@ -39164,7 +39164,7 @@ final tmp19 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 8);
 tmp20 = i1.Result.error(i1.AllocatedString.read(tmp18, tmp19));
 }
 i1.dartFree(tmp16, const i0.WasmI32(12), const i0.WasmI32(4));
-i1.dartFree(tmp0, const i0.WasmI32(88), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(92), const i0.WasmI32(4));
 return tmp20;
 
 }
@@ -47249,27 +47249,27 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp2.ptr, offset: 8);
 }
 final tmp6 = i0.WasmI32.fromInt(tmp3);
 _cleanups.add(() { i1.dartFree(tmp4, i0.WasmI32.fromInt(16 * tmp3), const i0.WasmI32(4)); });
-var tmp7 = i1.mallocAligned(const i0.WasmI32(2), const i0.WasmI32(4));
+var tmp7 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
 _import1242(tmp0.ptr, tmp0.packedLength, tmp4, tmp6, tmp7);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp8 = i1.memory.loadUint8(tmp7.toIntUnsigned(), offset: 0);
 int? tmp10;
 if (tmp8.toBool()) {
-  final tmp9 = i1.memory.loadUint16(tmp7.toIntUnsigned(), offset: 2);
+  final tmp9 = i1.memory.loadInt32(tmp7.toIntUnsigned(), offset: 4);
 
   tmp10 = tmp9.toIntUnsigned();
 } else {
   
   tmp10 = null;
 }
-i1.dartFree(tmp7, const i0.WasmI32(4), const i0.WasmI32(2));
+i1.dartFree(tmp7, const i0.WasmI32(8), const i0.WasmI32(4));
 return tmp10;
 
 }
 @override
 BlockStateInfo? blockStateToInfo({required int stateId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(20));
-_import1243(i0.WasmI32.uint16FromInt(stateId), tmp0);
+_import1243(i0.WasmI32.fromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 BlockStateInfo? tmp13;
 if (tmp1.toBool()) {
@@ -47301,7 +47301,7 @@ return tmp13;
 }
 @override
 Block? getBlockById({required int id, }){
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(64));
 _import1244(i0.WasmI32.uint16FromInt(id), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 Block? tmp26;
@@ -47316,24 +47316,24 @@ final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 28);
 final tmp9 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 32);
 final tmp10 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 36);
 final tmp11 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 40);
-final tmp12 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 42);
-final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
-final tmp14 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp12 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp14 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
 final tmp16 = <int>[];
 for (var i = 0; i < tmp14.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp13.toIntUnsigned() + i * 2);
-final tmp15 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp13.toIntUnsigned() + i * 4);
+final tmp15 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp16.add(tmp15.toIntUnsigned());
 }
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
-final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 54);
-final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 55);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
+final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
+final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
 Flammable? tmp24;
 if (tmp20.toBool()) {
-  final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
-final tmp22 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
+  final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
+final tmp22 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
   final tmp23 = Flammable(spreadChance: tmp21.toIntUnsigned(), burnChance: tmp22.toIntUnsigned(), );
 
   tmp24 = tmp23;
@@ -47348,7 +47348,7 @@ final tmp22 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
   
   tmp26 = null;
 }
-i1.dartFree(tmp0, const i0.WasmI32(60), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(64), const i0.WasmI32(4));
 return tmp26;
 
 }
@@ -47357,7 +47357,7 @@ Block? getBlockByName({required String name, }){
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(name);
 _cleanups.add(tmp0.free);
-var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
+var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(64));
 _import1245(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
@@ -47373,24 +47373,24 @@ final tmp9 = i1.memory.loadFloat32(tmp1.toIntUnsigned(), offset: 28);
 final tmp10 = i1.memory.loadFloat32(tmp1.toIntUnsigned(), offset: 32);
 final tmp11 = i1.memory.loadFloat32(tmp1.toIntUnsigned(), offset: 36);
 final tmp12 = i1.memory.loadUint16(tmp1.toIntUnsigned(), offset: 40);
-final tmp13 = i1.memory.loadUint16(tmp1.toIntUnsigned(), offset: 42);
-final tmp14 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 44);
-final tmp15 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 48);
+final tmp13 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 44);
+final tmp14 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 48);
+final tmp15 = i1.memory.loadInt32(tmp1.toIntUnsigned(), offset: 52);
 final tmp17 = <int>[];
 for (var i = 0; i < tmp15.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp14.toIntUnsigned() + i * 2);
-final tmp16 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp14.toIntUnsigned() + i * 4);
+final tmp16 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp17.add(tmp16.toIntUnsigned());
 }
-final tmp18 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 52);
-final tmp19 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 53);
-final tmp20 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 54);
-final tmp21 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 55);
+final tmp18 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 56);
+final tmp19 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 57);
+final tmp20 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 58);
+final tmp21 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 59);
 Flammable? tmp25;
 if (tmp21.toBool()) {
-  final tmp22 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 56);
-final tmp23 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 57);
+  final tmp22 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 60);
+final tmp23 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 61);
   final tmp24 = Flammable(spreadChance: tmp22.toIntUnsigned(), burnChance: tmp23.toIntUnsigned(), );
 
   tmp25 = tmp24;
@@ -47405,7 +47405,7 @@ final tmp23 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 57);
   
   tmp27 = null;
 }
-i1.dartFree(tmp1, const i0.WasmI32(60), const i0.WasmI32(4));
+i1.dartFree(tmp1, const i0.WasmI32(64), const i0.WasmI32(4));
 return tmp27;
 
 }
@@ -47417,7 +47417,7 @@ final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp27 = <Block>[];
 for (var i = 0; i < tmp2.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 56);
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 60);
 final tmp3 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
 final tmp4 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 4);
 final tmp5 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
@@ -47428,24 +47428,24 @@ final tmp9 = i1.memory.loadFloat32(elementPtr.toIntUnsigned(), offset: 24);
 final tmp10 = i1.memory.loadFloat32(elementPtr.toIntUnsigned(), offset: 28);
 final tmp11 = i1.memory.loadFloat32(elementPtr.toIntUnsigned(), offset: 32);
 final tmp12 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 36);
-final tmp13 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 38);
-final tmp14 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 40);
-final tmp15 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 44);
+final tmp13 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 40);
+final tmp14 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 44);
+final tmp15 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 48);
 final tmp17 = <int>[];
 for (var i = 0; i < tmp15.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp14.toIntUnsigned() + i * 2);
-final tmp16 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp14.toIntUnsigned() + i * 4);
+final tmp16 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp17.add(tmp16.toIntUnsigned());
 }
-final tmp18 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 48);
-final tmp19 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 49);
-final tmp20 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 50);
-final tmp21 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 51);
+final tmp18 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 52);
+final tmp19 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 53);
+final tmp20 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 54);
+final tmp21 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 55);
 Flammable? tmp25;
 if (tmp21.toBool()) {
-  final tmp22 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 52);
-final tmp23 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 53);
+  final tmp22 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 56);
+final tmp23 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 57);
   final tmp24 = Flammable(spreadChance: tmp22.toIntUnsigned(), burnChance: tmp23.toIntUnsigned(), );
 
   tmp25 = tmp24;
@@ -47494,7 +47494,7 @@ return tmp0.toIntUnsigned();
 @override
 List<BlockState> getStatesForBlock({required Block block, }){
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(56));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
 i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.id), offset: 0);
 final tmp1 = i1.AllocatedString.allocateUtf16(block.name);
 _cleanups.add(tmp1.free);
@@ -47507,31 +47507,31 @@ i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.slipper
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.velocityMultiplier), offset: 28);
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.jumpVelocityMultiplier), offset: 32);
 i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.itemId), offset: 36);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.defaultStateId), offset: 38);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(block.defaultStateId), offset: 40);
 final tmp2 = block.stateIds.length;
-final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(2), i0.WasmI32.fromInt(2 * tmp2));
+final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(4 * tmp2));
 for (var i = 0; i < tmp2; i++) {
 final tmp4 = block.stateIds[i];
-final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 2);
-i1.memory.storeInt16(elementPtr.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp4), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 4);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp4), offset: 0);
 
 }
 final tmp5 = i0.WasmI32.fromInt(tmp2);
-_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(2 * tmp2), const i0.WasmI32(2)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 44);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 40);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 48);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 49);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 50);
+_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(4 * tmp2), const i0.WasmI32(4)); });
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 48);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 44);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 52);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 53);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 54);
 final tmp8 = block.flammable;
 if (tmp8 != null) {
 final tmp7 = tmp8;
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 51);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 52);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 53);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 55);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 56);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 57);
 
 } else {
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 51);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 55);
 
 }
 var tmp9 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
@@ -47541,29 +47541,29 @@ final tmp10 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 0);
 final tmp11 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 4);
 final tmp74 = <BlockState>[];
 for (var i = 0; i < tmp11.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp10.toIntUnsigned() + i * 72);
-final tmp12 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
-final tmp13 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 2);
-final tmp14 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 4);
-final tmp15 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
-final tmp16 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 12);
-final tmp17 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 13);
-final tmp18 = i1.memory.loadFloat32(elementPtr.toIntUnsigned(), offset: 16);
-final tmp19 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 20);
-final tmp20 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 21);
-final tmp21 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 22);
-final tmp22 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 23);
-final tmp23 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 24);
-final tmp24 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 25);
-final tmp25 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 26);
-final tmp26 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 27);
-final tmp27 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 28);
-final tmp28 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 29);
-final tmp29 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 30);
-final tmp30 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 32);
-final tmp31 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 34);
-final tmp32 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 36);
-final tmp33 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 40);
+final elementPtr = i0.WasmI32.fromInt(tmp10.toIntUnsigned() + i * 76);
+final tmp12 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
+final tmp13 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 4);
+final tmp14 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
+final tmp15 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 12);
+final tmp16 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 16);
+final tmp17 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 17);
+final tmp18 = i1.memory.loadFloat32(elementPtr.toIntUnsigned(), offset: 20);
+final tmp19 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 24);
+final tmp20 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 25);
+final tmp21 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 26);
+final tmp22 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 27);
+final tmp23 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 28);
+final tmp24 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 29);
+final tmp25 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 30);
+final tmp26 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 31);
+final tmp27 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 32);
+final tmp28 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 33);
+final tmp29 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 34);
+final tmp30 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 36);
+final tmp31 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 38);
+final tmp32 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 40);
+final tmp33 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 44);
 final tmp43 = <BoundingBox>[];
 for (var i = 0; i < tmp33.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp32.toIntUnsigned() + i * 48);
@@ -47579,8 +47579,8 @@ final tmp41 = (tmp38.toDouble(), tmp39.toDouble(), tmp40.toDouble(), );
 
 tmp43.add(tmp42);
 }
-final tmp44 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 44);
-final tmp45 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 48);
+final tmp44 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 48);
+final tmp45 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 52);
 final tmp55 = <BoundingBox>[];
 for (var i = 0; i < tmp45.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp44.toIntUnsigned() + i * 48);
@@ -47596,17 +47596,17 @@ final tmp53 = (tmp50.toDouble(), tmp51.toDouble(), tmp52.toDouble(), );
 
 tmp55.add(tmp54);
 }
-final tmp56 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 52);
-final tmp57 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 53);
-final tmp58 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 54);
-final tmp59 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 55);
-final tmp60 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 56);
-final tmp61 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 57);
-final tmp62 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 58);
-final tmp63 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 59);
-final tmp64 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 60);
-final tmp65 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 64);
-final tmp66 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 68);
+final tmp56 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 56);
+final tmp57 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 57);
+final tmp58 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 58);
+final tmp59 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 59);
+final tmp60 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 60);
+final tmp61 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 61);
+final tmp62 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 62);
+final tmp63 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 63);
+final tmp64 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 64);
+final tmp65 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 68);
+final tmp66 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 72);
 final tmp72 = <(String, String, )>[];
 for (var i = 0; i < tmp66.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp65.toIntUnsigned() + i * 16);
@@ -47623,7 +47623,7 @@ tmp72.add(tmp71);
 tmp74.add(tmp73);
 }
 i1.dartFree(tmp9, const i0.WasmI32(8), const i0.WasmI32(4));
-i1.dartFree(tmp0, const i0.WasmI32(56), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(60), const i0.WasmI32(4));
 return tmp74;
 
 }
@@ -47635,29 +47635,29 @@ final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp65 = <BlockState>[];
 for (var i = 0; i < tmp2.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 72);
-final tmp3 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
-final tmp4 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 2);
-final tmp5 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 4);
-final tmp6 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
-final tmp7 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 12);
-final tmp8 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 13);
-final tmp9 = i1.memory.loadFloat32(elementPtr.toIntUnsigned(), offset: 16);
-final tmp10 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 20);
-final tmp11 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 21);
-final tmp12 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 22);
-final tmp13 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 23);
-final tmp14 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 24);
-final tmp15 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 25);
-final tmp16 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 26);
-final tmp17 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 27);
-final tmp18 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 28);
-final tmp19 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 29);
-final tmp20 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 30);
-final tmp21 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 32);
-final tmp22 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 34);
-final tmp23 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 36);
-final tmp24 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 40);
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 76);
+final tmp3 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
+final tmp4 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 4);
+final tmp5 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
+final tmp6 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 12);
+final tmp7 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 16);
+final tmp8 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 17);
+final tmp9 = i1.memory.loadFloat32(elementPtr.toIntUnsigned(), offset: 20);
+final tmp10 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 24);
+final tmp11 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 25);
+final tmp12 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 26);
+final tmp13 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 27);
+final tmp14 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 28);
+final tmp15 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 29);
+final tmp16 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 30);
+final tmp17 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 31);
+final tmp18 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 32);
+final tmp19 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 33);
+final tmp20 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 34);
+final tmp21 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 36);
+final tmp22 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 38);
+final tmp23 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 40);
+final tmp24 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 44);
 final tmp34 = <BoundingBox>[];
 for (var i = 0; i < tmp24.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp23.toIntUnsigned() + i * 48);
@@ -47673,8 +47673,8 @@ final tmp32 = (tmp29.toDouble(), tmp30.toDouble(), tmp31.toDouble(), );
 
 tmp34.add(tmp33);
 }
-final tmp35 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 44);
-final tmp36 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 48);
+final tmp35 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 48);
+final tmp36 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 52);
 final tmp46 = <BoundingBox>[];
 for (var i = 0; i < tmp36.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp35.toIntUnsigned() + i * 48);
@@ -47690,17 +47690,17 @@ final tmp44 = (tmp41.toDouble(), tmp42.toDouble(), tmp43.toDouble(), );
 
 tmp46.add(tmp45);
 }
-final tmp47 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 52);
-final tmp48 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 53);
-final tmp49 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 54);
-final tmp50 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 55);
-final tmp51 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 56);
-final tmp52 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 57);
-final tmp53 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 58);
-final tmp54 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 59);
-final tmp55 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 60);
-final tmp56 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 64);
-final tmp57 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 68);
+final tmp47 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 56);
+final tmp48 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 57);
+final tmp49 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 58);
+final tmp50 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 59);
+final tmp51 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 60);
+final tmp52 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 61);
+final tmp53 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 62);
+final tmp54 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 63);
+final tmp55 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 64);
+final tmp56 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 68);
+final tmp57 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 72);
 final tmp63 = <(String, String, )>[];
 for (var i = 0; i < tmp57.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp56.toIntUnsigned() + i * 16);
@@ -47728,8 +47728,8 @@ final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp4 = <int>[];
 for (var i = 0; i < tmp2.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 2);
-final tmp3 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 4);
+final tmp3 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp4.add(tmp3.toIntUnsigned());
 }
@@ -47740,7 +47740,7 @@ return tmp4;
 @override
 List<(String, String, )> getBlockProperties({required int stateId, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1253(i0.WasmI32.uint16FromInt(stateId), tmp0);
+_import1253(i0.WasmI32.fromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp8 = <(String, String, )>[];
@@ -47760,8 +47760,8 @@ return tmp8;
 }
 @override
 Block? getBlockFromStateId({required int stateId, }){
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
-_import1254(i0.WasmI32.uint16FromInt(stateId), tmp0);
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(64));
+_import1254(i0.WasmI32.fromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 Block? tmp26;
 if (tmp1.toBool()) {
@@ -47775,24 +47775,24 @@ final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 28);
 final tmp9 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 32);
 final tmp10 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 36);
 final tmp11 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 40);
-final tmp12 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 42);
-final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
-final tmp14 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp12 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp13 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
+final tmp14 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
 final tmp16 = <int>[];
 for (var i = 0; i < tmp14.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp13.toIntUnsigned() + i * 2);
-final tmp15 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp13.toIntUnsigned() + i * 4);
+final tmp15 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp16.add(tmp15.toIntUnsigned());
 }
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 52);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 53);
-final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 54);
-final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 55);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
+final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
+final tmp20 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
 Flammable? tmp24;
 if (tmp20.toBool()) {
-  final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
-final tmp22 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
+  final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
+final tmp22 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
   final tmp23 = Flammable(spreadChance: tmp21.toIntUnsigned(), burnChance: tmp22.toIntUnsigned(), );
 
   tmp24 = tmp23;
@@ -47807,36 +47807,36 @@ final tmp22 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
   
   tmp26 = null;
 }
-i1.dartFree(tmp0, const i0.WasmI32(60), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(64), const i0.WasmI32(4));
 return tmp26;
 
 }
 @override
 Block getBlockFromState({required BlockState state, }){
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(72));
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(state.id), offset: 0);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(state.blockId), offset: 2);
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(state.id), offset: 0);
+i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(state.blockId), offset: 4);
 final tmp1 = i1.AllocatedString.allocateUtf16(state.blockName);
 _cleanups.add(tmp1.free);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.packedLength, offset: 8);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.ptr, offset: 4);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(state.luminance), offset: 12);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(state.opacity), offset: 13);
-i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(state.hardness), offset: 16);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isAir), offset: 20);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isLiquid), offset: 21);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isSolid), offset: 22);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isFullCube), offset: 23);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(state.pistonBehavior.index), offset: 24);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.hasRandomTicks), offset: 25);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.burnable), offset: 26);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.toolRequired), offset: 27);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.sidedTransparency), offset: 28);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.replaceable), offset: 29);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isSolidBlock), offset: 30);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(state.blockEntityType), offset: 32);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(state.instrument.index), offset: 34);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.packedLength, offset: 12);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp1.ptr, offset: 8);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(state.luminance), offset: 16);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(state.opacity), offset: 17);
+i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(state.hardness), offset: 20);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isAir), offset: 24);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isLiquid), offset: 25);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isSolid), offset: 26);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isFullCube), offset: 27);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(state.pistonBehavior.index), offset: 28);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.hasRandomTicks), offset: 29);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.burnable), offset: 30);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.toolRequired), offset: 31);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.sidedTransparency), offset: 32);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.replaceable), offset: 33);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.isSolidBlock), offset: 34);
+i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(state.blockEntityType), offset: 36);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(state.instrument.index), offset: 38);
 final tmp2 = state.collisionShapes.length;
 final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(8), i0.WasmI32.fromInt(48 * tmp2));
 for (var i = 0; i < tmp2; i++) {
@@ -47852,8 +47852,8 @@ i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp4.ma
 }
 final tmp5 = i0.WasmI32.fromInt(tmp2);
 _cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(48 * tmp2), const i0.WasmI32(8)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 40);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 36);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 44);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 40);
 final tmp6 = state.outlineShapes.length;
 final tmp7 = i1.mallocAligned(i0.WasmI32.fromInt(8), i0.WasmI32.fromInt(48 * tmp6));
 for (var i = 0; i < tmp6; i++) {
@@ -47869,17 +47869,17 @@ i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp8.ma
 }
 final tmp9 = i0.WasmI32.fromInt(tmp6);
 _cleanups.add(() { i1.dartFree(tmp7, i0.WasmI32.fromInt(48 * tmp6), const i0.WasmI32(8)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp9, offset: 48);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp7, offset: 44);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.downSideSolid), offset: 52);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.upSideSolid), offset: 53);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.northSideSolid), offset: 54);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.southSideSolid), offset: 55);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.westSideSolid), offset: 56);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.eastSideSolid), offset: 57);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.downCenterSolid), offset: 58);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.upCenterSolid), offset: 59);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(state.mapColor), offset: 60);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp9, offset: 52);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp7, offset: 48);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.downSideSolid), offset: 56);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.upSideSolid), offset: 57);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.northSideSolid), offset: 58);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.southSideSolid), offset: 59);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.westSideSolid), offset: 60);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.eastSideSolid), offset: 61);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.downCenterSolid), offset: 62);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(state.upCenterSolid), offset: 63);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(state.mapColor), offset: 64);
 final tmp12 = state.properties.length;
 final tmp13 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(16 * tmp12));
 for (var i = 0; i < tmp12; i++) {
@@ -47897,9 +47897,9 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp11.ptr, offset: 8);
 }
 final tmp15 = i0.WasmI32.fromInt(tmp12);
 _cleanups.add(() { i1.dartFree(tmp13, i0.WasmI32.fromInt(16 * tmp12), const i0.WasmI32(4)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp15, offset: 68);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp13, offset: 64);
-var tmp16 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(56));
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp15, offset: 72);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp13, offset: 68);
+var tmp16 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
 _import1255(tmp0, tmp16);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp17 = i1.memory.loadUint16(tmp16.toIntUnsigned(), offset: 0);
@@ -47912,24 +47912,24 @@ final tmp23 = i1.memory.loadFloat32(tmp16.toIntUnsigned(), offset: 24);
 final tmp24 = i1.memory.loadFloat32(tmp16.toIntUnsigned(), offset: 28);
 final tmp25 = i1.memory.loadFloat32(tmp16.toIntUnsigned(), offset: 32);
 final tmp26 = i1.memory.loadUint16(tmp16.toIntUnsigned(), offset: 36);
-final tmp27 = i1.memory.loadUint16(tmp16.toIntUnsigned(), offset: 38);
-final tmp28 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 40);
-final tmp29 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 44);
+final tmp27 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 40);
+final tmp28 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 44);
+final tmp29 = i1.memory.loadInt32(tmp16.toIntUnsigned(), offset: 48);
 final tmp31 = <int>[];
 for (var i = 0; i < tmp29.toIntUnsigned(); i++) {
-final elementPtr = i0.WasmI32.fromInt(tmp28.toIntUnsigned() + i * 2);
-final tmp30 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp28.toIntUnsigned() + i * 4);
+final tmp30 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 
 tmp31.add(tmp30.toIntUnsigned());
 }
-final tmp32 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 48);
-final tmp33 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 49);
-final tmp34 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 50);
-final tmp35 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 51);
+final tmp32 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 52);
+final tmp33 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 53);
+final tmp34 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 54);
+final tmp35 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 55);
 Flammable? tmp39;
 if (tmp35.toBool()) {
-  final tmp36 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 52);
-final tmp37 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 53);
+  final tmp36 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 56);
+final tmp37 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 57);
   final tmp38 = Flammable(spreadChance: tmp36.toIntUnsigned(), burnChance: tmp37.toIntUnsigned(), );
 
   tmp39 = tmp38;
@@ -47938,15 +47938,15 @@ final tmp37 = i1.memory.loadUint8(tmp16.toIntUnsigned(), offset: 53);
   tmp39 = null;
 }
   final tmp40 = Block(id: tmp17.toIntUnsigned(), name: i1.AllocatedString.read(tmp18, tmp19), hardness: tmp20.toDouble(), blastResistance: tmp21.toDouble(), mapColor: tmp22.toIntUnsigned(), slipperiness: tmp23.toDouble(), velocityMultiplier: tmp24.toDouble(), jumpVelocityMultiplier: tmp25.toDouble(), itemId: tmp26.toIntUnsigned(), defaultStateId: tmp27.toIntUnsigned(), stateIds: tmp31, isSolid: tmp32.toBool(), isAir: tmp33.toBool(), isFlammable: tmp34.toBool(), flammable: tmp39, );
-i1.dartFree(tmp16, const i0.WasmI32(56), const i0.WasmI32(4));
-i1.dartFree(tmp0, const i0.WasmI32(72), const i0.WasmI32(4));
+i1.dartFree(tmp16, const i0.WasmI32(60), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(76), const i0.WasmI32(4));
 return tmp40;
 
 }
 @override
 BlockState getDefaultStateFromBlock({required Block block, }){
 final _cleanups = <void Function()>[];
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(56));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(60));
 i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.id), offset: 0);
 final tmp1 = i1.AllocatedString.allocateUtf16(block.name);
 _cleanups.add(tmp1.free);
@@ -47959,58 +47959,58 @@ i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.slipper
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.velocityMultiplier), offset: 28);
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(block.jumpVelocityMultiplier), offset: 32);
 i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.itemId), offset: 36);
-i1.memory.storeInt16(tmp0.toIntUnsigned(), i0.WasmI32.uint16FromInt(block.defaultStateId), offset: 38);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(block.defaultStateId), offset: 40);
 final tmp2 = block.stateIds.length;
-final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(2), i0.WasmI32.fromInt(2 * tmp2));
+final tmp3 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(4 * tmp2));
 for (var i = 0; i < tmp2; i++) {
 final tmp4 = block.stateIds[i];
-final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 2);
-i1.memory.storeInt16(elementPtr.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp4), offset: 0);
+final elementPtr = i0.WasmI32.fromInt(tmp3.toIntUnsigned() + i * 4);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp4), offset: 0);
 
 }
 final tmp5 = i0.WasmI32.fromInt(tmp2);
-_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(2 * tmp2), const i0.WasmI32(2)); });
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 44);
-i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 40);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 48);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 49);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 50);
+_cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(4 * tmp2), const i0.WasmI32(4)); });
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp5, offset: 48);
+i1.memory.storeInt32(tmp0.toIntUnsigned(), tmp3, offset: 44);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isSolid), offset: 52);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isAir), offset: 53);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(block.isFlammable), offset: 54);
 final tmp8 = block.flammable;
 if (tmp8 != null) {
 final tmp7 = tmp8;
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 51);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 52);
-i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 53);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(1), offset: 55);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.spreadChance), offset: 56);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp7.burnChance), offset: 57);
 
 } else {
-i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 51);
+i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 55);
 
 }
-var tmp9 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(72));
+var tmp9 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
 _import1256(tmp0, tmp9);
 for (final cleanup in _cleanups) { cleanup(); }
-final tmp10 = i1.memory.loadUint16(tmp9.toIntUnsigned(), offset: 0);
-final tmp11 = i1.memory.loadUint16(tmp9.toIntUnsigned(), offset: 2);
-final tmp12 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 4);
-final tmp13 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 8);
-final tmp14 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 12);
-final tmp15 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 13);
-final tmp16 = i1.memory.loadFloat32(tmp9.toIntUnsigned(), offset: 16);
-final tmp17 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 20);
-final tmp18 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 21);
-final tmp19 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 22);
-final tmp20 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 23);
-final tmp21 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 24);
-final tmp22 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 25);
-final tmp23 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 26);
-final tmp24 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 27);
-final tmp25 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 28);
-final tmp26 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 29);
-final tmp27 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 30);
-final tmp28 = i1.memory.loadUint16(tmp9.toIntUnsigned(), offset: 32);
-final tmp29 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 34);
-final tmp30 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 36);
-final tmp31 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 40);
+final tmp10 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 0);
+final tmp11 = i1.memory.loadUint16(tmp9.toIntUnsigned(), offset: 4);
+final tmp12 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 8);
+final tmp13 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 12);
+final tmp14 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 16);
+final tmp15 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 17);
+final tmp16 = i1.memory.loadFloat32(tmp9.toIntUnsigned(), offset: 20);
+final tmp17 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 24);
+final tmp18 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 25);
+final tmp19 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 26);
+final tmp20 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 27);
+final tmp21 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 28);
+final tmp22 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 29);
+final tmp23 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 30);
+final tmp24 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 31);
+final tmp25 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 32);
+final tmp26 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 33);
+final tmp27 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 34);
+final tmp28 = i1.memory.loadUint16(tmp9.toIntUnsigned(), offset: 36);
+final tmp29 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 38);
+final tmp30 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 40);
+final tmp31 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 44);
 final tmp41 = <BoundingBox>[];
 for (var i = 0; i < tmp31.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp30.toIntUnsigned() + i * 48);
@@ -48026,8 +48026,8 @@ final tmp39 = (tmp36.toDouble(), tmp37.toDouble(), tmp38.toDouble(), );
 
 tmp41.add(tmp40);
 }
-final tmp42 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 44);
-final tmp43 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 48);
+final tmp42 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 48);
+final tmp43 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 52);
 final tmp53 = <BoundingBox>[];
 for (var i = 0; i < tmp43.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp42.toIntUnsigned() + i * 48);
@@ -48043,17 +48043,17 @@ final tmp51 = (tmp48.toDouble(), tmp49.toDouble(), tmp50.toDouble(), );
 
 tmp53.add(tmp52);
 }
-final tmp54 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 52);
-final tmp55 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 53);
-final tmp56 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 54);
-final tmp57 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 55);
-final tmp58 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 56);
-final tmp59 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 57);
-final tmp60 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 58);
-final tmp61 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 59);
-final tmp62 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 60);
-final tmp63 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 64);
-final tmp64 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 68);
+final tmp54 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 56);
+final tmp55 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 57);
+final tmp56 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 58);
+final tmp57 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 59);
+final tmp58 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 60);
+final tmp59 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 61);
+final tmp60 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 62);
+final tmp61 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 63);
+final tmp62 = i1.memory.loadUint8(tmp9.toIntUnsigned(), offset: 64);
+final tmp63 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 68);
+final tmp64 = i1.memory.loadInt32(tmp9.toIntUnsigned(), offset: 72);
 final tmp70 = <(String, String, )>[];
 for (var i = 0; i < tmp64.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp63.toIntUnsigned() + i * 16);
@@ -48066,40 +48066,40 @@ final tmp69 = (i1.AllocatedString.read(tmp65, tmp66), i1.AllocatedString.read(tm
 tmp70.add(tmp69);
 }
   final tmp71 = BlockState(id: tmp10.toIntUnsigned(), blockId: tmp11.toIntUnsigned(), blockName: i1.AllocatedString.read(tmp12, tmp13), luminance: tmp14.toIntUnsigned(), opacity: tmp15.toIntUnsigned(), hardness: tmp16.toDouble(), isAir: tmp17.toBool(), isLiquid: tmp18.toBool(), isSolid: tmp19.toBool(), isFullCube: tmp20.toBool(), pistonBehavior: WorldPistonBehavior.values[tmp21.toIntUnsigned()], hasRandomTicks: tmp22.toBool(), burnable: tmp23.toBool(), toolRequired: tmp24.toBool(), sidedTransparency: tmp25.toBool(), replaceable: tmp26.toBool(), isSolidBlock: tmp27.toBool(), blockEntityType: tmp28.toIntUnsigned(), instrument: NoteblockInstrument.values[tmp29.toIntUnsigned()], collisionShapes: tmp41, outlineShapes: tmp53, downSideSolid: tmp54.toBool(), upSideSolid: tmp55.toBool(), northSideSolid: tmp56.toBool(), southSideSolid: tmp57.toBool(), westSideSolid: tmp58.toBool(), eastSideSolid: tmp59.toBool(), downCenterSolid: tmp60.toBool(), upCenterSolid: tmp61.toBool(), mapColor: tmp62.toIntUnsigned(), properties: tmp70, );
-i1.dartFree(tmp9, const i0.WasmI32(72), const i0.WasmI32(4));
-i1.dartFree(tmp0, const i0.WasmI32(56), const i0.WasmI32(4));
+i1.dartFree(tmp9, const i0.WasmI32(76), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(60), const i0.WasmI32(4));
 return tmp71;
 
 }
 @override
 BlockState? getDefaultStateFromBlockId({required int blockId, }){
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(80));
 _import1257(i0.WasmI32.uint16FromInt(blockId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 BlockState? tmp64;
 if (tmp1.toBool()) {
-  final tmp2 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 4);
-final tmp3 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 6);
-final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
-final tmp5 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
-final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 16);
-final tmp7 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 17);
-final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 20);
-final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 24);
-final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 25);
-final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 26);
-final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 27);
-final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
-final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
-final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
-final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 31);
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 32);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 33);
-final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
-final tmp20 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 36);
-final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 38);
-final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
-final tmp23 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+  final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 8);
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+final tmp5 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 16);
+final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 20);
+final tmp7 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 21);
+final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 24);
+final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
+final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
+final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
+final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 31);
+final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 32);
+final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 33);
+final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
+final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 35);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 36);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 37);
+final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 38);
+final tmp20 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 40);
+final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 42);
+final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp23 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
 final tmp33 = <BoundingBox>[];
 for (var i = 0; i < tmp23.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp22.toIntUnsigned() + i * 48);
@@ -48115,8 +48115,8 @@ final tmp31 = (tmp28.toDouble(), tmp29.toDouble(), tmp30.toDouble(), );
 
 tmp33.add(tmp32);
 }
-final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
-final tmp35 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
+final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
+final tmp35 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 56);
 final tmp45 = <BoundingBox>[];
 for (var i = 0; i < tmp35.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp34.toIntUnsigned() + i * 48);
@@ -48132,17 +48132,17 @@ final tmp43 = (tmp40.toDouble(), tmp41.toDouble(), tmp42.toDouble(), );
 
 tmp45.add(tmp44);
 }
-final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
-final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
-final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
-final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
-final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
-final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
-final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 62);
-final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 63);
-final tmp54 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 64);
-final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 68);
-final tmp56 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 72);
+final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
+final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
+final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 62);
+final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 63);
+final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 64);
+final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 65);
+final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 66);
+final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 67);
+final tmp54 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 68);
+final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 72);
+final tmp56 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 76);
 final tmp62 = <(String, String, )>[];
 for (var i = 0; i < tmp56.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp55.toIntUnsigned() + i * 16);
@@ -48161,39 +48161,39 @@ tmp62.add(tmp61);
   
   tmp64 = null;
 }
-i1.dartFree(tmp0, const i0.WasmI32(76), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(80), const i0.WasmI32(4));
 return tmp64;
 
 }
 @override
 BlockState? getBlockStateById({required int stateId, }){
-var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(76));
-_import1258(i0.WasmI32.uint16FromInt(stateId), tmp0);
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(80));
+_import1258(i0.WasmI32.fromInt(stateId), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 BlockState? tmp64;
 if (tmp1.toBool()) {
-  final tmp2 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 4);
-final tmp3 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 6);
-final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
-final tmp5 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
-final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 16);
-final tmp7 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 17);
-final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 20);
-final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 24);
-final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 25);
-final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 26);
-final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 27);
-final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
-final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
-final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
-final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 31);
-final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 32);
-final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 33);
-final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
-final tmp20 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 36);
-final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 38);
-final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 40);
-final tmp23 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+  final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 8);
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 12);
+final tmp5 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 16);
+final tmp6 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 20);
+final tmp7 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 21);
+final tmp8 = i1.memory.loadFloat32(tmp0.toIntUnsigned(), offset: 24);
+final tmp9 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 28);
+final tmp10 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 29);
+final tmp11 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 30);
+final tmp12 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 31);
+final tmp13 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 32);
+final tmp14 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 33);
+final tmp15 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 34);
+final tmp16 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 35);
+final tmp17 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 36);
+final tmp18 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 37);
+final tmp19 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 38);
+final tmp20 = i1.memory.loadUint16(tmp0.toIntUnsigned(), offset: 40);
+final tmp21 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 42);
+final tmp22 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 44);
+final tmp23 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
 final tmp33 = <BoundingBox>[];
 for (var i = 0; i < tmp23.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp22.toIntUnsigned() + i * 48);
@@ -48209,8 +48209,8 @@ final tmp31 = (tmp28.toDouble(), tmp29.toDouble(), tmp30.toDouble(), );
 
 tmp33.add(tmp32);
 }
-final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 48);
-final tmp35 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
+final tmp34 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 52);
+final tmp35 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 56);
 final tmp45 = <BoundingBox>[];
 for (var i = 0; i < tmp35.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp34.toIntUnsigned() + i * 48);
@@ -48226,17 +48226,17 @@ final tmp43 = (tmp40.toDouble(), tmp41.toDouble(), tmp42.toDouble(), );
 
 tmp45.add(tmp44);
 }
-final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 56);
-final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 57);
-final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 58);
-final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 59);
-final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
-final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
-final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 62);
-final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 63);
-final tmp54 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 64);
-final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 68);
-final tmp56 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 72);
+final tmp46 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 60);
+final tmp47 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 61);
+final tmp48 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 62);
+final tmp49 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 63);
+final tmp50 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 64);
+final tmp51 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 65);
+final tmp52 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 66);
+final tmp53 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 67);
+final tmp54 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 68);
+final tmp55 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 72);
+final tmp56 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 76);
 final tmp62 = <(String, String, )>[];
 for (var i = 0; i < tmp56.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp55.toIntUnsigned() + i * 16);
@@ -48255,7 +48255,7 @@ tmp62.add(tmp61);
   
   tmp64 = null;
 }
-i1.dartFree(tmp0, const i0.WasmI32(76), const i0.WasmI32(4));
+i1.dartFree(tmp0, const i0.WasmI32(80), const i0.WasmI32(4));
 return tmp64;
 
 }
@@ -48276,7 +48276,7 @@ bool blockStateHasTag({required int stateId, required String tag, }){
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(tag);
 _cleanups.add(tmp0.free);
-final tmp1 = _import1260(i0.WasmI32.uint16FromInt(stateId), tmp0.ptr, tmp0.packedLength);
+final tmp1 = _import1260(i0.WasmI32.fromInt(stateId), tmp0.ptr, tmp0.packedLength);
 for (final cleanup in _cleanups) { cleanup(); }
 return tmp1.toBool();
 
@@ -62421,28 +62421,28 @@ final _scope = i1.ResourceScope.enter();
 try {
 final tmp0 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 0);
   final tmp1 = BlockPredicateCallbackId(id: tmp0.toIntUnsigned(), );
-final tmp2 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 4);
-final tmp3 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 6);
-final tmp4 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 8);
-final tmp5 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 12);
-final tmp6 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 16);
-final tmp7 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 17);
-final tmp8 = i1.memory.loadFloat32(p0.toIntUnsigned(), offset: 20);
-final tmp9 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 24);
-final tmp10 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 25);
-final tmp11 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 26);
-final tmp12 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 27);
-final tmp13 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 28);
-final tmp14 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 29);
-final tmp15 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 30);
-final tmp16 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 31);
-final tmp17 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 32);
-final tmp18 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 33);
-final tmp19 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 34);
-final tmp20 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 36);
-final tmp21 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 38);
-final tmp22 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 40);
-final tmp23 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 44);
+final tmp2 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 4);
+final tmp3 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 8);
+final tmp4 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 12);
+final tmp5 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 16);
+final tmp6 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 20);
+final tmp7 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 21);
+final tmp8 = i1.memory.loadFloat32(p0.toIntUnsigned(), offset: 24);
+final tmp9 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 28);
+final tmp10 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 29);
+final tmp11 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 30);
+final tmp12 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 31);
+final tmp13 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 32);
+final tmp14 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 33);
+final tmp15 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 34);
+final tmp16 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 35);
+final tmp17 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 36);
+final tmp18 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 37);
+final tmp19 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 38);
+final tmp20 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 40);
+final tmp21 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 42);
+final tmp22 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 44);
+final tmp23 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 48);
 final tmp33 = <BoundingBox>[];
 for (var i = 0; i < tmp23.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp22.toIntUnsigned() + i * 48);
@@ -62458,8 +62458,8 @@ final tmp31 = (tmp28.toDouble(), tmp29.toDouble(), tmp30.toDouble(), );
 
 tmp33.add(tmp32);
 }
-final tmp34 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 48);
-final tmp35 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 52);
+final tmp34 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 52);
+final tmp35 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 56);
 final tmp45 = <BoundingBox>[];
 for (var i = 0; i < tmp35.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp34.toIntUnsigned() + i * 48);
@@ -62475,17 +62475,17 @@ final tmp43 = (tmp40.toDouble(), tmp41.toDouble(), tmp42.toDouble(), );
 
 tmp45.add(tmp44);
 }
-final tmp46 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 56);
-final tmp47 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 57);
-final tmp48 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 58);
-final tmp49 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 59);
-final tmp50 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 60);
-final tmp51 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 61);
-final tmp52 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 62);
-final tmp53 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 63);
-final tmp54 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 64);
-final tmp55 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 68);
-final tmp56 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 72);
+final tmp46 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 60);
+final tmp47 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 61);
+final tmp48 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 62);
+final tmp49 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 63);
+final tmp50 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 64);
+final tmp51 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 65);
+final tmp52 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 66);
+final tmp53 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 67);
+final tmp54 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 68);
+final tmp55 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 72);
+final tmp56 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 76);
 final tmp62 = <(String, String, )>[];
 for (var i = 0; i < tmp56.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp55.toIntUnsigned() + i * 16);
@@ -62499,7 +62499,7 @@ tmp62.add(tmp61);
 }
   final tmp63 = BlockState(id: tmp2.toIntUnsigned(), blockId: tmp3.toIntUnsigned(), blockName: i1.AllocatedString.read(tmp4, tmp5), luminance: tmp6.toIntUnsigned(), opacity: tmp7.toIntUnsigned(), hardness: tmp8.toDouble(), isAir: tmp9.toBool(), isLiquid: tmp10.toBool(), isSolid: tmp11.toBool(), isFullCube: tmp12.toBool(), pistonBehavior: WorldPistonBehavior.values[tmp13.toIntUnsigned()], hasRandomTicks: tmp14.toBool(), burnable: tmp15.toBool(), toolRequired: tmp16.toBool(), sidedTransparency: tmp17.toBool(), replaceable: tmp18.toBool(), isSolidBlock: tmp19.toBool(), blockEntityType: tmp20.toIntUnsigned(), instrument: NoteblockInstrument.values[tmp21.toIntUnsigned()], collisionShapes: tmp33, outlineShapes: tmp45, downSideSolid: tmp46.toBool(), upSideSolid: tmp47.toBool(), northSideSolid: tmp48.toBool(), southSideSolid: tmp49.toBool(), westSideSolid: tmp50.toBool(), eastSideSolid: tmp51.toBool(), downCenterSolid: tmp52.toBool(), upCenterSolid: tmp53.toBool(), mapColor: tmp54.toIntUnsigned(), properties: tmp62, );
 final tmp64 = _gametestCallbacks.invokeBlockPredicate(callback: tmp1,permutation: tmp63,);
-i1.dartFree(p0, const i0.WasmI32(76), const i0.WasmI32(4));
+i1.dartFree(p0, const i0.WasmI32(80), const i0.WasmI32(4));
 return i0.WasmI32.fromBool(tmp64);
 
 } finally {
@@ -62951,7 +62951,7 @@ tmp7172 = EventInventoryCloseEvent(tmp189);
 }
 case 25: {
 final tmp190 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 16);
-final tmp191 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 20);
+final tmp191 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 20);
 final tmp192 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 24);
 final tmp193 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 28);
 final tmp194 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 32);
@@ -63018,10 +63018,10 @@ case 29: {
 final tmp232 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 16);
 final tmp233 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 20);
 final tmp234 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 24);
-final tmp235 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 28);
+final tmp235 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 28);
 final tmp236 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 32);
 final tmp237 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 36);
-final tmp238 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 40);
+final tmp238 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 40);
 final tmp239 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 44);
 final tmp240 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 48);
 final tmp241 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 52);
@@ -74409,7 +74409,7 @@ final tmp5607 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 final tmp5608 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 4);
 final tmp5609 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
   final tmp5610 = BlockPos(x: tmp5607.toIntSigned(), y: tmp5608.toIntSigned(), z: tmp5609.toIntSigned(), );
-final tmp5611 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 12);
+final tmp5611 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 12);
 final tmp5612 = (tmp5610, tmp5611.toIntUnsigned(), );
 
 tmp5613.add(tmp5612);
@@ -74431,7 +74431,7 @@ final tmp5620 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 final tmp5621 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 4);
 final tmp5622 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 8);
   final tmp5623 = BlockPos(x: tmp5620.toIntSigned(), y: tmp5621.toIntSigned(), z: tmp5622.toIntSigned(), );
-final tmp5624 = i1.memory.loadUint16(elementPtr.toIntUnsigned(), offset: 12);
+final tmp5624 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 12);
 final tmp5625 = (tmp5623, tmp5624.toIntUnsigned(), );
 
 tmp5626.add(tmp5625);
@@ -74487,8 +74487,8 @@ final tmp5655 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 32);
 final tmp5656 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 36);
   final tmp5657 = BlockPos(x: tmp5654.toIntSigned(), y: tmp5655.toIntSigned(), z: tmp5656.toIntSigned(), );
 final tmp5658 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 40);
-final tmp5659 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 44);
-final tmp5660 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 46);
+final tmp5659 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 44);
+final tmp5660 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 48);
   final tmp5661 = BlockSpreadEventData(sourcePos: tmp5653, targetPos: tmp5657, targetWorld: World._own(tmp5658.toIntUnsigned()), newStateId: tmp5659.toIntUnsigned(), cancelled: tmp5660.toBool(), );
 
 tmp7172 = EventBlockSpreadEvent(tmp5661);
@@ -74563,8 +74563,8 @@ final tmp5704 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 24);
 final tmp5705 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 28);
   final tmp5706 = BlockPos(x: tmp5703.toIntSigned(), y: tmp5704.toIntSigned(), z: tmp5705.toIntSigned(), );
 final tmp5707 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 32);
-final tmp5708 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 36);
-final tmp5709 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 38);
+final tmp5708 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 36);
+final tmp5709 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 40);
   final tmp5710 = EntityBlockFormEventData(entityId: tmp5702.toIntSigned(), blockPos: tmp5706, targetWorld: World._own(tmp5707.toIntUnsigned()), newStateId: tmp5708.toIntUnsigned(), cancelled: tmp5709.toBool(), );
 
 tmp7172 = EventEntityBlockFormEvent(tmp5710);
@@ -74575,8 +74575,8 @@ final tmp5712 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 20);
 final tmp5713 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 24);
   final tmp5714 = BlockPos(x: tmp5711.toIntSigned(), y: tmp5712.toIntSigned(), z: tmp5713.toIntSigned(), );
 final tmp5715 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 28);
-final tmp5716 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 32);
-final tmp5717 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 34);
+final tmp5716 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 32);
+final tmp5717 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 36);
   final tmp5718 = FluidLevelChangeEventData(blockPos: tmp5714, targetWorld: World._own(tmp5715.toIntUnsigned()), newStateId: tmp5716.toIntUnsigned(), cancelled: tmp5717.toBool(), );
 
 tmp7172 = EventFluidLevelChangeEvent(tmp5718);
@@ -76705,14 +76705,14 @@ final tmp6831 = i1.memory.loadInt64(p0.toIntUnsigned(), offset: 64);
 final tmp6834 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 72);
 int? tmp6836;
 if (tmp6834.toBool()) {
-  final tmp6835 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 74);
+  final tmp6835 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 76);
 
   tmp6836 = tmp6835.toIntUnsigned();
 } else {
   
   tmp6836 = null;
 }
-final tmp6837 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 76);
+final tmp6837 = i1.memory.loadUint8(p0.toIntUnsigned(), offset: 80);
   final tmp6838 = CustomBlockPlacedEventData(targetWorld: World._own(tmp6821.toIntUnsigned()), pos: tmp6825, block: i1.AllocatedString.read(tmp6826, tmp6827), stateIndex: tmp6828.toIntUnsigned(), player: tmp6833, oldStateId: tmp6836, moved: tmp6837.toBool(), );
 
 tmp7172 = EventCustomBlockPlacedEvent(tmp6838);
@@ -76872,8 +76872,8 @@ final tmp6947 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 52);
   final tmp6948 = BlockPos(x: tmp6945.toIntSigned(), y: tmp6946.toIntSigned(), z: tmp6947.toIntSigned(), );
 final tmp6949 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 56);
 final tmp6950 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 60);
-final tmp6951 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 64);
-final tmp6952 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 66);
+final tmp6951 = i1.memory.loadInt32(p0.toIntUnsigned(), offset: 64);
+final tmp6952 = i1.memory.loadUint16(p0.toIntUnsigned(), offset: 68);
   final tmp6953 = CustomBlockUpdateShapeEventData(targetWorld: World._own(tmp6936.toIntUnsigned()), pos: tmp6940, block: i1.AllocatedString.read(tmp6941, tmp6942), stateIndex: tmp6943.toIntUnsigned(), direction: BlockDirection.values[tmp6944.toIntUnsigned()], neighborPos: tmp6948, neighborBlock: i1.AllocatedString.read(tmp6949, tmp6950), neighborStateId: tmp6951.toIntUnsigned(), newStateIndex: tmp6952.toIntUnsigned(), );
 
 tmp7172 = EventCustomBlockUpdateShapeEvent(tmp6953);
@@ -77583,7 +77583,7 @@ i1.memory.storeInt8(tmp7174.toIntUnsigned(), const i0.WasmI32(0), offset: 12);
 case EventBlockRedstoneEvent(value: final tmp7240):
 i1.memory.storeInt16(tmp7174.toIntUnsigned(), const i0.WasmI32(25), offset: 0);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7240.targetWorld.takeHandle()), offset: 8);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp7240.stateId), offset: 12);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7240.stateId), offset: 12);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7240.blockPos.x), offset: 16);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7240.blockPos.y), offset: 20);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7240.blockPos.z), offset: 24);
@@ -77651,12 +77651,12 @@ final tmp7253 = i1.AllocatedString.allocateUtf16(tmp7252.oldBlock);
 _cleanups.add(tmp7253.free);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), tmp7253.packedLength, offset: 16);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), tmp7253.ptr, offset: 12);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp7252.oldStateId), offset: 20);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7252.oldStateId), offset: 20);
 final tmp7254 = i1.AllocatedString.allocateUtf16(tmp7252.newBlock);
 _cleanups.add(tmp7254.free);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), tmp7254.packedLength, offset: 28);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), tmp7254.ptr, offset: 24);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp7252.newStateId), offset: 32);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7252.newStateId), offset: 32);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7252.blockPos.x), offset: 36);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7252.blockPos.y), offset: 40);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp7252.blockPos.z), offset: 44);
@@ -88970,7 +88970,7 @@ final elementPtr = i0.WasmI32.fromInt(tmp10196.toIntUnsigned() + i * 16);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10197.$1.x), offset: 0);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10197.$1.y), offset: 4);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10197.$1.z), offset: 8);
-i1.memory.storeInt16(elementPtr.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10197.$2), offset: 12);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10197.$2), offset: 12);
 
 }
 final tmp10198 = i0.WasmI32.fromInt(tmp10195);
@@ -88991,7 +88991,7 @@ final elementPtr = i0.WasmI32.fromInt(tmp10201.toIntUnsigned() + i * 16);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10202.$1.x), offset: 0);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10202.$1.y), offset: 4);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10202.$1.z), offset: 8);
-i1.memory.storeInt16(elementPtr.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10202.$2), offset: 12);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp10202.$2), offset: 12);
 
 }
 final tmp10203 = i0.WasmI32.fromInt(tmp10200);
@@ -89041,8 +89041,8 @@ i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10210.target
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10210.targetPos.y), offset: 24);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10210.targetPos.z), offset: 28);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10210.targetWorld.takeHandle()), offset: 32);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10210.newStateId), offset: 36);
-i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10210.cancelled), offset: 38);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10210.newStateId), offset: 36);
+i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10210.cancelled), offset: 40);
 
 case EventBrewingStartEvent(value: final tmp10211):
 i1.memory.storeInt16(tmp7174.toIntUnsigned(), const i0.WasmI32(166), offset: 0);
@@ -89104,8 +89104,8 @@ i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10219.blockP
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10219.blockPos.y), offset: 16);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10219.blockPos.z), offset: 20);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10219.targetWorld.takeHandle()), offset: 24);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10219.newStateId), offset: 28);
-i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10219.cancelled), offset: 30);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10219.newStateId), offset: 28);
+i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10219.cancelled), offset: 32);
 
 case EventFluidLevelChangeEvent(value: final tmp10220):
 i1.memory.storeInt16(tmp7174.toIntUnsigned(), const i0.WasmI32(171), offset: 0);
@@ -89113,8 +89113,8 @@ i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10220.blockP
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10220.blockPos.y), offset: 12);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10220.blockPos.z), offset: 16);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10220.targetWorld.takeHandle()), offset: 20);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10220.newStateId), offset: 24);
-i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10220.cancelled), offset: 26);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10220.newStateId), offset: 24);
+i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10220.cancelled), offset: 28);
 
 case EventInventoryBlockStartEvent(value: final tmp10221):
 i1.memory.storeInt16(tmp7174.toIntUnsigned(), const i0.WasmI32(172), offset: 0);
@@ -91085,13 +91085,13 @@ final tmp10653 = tmp10646.oldStateId;
 if (tmp10653 != null) {
 final tmp10652 = tmp10653;
 i1.memory.storeInt8(tmp7174.toIntUnsigned(), const i0.WasmI32(1), offset: 64);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10652), offset: 66);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10652), offset: 68);
 
 } else {
 i1.memory.storeInt8(tmp7174.toIntUnsigned(), const i0.WasmI32(0), offset: 64);
 
 }
-i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10646.moved), offset: 68);
+i1.memory.storeInt8(tmp7174.toIntUnsigned(), i0.WasmI32.fromBool(tmp10646.moved), offset: 72);
 
 case EventCustomBlockStateReplacedEvent(value: final tmp10654):
 i1.memory.storeInt16(tmp7174.toIntUnsigned(), const i0.WasmI32(313), offset: 0);
@@ -91242,8 +91242,8 @@ final tmp10678 = i1.AllocatedString.allocateUtf16(tmp10676.neighborBlock);
 _cleanups.add(tmp10678.free);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), tmp10678.packedLength, offset: 52);
 i1.memory.storeInt32(tmp7174.toIntUnsigned(), tmp10678.ptr, offset: 48);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10676.neighborStateId), offset: 56);
-i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10676.newStateIndex), offset: 58);
+i1.memory.storeInt32(tmp7174.toIntUnsigned(), i0.WasmI32.fromInt(tmp10676.neighborStateId), offset: 56);
+i1.memory.storeInt16(tmp7174.toIntUnsigned(), i0.WasmI32.uint16FromInt(tmp10676.newStateIndex), offset: 60);
 
 case EventCustomBlockRedstonePowerEvent(value: final tmp10679):
 i1.memory.storeInt16(tmp7174.toIntUnsigned(), const i0.WasmI32(321), offset: 0);

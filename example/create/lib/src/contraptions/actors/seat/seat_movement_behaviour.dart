@@ -44,5 +44,6 @@ final class SeatMovementBehaviour extends MovementBehaviour {
 
     entity.host.removePassenger(toDismount);
     toDismount.teleportTo(pos.center + (0.0, slab ? .5 : 1.0, 0.0));
+    toDismount.setPersistentData('ContraptionDismountLocation', null);
   }
 }

@@ -50,23 +50,21 @@ BlockBehavior _vaultBehavior() => BlockBehavior(
     final worldId = world.getId();
     final pos = e.pos.toPos();
     var state = transportState(e.block, e.stateIndex);
-    // The placement context is not passed to this event; keep the axis of a neighbouring vault.
-    for (final d in [
-      Direction.down,
-      Direction.north,
-      Direction.south,
-      Direction.east,
-      Direction.west,
-    ]) {
-      final neighbour = ConveyanceRuntime.i.stateAt(worldId, pos.relative(d));
-      if (isVaultState(neighbour)) {
-        final axis = neighbour.axisOf('axis');
-        if (axis != null) {
-          state = state.setValue('axis', axis.serializedName);
-          break;
-        }
-      }
+    // `ItemVaultBlock.getStateForPlacement`: continue the axis of the vault we are placed on,
+    // otherwise face the player's horizontal direction. Sneaking skips the first rule.
+    final rt = ConveyanceRuntime.i;
+    final click = rt.clickFor(e.player, pos);
+    Axis? preferred;
+    if (click != null && !click.sneaking) {
+      final placedOn = rt.stateAt(worldId, pos.relative(click.face.opposite));
+      if (isVaultState(placedOn)) preferred = placedOn.axisOf('axis');
     }
+    final player = rt.playerOf(server, e.player);
+    preferred ??= player == null
+        ? null
+        : Direction.fromYRot(player.getYaw()).axis;
+    if (preferred != null)
+      state = state.setValue('axis', preferred.serializedName);
     if (state != transportState(e.block, e.stateIndex))
       await writeState(world, pos, state);
     ConveyanceRuntime.i

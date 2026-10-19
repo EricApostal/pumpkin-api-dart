@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../../api/blocks.dart';
+import '../../../api/redstone.dart';
 import '../../../common/direction.dart';
 import '../../../common/host_bridge.dart';
 import '../../../common/pos.dart';
@@ -247,8 +248,17 @@ class FunnelBlockEntity extends CreateBlockEntity
 
   @override
   void onTransfer(ItemValue stack) {
-    // The smart observer and the funnel advancement react here in Java; neither is needed for the
-    // item transfer itself.
+    // `SmartObserverBlock.onFunnelTransfer`: observers aimed at this funnel with a matching filter
+    // fire. The funnel advancement is placer bound and has no behaviour to award it from here.
+    final world = this.world;
+    if (world == null) return;
+    final display = rt.ctx.services.find<RedstoneDisplayApi>();
+    if (display == null) return;
+    final pos = this.pos;
+    rt.fire(
+      'Funnel transfer notification',
+      () => display.onFunnelTransfer(world, pos, stack.key),
+    );
   }
 
   bool supportsAmountOnFilter() {

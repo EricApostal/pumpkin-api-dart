@@ -4,3 +4,4 @@ library;
 
 export 'blaze_burner_block.dart' show BlazeBurnerBlock, LitBlazeBurnerBlock;
 export 'blaze_burner_block_entity.dart' show BlazeBurnerBlockEntity, FuelType;
+export 'insert_result.dart' show InsertResult, InsertResultType;

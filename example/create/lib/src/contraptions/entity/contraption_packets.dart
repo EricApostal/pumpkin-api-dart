@@ -191,7 +191,7 @@ final class HostInteractingPlayer implements InteractingPlayer {
   }
 
   @override
-  String get uuid => player.getId().toString();
+  String get uuid => player.getId().asString;
 
   @override
   bool get isSneaking {

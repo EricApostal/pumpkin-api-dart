@@ -10,6 +10,8 @@ import '../factory/factory_panel_block_entity.dart';
 import '../host/host_inventory.dart';
 import '../host/lg_block_entity.dart';
 import '../host/lvl.dart';
+import '../host/nbt_codecs.dart';
+import '../host/nbt_util.dart';
 import '../host/runtime.dart';
 import '../host/state_props.dart';
 import '../link/packager_link_block_entity.dart';
@@ -66,6 +68,11 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
   int buttonCooldown = 0;
   String signBasedAddress = '';
 
+  /// `customComputerAddress` / `hasCustomComputerAddress` (ComputerCraft). There is no
+  /// ComputerCraft bridge in this port, but Java persists the keys and a client reads them.
+  String customComputerAddress = '';
+  bool hasCustomComputerAddress = false;
+
   LStack heldBox = LStack.empty;
   LStack previouslyUnwrapped = LStack.empty;
   List<BigStack> queuedExitingPackages = [];
@@ -89,17 +96,22 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
     _state
       ..clear()
       ..addAll(map);
-    redstonePowered = map['active'] == true;
-    buttonCooldown = map['buttonCooldown'] as int? ?? 0;
-    signBasedAddress = map['signAddress'] as String? ?? '';
-    heldBox = _stack(map['heldBox']);
-    previouslyUnwrapped = _stack(map['insertedBox']);
+    // The keys are the Java NBT names (the values stay JSON in the private `State`).
+    redstonePowered = map['Active'] as bool? ?? false;
+    buttonCooldown = map['ButtonCooldown'] as int? ?? 0;
+    signBasedAddress = map['SignAddress'] as String? ?? '';
+    customComputerAddress = map['ComputerAddress'] as String? ?? '';
+    hasCustomComputerAddress = map['HasComputerAddress'] as bool? ?? false;
+    heldBox = _stack(map['HeldBox']);
+    previouslyUnwrapped = _stack(map['InsertedBox']);
     queuedExitingPackages = [
-      for (final e in (map['queued'] as List<dynamic>? ?? const []))
-        if (e is Map) BigStack(_stack(e['stack']), e['count'] as int? ?? 1),
+      for (final e
+          in (map['QueuedExitingPackages'] as List<dynamic>? ?? const []))
+        if (e is Map)
+          BigStack(_stack(e['item_stack']), e['count'] as int? ?? 1),
     ];
-    animationTicks = map['animationTicks'] as int? ?? 0;
-    animationInward = map['animationInward'] as bool? ?? true;
+    animationTicks = map['AnimationTicks'] as int? ?? 0;
+    animationInward = map['AnimationInward'] as bool? ?? true;
   }
 
   static LStack _stack(Object? value) {
@@ -116,18 +128,91 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
 
   @override
   Map<String, dynamic> stateToMap() => {
-    'active': redstonePowered,
-    'buttonCooldown': buttonCooldown,
-    'signAddress': signBasedAddress,
-    'heldBox': _stackJson(heldBox),
-    'insertedBox': _stackJson(previouslyUnwrapped),
-    'queued': [
+    'Active': redstonePowered,
+    // Java does not persist the button cooldown; it is kept so a reload does not reopen the tray.
+    'ButtonCooldown': buttonCooldown,
+    'SignAddress': signBasedAddress,
+    'ComputerAddress': customComputerAddress,
+    'HasComputerAddress': hasCustomComputerAddress,
+    'HeldBox': _stackJson(heldBox),
+    'InsertedBox': _stackJson(previouslyUnwrapped),
+    'QueuedExitingPackages': [
       for (final b in queuedExitingPackages)
-        {'stack': b.stack.toJson(), 'count': b.count},
+        {'item_stack': b.stack.toJson(), 'count': b.count},
     ],
-    'animationTicks': animationTicks,
-    'animationInward': animationInward,
+    'AnimationTicks': animationTicks,
+    'AnimationInward': animationInward,
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    tag
+      ..putBool('Active', redstonePowered)
+      ..putBool('AnimationInward', animationInward)
+      ..putInt('AnimationTicks', animationTicks)
+      ..putString('SignAddress', signBasedAddress)
+      ..putString('ComputerAddress', customComputerAddress)
+      ..putBool('HasComputerAddress', hasCustomComputerAddress)
+      ..putCompound('HeldBox', stackToNbt(heldBox, client: clientPacket))
+      ..putCompound(
+        'InsertedBox',
+        stackToNbt(previouslyUnwrapped, client: clientPacket),
+      );
+    if (clientPacket) return;
+    tag.putList(
+      'QueuedExitingPackages',
+      bigStacksToNbt(queuedExitingPackages, client: false),
+    );
+    final available = _available;
+    if (available != null) {
+      tag.putList(
+        'LastSummary',
+        bigStacksToNbt(available.getStacks(), client: false),
+      );
+    }
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    if (tag.containsKey('Active')) {
+      redstonePowered = tag.getBool('Active') ?? false;
+    }
+    if (tag.containsKey('AnimationInward')) {
+      animationInward = tag.getBool('AnimationInward') ?? false;
+    }
+    if (tag.containsKey('AnimationTicks')) {
+      animationTicks = tag.getInt('AnimationTicks') ?? 0;
+    }
+    if (tag.containsKey('SignAddress')) {
+      signBasedAddress = tag.getString('SignAddress') ?? '';
+    }
+    if (tag.containsKey('ComputerAddress')) {
+      customComputerAddress = tag.getString('ComputerAddress') ?? '';
+    }
+    if (tag.containsKey('HasComputerAddress')) {
+      hasCustomComputerAddress = tag.getBool('HasComputerAddress') ?? false;
+    }
+    if (tag.containsKey('HeldBox')) {
+      heldBox = stackFromNbt(tag.getCompound('HeldBox'));
+    }
+    if (tag.containsKey('InsertedBox')) {
+      previouslyUnwrapped = stackFromNbt(tag.getCompound('InsertedBox'));
+    }
+    if (clientPacket) return;
+    if (tag.containsKey('QueuedExitingPackages')) {
+      queuedExitingPackages = bigStacksFromNbt(
+        tag.getList('QueuedExitingPackages'),
+      );
+    }
+    if (tag.containsKey('LastSummary')) {
+      _available = InventorySummary.fromList(
+        bigStacksFromNbt(tag.getList('LastSummary')),
+      );
+      _availableTick = Lg.loaded ? Lg.i.tick : 0;
+    }
+  }
 
   Lvl? get _lvl => world == null ? null : Lvl(world!);
 
@@ -236,9 +321,19 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
     return null;
   }
 
-  /// `flashLink()`: the link's Wi-Fi effect is client side only.
+  /// `flashLink()`: sends the stock link's Wi-Fi effect to the players that track the link.
   @override
-  void flashLink() {}
+  void flashLink() {
+    final link = linkPos;
+    final world = this.world;
+    if (link == null || world == null) return;
+    Lg.i.bus.sendToTracking(
+      'create:packager_link_effect',
+      world,
+      link.toBlockPos(),
+      {'pos': link.toBlockPos()},
+    );
+  }
 
   @override
   bool isTooBusyFor(RequestType type) {

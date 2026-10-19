@@ -50,6 +50,9 @@ final class EquipmentModule extends CreateModule {
     for (final k in equipmentItemKeys) {
       registry.item(equipmentItem(k));
     }
+    // `AllArmorMaterials.CARDBOARD` repairs with a tag created ad hoc in Java, so the generated
+    // tag manifest does not list it; the only member is the cardboard item itself.
+    registry.tag(TagKind.item, 'create:cardboard', const ['create:cardboard']);
     registry.entityType(equipmentEntityType('crafting_blueprint'));
     registry.entityType(equipmentEntityType('potato_projectile'));
 

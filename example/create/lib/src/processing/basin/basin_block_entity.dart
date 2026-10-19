@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/blocks.dart';
+import '../../api/value_settings.dart';
 import '../../common/direction.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
@@ -19,6 +20,7 @@ import '../processing_runtime.dart';
 import '../recipe/heat.dart';
 import '../transport/transport_behaviours.dart';
 import 'basin_block.dart';
+import 'basin_filter.dart';
 import 'basin_operating_block_entity.dart';
 import 'basin_recipe_ops.dart';
 
@@ -53,7 +55,11 @@ final class BasinInventory extends SmartInventory {
 
 /// `BasinBlockEntity`.
 class BasinBlockEntity extends CreateBlockEntity
-    implements ItemStorageProvider, FluidStorageProvider, BasinRecipeHost {
+    implements
+        ItemStorageProvider,
+        FluidStorageProvider,
+        BasinRecipeHost,
+        ValueSettingsHost {
   static const String type = 'create:basin';
 
   /// `SmartFluidTankBehaviour(INPUT/OUTPUT, this, 2, 1000, true)`.
@@ -71,6 +77,7 @@ class BasinBlockEntity extends CreateBlockEntity
   late final CombinedStorage _items;
   late final CombinedFluidStorage _fluids;
   late final DirectBeltInputBehaviour directBeltInput;
+  late final BasinFilterBehaviour filterBehaviour;
 
   /// `FilteringBehaviour` (`forRecipes`): the item (or bucket) a result must match.
   PStack filter = PStack.empty;
@@ -107,9 +114,13 @@ class BasinBlockEntity extends CreateBlockEntity
     directBeltInput = addBehaviour(DirectBeltInputBehaviour())
       ..defaultInsertion = (transported, side, simulate) =>
           insertInput(transported.stack, simulate: simulate);
+    filterBehaviour = addBehaviour(BasinFilterBehaviour());
   }
 
   ProcessingRuntime get _rt => ProcessingRuntime.instance;
+
+  @override
+  List<ValueSettingsTarget> get valueSettingsTargets => [filterBehaviour];
 
   /// The position as a [Pos] record.
   Pos get _p => pos.toPos();

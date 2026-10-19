@@ -13,7 +13,8 @@ import 'track_shape.dart';
 typedef PBox = (double, double, double, double, double, double);
 
 /// `Block.box(x0, y0, z0, x1, y1, z1)`.
-PBox pbox(double x0, double y0, double z0, double x1, double y1, double z1) => (x0, y0, z0, x1, y1, z1);
+PBox pbox(double x0, double y0, double z0, double x1, double y1, double z1) =>
+    (x0, y0, z0, x1, y1, z1);
 
 /// A `VoxelShape` as a union of pixel boxes.
 final class VShape {
@@ -60,11 +61,19 @@ final class VShape {
     if (boxes.length < 2) return this;
     final xs = <double>{}, ys = <double>{}, zs = <double>{};
     for (final b in boxes) {
-      xs..add(b.$1)..add(b.$4);
-      ys..add(b.$2)..add(b.$5);
-      zs..add(b.$3)..add(b.$6);
+      xs
+        ..add(b.$1)
+        ..add(b.$4);
+      ys
+        ..add(b.$2)
+        ..add(b.$5);
+      zs
+        ..add(b.$3)
+        ..add(b.$6);
     }
-    final xl = xs.toList()..sort(), yl = ys.toList()..sort(), zl = zs.toList()..sort();
+    final xl = xs.toList()..sort(),
+        yl = ys.toList()..sort(),
+        zl = zs.toList()..sort();
     final nx = xl.length - 1, ny = yl.length - 1, nz = zl.length - 1;
     final cells = List<bool>.filled(nx * ny * nz, false);
     int idx(int x, int y, int z) => (y * nz + z) * nx + x;
@@ -127,7 +136,15 @@ final class VShape {
 
   /// The boxes in block units.
   List<BlockBox> toBlockBoxes() => [
-    for (final b in boxes) BlockBox(b.$1 / 16, b.$2 / 16, b.$3 / 16, b.$4 / 16, b.$5 / 16, b.$6 / 16),
+    for (final b in boxes)
+      BlockBox(
+        b.$1 / 16,
+        b.$2 / 16,
+        b.$3 / 16,
+        b.$4 / 16,
+        b.$5 / 16,
+        b.$6 / 16,
+      ),
   ];
 
   /// `VoxelShaper` rotation: the shape, defined facing [from], turned to face [to] about the block
@@ -147,22 +164,36 @@ final class VShape {
         p1 = (-p1.$2, p1.$1);
       }
       final xa = p0.$1 + 8, xb = p1.$1 + 8, za = p0.$2 + 8, zb = p1.$2 + 8;
-      return (xa < xb ? xa : xb, b.$2, za < zb ? za : zb, xa < xb ? xb : xa, b.$5, za < zb ? zb : za);
+      return (
+        xa < xb ? xa : xb,
+        b.$2,
+        za < zb ? za : zb,
+        xa < xb ? xb : xa,
+        b.$5,
+        za < zb ? zb : za,
+      );
     }
 
     return VShape([for (final b in boxes) turn(b)]);
   }
+
+  /// The shape in block units, for a block definition (`BlockShape`).
+  BlockShape toBlockShape() =>
+      boxes.isEmpty ? BlockShape.empty : BlockShape.boxes(toBlockBoxes());
 }
 
 /// `TrackVoxelShapes`.
 abstract final class TrackVoxelShapes {
   static VShape orthogonal() => VShape([pbox(-14, 0, 0, 16 + 14, 4, 16)]);
 
-  static VShape longOrthogonalX() => VShape([pbox(-3.3, 0, -14, 19.3, 4, 16 + 14)]);
+  static VShape longOrthogonalX() =>
+      VShape([pbox(-3.3, 0, -14, 19.3, 4, 16 + 14)]);
 
-  static VShape longOrthogonalZ() => VShape([pbox(-14, 0, -3.3, 16 + 14, 4, 19.3)]);
+  static VShape longOrthogonalZ() =>
+      VShape([pbox(-14, 0, -3.3, 16 + 14, 4, 19.3)]);
 
-  static VShape longOrthogonalZOffset() => VShape([pbox(-14, 0, 0, 16 + 14, 4, 24)]);
+  static VShape longOrthogonalZOffset() =>
+      VShape([pbox(-14, 0, 0, 16 + 14, 4, 24)]);
 
   static VShape ascending() {
     final shapes = <PBox>[pbox(-14, 0, 0, 16 + 14, 4, 4)];
@@ -197,30 +228,40 @@ abstract final class TrackVoxelShapes {
 /// `AllShapes.TRACK_*`.
 abstract final class TrackShapes {
   /// `TRACK_ORTHO = shape(orthogonal()).forHorizontal(NORTH)`.
-  static VShape trackOrtho(Direction d) => TrackVoxelShapes.orthogonal().rotated(Direction.north, d);
+  static VShape trackOrtho(Direction d) =>
+      TrackVoxelShapes.orthogonal().rotated(Direction.north, d);
 
   /// `TRACK_ASC = shape(ascending()).forHorizontal(SOUTH)`.
-  static VShape trackAsc(Direction d) => TrackVoxelShapes.ascending().rotated(Direction.south, d);
+  static VShape trackAsc(Direction d) =>
+      TrackVoxelShapes.ascending().rotated(Direction.south, d);
 
   /// `TRACK_DIAG = shape(diagonal()).forHorizontal(SOUTH)`.
-  static VShape trackDiag(Direction d) => TrackVoxelShapes.diagonal().rotated(Direction.south, d);
+  static VShape trackDiag(Direction d) =>
+      TrackVoxelShapes.diagonal().rotated(Direction.south, d);
 
   /// `TRACK_ORTHO_LONG = shape(longOrthogonalZOffset()).forHorizontal(SOUTH)`.
-  static VShape trackOrthoLong(Direction d) => TrackVoxelShapes.longOrthogonalZOffset().rotated(Direction.south, d);
+  static VShape trackOrthoLong(Direction d) =>
+      TrackVoxelShapes.longOrthogonalZOffset().rotated(Direction.south, d);
 
   /// `TRACK_CROSS`.
-  static VShape get trackCross => trackOrtho(Direction.south).or(trackOrtho(Direction.east));
+  static VShape get trackCross =>
+      trackOrtho(Direction.south).or(trackOrtho(Direction.east));
 
   /// `TRACK_CROSS_DIAG`.
-  static VShape get trackCrossDiag => trackDiag(Direction.south).or(trackDiag(Direction.east));
+  static VShape get trackCrossDiag =>
+      trackDiag(Direction.south).or(trackDiag(Direction.east));
 
   /// `TRACK_CROSS_ORTHO_DIAG = shape(DIAG.SOUTH).add(ORTHO.EAST).forHorizontal(SOUTH)`.
   static VShape trackCrossOrthoDiag(Direction d) =>
-      trackDiag(Direction.south).or(trackOrtho(Direction.east)).rotated(Direction.south, d);
+      trackDiag(Direction.south)
+          .or(trackOrtho(Direction.east))
+          .rotated(Direction.south, d);
 
   /// `TRACK_CROSS_DIAG_ORTHO = shape(DIAG.SOUTH).add(ORTHO.SOUTH).forHorizontal(SOUTH)`.
   static VShape trackCrossDiagOrtho(Direction d) =>
-      trackDiag(Direction.south).or(trackOrtho(Direction.south)).rotated(Direction.south, d);
+      trackDiag(Direction.south)
+          .or(trackOrtho(Direction.south))
+          .rotated(Direction.south, d);
 
   /// `TRACK_COLLISION`.
   static final VShape trackCollision = VShape([pbox(0, 0, 0, 16, 2, 16)]);
@@ -285,3 +326,15 @@ abstract final class TrackShapes {
     }
   }
 }
+
+/// The shape rules of the `shape` state property: `TrackBlock.getShape` (selection) and
+/// `getCollisionShape` (collision). Every one of the 19 states is covered, so the block's default
+/// shapes never apply.
+List<ShapeRule> trackShapeRules() => [
+  for (final shape in TrackShape.values)
+    ShapeRule(
+      when: {'shape': shape.serializedName},
+      collisionShape: TrackShapes.collisionShape(shape).toBlockShape(),
+      selectionShape: TrackShapes.fullShape(shape).toBlockShape(),
+    ),
+];

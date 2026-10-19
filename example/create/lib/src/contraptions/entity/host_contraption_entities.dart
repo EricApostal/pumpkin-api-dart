@@ -23,6 +23,7 @@ import '../core/level.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_info.dart';
 import '../core/structure_transform.dart';
+import '../bearing/bearing_contraptions.dart' show StabilizedContraption;
 import '../blocks/actuator_contract.dart';
 import '../entity/contraption_entity.dart';
 import '../entity/contraption_handler.dart';
@@ -854,6 +855,17 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   }
 
   @override
+  void sendControlsAbort(String playerUuid) {
+    final bus = ContraptionHost.bus;
+    if (bus == null) return;
+    for (final player in bus.roster.players) {
+      if (player.getId().asString != playerUuid) continue;
+      bus.sendClientbound('create:controls_abort', player, const {});
+      return;
+    }
+  }
+
+  @override
   void sendBlockChanged(Pos localPos, BState state) {
     final id = stateIdOf(state);
     if (id == null) return;
@@ -1130,6 +1142,8 @@ final class ContraptionHost {
 
     for (final face in c.pendingSubContraptions) {
       final sub = type.create();
+      // `new StabilizedContraption(facing)` of the bearing that leaves it behind.
+      if (sub is StabilizedContraption) sub.facing = face.face;
       try {
         if (!await sub.assemble(level, face.pos)) continue;
       } on AssemblyException {

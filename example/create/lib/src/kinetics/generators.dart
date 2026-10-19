@@ -7,13 +7,15 @@ import 'behaviours.dart';
 import 'fluid_flow.dart';
 import 'geometry.dart';
 import 'kinetic_block_entity.dart';
+import 'node.dart';
 import 'sequence.dart';
 import 'settings.dart';
 
 // -- Creative motor -----------------------------------------------------------------
 
 /// `CreativeMotorBlockEntity`.
-class CreativeMotorBlockEntity extends GeneratingKineticBlockEntity implements ValueSettingsHost {
+class CreativeMotorBlockEntity extends GeneratingKineticBlockEntity
+    implements ValueSettingsHost {
   static const int defaultSpeed = 16;
   static const int maxSpeed = 256;
 
@@ -33,14 +35,18 @@ class CreativeMotorBlockEntity extends GeneratingKineticBlockEntity implements V
 
   @override
   void onKineticInitialize() {
-    if (!hasSource || generatedSpeed > theoreticalSpeed) updateGeneratedRotation();
+    if (!hasSource || generatedSpeed > theoreticalSpeed)
+      updateGeneratedRotation();
   }
 
   @override
   double get generatedSpeed {
     final state = blockState;
     if (!state.isCreate('creative_motor')) return 0;
-    return convertToDirection(generatedSpeedValue.getValue().toDouble(), state.dirOf('facing') ?? Dir.north);
+    return convertToDirection(
+      generatedSpeedValue.getValue().toDouble(),
+      state.dirOf('facing') ?? Dir.north,
+    );
   }
 }
 
@@ -72,7 +78,10 @@ class HandCrankBlockEntity extends GeneratingKineticBlockEntity {
     final state = blockState;
     if (!state.has('facing')) return 0;
     final speed = (inUse == 0 ? 0 : (clockwise ? -1 : 1)) * rotationSpeed;
-    return convertToDirection(speed.toDouble(), state.dirOf('facing') ?? Dir.up);
+    return convertToDirection(
+      speed.toDouble(),
+      state.dirOf('facing') ?? Dir.up,
+    );
   }
 
   bool get clockwise => backwards;
@@ -113,7 +122,8 @@ class HandCrankBlockEntity extends GeneratingKineticBlockEntity {
 }
 
 /// `ValveHandleBlockEntity`: turns a fixed angle per use.
-class ValveHandleBlockEntity extends HandCrankBlockEntity implements ValueSettingsHost {
+class ValveHandleBlockEntity extends HandCrankBlockEntity
+    implements ValueSettingsHost {
   late final ScrollValueBehaviour angleInput;
   int cooldown = 0;
   int startAngle = 0;
@@ -134,6 +144,11 @@ class ValveHandleBlockEntity extends HandCrankBlockEntity implements ValueSettin
 
   @override
   bool get clockwise => (angleInput.getValue() < 0) ^ backwards;
+
+  /// `ValveHandleBlockEntity.copySequenceContextFrom`: the handle drives itself,
+  /// so it never takes over the sequence context of a source.
+  @override
+  void copySequenceContextFrom(KineticNode sourceBE) {}
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
@@ -170,11 +185,17 @@ class ValveHandleBlockEntity extends HandCrankBlockEntity implements ValueSettin
     inUse = (target / degreesPerTick).ceil() + 2;
 
     startAngle = 0; // independentAngle is only animated on the client
-    targetAngle = (((startAngle + (target > 135 ? 180 : 90) * value.sign) / 90).round()) * 90;
+    targetAngle =
+        (((startAngle + (target > 135 ? 180 : 90) * value.sign) / 90).round()) *
+        90;
     totalUseTicks = inUse;
     backwards = sneak;
 
-    sequenceContext = SequenceContext.fromGearshift(SequencerInstructions.turnAngle, speed.toDouble(), target);
+    sequenceContext = SequenceContext.fromGearshift(
+      SequencerInstructions.turnAngle,
+      speed.toDouble(),
+      target,
+    );
     updateGeneratedRotation();
     cooldown = 4;
 
@@ -192,22 +213,35 @@ final class HostFluidView implements FluidWorldView {
 
   HostFluidView(this.world);
 
-  int _key(int x, int y, int z) => (x & 0x3FFFFFF) << 38 | (z & 0x3FFFFFF) << 12 | (y & 0xFFF);
+  int _key(int x, int y, int z) =>
+      (x & 0x3FFFFFF) << 38 | (z & 0x3FFFFFF) << 12 | (y & 0xFFF);
 
   @override
-  FluidInfo fluidAt(int x, int y, int z) => _fluids.putIfAbsent(_key(x, y, z), () {
-    final f = world.fluidAt(BlockPos(x: x, y: y, z: z));
-    if (f == null) return FluidInfo.empty;
-    return FluidInfo(f.fluid, f.level, isSource: f.isSource, isFalling: f.isFalling);
-  });
+  FluidInfo fluidAt(int x, int y, int z) =>
+      _fluids.putIfAbsent(_key(x, y, z), () {
+        final f = world.fluidAt(BlockPos(x: x, y: y, z: z));
+        if (f == null) return FluidInfo.empty;
+        return FluidInfo(
+          f.fluid,
+          f.level,
+          isSource: f.isSource,
+          isFalling: f.isFalling,
+        );
+      });
 
-  BlockState _state(int x, int y, int z) =>
-      _states.putIfAbsent(_key(x, y, z), () => world.getBlockState(pos: BlockPos(x: x, y: y, z: z)));
+  BlockState _state(int x, int y, int z) => _states.putIfAbsent(
+    _key(x, y, z),
+    () => world.getBlockState(
+      pos: BlockPos(x: x, y: y, z: z),
+    ),
+  );
 
   @override
   bool blocksMotion(int x, int y, int z) {
     final s = _state(x, y, z);
-    return s.isSolid && s.blockName != 'minecraft:cobweb' && s.blockName != 'minecraft:bamboo_sapling';
+    return s.isSolid &&
+        s.blockName != 'minecraft:cobweb' &&
+        s.blockName != 'minecraft:bamboo_sapling';
   }
 
   @override
@@ -249,7 +283,8 @@ class WaterWheelBlockEntity extends GeneratingKineticBlockEntity {
   /// 1 for the small wheel, 2 for the large one.
   int get size => 1;
 
-  KAxis get axis => runtime.blocks.defFor(blockState)?.rotationAxis(blockState) ?? KAxis.x;
+  KAxis get axis =>
+      runtime.blocks.defFor(blockState)?.rotationAxis(blockState) ?? KAxis.x;
 
   @override
   void lazyTick() {
@@ -262,15 +297,24 @@ class WaterWheelBlockEntity extends GeneratingKineticBlockEntity {
   void determineAndApplyFlowScore() {
     final w = world;
     if (w == null) return;
-    final result = waterWheelFlowScore(HostFluidView(w), pos.x, pos.y, pos.z, axis, size);
+    final result = waterWheelFlowScore(
+      HostFluidView(w),
+      pos.x,
+      pos.y,
+      pos.z,
+      axis,
+      size,
+    );
     if (result.score != 0) onWheelTurns(lava: result.lava);
     setFlowScoreAndUpdate(result.score);
   }
 
   /// Hook for the water / lava wheel advancements.
-  static void Function(WaterWheelBlockEntity wheel, {required bool lava})? onWheelTurnsHook;
+  static void Function(WaterWheelBlockEntity wheel, {required bool lava})?
+  onWheelTurnsHook;
 
-  void onWheelTurns({required bool lava}) => onWheelTurnsHook?.call(this, lava: lava);
+  void onWheelTurns({required bool lava}) =>
+      onWheelTurnsHook?.call(this, lava: lava);
 
   void setFlowScoreAndUpdate(int score) {
     if (flowScore == score) return;
@@ -282,7 +326,9 @@ class WaterWheelBlockEntity extends GeneratingKineticBlockEntity {
   /// `applyMaterialIfValid(stack)`: a plank type in `create:water_wheel_planks`
   /// retextures the wheel. [itemKey] is the held item; returns whether it applied.
   bool applyMaterialIfValid(String itemKey) {
-    final candidate = KState(itemKey.contains(':') ? itemKey : 'minecraft:$itemKey');
+    final candidate = KState(
+      itemKey.contains(':') ? itemKey : 'minecraft:$itemKey',
+    );
     if (candidate == material) return false;
     if (!Tags.block(candidate.block, 'create:water_wheel_planks')) return false;
     final id = runtime.states.idOf(candidate);
@@ -309,7 +355,9 @@ class WaterWheelBlockEntity extends GeneratingKineticBlockEntity {
         if (v != null) props[k] = v;
       }
     }
-    material = name == 'minecraft:air' ? const KState('minecraft:spruce_planks') : KState(name, props);
+    material = name == 'minecraft:air'
+        ? const KState('minecraft:spruce_planks')
+        : KState(name, props);
   }
 
   @override
@@ -360,7 +408,12 @@ class PoweredShaftBlockEntity extends GeneratingKineticBlockEntity {
   }
 
   /// `update(sourcePos, direction, efficiency)`.
-  void update(KPos sourcePos, int direction, double efficiency, {String? engineBlock}) {
+  void update(
+    KPos sourcePos,
+    int direction,
+    double efficiency, {
+    String? engineBlock,
+  }) {
     final key = kpos - sourcePos;
     enginePos = key;
     final prev = engineEfficiency;
@@ -384,7 +437,8 @@ class PoweredShaftBlockEntity extends GeneratingKineticBlockEntity {
     updateGeneratedRotation();
   }
 
-  bool canBePoweredBy(KPos globalPos) => initialTicks == 0 && (enginePos == null || isPoweredBy(globalPos));
+  bool canBePoweredBy(KPos globalPos) =>
+      initialTicks == 0 && (enginePos == null || isPoweredBy(globalPos));
 
   bool isPoweredBy(KPos globalPos) => (kpos - globalPos) == enginePos;
 
@@ -419,14 +473,20 @@ class PoweredShaftBlockEntity extends GeneratingKineticBlockEntity {
   }
 
   @override
-  double get generatedSpeed => combinedCapacity > 0 ? movementDirection * 16.0 * speedModifier : 0;
+  double get generatedSpeed =>
+      combinedCapacity > 0 ? movementDirection * 16.0 * speedModifier : 0;
 
   double get combinedCapacity {
     final key = capacityKey;
     return key == null ? 0 : engineEfficiency * runtime.stress.capacity(key);
   }
 
-  int get speedModifier => (1 + (engineEfficiency >= 1 ? 3 : (engineEfficiency * 4).floor().clamp(0, 2))).toInt();
+  int get speedModifier =>
+      (1 +
+              (engineEfficiency >= 1
+                  ? 3
+                  : (engineEfficiency * 4).floor().clamp(0, 2)))
+          .toInt();
 
   @override
   double calculateAddedStressCapacity() {

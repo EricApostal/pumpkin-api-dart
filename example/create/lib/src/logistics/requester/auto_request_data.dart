@@ -1,6 +1,10 @@
 // `AutoRequestData` (pure): the order a redstone requester or a table cloth shop was programmed
-// with, and the stock keeper it points at.
+// with, and the stock keeper it points at. The item component (`create:auto_request_data`) is the
+// network encoding of the Java record.
+import 'package:pumpkin_api/pumpkin_api_core.dart';
+
 import '../model/orders.dart';
+import '../model/stack_wire.dart';
 
 /// `AutoRequestData`.
 final class AutoRequestData {
@@ -93,4 +97,40 @@ final class AutoRequestData {
   );
 
   bool get isEmpty => encodedRequest.isEmpty;
+
+  /// `AutoRequestData.STREAM_CODEC`: the order, the address, the target offset as a packed
+  /// `BlockPos` long, the dimension and the validity flag.
+  List<int> encode(StackWire wire) => PacketBuffer.encode((w) {
+    wire.writeOrderWithCrafts(w, encodedRequest);
+    w.writeString(encodedTargetAddress);
+    w.writeLong(blockPosAsLong(targetOffset));
+    w.writeString(targetDim);
+    w.writeBool(isValid);
+  });
+
+  /// Reads [AutoRequestData.encode]; `null` when the bytes are not a valid value.
+  static AutoRequestData? decode(List<int> bytes, StackWire wire) {
+    try {
+      return PacketBuffer.decode(bytes, (r) {
+        final request = wire.readOrderWithCrafts(r);
+        final address = r.readString();
+        final offset = blockPosFromLong(r.readLong());
+        final dim = r.readString();
+        final valid = r.readBool();
+        return AutoRequestData(request, address, offset, dim, valid);
+      });
+    } on Object {
+      return null;
+    }
+  }
 }
+
+/// `BlockPos.asLong`.
+int blockPosAsLong((int, int, int) pos) =>
+    ((pos.$1 & 0x3FFFFFF) << 38) |
+    ((pos.$3 & 0x3FFFFFF) << 12) |
+    (pos.$2 & 0xFFF);
+
+/// `BlockPos.of(long)`.
+(int, int, int) blockPosFromLong(int packed) =>
+    (packed >> 38, (packed << 52) >> 52, (packed << 26) >> 38);

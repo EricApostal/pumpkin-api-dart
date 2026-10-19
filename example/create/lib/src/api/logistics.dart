@@ -7,6 +7,7 @@
 /// package port targets.
 library;
 
+export 'packager/inventory_identifier.dart';
 export '../logistics/filter/filter_item_stack.dart';
 export '../logistics/filter/item_attribute.dart';
 export '../logistics/model/glob.dart' show globMatches, globToRegexPattern;

@@ -54,8 +54,8 @@ Order of calls for a block with an item (the Lonsdaleite wardframe):
   block's states are `[vanilla_state_count, vanilla_state_count + n0)`, the next block's states
   follow directly, and so on, in registration order. `block-entry.base-state-id` is the first id
   of a block and `state-count` how many it has.
-* Both counts are `u16` ids: at most 65535 block ids and 65536 states in total. A block may have
-  at most 16384 states and 32 properties.
+* Block ids are `u16` (at most 65535 blocks). State ids are `u32` and travel as VarInts, so at
+  most `2^31` states in total; a block may have at most 16384 states and 32 properties.
 * The ids never change while the server runs, and a world stores blocks by name and properties,
   not by id. Plugins that register blocks must be loaded in a stable order if the client side
   depends on the numbers.

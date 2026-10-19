@@ -37,12 +37,17 @@ KineticBlockSpec creativeMotorSpec() {
     'creative_motor',
     blockEntityType: 'create:motor',
     placement: [PlacementRule.clickedFace('facing')],
-    behavior: buildKineticBehavior(() => block, specRef: () => spec, pathfindable: false),
+    behavior: buildKineticBehavior(
+      () => block,
+      specRef: () => spec,
+      pathfindable: false,
+    ),
   );
   spec = KineticBlockSpec(
     block,
     def: const FacingBlockDef(hideStressImpact: true),
-    placement: (ctx, placed, use, world) => placed.set('facing', creativeMotorFacing(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('facing', creativeMotorFacing(ctx).name),
   );
   return spec;
 }
@@ -51,7 +56,11 @@ KineticBlockSpec creativeMotorSpec() {
 
 KineticBlockSpec handCrankSpec() => _crankSpec('hand_crank');
 
-KineticBlockSpec valveHandleSpec(String? color) => _crankSpec(color == null ? 'copper_valve_handle' : '${color}_valve_handle', valve: true, color: color);
+KineticBlockSpec valveHandleSpec(String? color) => _crankSpec(
+  color == null ? 'copper_valve_handle' : '${color}_valve_handle',
+  valve: true,
+  color: color,
+);
 
 KineticBlockSpec _crankSpec(String key, {bool valve = false, String? color}) {
   late final CreateBlock block;
@@ -59,11 +68,15 @@ KineticBlockSpec _crankSpec(String key, {bool valve = false, String? color}) {
   block = createBlockFromManifest(
     key,
     blockEntityType: valve ? 'create:valve_handle' : 'create:hand_crank',
-    placement: [PlacementRule.clickedFace('facing'), PlacementRule.inWater('waterlogged')],
+    placement: [
+      PlacementRule.clickedFace('facing'),
+      PlacementRule.inWater('waterlogged'),
+    ],
     behavior: buildKineticBehavior(
       () => block,
       specRef: () => spec,
       pathfindable: false,
+      updateShape: waterloggedUpdateShape,
       canPlace: (c, e) async {
         final player = e.player;
         if (player == null) return true;
@@ -72,14 +85,19 @@ KineticBlockSpec _crankSpec(String key, {bool valve = false, String? color}) {
         // canSurvive: the block behind must have a collision shape.
         final facing = handCrankFacing(pc);
         final behind = pc.pos.relative(facing.opposite);
-        final bs = c.world.getBlockState(pos: BlockPos(x: behind.x, y: behind.y, z: behind.z));
+        final bs = c.world.getBlockState(
+          pos: BlockPos(x: behind.x, y: behind.y, z: behind.z),
+        );
         return bs.collisionShapes.isNotEmpty;
       },
       neighbor: (c, e) {
         // HandCrankBlock.neighborChanged: break when the supporting block is gone.
         final facing = c.state.dirOf('facing') ?? Dir.up;
         final behind = c.kpos.relative(facing.opposite);
-        if (e.sourcePos.x != behind.x || e.sourcePos.y != behind.y || e.sourcePos.z != behind.z) return null;
+        if (e.sourcePos.x != behind.x ||
+            e.sourcePos.y != behind.y ||
+            e.sourcePos.z != behind.z)
+          return null;
         final bs = c.world.getBlockState(pos: e.sourcePos);
         if (bs.collisionShapes.isEmpty) c.level.destroyBlock(c.kpos);
       },
@@ -109,7 +127,11 @@ KineticBlockSpec _crankSpec(String key, {bool valve = false, String? color}) {
         be?.turn(e.sneaking);
         if (item != 'create:extendo_grip' && !player.isCreative) {
           final speed = (be?.rotationSpeed ?? 32).toDouble();
-          player.setExhaustion(exhaustion: player.getExhaustion() + speed * c.rt.settings.crankHungerMultiplier);
+          player.setExhaustion(
+            exhaustion:
+                player.getExhaustion() +
+                speed * c.rt.settings.crankHungerMultiplier,
+          );
         }
         return BlockUseResult.success;
       },
@@ -118,14 +140,19 @@ KineticBlockSpec _crankSpec(String key, {bool valve = false, String? color}) {
   spec = KineticBlockSpec(
     block,
     def: const FacingBlockDef(shaftAtFront: false),
-    placement: (ctx, placed, use, world) => placed.set('facing', handCrankFacing(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('facing', handCrankFacing(ctx).name),
   );
   return spec;
 }
 
 String? _dyeColor(String itemKey) {
-  if (!itemKey.startsWith('minecraft:') || !itemKey.endsWith('_dye')) return null;
-  final color = itemKey.substring('minecraft:'.length, itemKey.length - '_dye'.length);
+  if (!itemKey.startsWith('minecraft:') || !itemKey.endsWith('_dye'))
+    return null;
+  final color = itemKey.substring(
+    'minecraft:'.length,
+    itemKey.length - '_dye'.length,
+  );
   return dyeColors.contains(color) ? color : null;
 }
 
@@ -136,7 +163,10 @@ final Set<String> _scheduledWheelTicks = {};
 void _scheduleOnce(HookCtx c, KPos target) {
   final key = '${c.worldId}:${target.packed}';
   if (!_scheduledWheelTicks.add(key)) return;
-  c.world.scheduleTick(BlockPos(x: target.x, y: target.y, z: target.z), const Duration(milliseconds: 50));
+  c.world.scheduleTick(
+    BlockPos(x: target.x, y: target.y, z: target.z),
+    const Duration(milliseconds: 50),
+  );
 }
 
 KineticBlockSpec waterWheelSpec() {
@@ -155,19 +185,17 @@ KineticBlockSpec waterWheelSpec() {
         final pc = await placementContextFor(c, player, e.face, e.pos);
         if (pc == null) return true;
         final facing = directionalFacing(pc);
-        // WaterWheelBlock.canSurvive
-        for (final direction in Dir.values) {
-          final n = c.level.stateAt(pc.pos.relative(direction));
-          if (!n.isCreate('water_wheel')) continue;
-          final axis = facing.axis;
-          if ((n.dirOf('facing') ?? Dir.north).axis != axis || axis != direction.axis) return false;
-        }
-        return true;
+        return waterWheelCanSurvive(
+          pc.stateAt,
+          pc.pos,
+          KState('create:water_wheel', {'facing': facing.name}),
+        );
       },
       use: (c, e) async {
         final item = await _item(e);
         final be = c.beOf<WaterWheelBlockEntity>();
-        if (be != null && e.withItem && be.applyMaterialIfValid(item)) return BlockUseResult.success;
+        if (be != null && e.withItem && be.applyMaterialIfValid(item))
+          return BlockUseResult.success;
         return unhandled(e);
       },
       neighbor: (c, e) => _scheduleOnce(c, c.kpos),
@@ -181,7 +209,8 @@ KineticBlockSpec waterWheelSpec() {
   spec = KineticBlockSpec(
     block,
     def: const FacingAxisBlockDef(hideStressImpact: true),
-    placement: (ctx, placed, use, world) => placed.set('facing', directionalFacing(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('facing', directionalFacing(ctx).name),
   );
   return spec;
 }
@@ -203,7 +232,9 @@ KineticBlockSpec largeWaterWheelSpec() {
         if (pc == null) return true;
         final axis = rotatedPillarAxis(pc);
         for (final p in largeWaterWheelFootprint(pc.pos, axis)) {
-          final s = c.world.getBlockState(pos: BlockPos(x: p.x, y: p.y, z: p.z));
+          final s = c.world.getBlockState(
+            pos: BlockPos(x: p.x, y: p.y, z: p.z),
+          );
           if (!s.replaceable) return false;
         }
         return true;
@@ -211,15 +242,21 @@ KineticBlockSpec largeWaterWheelSpec() {
       use: (c, e) async {
         final item = await _item(e);
         final be = c.beOf<WaterWheelBlockEntity>();
-        if (be != null && e.withItem && be.applyMaterialIfValid(item)) return BlockUseResult.success;
+        if (be != null && e.withItem && be.applyMaterialIfValid(item))
+          return BlockUseResult.success;
         return unhandled(e);
       },
       updateShape: (c, e) {
         final axis = c.state.axisOf('axis') ?? KAxis.y;
         if (Dir.fromName(e.direction.name) != axis.negative) return null;
-        final isWheel = c.rt.states.decode(e.neighborStateId).isCreate('large_water_wheel');
+        final isWheel = c.rt.states
+            .decode(e.neighborStateId)
+            .isCreate('large_water_wheel');
         if (isWheel == c.state.flag('extension')) return null;
-        return block.layout.indexOf({...block.definition.defaultState, ...c.state.set('extension', '$isWheel').props});
+        return block.layout.indexOf({
+          ...block.definition.defaultState,
+          ...c.state.set('extension', '$isWheel').props,
+        });
       },
       afterPlaced: (c, e) => _scheduleOnce(c, c.kpos),
       scheduledTick: (c) async {
@@ -229,7 +266,9 @@ KineticBlockSpec largeWaterWheelSpec() {
         for (final (p, facing) in largeWaterWheelStructure(c.kpos, axis)) {
           final bp = BlockPos(x: p.x, y: p.y, z: p.z);
           final occupied = c.level.stateAt(p);
-          final required = KState('create:water_wheel_structure', {'facing': facing.name});
+          final required = KState('create:water_wheel_structure', {
+            'facing': facing.name,
+          });
           if (occupied == required) continue;
           final occ = c.world.getBlockState(pos: bp);
           if (!occ.replaceable && !occ.isAir) {
@@ -237,7 +276,12 @@ KineticBlockSpec largeWaterWheelSpec() {
             return;
           }
           final id = structureBlock.idOf(required);
-          if (id != null) await c.world.setBlockState(pos: bp, state: id, updateFlags: BlockUpdateFlags.normal);
+          if (id != null)
+            await c.world.setBlockState(
+              pos: bp,
+              state: id,
+              updateFlags: BlockUpdateFlags.normal,
+            );
         }
         c.beOf<WaterWheelBlockEntity>()?.determineAndApplyFlowScore();
       },
@@ -248,7 +292,9 @@ KineticBlockSpec largeWaterWheelSpec() {
     def: const AxisBlockDef(),
     placement: (ctx, placed, use, world) {
       final axis = rotatedPillarAxis(ctx);
-      final negative = ctx.stateAt(ctx.pos.relative(axis.negative)).isCreate('large_water_wheel');
+      final negative = ctx
+          .stateAt(ctx.pos.relative(axis.negative))
+          .isCreate('large_water_wheel');
       return placed.setAll({'axis': axis.name, 'extension': '$negative'});
     },
   );
@@ -258,29 +304,52 @@ KineticBlockSpec largeWaterWheelSpec() {
 KineticBlockSpec waterWheelStructureSpec() {
   late final CreateBlock block;
   late final KineticBlockSpec spec;
-  KPos masterOf(HookCtx c) => waterWheelMaster(c.level.stateAt, c.kpos, c.state);
+  KPos masterOf(HookCtx c) =>
+      waterWheelMaster(c.level.stateAt, c.kpos, c.state);
   block = createBlockFromManifest(
     'water_wheel_structure',
     behavior: buildKineticBehavior(
       () => block,
       specRef: () => spec,
       use: (c, e) async {
-        if (!waterWheelStructureValid(c.level.stateAt, c.kpos, c.state, directlyAdjacent: false)) return BlockUseResult.fail;
+        if (!waterWheelStructureValid(
+          c.level.stateAt,
+          c.kpos,
+          c.state,
+          directlyAdjacent: false,
+        ))
+          return BlockUseResult.fail;
         final m = masterOf(c);
         final be = c.rt.store.at(c.worldId, BlockPos(x: m.x, y: m.y, z: m.z));
         if (be is! WaterWheelBlockEntity) return BlockUseResult.fail;
-        if (e.withItem && be.applyMaterialIfValid(await _item(e))) return BlockUseResult.success;
+        if (e.withItem && be.applyMaterialIfValid(await _item(e)))
+          return BlockUseResult.success;
         return unhandled(e);
       },
       scheduledTick: (c) async {
         _scheduledWheelTicks.remove('${c.worldId}:${c.kpos.packed}');
-        if (!waterWheelStructureValid(c.level.stateAt, c.kpos, c.state, directlyAdjacent: false)) {
+        if (!waterWheelStructureValid(
+          c.level.stateAt,
+          c.kpos,
+          c.state,
+          directlyAdjacent: false,
+        )) {
           final air = c.rt.states.idOf(KState.air);
-          if (air != null) await c.world.setBlockState(pos: c.pos, state: air, updateFlags: BlockUpdateFlags.normal);
+          if (air != null)
+            await c.world.setBlockState(
+              pos: c.pos,
+              state: air,
+              updateFlags: BlockUpdateFlags.normal,
+            );
         }
       },
       updateShape: (c, e) {
-        if (waterWheelStructureValid(c.level.stateAt, c.kpos, c.state, directlyAdjacent: false)) {
+        if (waterWheelStructureValid(
+          c.level.stateAt,
+          c.kpos,
+          c.state,
+          directlyAdjacent: false,
+        )) {
           final m = masterOf(c);
           _scheduleOnce(c, m);
           return null;
@@ -290,15 +359,32 @@ KineticBlockSpec waterWheelStructureSpec() {
       },
       replaced: (c, e) async {
         // affectNeighborsAfterRemoval: the wheel goes with its structure.
-        if (waterWheelStructureValid(c.level.stateAt, c.kpos, c.state, directlyAdjacent: false)) {
+        if (waterWheelStructureValid(
+          c.level.stateAt,
+          c.kpos,
+          c.state,
+          directlyAdjacent: false,
+        )) {
           final m = masterOf(c);
-          await c.world.breakBlock(BlockPos(x: m.x, y: m.y, z: m.z), drop: true);
+          await c.world.breakBlock(
+            BlockPos(x: m.x, y: m.y, z: m.z),
+            drop: true,
+          );
         }
       },
       willDestroy: (c, e) async {
-        if (waterWheelStructureValid(c.level.stateAt, c.kpos, c.state, directlyAdjacent: false)) {
+        if (waterWheelStructureValid(
+          c.level.stateAt,
+          c.kpos,
+          c.state,
+          directlyAdjacent: false,
+        )) {
           final m = masterOf(c);
-          if (e.player.isCreative) await c.world.breakBlock(BlockPos(x: m.x, y: m.y, z: m.z), drop: false);
+          if (e.player.isCreative)
+            await c.world.breakBlock(
+              BlockPos(x: m.x, y: m.y, z: m.z),
+              drop: false,
+            );
         }
         return true;
       },
@@ -323,7 +409,8 @@ KineticBlockSpec flywheelSpec() {
   spec = KineticBlockSpec(
     block,
     def: const AxisBlockDef(),
-    placement: (ctx, placed, use, world) => placed.set('axis', rotatedPillarAxis(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('axis', rotatedPillarAxis(ctx).name),
   );
   return spec;
 }
@@ -348,7 +435,10 @@ KineticBlockSpec gaugeSpec({required bool stress}) {
     def: const DirectionalAxisBlockDef(),
     placement: (ctx, placed, use, world) {
       final g = gaugePlacement(ctx);
-      return placed.setAll({'facing': g.facing.name, 'axis_along_first': '${g.alongFirst}'});
+      return placed.setAll({
+        'facing': g.facing.name,
+        'axis_along_first': '${g.alongFirst}',
+      });
     },
   );
   return spec;
@@ -374,7 +464,19 @@ KineticBlockSpec turntableSpec() {
         if (speed == 0) return;
         final entity = c.world.getEntityById(id: e.entityId);
         if (entity == null) return;
-        entity.setRotation(yaw: entity.getYaw() - speed, pitch: entity.getPitch());
+        try {
+          if (!entity.isOnGround()) return;
+          if (entity.getVelocity().$2 > 0) return;
+          // Java also resets the head/body rotation and the no-action time; the
+          // host only exposes yaw/pitch and the on-ground flag.
+          if (entity.isLiving()) entity.setOnGround(onGround: false);
+          entity.setRotation(
+            yaw: entity.getYaw() - speed,
+            pitch: entity.getPitch(),
+          );
+        } finally {
+          entity.dispose();
+        }
       },
     ),
   );
@@ -389,12 +491,17 @@ KineticBlockSpec cuckooClockSpec({required bool mysterious}) {
     mysterious ? 'mysterious_cuckoo_clock' : 'cuckoo_clock',
     blockEntityType: 'create:cuckoo_clock',
     placement: [PlacementRule.horizontalFacing('facing', opposite: true)],
-    behavior: buildKineticBehavior(() => block, specRef: () => spec, pathfindable: false),
+    behavior: buildKineticBehavior(
+      () => block,
+      specRef: () => spec,
+      pathfindable: false,
+    ),
   );
   spec = KineticBlockSpec(
     block,
     def: const CuckooClockDef(),
-    placement: (ctx, placed, use, world) => placed.set('facing', cuckooClockFacing(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('facing', cuckooClockFacing(ctx).name),
   );
   return spec;
 }
@@ -410,12 +517,25 @@ KineticBlockSpec speedControllerSpec() {
       specRef: () => spec,
       use: (c, e) async {
         // SpeedControllerBlock.useItemOn: a large cogwheel goes on top.
-        if (!e.withItem || await _item(e) != 'create:large_cogwheel') return unhandled(e);
+        if (!e.withItem || await _item(e) != 'create:large_cogwheel')
+          return unhandled(e);
         final cogBlock = c.rt.kineticBlocks['create:large_cogwheel'];
         if (cogBlock == null) return unhandled(e);
-        final offset = speedControllerCogOffset(helperWorldFor(c.rt, c.worldId, c.world), c.kpos, c.state);
+        final offset = speedControllerCogOffset(
+          helperWorldFor(c.rt, c.worldId, c.world),
+          c.kpos,
+          c.state,
+        );
         if (!offset.success) return unhandled(e);
-        final placed = await placeOffset(c.rt, c.world, c.worldId, offset, cogBlock, e.player, e.hand);
+        final placed = await placeOffset(
+          c.rt,
+          c.world,
+          c.worldId,
+          offset,
+          cogBlock,
+          e.player,
+          e.hand,
+        );
         return placed ? BlockUseResult.success : unhandled(e);
       },
     ),
@@ -423,7 +543,8 @@ KineticBlockSpec speedControllerSpec() {
   spec = KineticBlockSpec(
     block,
     def: const AxisBlockDef(),
-    placement: (ctx, placed, use, world) => placed.set('axis', speedControllerAxis(ctx).name),
+    placement: (ctx, placed, use, world) =>
+        placed.set('axis', speedControllerAxis(ctx).name),
   );
   return spec;
 }
@@ -445,13 +566,18 @@ KineticBlockSpec sequencedGearshiftSpec() {
         _scheduledWheelTicks.remove('${c.worldId}:${c.kpos.packed}');
         final previouslyPowered = c.state.intValue('state') != 0;
         final isPowered = await c.world.hasRedstoneNeighborSignal(c.pos);
-        await c.beOf<SequencedGearshiftBlockEntity>()?.onRedstoneUpdate(isPowered, previouslyPowered);
+        await c.beOf<SequencedGearshiftBlockEntity>()?.onRedstoneUpdate(
+          isPowered,
+          previouslyPowered,
+        );
       },
       use: (c, e) async {
         final item = await _item(e);
         if (item == 'create:wrench') return unhandled(e);
         final def = c.rt.blocks.defOf(item);
-        if (def != null && def.hasShaftTowards(c.state, Dir.fromName(e.face.name)!)) return unhandled(e);
+        if (def != null &&
+            def.hasShaftTowards(c.state, Dir.fromName(e.face.name)!))
+          return unhandled(e);
         return BlockUseResult.success;
       },
     ),
@@ -461,7 +587,9 @@ KineticBlockSpec sequencedGearshiftSpec() {
     def: const SequencedGearshiftDef(),
     placement: (ctx, placed, use, world) {
       final preferred = preferredAxis(ctx);
-      final axis = (preferred != null && !ctx.sneaking) ? preferred : ctx.nearestLooking.axis;
+      final axis = (preferred != null && !ctx.sneaking)
+          ? preferred
+          : ctx.nearestLooking.axis;
       return placed.setAll({
         'vertical': '${axis.isVertical}',
         'axis': axis.isVertical ? ctx.horizontal.axis.name : axis.name,
@@ -483,6 +611,7 @@ KineticBlockSpec poweredShaftSpec() {
       () => block,
       specRef: () => spec,
       pathfindable: false,
+      updateShape: waterloggedUpdateShape,
       use: (c, e) async {
         if (e.sneaking) return unhandled(e);
         return await shaftPlacementHelper(c, e) ?? unhandled(e);

@@ -384,8 +384,10 @@ Future<BlockUseResult> _useFunnel(CustomBlockUseEventData e) async {
   final held = await ItemCodec.read(e.withItem ? e.item : null);
   if (held.key == 'create:wrench') return BlockUseResult.tryEmptyHand;
   if (!isFunnelState(state)) return BlockUseResult.tryEmptyHand;
+  // `AllBlocks.MECHANICAL_ARM.isIn(stack)` blocks insertion, like a powered or extracting funnel.
   if (e.face.toDirection() != funnelFacing(state) ||
-      !_canInsertIntoFunnel(state)) {
+      !_canInsertIntoFunnel(state) ||
+      held.key == 'create:mechanical_arm') {
     return BlockUseResult.tryEmptyHand;
   }
   final be = ConveyanceRuntime.i.typedAt<FunnelBlockEntity>(worldId, pos);

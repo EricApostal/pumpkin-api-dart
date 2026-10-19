@@ -24,7 +24,12 @@ List<CreateBlock> buildMountedBlocks() => [
     blockEntityType: 'create:cart_assembler',
     behavior: cartAssemblerBehavior(),
   ),
-  manifestBlock('minecart_anchor'),
+  // `MinecartAnchorBlock.getShape`: invisible and without collision.
+  manifestBlock(
+    'minecart_anchor',
+    collisionShape: BlockShape.empty,
+    selectionShape: BlockShape.empty,
+  ),
 ];
 
 /// The cart assembler reacts to a cart passing through it: the entity is queued, the rail type

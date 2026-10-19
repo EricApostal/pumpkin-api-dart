@@ -4,11 +4,19 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/advancements.dart' show CreateAdvancements;
+import '../api/behaviour/spouting/spouting.dart'
+    show AllBlockSpoutingBehaviours;
 import '../api/config.dart' show CreateConfigs;
+import '../api/decoration.dart' show WhistleBoilerHooks;
 import '../api/kinetics.dart' show KineticNetworkService;
+import '../api/wrenchable.dart' show WrenchRegistry;
+import '../common/pos.dart';
+import '../contraptions/core/movement.dart' show MovementBehaviours;
+import '../core/block_entity.dart' show BlockEntityStore;
 import '../core/blocks.dart' show CreateBlock;
 import '../core/module.dart';
 import '../core/registry.dart';
+import '../decoration/encasing.dart' show EncasingRegistry;
 import '../kinetics/runtime.dart' show SteamEngineBoilerSource;
 import '../manifest/registries.g.dart' show kFluids;
 import '../processing/recipe/recipe_book.dart';
@@ -17,15 +25,19 @@ import 'fluid_blocks.dart';
 import 'fluid_bottle_hook.dart';
 import 'fluid_host.dart';
 import 'fluid_item_transfer.dart';
+import 'fluid_registration.dart';
 import 'fluid_runtime.dart';
 import 'fluid_tank.dart';
+import 'fluid_tank_movement_behaviour.dart';
 import 'fluid_world.dart';
 import 'generic_item_fluid.dart';
+import 'open_pipe_effects.dart';
 
 /// The fluids module. Add `FluidsModule()` to `allModules` after `processing`.
 final class FluidsModule extends CreateModule {
   List<CreateBlock> _blocks = const [];
   FluidsRuntime? _runtime;
+  bool _hooksRegistered = false;
 
   @override
   String get name => 'fluids';
@@ -50,7 +62,16 @@ final class FluidsModule extends CreateModule {
 
   @override
   void onLoad(CreateContext ctx) {
+    _hooksRegistered = false;
     BoilerHeaters.registerDefaults();
+    OpenPipeEffects.registerDefaults();
+    AllBlockSpoutingBehaviours.registerDefaults();
+    // The tank's fluid level is a client side LerpedFloat; the actor must tick while the
+    // contraption stands still (`AllBlocks.FLUID_TANK.onRegister(movementBehaviour(...))`).
+    MovementBehaviours.register(
+      'create:fluid_tank',
+      const FluidTankMovementBehaviour(),
+    );
     final configs = ctx.services.find<CreateConfigs>();
     final book = ctx.services.find<RecipeBook>();
     final runtime = FluidsRuntime(
@@ -78,6 +99,11 @@ final class FluidsModule extends CreateModule {
     // The boiler efficiency the steam engine reads.
     final boiler = TankBoilerSource(ctx.blockEntities);
     ctx.services.provide<SteamEngineBoilerSource>(boiler);
+    // The whistle asks the tank below it to re-evaluate its boiler when it is placed or
+    // removed (`WhistleBlock.updateShape` / `onPlace`).
+    ctx.services.provide<WhistleBoilerHooks>(
+      _FluidWhistleBoilerHooks(ctx.blockEntities),
+    );
     final kinetic = ctx.services.find<KineticNetworkService>();
     if (kinetic != null) {
       for (final entry in fluidKineticDefs.entries) {
@@ -97,13 +123,42 @@ final class FluidsModule extends CreateModule {
   @override
   void onServerLoaded(CreateRuntime runtime) {
     final kinetic = runtime.services.find<KineticNetworkService>();
-    if (kinetic != null)
+    if (kinetic != null) {
       kinetic.boilerSource = TankBoilerSource(runtime.blockEntities);
+    }
+
+    // The decoration and equipment modules provide these services after this module's
+    // `onLoad`, so the hooks are installed once everything is loaded.
+    if (!_hooksRegistered) {
+      _hooksRegistered = true;
+      final encasing = runtime.services.find<EncasingRegistry>();
+      if (encasing != null) registerFluidEncasing(encasing);
+      final wrench = runtime.services.find<WrenchRegistry>();
+      if (wrench != null) registerFluidWrench(wrench);
+    }
   }
 
   @override
   void onUnload() {
     _runtime?.dispose();
     _runtime = null;
+  }
+}
+
+/// `FluidTankBlock.updateBoilerState(state, level, tankPos)` for the steam whistle.
+final class _FluidWhistleBoilerHooks implements WhistleBoilerHooks {
+  final BlockEntityStore store;
+
+  const _FluidWhistleBoilerHooks(this.store);
+
+  @override
+  Future<void> updateBoilerState(World world, Pos tankPos) async {
+    final worldId = FluidsRuntime.instance.worlds.touch(world);
+    final be = store.at(
+      worldId,
+      BlockPos(x: tankPos.$1, y: tankPos.$2, z: tankPos.$3),
+    );
+    if (be is! FluidTankBlockEntity) return;
+    be.controllerBe?.updateBoilerState();
   }
 }

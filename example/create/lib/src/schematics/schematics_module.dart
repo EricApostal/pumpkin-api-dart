@@ -6,6 +6,7 @@ import '../api/blocks.dart';
 import '../api/payloads.dart';
 import '../common/common.dart';
 import '../common/host_bridge.dart';
+import '../contraptions/core/movement_checks.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
 import '../core/block_entity.dart';
@@ -14,8 +15,9 @@ import '../manifest/manifest.dart';
 import 'host/schematics_host.dart';
 import 'host/template_loader.dart';
 import 'schematic_hooks.dart';
-import 'item_requirement.dart';
 import 'schematic_printer.dart';
+import 'schematic_state_filters.dart';
+import 'item_requirement.dart';
 import 'upload_receiver.dart';
 
 BlockBox _box16(
@@ -102,6 +104,8 @@ final class SchematicsModule extends CreateModule {
         ],
         blockEntityType: tableBlockEntityType,
         behavior: BlockBehavior(
+          // `SchematicTableBlock.isPathfindable` returns false.
+          isPathfindable: (server, e) => false,
           onUse: (server, e) async {
             final rt = SchematicsRuntime.instance;
             final be = rt.entityAt<SchematicTableBlockEntity>(
@@ -175,11 +179,23 @@ final class SchematicsModule extends CreateModule {
         create: SchematicannonBlockEntity.new,
       ),
     );
+    // `AllStructureProcessorTypes.SCHEMATIC`: `create:schematic` runs the safe-NBT processors
+    // when a structure template with this processor is placed. The host does not number this
+    // registry itself, so it is declared with the NeoForge registry additions.
+    registry.neoForgeRegistry('minecraft:structure_processor', [
+      'create:schematic',
+    ]);
   }
 
   @override
   void onLoad(CreateContext ctx) {
     final hooks = SchematicHooks();
+    // `BlockMovementChecks.isBrittle`: the printer defers brittle blocks so they do not lose
+    // their support while printing.
+    hooks.isBrittle = (state) => BlockMovementChecks.isBrittle(state);
+    // `AllSchematicStateFilters.registerDefaults`.
+    hooks.stateFilters['minecraft:chiseled_bookshelf'] =
+        chiseledBookshelfFilter;
     // Block -> block entity type, from the manifest (every block of a type lists its valid blocks).
     final typeOf = <String, String>{};
     for (final t in kBlockEntityTypes) {
@@ -210,10 +226,15 @@ final class SchematicsModule extends CreateModule {
           : ItemRequirement(required);
     };
     SchematicPrinter.entityTypeResolver = (nbt) {
-      final parsed = BinaryNbt.read(nbt);
-      if (parsed == null || parsed.root.kind != NbtKind.compound) return null;
-      final id = parsed.root.asCompound['id'];
-      return id != null && id.value is String ? id.value as String : null;
+      try {
+        final parsed = BinaryNbt.read(nbt);
+        if (parsed == null || parsed.root.kind != NbtKind.compound) return null;
+        final id = parsed.root.asCompound['id'];
+        return id != null && id.value is String ? id.value as String : null;
+      } on Object {
+        // A malformed entity tag has no requirement; the cannon skips it.
+        return null;
+      }
     };
 
     final configs = ctx.services.find<CreateConfigs>();

@@ -21,13 +21,14 @@ import 'config_tag.dart';
 import 'display_core.dart';
 import 'display_env.dart';
 import 'display_sources.dart';
+import 'link_with_bulb.dart';
 
 const String displayLinkKey = 'create:display_link';
 
 Direction _facing(Map<String, String> p) => Direction.byName(p['facing'] ?? 'up') ?? Direction.up;
 
 /// `DisplayLinkBlockEntity`.
-final class DisplayLinkBlockEntity extends CreateBlockEntity implements GatheredDataLink {
+final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity implements GatheredDataLink {
   static const String type = 'create:display_link';
 
   Pos targetOffset = posZero;
@@ -36,7 +37,6 @@ final class DisplayLinkBlockEntity extends CreateBlockEntity implements Gathered
   DisplayTarget? activeTarget;
   int targetLine = 0;
   int refreshTicks = 0;
-  bool _sendPulse = false;
   bool _updating = false;
 
   late final PanelSupportBehaviour factoryPanelSupport;
@@ -175,7 +175,7 @@ final class DisplayLinkBlockEntity extends CreateBlockEntity implements Gathered
     final ctx = _context();
     if (ctx == null) return;
     await source.transferData(ctx, tgt, targetLine);
-    _sendPulse = true;
+    sendPulseNextSync();
     sendData();
   }
 
@@ -192,10 +192,6 @@ final class DisplayLinkBlockEntity extends CreateBlockEntity implements Gathered
       tag.putCompound('Source', data);
     }
     if (clientPacket && activeTarget != null) tag.putString('TargetType', activeTarget!.id);
-    if (clientPacket && _sendPulse) {
-      _sendPulse = false;
-      NbtHelper.putMarker(tag, 'Pulse');
-    }
   }
 
   @override

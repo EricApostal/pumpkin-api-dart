@@ -265,7 +265,9 @@ class BoilerData {
     return prevEngines != attachedEngines || prevWhistles != attachedWhistles;
   }
 
-  /// `SteamEngineBlock.getFacing` = `FaceAttachedHorizontalDirectionalBlock.getConnectedDirection`.
+  /// `SteamEngineBlock.getFacing` = `FaceAttachedHorizontalDirectionalBlock.getConnectedDirection`:
+  /// the side away from the tank. The port stores that direction in `facing` for wall engines
+  /// (`_steamEnginePlacement`), so no opposite is needed here.
   static Direction steamEngineFacing(BState engine) => switch (engine['face']) {
     'ceiling' => Direction.down,
     'floor' => Direction.up,

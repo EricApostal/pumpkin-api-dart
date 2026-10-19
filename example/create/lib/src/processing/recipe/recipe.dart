@@ -8,6 +8,16 @@ import 'ingredient.dart';
 import 'output.dart';
 import 'recipe_type.dart';
 
+export 'recipe_builder.dart'
+    show
+        ProcessingRecipeBuilder,
+        ProcessingRecipeParams,
+        SequencedAssemblyRecipeBuilder,
+        StandardProcessingRecipe,
+        StandardProcessingRecipeBuilder,
+        ingredientJson,
+        outputJson;
+
 /// A recipe of a parameter based type (`ProcessingRecipe` with `ProcessingRecipeParams`).
 class ProcessingRecipe {
   /// `namespace:path` id (the file path in the pack).
@@ -39,22 +49,34 @@ class ProcessingRecipe {
   List<String> validate() {
     final errors = <String>[];
     if (ingredients.length > type.maxItemInputs) {
-      errors.add('Recipe has more item inputs (${ingredients.length}) than supported (${type.maxItemInputs}).');
+      errors.add(
+        'Recipe has more item inputs (${ingredients.length}) than supported (${type.maxItemInputs}).',
+      );
     }
     if (results.length > type.maxItemOutputs) {
-      errors.add('Recipe has more item outputs (${results.length}) than supported (${type.maxItemOutputs}).');
+      errors.add(
+        'Recipe has more item outputs (${results.length}) than supported (${type.maxItemOutputs}).',
+      );
     }
     if (fluidIngredients.length > type.maxFluidInputs) {
-      errors.add('Recipe has more fluid inputs (${fluidIngredients.length}) than supported (${type.maxFluidInputs}).');
+      errors.add(
+        'Recipe has more fluid inputs (${fluidIngredients.length}) than supported (${type.maxFluidInputs}).',
+      );
     }
     if (fluidResults.length > type.maxFluidOutputs) {
-      errors.add('Recipe has more fluid outputs (${fluidResults.length}) than supported (${type.maxFluidOutputs}).');
+      errors.add(
+        'Recipe has more fluid outputs (${fluidResults.length}) than supported (${type.maxFluidOutputs}).',
+      );
     }
     if (processingDuration > 0 && !type.canSpecifyDuration) {
-      errors.add('Recipe specified a duration. Durations have no impact on this type of recipe.');
+      errors.add(
+        'Recipe specified a duration. Durations have no impact on this type of recipe.',
+      );
     }
     if (requiredHeat != HeatCondition.none && !type.canRequireHeat) {
-      errors.add('Recipe specified a heat condition. Heat conditions have no impact on this type of recipe.');
+      errors.add(
+        'Recipe specified a heat condition. Heat conditions have no impact on this type of recipe.',
+      );
     }
     return errors;
   }
@@ -70,7 +92,9 @@ class ProcessingRecipe {
   List<PStack> rollResults(Random random, {PStack Function()? forcedFirst}) {
     final out = <PStack>[];
     for (var i = 0; i < results.length; i++) {
-      final stack = i == 0 && forcedFirst != null ? forcedFirst() : results[i].roll(random);
+      final stack = i == 0 && forcedFirst != null
+          ? forcedFirst()
+          : results[i].roll(random);
       if (stack.isNotEmpty) out.add(stack);
     }
     return out;
@@ -78,19 +102,23 @@ class ProcessingRecipe {
 
   /// Single-input matching of the standard types (`ingredients.get(0).test(stack)`).
   bool matchesSingle(PStack stack, TagLookup tags) =>
-      stack.isNotEmpty && ingredients.isNotEmpty && ingredients.first.test(stack, tags);
+      stack.isNotEmpty &&
+      ingredients.isNotEmpty &&
+      ingredients.first.test(stack, tags);
 
   // -- Item application (deploying / item_application) --------------------------------------
 
   /// `getProcessedItem`: the ingredient for the item that is worked on.
   Ingredient get processedItem {
-    if (ingredients.isEmpty) throw StateError('Item Application Recipe has no ingredient!');
+    if (ingredients.isEmpty)
+      throw StateError('Item Application Recipe has no ingredient!');
     return ingredients[0];
   }
 
   /// `getRequiredHeldItem`: the ingredient for the held tool.
   Ingredient get requiredHeldItem {
-    if (ingredients.length < 2) throw StateError('Item Application Recipe has no tool!');
+    if (ingredients.length < 2)
+      throw StateError('Item Application Recipe has no tool!');
     return ingredients[1];
   }
 
@@ -99,17 +127,18 @@ class ProcessingRecipe {
       processedItem.test(processed, tags) && requiredHeldItem.test(held, tags);
 
   /// The recipe with other [ingredients] (sequenced assembly rewrites the first ingredient).
-  ProcessingRecipe withIngredients(List<Ingredient> ingredients) => ProcessingRecipe(
-    id: id,
-    type: type,
-    ingredients: ingredients,
-    fluidIngredients: fluidIngredients,
-    results: results,
-    fluidResults: fluidResults,
-    processingDuration: processingDuration,
-    requiredHeat: requiredHeat,
-    keepHeldItem: keepHeldItem,
-  );
+  ProcessingRecipe withIngredients(List<Ingredient> ingredients) =>
+      ProcessingRecipe(
+        id: id,
+        type: type,
+        ingredients: ingredients,
+        fluidIngredients: fluidIngredients,
+        results: results,
+        fluidResults: fluidResults,
+        processingDuration: processingDuration,
+        requiredHeat: requiredHeat,
+        keepHeldItem: keepHeldItem,
+      );
 
   @override
   String toString() => '${type.key}($id)';

@@ -11,28 +11,36 @@ import '../equipment/clipboard/clipboard_nbt.dart' show hasClickEvent;
 /// The block entity data after `NBTProcessors.process(..., survival)`, or `null` when the data
 /// must be dropped.
 ///
-/// Only the processors that can apply to `create:safe_nbt` blocks are ported: signs
-/// (`minecraft:all_signs`, a message with a click event or an item in the sign data) and
-/// clipboards (`create:clipboard`, an entry text with a click event). Everything else keeps its
+/// The processors of `CreateNBTProcessors` and catnip's sign processor that can appear in a
+/// schematic are ported: signs (`minecraft:all_signs`, a message with a click event or an item in
+/// the sign data), clipboards (`create:clipboard`, an entry text with a click event), lecterns
+/// (`minecraft:lectern`, a written book page with a click event) and creative crates
+/// (`create:creative_crate`, unsafe item components of the filter). Everything else keeps its
 /// data; `prepareBlockEntityData` has already dropped the blocks that are neither safe nor have a
 /// writer.
 List<int>? processSchematicNbt(
   List<int> data, {
   required bool isSign,
   required bool isClipboard,
+  bool isLectern = false,
+  bool isCreativeCrate = false,
 }) {
-  if (!isSign && !isClipboard) return data;
+  if (!isSign && !isClipboard && !isLectern && !isCreativeCrate) return data;
   final ({String name, NbtValue root})? parsed;
   try {
     parsed = BinaryNbt.read(data);
-  } on FormatException {
+  } on Object {
     // A codec that cannot read the data leaves it alone (like the Java processors).
     return data;
   }
   if (parsed == null || parsed.root.kind != NbtKind.compound) return data;
   final root = parsed.root.asCompound;
   if (isSign) return _processSign(root) ? data : null;
-  return _processClipboard(root) ? data : null;
+  if (isClipboard) return _processClipboard(root) ? data : null;
+  if (isLectern) return _processLectern(root) ? data : null;
+  // The creative crate processor removes components in place, so its result is re-encoded.
+  _processCreativeCrate(root);
+  return BinaryNbt.write(NbtValue.compound(root), name: parsed.name);
 }
 
 /// `NBTProcessors.signProcessor`: false when the sign must lose its data.
@@ -70,6 +78,54 @@ bool _processClipboard(Map<String, NbtValue> root) {
       if (text != null && _textHasClickEvent(text)) return false;
     }
   }
+  return true;
+}
+
+/// `CreateNBTProcessors` lectern processor: a written book with a click event in a page is
+/// dropped. Writable books cannot carry components, so they are always safe.
+bool _processLectern(Map<String, NbtValue> root) {
+  final book = root['Book'];
+  if (book == null || book.kind != NbtKind.compound) return true;
+  final bookMap = book.asCompound;
+  final id = bookMap['id'];
+  if (id != null &&
+      id.kind == NbtKind.string &&
+      id.value == 'minecraft:writable_book') {
+    return true;
+  }
+  final components = bookMap['components'];
+  if (components == null || components.kind != NbtKind.compound) return true;
+  final content = components.asCompound['minecraft:written_book_content'];
+  if (content == null || content.kind != NbtKind.compound) return true;
+  final pages = content.asCompound['pages'];
+  if (pages == null || pages.kind != NbtKind.list) return true;
+  for (final page in pages.value as List<NbtValue>) {
+    // A page is `{raw: component}` in the item data; the network form stores the component alone.
+    final component =
+        page.kind == NbtKind.compound && page.asCompound.containsKey('raw')
+        ? page.asCompound['raw']!
+        : page;
+    if (_textHasClickEvent(component)) return false;
+  }
+  return true;
+}
+
+/// `NBTProcessors.itemProcessor("Filter")`: the creative crate keeps only item components that
+/// cannot execute anything (enchantments, potion contents, damage and the custom name).
+bool _processCreativeCrate(Map<String, NbtValue> root) {
+  final filter = root['Filter'];
+  if (filter == null || filter.kind != NbtKind.compound) return true;
+  final components = filter.asCompound['components'];
+  if (components == null || components.kind != NbtKind.compound) return true;
+  const safe = {
+    'minecraft:enchantments',
+    'minecraft:potion_contents',
+    'minecraft:damage',
+    'minecraft:custom_name',
+  };
+  final map = components.asCompound;
+  map.removeWhere((key, _) => !safe.contains(key));
+  if (map.isEmpty) filter.asCompound.remove('components');
   return true;
 }
 

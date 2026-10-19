@@ -2,6 +2,7 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/wrenchable.dart';
+import '../../contraptions/core/movement.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
@@ -10,6 +11,9 @@ import '../processing_part.dart';
 import '../processing_runtime.dart';
 import 'blaze_burner_block.dart';
 import 'blaze_burner_block_entity.dart';
+import 'blaze_burner_handler.dart';
+import 'blaze_burner_movement.dart';
+import 'conductor_interaction.dart';
 
 /// The blaze burner.
 final class BlazeBurnerPart extends ProcessingPart {
@@ -33,6 +37,18 @@ final class BlazeBurnerPart extends ProcessingPart {
 
   @override
   void onLoad(CreateContext ctx, ProcessingRuntime rt) {
+    // `AllBlocks.BLAZE_BURNER`: the contraption actor, the train conductor interaction and the
+    // thrown egg handler.
+    MovementBehaviours.register(
+      BlazeBurnerBlock.key,
+      const BlazeBurnerMovementBehaviour(),
+    );
+    MovingInteractions.register(
+      BlazeBurnerBlock.key,
+      const BlazeBurnerConductorInteraction(),
+    );
+    BlazeBurnerHandler.install(ctx);
+
     // `BlazeBurnerBlockItem.registerBlocks`: the empty burner is a block item too.
     try {
       BlockRegistries.host.setBlockItem(

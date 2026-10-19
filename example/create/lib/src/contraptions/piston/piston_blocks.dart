@@ -7,6 +7,7 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/blocks.dart';
+import '../../api/wrenchable.dart';
 import '../../common/common.dart';
 import '../../core/blocks.dart';
 import '../blocks/actuator_runtime.dart';
@@ -188,7 +189,19 @@ BlockBehavior pistonHeadBehavior() => BlockBehavior(
   },
 );
 
-PistonBlockEntityLookup? _pistonLookup(ActuatorRuntime? runtime, String worldId, BlockPos pos) {
+/// `MechanicalPistonBlock.onWrenched`: only a retracted piston may be rotated.
+Wrenchable pistonWrenchable() => CallbackWrenchable(
+  onWrenchedOverride: (c) async {
+    if (c.properties['state'] != 'retracted') return WrenchResult.pass;
+    return c.registry.defaultRotate(c);
+  },
+);
+
+PistonBlockEntityLookup? _pistonLookup(
+  ActuatorRuntime? runtime,
+  String worldId,
+  BlockPos pos,
+) {
   final be = runtime?.store.at(worldId, pos);
   return be is PistonBlockEntityLookup ? be as PistonBlockEntityLookup : null;
 }

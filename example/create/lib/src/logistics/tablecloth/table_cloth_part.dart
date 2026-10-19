@@ -11,6 +11,8 @@ import '../../core/module.dart';
 import '../../core/registry.dart';
 import '../filter/filtering_behaviour.dart';
 import '../host/lg_block_entity.dart';
+import '../host/nbt_codecs.dart';
+import '../host/nbt_util.dart';
 import '../host/player_items.dart';
 import '../host/runtime.dart';
 import '../logistics_part.dart';
@@ -68,31 +70,72 @@ class TableClothBlockEntity extends LgBlockEntity {
     _state
       ..clear()
       ..addAll(map);
-    owner = map['owner'] as String?;
-    facing =
-        Direction.byName(map['facing'] as String? ?? 'south') ??
-        Direction.south;
-    requestData = map['requestData'] is Map
+    final ownerData = map['OwnerUUID'];
+    owner = ownerData is List && ownerData.length >= 4
+        ? uuidFromInts([for (final i in ownerData) i as int])
+        : map['owner'] as String?;
+    facing = map['Facing'] is int
+        ? Direction.from2DDataValue(map['Facing'] as int)
+        : Direction.byName(map['facing'] as String? ?? 'south') ??
+              Direction.south;
+    requestData = map['RequestData'] is Map
         ? AutoRequestData.fromMap(
-            (map['requestData'] as Map).cast<String, dynamic>(),
+            (map['RequestData'] as Map).cast<String, dynamic>(),
           )
         : AutoRequestData.empty();
     manuallyAddedItems = [
-      for (final s in (map['items'] as List<dynamic>? ?? const []))
+      for (final s in (map['Items'] as List<dynamic>? ?? const []))
         if (s is String) LStackMapper.fromJson(s),
     ];
-    final price = map['price'];
+    final price = map['Filter'];
     if (price is String) priceTag.setFilter(LStackMapper.fromJson(price));
   }
 
   @override
   Map<String, dynamic> stateToMap() => {
-    'owner': owner,
-    'facing': facing.serializedName,
-    'requestData': requestData.toMap(),
-    'items': [for (final s in manuallyAddedItems) s.toJson()],
-    'price': priceTag.filterItem.isEmpty ? null : priceTag.filterItem.toJson(),
+    'OwnerUUID': owner == null ? null : uuidToInts(owner!),
+    'Facing': facing.data2d,
+    'RequestData': requestData.toMap(),
+    'Items': [for (final s in manuallyAddedItems) s.toJson()],
+    'Filter': priceTag.filterItem.isEmpty ? null : priceTag.filterItem.toJson(),
   };
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    tag.putList('Items', [
+      for (final stack in manuallyAddedItems)
+        if (stack.isNotEmpty) stackToNbt(stack, client: clientPacket),
+    ]);
+    tag.putInt('Facing', facing.data2d);
+    tag.putCompound(
+      'RequestData',
+      autoRequestDataToNbt(requestData, client: clientPacket),
+    );
+    final ownerUuid = owner;
+    if (ownerUuid != null) tag.putIntArray('OwnerUUID', uuidToInts(ownerUuid));
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    final items = tag.getList('Items');
+    if (items != null) {
+      manuallyAddedItems = [
+        for (final entry in items)
+          if (entry is NbtCompound) stackFromNbt(entry),
+      ];
+    }
+    if (tag.containsKey('Facing')) {
+      facing = Direction.from2DDataValue(tag.getInt('Facing') ?? 0);
+    }
+    final request = tag.getCompound('RequestData');
+    if (request != null) requestData = autoRequestDataFromNbt(request);
+    final ownerUuid = tag.getIntArray('OwnerUUID');
+    if (ownerUuid != null && ownerUuid.length >= 4) {
+      owner = uuidFromInts(ownerUuid);
+    }
+  }
 
   /// `use(player, ray)`.
   Future<bool> use(Player player, bool sneaking) async {

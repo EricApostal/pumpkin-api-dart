@@ -7,6 +7,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
 import 'arm/arm_part.dart';
+import 'assembly/assembly_operator_block_item.dart';
 import 'basin/basin_part.dart';
 import 'burner/burner_part.dart';
 import 'crafter/crafter_part.dart';
@@ -97,10 +98,19 @@ final class ProcessingModule extends CreateModule {
       try {
         p.onLoad(ctx, rt);
       } catch (e, s) {
-        ctx.log.error('Processing part ${p.name} failed to load', error: e, stackTrace: s);
+        ctx.log.error(
+          'Processing part ${p.name} failed to load',
+          error: e,
+          stackTrace: s,
+        );
       }
     }
-    ctx.log.info('Processing: ${parts.length} machine families, ${book.count} recipes.');
+    // `AssemblyOperatorBlockItem`: the press, mixer, spout and deployer place two blocks above
+    // the belt / basin / depot they were clicked on.
+    AssemblyOperatorBlockItem.install(ctx);
+    ctx.log.info(
+      'Processing: ${parts.length} machine families, ${book.count} recipes.',
+    );
   }
 
   void _loadRecipes(CreateContext ctx, ProcessingRuntime rt) {
@@ -116,12 +126,17 @@ final class ProcessingModule extends CreateModule {
       }
       if (settings.loadFolderRecipes) {
         try {
-          for (final s in RecipeSources.folder(ctx.host.files, settings.recipeFolder)) {
+          for (final s in RecipeSources.folder(
+            ctx.host.files,
+            settings.recipeFolder,
+          )) {
             sources[s.$1] = s.$2;
             yield s;
           }
         } on Object catch (e) {
-          ctx.log.warn('Could not read the recipe folder ${settings.recipeFolder}: $e');
+          ctx.log.warn(
+            'Could not read the recipe folder ${settings.recipeFolder}: $e',
+          );
         }
       }
     }
@@ -131,16 +146,23 @@ final class ProcessingModule extends CreateModule {
       for (final e in report.errors.take(50)) {
         ctx.log.warn('Recipe not loaded: $e');
       }
-      if (report.errors.length > 50) ctx.log.warn('... and ${report.errors.length - 50} more invalid recipes');
+      if (report.errors.length > 50)
+        ctx.log.warn(
+          '... and ${report.errors.length - 50} more invalid recipes',
+        );
     }
     try {
       final manager = ctx.host.getServer().getRecipeManager();
       RecipeNetworkEncoder? encoder;
       if (settings.syncRecipes) {
-        final syncedTypes = [for (final t in CreateRecipeType.registered) t.key];
+        final syncedTypes = [
+          for (final t in CreateRecipeType.registered) t.key,
+        ];
         encoder = RecipeNetworkEncoder(
           RecipeNetworkIds(
-            item: (key) => VanillaIds.items.idOf(key) ?? ctx.ids.of(RegistryKind.items, key),
+            item: (key) =>
+                VanillaIds.items.idOf(key) ??
+                ctx.ids.of(RegistryKind.items, key),
             fluid: (key) => _fluidId(ctx, settings, key),
             serializer: (key) {
               final i = syncedTypes.indexOf(key);
@@ -149,15 +171,35 @@ final class ProcessingModule extends CreateModule {
           ),
         );
       }
-      registerRecipesWithHost(manager, rt.recipes, report, encoder: encoder, sources: sources);
+      registerRecipesWithHost(
+        manager,
+        rt.recipes,
+        report,
+        encoder: encoder,
+        sources: sources,
+      );
     } on Object catch (e, s) {
-      ctx.log.error('Registering the recipes with the host failed', error: e, stackTrace: s);
+      ctx.log.error(
+        'Registering the recipes with the host failed',
+        error: e,
+        stackTrace: s,
+      );
     }
     ctx.log.info('Recipes: $report');
   }
 
-  static int? _fluidId(CreateContext ctx, ProcessingSettings settings, String key) {
-    const vanilla = ['minecraft:empty', 'minecraft:flowing_water', 'minecraft:water', 'minecraft:flowing_lava', 'minecraft:lava'];
+  static int? _fluidId(
+    CreateContext ctx,
+    ProcessingSettings settings,
+    String key,
+  ) {
+    const vanilla = [
+      'minecraft:empty',
+      'minecraft:flowing_water',
+      'minecraft:water',
+      'minecraft:flowing_lava',
+      'minecraft:lava',
+    ];
     final v = vanilla.indexOf(key);
     if (v >= 0) return v;
     final own = ctx.ids.of(RegistryKind.fluids, key);
@@ -172,7 +214,11 @@ final class ProcessingModule extends CreateModule {
       try {
         p.onServerLoaded(runtime, rt);
       } catch (e, s) {
-        runtime.log.error('Processing part ${p.name} failed in onServerLoaded', error: e, stackTrace: s);
+        runtime.log.error(
+          'Processing part ${p.name} failed in onServerLoaded',
+          error: e,
+          stackTrace: s,
+        );
       }
     }
   }

@@ -38,6 +38,7 @@ CreateBlock buildBeltBlock() {
       onNeighborUpdate: _neighborUpdate,
       onEntityCollision: _entityCollision,
       onStateReplaced: _stateReplaced,
+      onPlayerWillDestroy: _playerWillDestroy,
       onCloneItem: _cloneItem,
     ),
   );
@@ -316,6 +317,20 @@ Future<void> _stateReplaced(
         : BState.air;
     await setBlockState(world, at, replacement);
   }
+}
+
+/// `BeltBlock.getDrops`: a belt with a pulley also drops the shaft it was made from.
+Future<bool> _playerWillDestroy(
+  Server server,
+  CustomBlockPlayerWillDestroyEventData e,
+) async {
+  if (!ConveyanceRuntime.loaded) return true;
+  final rt = ConveyanceRuntime.i;
+  final worldId = rt.ctx.worlds.touch(e.targetWorld);
+  final belt = _segment(rt, worldId, e.pos.toPos());
+  if (belt == null || !belt.hasPulley || e.player.isCreative) return true;
+  await ItemCodec.giveToPlayer(e.player, const ItemValue('create:shaft', 1));
+  return true;
 }
 
 Future<ItemStack?> _cloneItem(

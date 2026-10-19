@@ -32,7 +32,10 @@ enum BottleType {
     _ => BottleType.regular,
   };
 
-  static BottleType parse(String? name) => BottleType.values.firstWhere((b) => b.name == name, orElse: () => BottleType.regular);
+  static BottleType parse(String? name) => BottleType.values.firstWhere(
+    (b) => b.name == name,
+    orElse: () => BottleType.regular,
+  );
 }
 
 /// A custom effect of a potion (`MobEffectInstance`).
@@ -44,7 +47,13 @@ class PotionEffectData with PotionEffectDataMappable {
   final bool ambient;
   final bool visible;
 
-  const PotionEffectData(this.effect, {this.duration = 0, this.amplifier = 0, this.ambient = false, this.visible = true});
+  const PotionEffectData(
+    this.effect, {
+    this.duration = 0,
+    this.amplifier = 0,
+    this.ambient = false,
+    this.visible = true,
+  });
 }
 
 /// The `PotionContents` of a potion fluid plus its bottle type.
@@ -55,10 +64,17 @@ class PotionFluidData with PotionFluidDataMappable {
   final BottleType bottle;
   final List<PotionEffectData> customEffects;
 
-  const PotionFluidData(this.potion, {this.bottle = BottleType.regular, this.customEffects = const []});
+  const PotionFluidData(
+    this.potion, {
+    this.bottle = BottleType.regular,
+    this.customEffects = const [],
+  });
 
   /// `Potions.WATER` with no custom effects in a regular bottle: this is plain water.
-  bool get isWater => potion == 'minecraft:water' && customEffects.isEmpty && bottle == BottleType.regular;
+  bool get isWater =>
+      potion == 'minecraft:water' &&
+      customEffects.isEmpty &&
+      bottle == BottleType.regular;
 
   /// The data bytes of a [FStack].
   List<int> encode() => utf8.encode(jsonEncode(toMap()));
@@ -67,7 +83,9 @@ class PotionFluidData with PotionFluidDataMappable {
   static PotionFluidData? decode(List<int>? data) {
     if (data == null || data.isEmpty) return null;
     try {
-      return PotionFluidDataMapper.fromMap(jsonDecode(utf8.decode(data)) as Map<String, dynamic>);
+      return PotionFluidDataMapper.fromMap(
+        jsonDecode(utf8.decode(data)) as Map<String, dynamic>,
+      );
     } on Object {
       return null;
     }
@@ -99,7 +117,9 @@ class PotionFluidData with PotionFluidDataMappable {
 
   static PotionFluidData? fromComponents(Map<String, NbtValue> components) {
     final contents = components.readCompound('minecraft:potion_contents');
-    final bottle = BottleType.parse(components.readString('create:potion_fluid_bottle_type'));
+    final bottle = BottleType.parse(
+      components.readString('create:potion_fluid_bottle_type'),
+    );
     if (contents == null) return null;
     final effects = <PotionEffectData>[];
     for (final e in contents.readList('custom_effects') ?? const <NbtValue>[]) {
@@ -107,16 +127,159 @@ class PotionFluidData with PotionFluidDataMappable {
       final c = e.asCompound;
       final id = c.readString('id');
       if (id == null) continue;
-      effects.add(PotionEffectData(
-        id,
-        duration: c.readInt('duration') ?? 0,
-        amplifier: c.readInt('amplifier') ?? 0,
-        ambient: c.readBool('ambient'),
-        visible: c.readBool('show_particles', or: true),
-      ));
+      effects.add(
+        PotionEffectData(
+          id,
+          duration: c.readInt('duration') ?? 0,
+          amplifier: c.readInt('amplifier') ?? 0,
+          ambient: c.readBool('ambient'),
+          visible: c.readBool('show_particles', or: true),
+        ),
+      );
     }
-    return PotionFluidData(contents.readString('potion') ?? 'minecraft:water', bottle: bottle, customEffects: effects);
+    return PotionFluidData(
+      contents.readString('potion') ?? 'minecraft:water',
+      bottle: bottle,
+      customEffects: effects,
+    );
   }
+}
+
+/// The effects a potion fluid applies: the effects of the vanilla potion it names
+/// (`PotionContents.getAllEffects`) plus its custom effects. The host exposes no potion
+/// registry, so the vanilla effects are the fixed table of the base game.
+abstract final class PotionEffects {
+  /// The effects of [data], in the order the potion applies them.
+  static List<PotionEffectData> of(PotionFluidData data) {
+    if (data.isWater) return const [];
+    return [...?_vanilla[data.potion], ...data.customEffects];
+  }
+
+  static const Map<String, List<PotionEffectData>> _vanilla = {
+    'minecraft:night_vision': [
+      PotionEffectData('minecraft:night_vision', duration: 3600),
+    ],
+    'minecraft:long_night_vision': [
+      PotionEffectData('minecraft:night_vision', duration: 9600),
+    ],
+    'minecraft:invisibility': [
+      PotionEffectData('minecraft:invisibility', duration: 3600),
+    ],
+    'minecraft:long_invisibility': [
+      PotionEffectData('minecraft:invisibility', duration: 9600),
+    ],
+    'minecraft:leaping': [
+      PotionEffectData('minecraft:jump_boost', duration: 3600),
+    ],
+    'minecraft:long_leaping': [
+      PotionEffectData('minecraft:jump_boost', duration: 9600),
+    ],
+    'minecraft:strong_leaping': [
+      PotionEffectData('minecraft:jump_boost', duration: 1800, amplifier: 1),
+    ],
+    'minecraft:fire_resistance': [
+      PotionEffectData('minecraft:fire_resistance', duration: 3600),
+    ],
+    'minecraft:long_fire_resistance': [
+      PotionEffectData('minecraft:fire_resistance', duration: 9600),
+    ],
+    'minecraft:swiftness': [
+      PotionEffectData('minecraft:speed', duration: 3600),
+    ],
+    'minecraft:long_swiftness': [
+      PotionEffectData('minecraft:speed', duration: 9600),
+    ],
+    'minecraft:strong_swiftness': [
+      PotionEffectData('minecraft:speed', duration: 1800, amplifier: 1),
+    ],
+    'minecraft:slowness': [
+      PotionEffectData('minecraft:slowness', duration: 1800),
+    ],
+    'minecraft:long_slowness': [
+      PotionEffectData('minecraft:slowness', duration: 4800),
+    ],
+    'minecraft:strong_slowness': [
+      PotionEffectData('minecraft:slowness', duration: 400, amplifier: 3),
+    ],
+    'minecraft:water_breathing': [
+      PotionEffectData('minecraft:water_breathing', duration: 3600),
+    ],
+    'minecraft:long_water_breathing': [
+      PotionEffectData('minecraft:water_breathing', duration: 9600),
+    ],
+    'minecraft:healing': [
+      PotionEffectData('minecraft:instant_health', duration: 1),
+    ],
+    'minecraft:strong_healing': [
+      PotionEffectData('minecraft:instant_health', duration: 1, amplifier: 1),
+    ],
+    'minecraft:harming': [
+      PotionEffectData('minecraft:instant_damage', duration: 1),
+    ],
+    'minecraft:strong_harming': [
+      PotionEffectData('minecraft:instant_damage', duration: 1, amplifier: 1),
+    ],
+    'minecraft:poison': [PotionEffectData('minecraft:poison', duration: 900)],
+    'minecraft:long_poison': [
+      PotionEffectData('minecraft:poison', duration: 1800),
+    ],
+    'minecraft:strong_poison': [
+      PotionEffectData('minecraft:poison', duration: 432, amplifier: 1),
+    ],
+    'minecraft:regeneration': [
+      PotionEffectData('minecraft:regeneration', duration: 900),
+    ],
+    'minecraft:long_regeneration': [
+      PotionEffectData('minecraft:regeneration', duration: 1800),
+    ],
+    'minecraft:strong_regeneration': [
+      PotionEffectData('minecraft:regeneration', duration: 450, amplifier: 1),
+    ],
+    'minecraft:strength': [
+      PotionEffectData('minecraft:strength', duration: 3600),
+    ],
+    'minecraft:long_strength': [
+      PotionEffectData('minecraft:strength', duration: 9600),
+    ],
+    'minecraft:strong_strength': [
+      PotionEffectData('minecraft:strength', duration: 1800, amplifier: 1),
+    ],
+    'minecraft:weakness': [
+      PotionEffectData('minecraft:weakness', duration: 1800),
+    ],
+    'minecraft:long_weakness': [
+      PotionEffectData('minecraft:weakness', duration: 4800),
+    ],
+    'minecraft:luck': [PotionEffectData('minecraft:luck', duration: 6000)],
+    'minecraft:slow_falling': [
+      PotionEffectData('minecraft:slow_falling', duration: 1800),
+    ],
+    'minecraft:long_slow_falling': [
+      PotionEffectData('minecraft:slow_falling', duration: 4800),
+    ],
+    'minecraft:turtle_master': [
+      PotionEffectData('minecraft:resistance', duration: 400, amplifier: 2),
+      PotionEffectData('minecraft:slowness', duration: 400, amplifier: 3),
+    ],
+    'minecraft:long_turtle_master': [
+      PotionEffectData('minecraft:resistance', duration: 800, amplifier: 2),
+      PotionEffectData('minecraft:slowness', duration: 800, amplifier: 3),
+    ],
+    'minecraft:strong_turtle_master': [
+      PotionEffectData('minecraft:resistance', duration: 400, amplifier: 3),
+      PotionEffectData('minecraft:slowness', duration: 400, amplifier: 5),
+    ],
+    'minecraft:wind_charged': [
+      PotionEffectData('minecraft:wind_charged', duration: 3600),
+    ],
+    'minecraft:weaving': [
+      PotionEffectData('minecraft:weaving', duration: 3600),
+    ],
+    'minecraft:oozing': [PotionEffectData('minecraft:oozing', duration: 3600)],
+    'minecraft:infested': [
+      PotionEffectData('minecraft:infested', duration: 3600),
+    ],
+  };
 }
 
 /// `PotionFluidHandler` (the fluid side).
@@ -129,14 +292,17 @@ abstract final class PotionFluids {
   /// other fluids.
   static PotionFluidData? dataOf(FStack stack) {
     if (stack.isEmpty) return null;
-    if (stack.fluid == FluidKeys.water) return const PotionFluidData('minecraft:water');
+    if (stack.fluid == FluidKeys.water)
+      return const PotionFluidData('minecraft:water');
     if (stack.fluid != FluidKeys.potion) return null;
-    return PotionFluidData.decode(stack.data) ?? const PotionFluidData('minecraft:water');
+    return PotionFluidData.decode(stack.data) ??
+        const PotionFluidData('minecraft:water');
   }
 
   /// `getRequiredAmountForFilledBottle`.
   static int requiredAmountForFilledBottle() => 250;
 
   /// `fillBottle`: the item key of the bottle a potion fluid fills.
-  static String bottleItemFor(FStack fluid) => (dataOf(fluid)?.bottle ?? BottleType.regular).itemKey;
+  static String bottleItemFor(FStack fluid) =>
+      (dataOf(fluid)?.bottle ?? BottleType.regular).itemKey;
 }

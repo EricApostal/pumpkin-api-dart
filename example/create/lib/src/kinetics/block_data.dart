@@ -5,15 +5,22 @@ import 'package:pumpkin_api/pumpkin_api_core.dart';
 import '../manifest/manifest.dart';
 import 'shapes.dart';
 
-final Map<String, ManifestBlock> _manifestByKey = {for (final b in kBlocks) b.key: b};
+final Map<String, ManifestBlock> _manifestByKey = {
+  for (final b in kBlocks) b.key: b,
+};
 
 /// The manifest entry of the block `create:<path>`.
 ManifestBlock manifestBlockOf(String path) =>
-    _manifestByKey[path] ?? (throw ArgumentError.value(path, 'path', 'Not in the block manifest'));
+    _manifestByKey[path] ??
+    (throw ArgumentError.value(path, 'path', 'Not in the block manifest'));
 
 BlockProperty _property(ManifestProperty p) => switch (p.type) {
   'bool' => BlockProperty.boolean(p.name),
-  'int' => BlockProperty.intRange(p.name, int.parse(p.values.first), int.parse(p.values.last)),
+  'int' => BlockProperty.intRange(
+    p.name,
+    int.parse(p.values.first),
+    int.parse(p.values.last),
+  ),
   _ => BlockProperty.enumeration(p.name, p.values),
 };
 
@@ -120,12 +127,21 @@ KineticBlockData kineticBlockData(
     luminance: m.lightDynamic ? 0 : m.lightLevel,
     canOcclude: canOcclude ?? !m.noOcclusion,
     replaceable: m.replaceable,
-    collisionShape: collisionShape ?? kineticBaseShapes[path] ?? (m.noCollision ? BlockShape.empty : BlockShape.fullCube),
-    selectionShape: selectionShape ?? kineticBaseShapes[path] ?? BlockShape.fullCube,
+    collisionShape:
+        collisionShape ??
+        kineticBaseShapes[path] ??
+        (m.noCollision ? BlockShape.empty : BlockShape.fullCube),
+    selectionShape:
+        selectionShape ?? kineticBaseShapes[path] ?? BlockShape.fullCube,
     shapeRules: rules,
-    drops: useLootTable ? BlockDrops.lootTable('create:blocks/${m.key}') : BlockDrops.selfItem,
+    drops: useLootTable
+        ? BlockDrops.lootTable('create:blocks/${m.key}')
+        : BlockDrops.selfItem,
     tags: [for (final k in m.mineable) 'minecraft:mineable/$k'],
-    pistonBehavior: pistonBehavior ?? kineticPistonBehavior[path] ?? _piston(m.pushReaction),
+    pistonBehavior:
+        pistonBehavior ??
+        kineticPistonBehavior[path] ??
+        _piston(m.pushReaction),
     itemKey: m.blockItem == null ? null : 'create:${m.blockItem}',
     itemMaxStackSize: _itemMaxStack(m.blockItem),
   );
@@ -161,6 +177,7 @@ List<String> get kineticBlockPaths => [
   for (final c in dyeColorNames) '${c}_valve_handle',
   'steam_engine',
   'powered_shaft',
+  'gantry_shaft',
   'sequenced_gearshift',
   'flywheel',
   'rotation_speed_controller',

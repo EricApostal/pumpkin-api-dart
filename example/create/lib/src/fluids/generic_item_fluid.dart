@@ -1,5 +1,5 @@
 // `GenericItemFilling`, `GenericItemEmptying`, `FillingBySpout` and the potion bottle conversions
-// (pure): what fluid goes into and comes out of items. Items are [ItemSpec]s (key and count); the
+// (pure): what fluid goes into and comes out of items. Items are [FluidItemSpec]s (key and count); the
 // host exposes bucket contents and registered container items, which [ItemFluidRules] describes.
 // The potion contents of a bottle item cannot be read or written through the host, so a bottle's
 // potion is carried by the fluid data and the bottle item is chosen by its type
@@ -10,30 +10,30 @@ import 'fluid_storage.dart';
 import 'potion_data.dart';
 
 /// A stack of items as the fluid code sees it: the registry key and the count.
-final class ItemSpec {
+final class FluidItemSpec {
   final String key;
   final int count;
 
-  const ItemSpec(this.key, [this.count = 1]);
+  const FluidItemSpec(this.key, [this.count = 1]);
 
-  static const ItemSpec empty = ItemSpec('minecraft:air', 0);
+  static const FluidItemSpec empty = FluidItemSpec('minecraft:air', 0);
 
   bool get isEmpty => key == 'minecraft:air' || count <= 0;
   bool get isNotEmpty => !isEmpty;
 
-  ItemSpec withCount(int c) => c <= 0 ? empty : ItemSpec(key, c);
+  FluidItemSpec withCount(int c) => c <= 0 ? empty : FluidItemSpec(key, c);
 
   /// `ItemStack.shrink(n)`.
-  ItemSpec shrink(int n) => withCount(count - n);
+  FluidItemSpec shrink(int n) => withCount(count - n);
 
   @override
-  bool operator ==(Object other) => other is ItemSpec && (isEmpty && other.isEmpty || other.key == key && other.count == count);
+  bool operator ==(Object other) => other is FluidItemSpec && (isEmpty && other.isEmpty || other.key == key && other.count == count);
 
   @override
   int get hashCode => isEmpty ? 0 : Object.hash(key, count);
 
   @override
-  String toString() => isEmpty ? 'ItemSpec.empty' : 'ItemSpec($key x$count)';
+  String toString() => isEmpty ? 'FluidItemSpec.empty' : 'FluidItemSpec($key x$count)';
 }
 
 /// A container item registered through the host (`FluidHandlers.registerContainerItem`).
@@ -87,7 +87,7 @@ class ItemFluidRules {
 /// `EmptyingRecipe` as the spout and the drain see it.
 final class EmptyingResult {
   final FStack fluid;
-  final ItemSpec remainder;
+  final FluidItemSpec remainder;
 
   const EmptyingResult(this.fluid, this.remainder);
 }
@@ -95,7 +95,7 @@ final class EmptyingResult {
 /// `FillingRecipe` as the spout sees it.
 final class FillingResult {
   final int requiredAmount;
-  final ItemSpec result;
+  final FluidItemSpec result;
 
   const FillingResult(this.requiredAmount, this.result);
 }
@@ -104,26 +104,26 @@ final class FillingResult {
 /// service; the default has none.
 abstract interface class FluidItemRecipes {
   /// The emptying recipe for one [item], `null` if there is none.
-  EmptyingResult? findEmptying(ItemSpec item);
+  EmptyingResult? findEmptying(FluidItemSpec item);
 
   /// A filling recipe for one [item] that accepts [available], `null` if there is none.
-  FillingResult? findFilling(ItemSpec item, FStack available);
+  FillingResult? findFilling(FluidItemSpec item, FStack available);
 
   /// Whether some filling recipe takes [item] (with any fluid).
-  bool canBeFilled(ItemSpec item);
+  bool canBeFilled(FluidItemSpec item);
 }
 
 final class NoFluidItemRecipes implements FluidItemRecipes {
   const NoFluidItemRecipes();
 
   @override
-  EmptyingResult? findEmptying(ItemSpec item) => null;
+  EmptyingResult? findEmptying(FluidItemSpec item) => null;
 
   @override
-  FillingResult? findFilling(ItemSpec item, FStack available) => null;
+  FillingResult? findFilling(FluidItemSpec item, FStack available) => null;
 
   @override
-  bool canBeFilled(ItemSpec item) => false;
+  bool canBeFilled(FluidItemSpec item) => false;
 }
 
 /// The fluid handler of one item (`ItemFluidHandler`): a bucket, a bottle or a container item.
@@ -136,7 +136,7 @@ class ItemFluidHandler implements FluidItemContainer {
   ItemFluidHandler._(this.rules, this._item, this._fluid, this._capacity);
 
   /// `ItemFluidHandler.of(stack)`: the handler of a single item, `null` if the item holds no fluid.
-  static ItemFluidHandler? of(ItemFluidRules rules, ItemSpec item, {FStack contents = FStack.empty}) {
+  static ItemFluidHandler? of(ItemFluidRules rules, FluidItemSpec item, {FStack contents = FStack.empty}) {
     final key = item.key;
     if (key == 'minecraft:bucket') return ItemFluidHandler._(rules, key, FStack.empty, 1000);
     final bucketFluid = rules.fluidFromBucket(key);
@@ -240,7 +240,7 @@ class GenericItemEmptying {
   GenericItemEmptying(this.rules, [this.recipes = const NoFluidItemRecipes()]);
 
   /// `canItemBeEmptied(world, stack)`.
-  bool canItemBeEmptied(ItemSpec stack) {
+  bool canItemBeEmptied(FluidItemSpec stack) {
     if (rules.isPotionItem(stack.key)) return true;
     if (recipes.findEmptying(stack.withCount(1)) != null) return true;
     final handler = ItemFluidHandler.of(rules, stack.withCount(1));
@@ -250,19 +250,19 @@ class GenericItemEmptying {
 
   /// `emptyItem(level, stack, simulate)`: the fluid that comes out and the item that is left
   /// (empty for none) of one item of [stack]. The new stack is returned as `$3`.
-  (FStack fluid, ItemSpec remainder, ItemSpec stack) emptyItem(ItemSpec stack, {required bool simulate}) {
+  (FStack fluid, FluidItemSpec remainder, FluidItemSpec stack) emptyItem(FluidItemSpec stack, {required bool simulate}) {
     if (rules.isPotionItem(stack.key)) {
       final fluid = potionItemFluid(stack.key);
-      return (fluid, const ItemSpec('minecraft:glass_bottle'), simulate ? stack : stack.shrink(1));
+      return (fluid, const FluidItemSpec('minecraft:glass_bottle'), simulate ? stack : stack.shrink(1));
     }
 
     final recipe = recipes.findEmptying(stack.withCount(1));
     if (recipe != null) return (recipe.fluid, recipe.remainder, simulate ? stack : stack.shrink(1));
 
     final handler = ItemFluidHandler.of(rules, stack.withCount(1));
-    if (handler == null) return (FStack.empty, ItemSpec.empty, stack);
+    if (handler == null) return (FStack.empty, FluidItemSpec.empty, stack);
     final fluid = handler.drain(1000, simulate: simulate);
-    return (fluid, ItemSpec(handler.containerItem), simulate ? stack : stack.shrink(1));
+    return (fluid, FluidItemSpec(handler.containerItem), simulate ? stack : stack.shrink(1));
   }
 
   /// `PotionFluidHandler.getFluidFromPotionItem`: a bottle holds 250 mB of its fluid.
@@ -280,7 +280,7 @@ class GenericItemFilling {
   GenericItemFilling(this.rules);
 
   /// `canItemBeFilled(world, stack)`.
-  bool canItemBeFilled(ItemSpec stack) {
+  bool canItemBeFilled(FluidItemSpec stack) {
     if (stack.key == 'minecraft:glass_bottle') return true;
     if (stack.key == 'minecraft:milk_bucket') return false;
     final handler = ItemFluidHandler.of(rules, stack.withCount(1));
@@ -294,7 +294,7 @@ class GenericItemFilling {
   }
 
   /// `getRequiredAmountForItem(world, stack, availableFluid)`: -1 when the item cannot take the fluid.
-  int getRequiredAmountForItem(ItemSpec stack, FStack availableFluid) {
+  int getRequiredAmountForItem(FluidItemSpec stack, FStack availableFluid) {
     if (stack.key == 'minecraft:glass_bottle' && _canFillGlassBottleInternally(availableFluid)) {
       return PotionFluids.requiredAmountForFilledBottle();
     }
@@ -310,26 +310,26 @@ class GenericItemFilling {
 
   /// `fillItem(level, requiredAmount, stack, availableFluid)`: the filled item and what is left of
   /// the stack and of the fluid.
-  (ItemSpec result, ItemSpec stack, FStack fluid) fillItem(int requiredAmount, ItemSpec stack, FStack availableFluid) {
+  (FluidItemSpec result, FluidItemSpec stack, FStack fluid) fillItem(int requiredAmount, FluidItemSpec stack, FStack availableFluid) {
     final toFill = availableFluid.withAmount(requiredAmount);
     final leftFluid = availableFluid.shrink(requiredAmount);
 
     if (stack.key == 'minecraft:glass_bottle' && _canFillGlassBottleInternally(toFill)) {
-      final ItemSpec bottle;
+      final FluidItemSpec bottle;
       if (FluidHelper.isWater(toFill.fluid)) {
-        bottle = const ItemSpec('minecraft:potion');
+        bottle = const FluidItemSpec('minecraft:potion');
       } else if (FluidKeys.still(toFill.fluid) == FluidKeys.tea) {
-        bottle = const ItemSpec('create:builders_tea');
+        bottle = const FluidItemSpec('create:builders_tea');
       } else {
-        bottle = ItemSpec(PotionFluids.bottleItemFor(toFill));
+        bottle = FluidItemSpec(PotionFluids.bottleItemFor(toFill));
       }
       return (bottle, stack.shrink(1), leftFluid);
     }
 
     final handler = ItemFluidHandler.of(rules, stack.withCount(1));
-    if (handler == null) return (ItemSpec.empty, stack, availableFluid);
+    if (handler == null) return (FluidItemSpec.empty, stack, availableFluid);
     handler.fill(toFill, simulate: false);
-    return (ItemSpec(handler.containerItem), stack.shrink(1), leftFluid);
+    return (FluidItemSpec(handler.containerItem), stack.shrink(1), leftFluid);
   }
 }
 
@@ -341,17 +341,17 @@ class FillingBySpout {
   FillingBySpout(this.generic, [this.recipes = const NoFluidItemRecipes()]);
 
   /// `canItemBeFilled(world, stack)`.
-  bool canItemBeFilled(ItemSpec stack) => recipes.canBeFilled(stack.withCount(1)) || generic.canItemBeFilled(stack);
+  bool canItemBeFilled(FluidItemSpec stack) => recipes.canBeFilled(stack.withCount(1)) || generic.canItemBeFilled(stack);
 
   /// `getRequiredAmountForItem(world, stack, availableFluid)`.
-  int getRequiredAmountForItem(ItemSpec stack, FStack availableFluid) {
+  int getRequiredAmountForItem(FluidItemSpec stack, FStack availableFluid) {
     final recipe = recipes.findFilling(stack.withCount(1), availableFluid);
     if (recipe != null) return recipe.requiredAmount;
     return generic.getRequiredAmountForItem(stack, availableFluid);
   }
 
   /// `fillItem(level, requiredAmount, stack, availableFluid)`.
-  (ItemSpec result, ItemSpec stack, FStack fluid) fillItem(int requiredAmount, ItemSpec stack, FStack availableFluid) {
+  (FluidItemSpec result, FluidItemSpec stack, FStack fluid) fillItem(int requiredAmount, FluidItemSpec stack, FStack availableFluid) {
     final recipe = recipes.findFilling(stack.withCount(1), availableFluid.withAmount(requiredAmount));
     if (recipe != null) return (recipe.result, stack.shrink(1), availableFluid.shrink(requiredAmount));
     return generic.fillItem(requiredAmount, stack, availableFluid);

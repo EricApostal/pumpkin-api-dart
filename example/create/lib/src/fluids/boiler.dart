@@ -14,7 +14,11 @@ import 'pipe_blocks.dart';
 
 /// `BoilerHeater`: the heat a block gives to a boiler on top of it. [passiveHeat] is the small
 /// free heat of fire and magma, [noHeat] no heat at all; positive values are heat levels.
-typedef BoilerHeaterFn = double Function(FluidWorld world, Pos pos, BState state);
+typedef BoilerHeaterFn = double Function(
+  FluidWorld world,
+  Pos pos,
+  BState state,
+);
 
 abstract final class BoilerHeaters {
   static const double passiveHeat = 0;
@@ -24,10 +28,12 @@ abstract final class BoilerHeaters {
   static final Map<String, BoilerHeaterFn> _tags = {};
 
   /// `BoilerHeater.REGISTRY.register(block, heater)`.
-  static void register(String blockKey, BoilerHeaterFn heater) => _blocks[blockKey] = heater;
+  static void register(String blockKey, BoilerHeaterFn heater) =>
+      _blocks[blockKey] = heater;
 
   /// `registerProvider(forBlockTag(tag, heater))`.
-  static void registerTag(String tag, BoilerHeaterFn heater) => _tags[tag] = heater;
+  static void registerTag(String tag, BoilerHeaterFn heater) =>
+      _tags[tag] = heater;
 
   /// Registers the defaults of `BoilerHeaters.registerDefaults`.
   static void registerDefaults() {
@@ -41,18 +47,27 @@ abstract final class BoilerHeaters {
 
   /// `BlockHelper.isNotUnheated`: lit campfires, burners that burn.
   static bool isNotUnheated(BState state) {
-    if ((state.key == 'minecraft:campfire' || state.key == 'minecraft:soul_campfire') && state.has('lit')) {
+    if ((state.key == 'minecraft:campfire' ||
+            state.key == 'minecraft:soul_campfire') &&
+        state.has('lit')) {
       return state.flag('lit');
     }
     if (state.has('blaze')) return state['blaze'] != 'none';
     return true;
   }
 
-  static const List<String> _heatLevels = ['none', 'smouldering', 'fading', 'kindled', 'seething'];
+  static const List<String> _heatLevels = [
+    'none',
+    'smouldering',
+    'fading',
+    'kindled',
+    'seething',
+  ];
 
   /// `BoilerHeaters.blazeBurner`.
   static double blazeBurner(FluidWorld level, Pos pos, BState state) {
-    final value = state['heat_level'] ?? 'none';
+    // The manifest names the property `blaze` (`BlazeBurnerBlock.HEAT_LEVEL`).
+    final value = state['blaze'] ?? state['heat_level'] ?? 'none';
     if (value == 'none') return noHeat;
     if (value == 'seething') return 2;
     if (_heatLevels.indexOf(value) >= _heatLevels.indexOf('fading')) return 1;
@@ -72,7 +87,7 @@ abstract final class BoilerHeaters {
 
 /// What the boiler needs to know of its tank (the controller block entity).
 abstract interface class BoilerHost {
-  FluidWorld get world;
+  FluidWorld get fluidWorld;
 
   /// The controller's position (the minimum corner of the tank).
   Pos get controllerPos;
@@ -127,7 +142,8 @@ class BoilerData {
   /// `tick(controller)`.
   void tick(BoilerHost controller) {
     if (!isActive) return;
-    if (needsHeatLevelUpdate && updateTemperature(controller)) controller.notifyUpdate();
+    if (needsHeatLevelUpdate && updateTemperature(controller))
+      controller.notifyUpdate();
 
     ticksUntilNextSample--;
     if (ticksUntilNextSample > 0) return;
@@ -147,21 +163,26 @@ class BoilerData {
       }
     }
 
-    if (controller.isCreative) waterSupply = (waterSupplyPerLevel * 20).toDouble();
+    if (controller.isCreative)
+      waterSupply = (waterSupplyPerLevel * 20).toDouble();
 
-    if (getActualHeat(controller.totalTankSize) == 18) controller.award('steam_engine_maxed');
+    if (getActualHeat(controller.totalTankSize) == 18)
+      controller.award('steam_engine_maxed');
     controller.notifyUpdate();
   }
 
   int get theoreticalHeatLevel => activeHeat;
 
   /// `getMaxHeatLevelForBoilerSize(boilerSize)`.
-  int getMaxHeatLevelForBoilerSize(int boilerSize) => math.min(18, boilerSize ~/ 4);
+  int getMaxHeatLevelForBoilerSize(int boilerSize) =>
+      math.min(18, boilerSize ~/ 4);
 
   /// `getMaxHeatLevelForWaterSupply()`.
-  int getMaxHeatLevelForWaterSupply() => math.min(18, waterSupply.ceil() ~/ waterSupplyPerLevel);
+  int getMaxHeatLevelForWaterSupply() =>
+      math.min(18, waterSupply.ceil() ~/ waterSupplyPerLevel);
 
-  bool get isPassiveNow => passiveHeat && maxHeatForSize > 0 && maxHeatForWater > 0;
+  bool get isPassiveNow =>
+      passiveHeat && maxHeatForSize > 0 && maxHeatForWater > 0;
 
   /// `isPassive(boilerSize)`.
   bool isPassive(int boilerSize) {
@@ -188,13 +209,22 @@ class BoilerData {
   void calcMinMaxForSize(int boilerSize) {
     maxHeatForSize = getMaxHeatLevelForBoilerSize(boilerSize);
     maxHeatForWater = getMaxHeatLevelForWaterSupply();
-    minValue = math.min(passiveHeat ? 1 : activeHeat, math.min(maxHeatForWater, maxHeatForSize));
-    maxValue = math.max(passiveHeat ? 1 : activeHeat, math.max(maxHeatForWater, maxHeatForSize));
+    minValue = math.min(
+      passiveHeat ? 1 : activeHeat,
+      math.min(maxHeatForWater, maxHeatForSize),
+    );
+    maxValue = math.max(
+      passiveHeat ? 1 : activeHeat,
+      math.max(maxHeatForWater, maxHeatForSize),
+    );
   }
 
   /// `getHeatLevelTextComponent` as a key: `passive`, `idle`, `max_lvl` or `lvl N`.
   String get heatLevelText {
-    final boilerLevel = math.min(activeHeat, math.min(maxHeatForWater, maxHeatForSize));
+    final boilerLevel = math.min(
+      activeHeat,
+      math.min(maxHeatForWater, maxHeatForSize),
+    );
     if (isPassiveNow) return 'passive';
     if (boilerLevel == 0) return 'idle';
     if (boilerLevel == 18) return 'max_lvl';
@@ -205,7 +235,7 @@ class BoilerData {
   /// changed.
   bool evaluate(BoilerHost controller) {
     final controllerPos = controller.controllerPos;
-    final level = controller.world;
+    final level = controller.fluidWorld;
     final prevEngines = attachedEngines;
     final prevWhistles = attachedWhistles;
     attachedEngines = 0;
@@ -220,8 +250,11 @@ class BoilerData {
           for (final d in Direction.values) {
             final attachedPos = pos.relative(d);
             final attachedState = level.stateAt(attachedPos);
-            if (attachedState.key == PipeKeys.steamEngine && steamEngineFacing(attachedState) == d) attachedEngines++;
-            if (attachedState.key == PipeKeys.steamWhistle && whistleAttachedDirection(attachedState).opposite == d) {
+            if (attachedState.key == PipeKeys.steamEngine &&
+                steamEngineFacing(attachedState) == d)
+              attachedEngines++;
+            if (attachedState.key == PipeKeys.steamWhistle &&
+                whistleAttachedDirection(attachedState).opposite == d) {
               attachedWhistles++;
             }
           }
@@ -241,12 +274,14 @@ class BoilerData {
 
   /// `WhistleBlock.getAttachedDirection`.
   static Direction whistleAttachedDirection(BState whistle) =>
-      whistle.flag('wall') ? (whistle.dir('facing') ?? Direction.north) : Direction.down;
+      whistle.flag('wall')
+      ? (whistle.dir('facing') ?? Direction.north)
+      : Direction.down;
 
   /// `checkPipeOrganAdvancement(controller)`: twelve different pitches.
   void checkPipeOrganAdvancement(BoilerHost controller) {
     final controllerPos = controller.controllerPos;
-    final level = controller.world;
+    final level = controller.fluidWorld;
     final whistlePitches = <int>{};
     for (var yOffset = 0; yOffset < controller.height; yOffset++) {
       for (var xOffset = 0; xOffset < controller.width; xOffset++) {
@@ -257,7 +292,8 @@ class BoilerData {
           for (final d in Direction.values) {
             final attachedPos = pos.relative(d);
             final attachedState = level.stateAt(attachedPos);
-            if (attachedState.key == PipeKeys.steamWhistle && whistleAttachedDirection(attachedState).opposite == d) {
+            if (attachedState.key == PipeKeys.steamWhistle &&
+                whistleAttachedDirection(attachedState).opposite == d) {
               final pitch = controller.whistlePitchAt(attachedPos);
               if (pitch != null) whistlePitches.add(pitch);
             }
@@ -272,7 +308,7 @@ class BoilerData {
   /// heat changed.
   bool updateTemperature(BoilerHost controller) {
     final controllerPos = controller.controllerPos;
-    final level = controller.world;
+    final level = controller.fluidWorld;
     needsHeatLevelUpdate = false;
     final prevPassive = passiveHeat;
     final prevActive = activeHeat;

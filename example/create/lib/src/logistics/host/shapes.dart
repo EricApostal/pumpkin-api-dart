@@ -66,7 +66,11 @@ List<BlockBox> rotateBoxes(List<BlockBox> boxes, Direction from, Direction to) {
       turns++;
     }
     return [
-      for (final b in boxes) _normalize(_turnY((b.minX, b.minY, b.minZ), turns), _turnY((b.maxX, b.maxY, b.maxZ), turns)),
+      for (final b in boxes)
+        _normalize(
+          _turnY((b.minX, b.minY, b.minZ), turns),
+          _turnY((b.maxX, b.maxY, b.maxZ), turns),
+        ),
     ];
   }
   return [
@@ -79,15 +83,29 @@ List<BlockBox> rotateBoxes(List<BlockBox> boxes, Direction from, Direction to) {
 }
 
 /// A box in pixels (16 per block).
-BlockBox pixelBox(double x0, double y0, double z0, double x1, double y1, double z1) =>
-    BlockBox(x0 / 16, y0 / 16, z0 / 16, x1 / 16, y1 / 16, z1 / 16);
+BlockBox pixelBox(
+  double x0,
+  double y0,
+  double z0,
+  double x1,
+  double y1,
+  double z1,
+) => BlockBox(x0 / 16, y0 / 16, z0 / 16, x1 / 16, y1 / 16, z1 / 16);
 
 /// `ShapeRule`s for a block with a `facing` property whose shape is defined facing [from].
-List<ShapeRule> directionalShapeRules(String property, List<BlockBox> boxes, Direction from, {Iterable<Direction>? directions, bool collision = true}) => [
+List<ShapeRule> directionalShapeRules(
+  String property,
+  List<BlockBox> boxes,
+  Direction from, {
+  Iterable<Direction>? directions,
+  bool collision = true,
+}) => [
   for (final d in directions ?? Direction.values)
     ShapeRule(
       when: {property: d.serializedName},
-      collisionShape: collision ? BlockShape.boxes(rotateBoxes(boxes, from, d)) : null,
+      collisionShape: collision
+          ? BlockShape.boxes(rotateBoxes(boxes, from, d))
+          : null,
       selectionShape: BlockShape.boxes(rotateBoxes(boxes, from, d)),
     ),
 ];

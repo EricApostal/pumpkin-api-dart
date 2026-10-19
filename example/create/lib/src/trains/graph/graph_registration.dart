@@ -2,17 +2,13 @@
 // connect the pure edge points to the host (block entities), and the handler of the serverbound
 // `create:track_graph_request`. The payload channels themselves are declared by the protocol module
 // for the whole manifest.
-import 'package:pumpkin_api/pumpkin_api.dart';
-
 import '../../api/payloads.dart';
 import '../../common/host_bridge.dart';
-import '../../common/pos.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
 import '../signal/track_edge_point.dart';
 import '../support/level.dart';
-import '../support/runtime.dart';
 import '../track/track_targeting_behaviour.dart';
 import 'track_graph_request_packet.dart';
 
@@ -35,7 +31,9 @@ void serverGraphLoaded(CreateRuntime runtime) {}
 
 /// Plugin unload.
 void unloadGraph() {
-  EdgePointHooks.describe = (be) => be is EdgePointOwnerInfo ? be : throw ArgumentError('Unknown block entity $be');
+  EdgePointHooks.describe = (be) => be is EdgePointOwnerInfo
+      ? be
+      : throw ArgumentError('Unknown block entity $be');
   EdgePointHooks.reportedPower = (_) => false;
   EdgePointHooks.observerFilter = (_) => null;
   EdgePointHooks.invalidateTargeting = null;
@@ -50,14 +48,17 @@ void installEdgePointHooks(CreateContext ctx) {
     if (blockEntity is CreateBlockEntity) {
       final pos = blockEntity.pos.toPos();
       final world = blockEntity.world;
-      final props = world == null ? const <String, String>{} : (Lvl(world).info(pos)?.properties ?? const {});
+      final props = world == null
+          ? const <String, String>{}
+          : (Lvl(world).info(pos)?.properties ?? const {});
       return EdgePointOwnerInfo(pos, blockEntity.worldId, props);
     }
     throw ArgumentError('Not a block entity: $blockEntity');
   };
   EdgePointHooks.invalidateTargeting = (level, worldId, pos, migrationData) {
     final be = store.at(worldId, pos.toBlockPos());
-    final behaviour = be?.getBehaviour<TrackTargetingBehaviour<TrackEdgePoint>>();
+    final behaviour = be
+        ?.getBehaviour<TrackTargetingBehaviour<TrackEdgePoint>>();
     behaviour?.invalidateEdgePoint(migrationData);
   };
 }

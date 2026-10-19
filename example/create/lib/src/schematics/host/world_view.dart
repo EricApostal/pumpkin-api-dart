@@ -6,6 +6,7 @@ import '../../common/common.dart';
 import '../../common/host_bridge.dart';
 import '../../common/nbt_convert.dart';
 import '../schematic_hooks.dart';
+import '../nbt_processors.dart';
 import '../schematic_printer.dart';
 import '../../core/nbt.dart';
 
@@ -42,7 +43,10 @@ final class HostPrinterView implements PrinterTargetView {
   double destroySpeed(BState state) {
     final id = stateIdOf(state);
     if (id == null) return 1;
-    return _hardness.putIfAbsent(id, () => BlockRegistry.stateFromId(id)?.hardness ?? 1);
+    return _hardness.putIfAbsent(
+      id,
+      () => BlockRegistry.stateFromId(id)?.hardness ?? 1,
+    );
   }
 
   @override
@@ -59,15 +63,31 @@ final class HostPrinterView implements PrinterTargetView {
   bool isWater(Pos p) => _getter.isWater(p);
 }
 
-/// `BlockHelper.prepareBlockEntityData` (without Create's NBT processors): the data that may be
-/// placed with a block. Blocks tagged `create:safe_nbt` keep everything, registered writers filter,
-/// everything else places without data.
-List<int>? prepareBlockEntityData(SchematicHooks hooks, BState state, List<int>? nbt) {
+/// `BlockHelper.prepareBlockEntityData`: the data that may be placed with a block. Blocks tagged
+/// `create:safe_nbt` keep everything, registered writers filter, everything else places without
+/// data; `NBTProcessors.process` then drops the data of a sign or clipboard whose text carries a
+/// click event.
+List<int>? prepareBlockEntityData(
+  SchematicHooks hooks,
+  BState state,
+  List<int>? nbt,
+) {
   if (nbt == null) return null;
   final writer = hooks.safeNbtWriters[state.key];
-  if (writer != null) return writer(state, nbt);
-  if (Tags.block(state.key, 'create:safe_nbt')) return nbt;
-  return null;
+  final List<int>? data;
+  if (writer != null) {
+    data = writer(state, nbt);
+  } else if (Tags.block(state.key, 'create:safe_nbt')) {
+    data = nbt;
+  } else {
+    return null;
+  }
+  if (data == null) return null;
+  return processSchematicNbt(
+    data,
+    isSign: Tags.block(state.key, 'minecraft:all_signs'),
+    isClipboard: state.key == 'create:clipboard',
+  );
 }
 
 /// `BlockHelper.placeSchematicBlock`: places [state] at [target] with the block entity [data].
@@ -85,12 +105,15 @@ Future<bool> placeSchematicBlock(
 
   // Piston, waterlogging, composter, cauldrons
   state = state.setValue('extended', 'false').setValue('waterlogged', 'false');
-  if (state.key == 'minecraft:composter') state = const BState('minecraft:composter', {'level': '0'});
-  if (BlockStates.isTag(stateIdOf(state) ?? 0, 'minecraft:cauldrons')) state = const BState('minecraft:cauldron', {});
+  if (state.key == 'minecraft:composter')
+    state = const BState('minecraft:composter', {'level': '0'});
+  if (BlockStates.isTag(stateIdOf(state) ?? 0, 'minecraft:cauldrons'))
+    state = const BState('minecraft:cauldron', {});
 
   // Water in the nether: it evaporates.
   final dimension = world.getDimension();
-  if (dimension.contains('nether') && (state.key == 'minecraft:water' || state.flag('waterlogged'))) {
+  if (dimension.contains('nether') &&
+      (state.key == 'minecraft:water' || state.flag('waterlogged'))) {
     world.playCustomSound(
       soundName: 'minecraft:block.fire.extinguish',
       category: SoundCategory.blocks,
@@ -106,7 +129,10 @@ Future<bool> placeSchematicBlock(
   final isBelt = state.key == 'create:belt';
   final flags = isBelt
       ? <BlockFlagsFlag>{BlockFlagsFlag.notifyListeners}
-      : <BlockFlagsFlag>{BlockFlagsFlag.notifyListeners, BlockFlagsFlag.skipShapeUpdate};
+      : <BlockFlagsFlag>{
+          BlockFlagsFlag.notifyListeners,
+          BlockFlagsFlag.skipShapeUpdate,
+        };
 
   BlockPlacementChange change;
   final typeKey = hooks.blockEntityTypeOf(state.key);
@@ -129,7 +155,11 @@ Future<bool> placeSchematicBlock(
       change = BlockPlacementChange(target.toBlockPos(), id);
     }
   } else {
-    change = BlockPlacementChange(target.toBlockPos(), id, blockEntityNbt: data);
+    change = BlockPlacementChange(
+      target.toBlockPos(),
+      id,
+      blockEntityNbt: data,
+    );
   }
   await world.placeBlocks([change], flags: flags);
   return true;

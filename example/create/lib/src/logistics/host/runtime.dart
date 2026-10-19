@@ -31,18 +31,25 @@ final class LgRuntime {
   int tick = 0;
 
   late final LinkDirectory links = LinkDirectory(() => tick);
-  late final LogisticsManager manager = LogisticsManager(links, () => tick, random: random);
-  late final GlobalLogisticsManager global = GlobalLogisticsManager(onDirty: _markGlobalDirty);
+  late final LogisticsManager manager = LogisticsManager(
+    links,
+    () => tick,
+    random: random,
+  );
+  late final GlobalLogisticsManager global = GlobalLogisticsManager(
+    onDirty: _markGlobalDirty,
+  );
   late final StackWire wire;
   late final StackIo io;
 
   /// The saved data of the networks (`create_logistics`), in the overworld.
-  late final SavedDataType<LogisticsSavedData> savedType = SavedDataType<LogisticsSavedData>(
-    'create_logistics',
-    create: LogisticsSavedData.new,
-    fromMap: LogisticsSavedDataMapper.fromMap,
-    toMap: (_) => global.save().toMap(),
-  );
+  late final SavedDataType<LogisticsSavedData> savedType =
+      SavedDataType<LogisticsSavedData>(
+        'create_logistics',
+        create: LogisticsSavedData.new,
+        fromMap: LogisticsSavedDataMapper.fromMap,
+        toMap: (_) => global.save().toMap(),
+      );
 
   LgRuntime(this.ctx) {
     wire = StackWire(
@@ -58,7 +65,8 @@ final class LgRuntime {
   Worlds get worlds => ctx.worlds;
   PayloadBus get bus => ctx.services.require<PayloadBus>();
   CreateSounds? get sounds => ctx.services.find<CreateSounds>();
-  CreateAdvancements? get advancements => ctx.services.find<CreateAdvancements>();
+  CreateAdvancements? get advancements =>
+      ctx.services.find<CreateAdvancements>();
   CreateConfigs? get configs => ctx.services.find<CreateConfigs>();
 
   // -- ids ----------------------------------------------------------------------------------------
@@ -72,7 +80,10 @@ final class LgRuntime {
   String? _componentName(int id) {
     final vanilla = VanillaIds.dataComponentTypes.keyOf(id);
     if (vanilla != null) return vanilla;
-    _componentNames ??= {for (final e in ctx.ids.all(RegistryKind.dataComponents).entries) e.value: e.key};
+    _componentNames ??= {
+      for (final e in ctx.ids.all(RegistryKind.dataComponents).entries)
+        e.value: e.key,
+    };
     return _componentNames![id];
   }
 
@@ -82,10 +93,12 @@ final class LgRuntime {
   // -- configuration --------------------------------------------------------------------------------
 
   /// `logistics.packagePortRange`.
-  int get packagePortRange => configs?.server.logistics.packagePortRange.value ?? 5;
+  int get packagePortRange =>
+      configs?.server.logistics.packagePortRange.value ?? 5;
 
   /// `logistics.factoryGaugeTimer`.
-  int get factoryGaugeTimer => configs?.server.logistics.factoryGaugeTimer.value ?? 100;
+  int get factoryGaugeTimer =>
+      configs?.server.logistics.factoryGaugeTimer.value ?? 100;
 
   // -- worlds and players -------------------------------------------------------------------------------
 
@@ -105,9 +118,20 @@ final class LgRuntime {
 
   /// A random version 4 UUID in canonical text.
   String newUuid() {
-    String hex(int digits) => List.generate(digits, (_) => random.nextInt(16).toRadixString(16)).join();
+    String hex(int digits) => List.generate(
+      digits,
+      (_) => random.nextInt(16).toRadixString(16),
+    ).join();
     final variant = '89ab'[random.nextInt(4)];
     return '${hex(8)}-${hex(4)}-4${hex(3)}-$variant${hex(3)}-${hex(12)}';
+  }
+
+  /// The id of [player]'s world. The owned handle is released; use [world] for the kept one.
+  String playerWorldId(Player player) {
+    final w = player.getWorld();
+    final id = w.getId();
+    w.dispose();
+    return id;
   }
 
   // -- stacks -------------------------------------------------------------------------------------------
@@ -131,7 +155,8 @@ final class LgRuntime {
 abstract final class Lg {
   static LgRuntime? _instance;
 
-  static LgRuntime get i => _instance ?? (throw StateError('The logistics module is not loaded'));
+  static LgRuntime get i =>
+      _instance ?? (throw StateError('The logistics module is not loaded'));
 
   static bool get loaded => _instance != null;
 

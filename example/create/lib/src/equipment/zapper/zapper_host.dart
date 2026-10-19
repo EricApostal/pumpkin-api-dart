@@ -42,13 +42,18 @@ final class HostShaperWorld implements ShaperWorld {
     );
   }
 
-  Future<void> _set(P3 pos, int state) => world.setBlockState(pos: pos.blockPos, state: state, updateFlags: BlockUpdateFlags.normal);
+  Future<void> _set(P3 pos, int state) => world.setBlockState(
+    pos: pos.blockPos,
+    state: state,
+    updateFlags: BlockUpdateFlags.normal,
+  );
 
   @override
   Future<void> setAir(P3 pos) => _set(pos, airId);
 
   @override
-  Future<void> place(P3 pos, Object? painted, ShaperBlockData? data) => _set(pos, (painted as int?) ?? airId);
+  Future<void> place(P3 pos, Object? painted, ShaperBlockData? data) =>
+      _set(pos, (painted as int?) ?? airId);
 
   @override
   Future<void> setState(P3 pos, Object state) => _set(pos, state as int);
@@ -59,7 +64,9 @@ final class HostShaperWorld implements ShaperWorld {
   Object fluidLegacyState(P3 pos) {
     final f = world.getFluidState(pos: pos.blockPos);
     if (f == null) return airId;
-    final id = BlockStates.withProperties(f.fluid, {'level': f.isSource ? '0' : '${(8 - f.level).clamp(1, 7)}'});
+    final id = BlockStates.withProperties(f.fluid, {
+      'level': f.isSource ? '0' : '${(8 - f.level).clamp(1, 7)}',
+    });
     return id ?? airId;
   }
 }
@@ -81,18 +88,27 @@ final class ZapperHost {
     ctx.host.intercept(Events.playerInteract, _onInteract);
     ctx.listen(Events.worldTick, (server, e) => _tick = e.tick);
     env.bus.onServerbound('create:configure_worldshaper', _onConfigure);
+    // `LeftClickPacket` -> `CommonEvents.leftClickEmpty`: the client left-clicked in the air.
+    env.bus.onServerbound('create:left_click', _onLeftClick);
   }
 
   // -- Items ----------------------------------------------------------------------------
 
   /// `ZapperItem.useOn`: shift opens the GUI (client side), everything else falls to `use`.
-  Future<ItemUseFirstEventData> _onUseFirst(Server server, ItemUseFirstEventData e) async {
+  Future<ItemUseFirstEventData> _onUseFirst(
+    Server server,
+    ItemUseFirstEventData e,
+  ) async {
     if (await stackKey(e.stack) != EqItems.worldshaper) return e;
-    if (e.player.asEntity().isSneaking()) return e.copyWith(useResult: ItemUseFirstResult.success);
+    if (e.player.asEntity().isSneaking())
+      return e.copyWith(useResult: ItemUseFirstResult.success);
     return e;
   }
 
-  Future<PlayerUseItemEventData> _onUseItem(Server server, PlayerUseItemEventData e) async {
+  Future<PlayerUseItemEventData> _onUseItem(
+    Server server,
+    PlayerUseItemEventData e,
+  ) async {
     if (await stackKey(e.item) != EqItems.worldshaper) return e;
     final player = e.player;
     if (player.asEntity().isSneaking()) return e.cancel();
@@ -105,7 +121,11 @@ final class ZapperHost {
     // validateUsage
     final msg = _validateUsage(stack);
     if (msg != null) {
-      env.playSoundAtBlock(player.getWorld(), player.getPosition().toBlockPos().p3, 'deny');
+      env.playSoundAtBlock(
+        player.getWorld(),
+        player.getPosition().toBlockPos().p3,
+        'deny',
+      );
       player.actionBar('&c$msg');
       return e.cancel();
     }
@@ -133,15 +153,23 @@ final class ZapperHost {
   }
 
   String? _validateUsage(ItemStack stack) {
-    if (StackData.brushParams(stack) == null) return 'Shift-right-click to set the shape of the brush';
+    if (StackData.brushParams(stack) == null)
+      return 'Shift-right-click to set the shape of the brush';
     final tool = StackData.tool(stack);
     final withoutBlock = !tool.requiresSelectedBlock;
-    if (!withoutBlock && StackData.blockUsed(stack) == null) return 'Left-click a block to set the block to use';
+    if (!withoutBlock && StackData.blockUsed(stack) == null)
+      return 'Left-click a block to set the block to use';
     return null;
   }
 
   /// `WorldshaperItem.activate`.
-  Future<bool> _activate(World world, Player player, ItemStack stack, int stateToUse, RayTraceBlockResult hit) async {
+  Future<bool> _activate(
+    World world,
+    Player player,
+    ItemStack stack,
+    int stateToUse,
+    RayTraceBlockResult hit,
+  ) async {
     final brush = StackData.brush(stack).brush;
     final params = StackData.brushParams(stack)!;
     final option = StackData.placement(stack);
@@ -152,19 +180,33 @@ final class ZapperHost {
     final look = player.lookDirection;
     final off = brush.getOffset(look, face, option);
     final target = hit.pos.p3.plus(off);
-    final shaper = HostShaperWorld(world, BlockStates.defaultOf('minecraft:air') ?? 0);
+    final shaper = HostShaperWorld(
+      world,
+      BlockStates.defaultOf('minecraft:air') ?? 0,
+    );
     final affected = <P3>[];
     brush.addToGlobalPositions(shaper, target, face, affected, tool);
     PlacementPatterns.apply(affected, pattern, () => env.rng.nextBool());
-    await brush.redirectTool(tool).run(shaper, affected, face, stateToUse, null);
+    await brush
+        .redirectTool(tool)
+        .run(shaper, affected, face, stateToUse, null);
     return true;
   }
 
-  Future<void> _applyCooldown(Player player, ItemStack item, Hand hand, int cooldown) async {
+  Future<void> _applyCooldown(
+    Player player,
+    ItemStack item,
+    Hand hand,
+    int cooldown,
+  ) async {
     if (cooldown <= 0) return;
     final other = player.getInventory().getItemInHand(hand: hand.other);
-    final gunInOtherHand = other != null && await other.getRegistryKey() == EqItems.worldshaper;
-    player.setCooldown(EqItems.worldshaper, gunInOtherHand ? cooldown * 2 ~/ 3 : cooldown);
+    final gunInOtherHand =
+        other != null && await other.getRegistryKey() == EqItems.worldshaper;
+    player.setCooldown(
+      EqItems.worldshaper,
+      gunInOtherHand ? cooldown * 2 ~/ 3 : cooldown,
+    );
   }
 
   /// `ShootableGadgetItemMethods.shouldSwap`: with a gadget in each hand the main hand passes
@@ -174,10 +216,14 @@ final class ZapperHost {
     final mainHand = hand.isMain;
     final inv = player.getInventory();
     final otherStack = inv.getItemInHand(hand: hand.other);
-    final gunInOtherHand = otherStack != null && await otherStack.getRegistryKey() == EqItems.worldshaper;
+    final gunInOtherHand =
+        otherStack != null &&
+        await otherStack.getRegistryKey() == EqItems.worldshaper;
     if (mainHand && isSwap && gunInOtherHand) return true;
-    if (mainHand && !isSwap && gunInOtherHand) StackData.setFlag(item, EquipmentComponents.shaperSwap, true);
-    if (!mainHand && isSwap) StackData.remove(item, EquipmentComponents.shaperSwap);
+    if (mainHand && !isSwap && gunInOtherHand)
+      StackData.setFlag(item, EquipmentComponents.shaperSwap, true);
+    if (!mainHand && isSwap)
+      StackData.remove(item, EquipmentComponents.shaperSwap);
     if (!mainHand && gunInOtherHand) {
       final main = inv.getItemInHand(hand: Hand.right);
       if (main != null) StackData.remove(main, EquipmentComponents.shaperSwap);
@@ -202,15 +248,41 @@ final class ZapperHost {
     final uuid = player.getId().asString;
     env.bus.sendClientboundAll(
       'create:beam_effect',
-      [for (final p in others) if (p.getId().asString != uuid) p],
-      {'location': barrel, 'hand': hand.isMain, 'self': false, 'target': target},
+      [
+        for (final p in others)
+          if (p.getId().asString != uuid) p,
+      ],
+      {
+        'location': barrel,
+        'hand': hand.isMain,
+        'self': false,
+        'target': target,
+      },
     );
-    env.bus.sendClientbound('create:beam_effect', player, {'location': barrel, 'hand': hand.isMain, 'self': true, 'target': target});
+    env.bus.sendClientbound('create:beam_effect', player, {
+      'location': barrel,
+      'hand': hand.isMain,
+      'self': true,
+      'target': target,
+    });
   }
 
   // -- Left click selects the block -------------------------------------------------------
 
-  Future<CanAttackBlockEventData> _onCanAttackBlock(Server server, CanAttackBlockEventData e) async {
+  /// `CommonEvents.leftClickEmpty`: a zapper in the main hand selects the looked-at block.
+  void _onLeftClick(Player player, Map<String, Object?> fields) {
+    unawaited(() async {
+      final held = player.getInventory().getItemInHand(hand: Hand.right);
+      if (held == null || await held.getRegistryKey() != EqItems.worldshaper)
+        return;
+      await trySelect(held, player);
+    }());
+  }
+
+  Future<CanAttackBlockEventData> _onCanAttackBlock(
+    Server server,
+    CanAttackBlockEventData e,
+  ) async {
     if (await stackKey(e.stack) != EqItems.worldshaper) return e;
     final player = e.player;
     final uuid = player.getId().asString;
@@ -218,17 +290,24 @@ final class ZapperHost {
     if (await trySelect(e.stack, player)) {
       _selectedAtTick[uuid] = _tick;
       final held = player.getInventory().getItemInHand(hand: Hand.right);
-      if (held != null) await player.getInventory().setItemInHand(hand: Hand.right, item: held);
+      if (held != null)
+        await player.getInventory().setItemInHand(hand: Hand.right, item: held);
       return e.cancel();
     }
     return e;
   }
 
-  Future<PlayerInteractEventData> _onInteract(Server server, PlayerInteractEventData e) async {
-    if (e.action != InteractAction.leftClickAir && e.action != InteractAction.leftClickBlock) return e;
+  Future<PlayerInteractEventData> _onInteract(
+    Server server,
+    PlayerInteractEventData e,
+  ) async {
+    if (e.action != InteractAction.leftClickAir &&
+        e.action != InteractAction.leftClickBlock)
+      return e;
     final player = e.player;
     final held = player.getInventory().getItemInHand(hand: Hand.right);
-    if (held == null || await held.getRegistryKey() != EqItems.worldshaper) return e;
+    if (held == null || await held.getRegistryKey() != EqItems.worldshaper)
+      return e;
     final uuid = player.getId().asString;
     if (_selectedAtTick[uuid] == _tick) return e.cancel();
     if (await trySelect(held, player)) {
@@ -251,23 +330,37 @@ final class ZapperHost {
     if (info == null) return false;
     // `BlockHelper.getRequiredItem(newState).isEmpty()`
     final requiredItem = BlockHelper.getRequiredItem(bs.id);
-    if (bs.isAir || (VanillaIds.items.idOf(requiredItem) == null && ItemRegistries.host.idOf(requiredItem) == null)) {
+    if (bs.isAir ||
+        (VanillaIds.items.idOf(requiredItem) == null &&
+            ItemRegistries.host.idOf(requiredItem) == null)) {
       return false;
     }
     final hasBlockEntity = bs.blockEntityType != 0 && bs.blockEntityType != -1;
-    if (hasBlockEntity && !Tags.blockState(bs.id, 'create:safe_nbt')) return false;
+    if (hasBlockEntity && !Tags.blockState(bs.id, 'create:safe_nbt'))
+      return false;
     final p = info.properties;
-    if (p['half'] == 'upper' || p['half'] == 'lower') return false; // DOUBLE_BLOCK_HALF
+    if (p['half'] == 'upper' || p['half'] == 'lower')
+      return false; // DOUBLE_BLOCK_HALF
     if (p.containsKey('attached')) return false;
     if (p.containsKey('hanging')) return false;
-    if (p.containsKey('part') && (p['part'] == 'head' || p['part'] == 'foot')) return false; // BED_PART
+    if (p.containsKey('part') && (p['part'] == 'head' || p['part'] == 'foot'))
+      return false; // BED_PART
 
     var newId = bs.id;
-    if (p.containsKey('shape') && const {'straight', 'inner_left', 'inner_right', 'outer_left', 'outer_right'}.contains(p['shape'])) {
+    if (p.containsKey('shape') &&
+        const {
+          'straight',
+          'inner_left',
+          'inner_right',
+          'outer_left',
+          'outer_right',
+        }.contains(p['shape'])) {
       newId = BlockStates.setValue(newId, 'shape', 'straight');
     }
-    if (p.containsKey('persistent')) newId = BlockStates.setValue(newId, 'persistent', 'true');
-    if (p.containsKey('waterlogged')) newId = BlockStates.setValue(newId, 'waterlogged', 'false');
+    if (p.containsKey('persistent'))
+      newId = BlockStates.setValue(newId, 'persistent', 'true');
+    if (p.containsKey('waterlogged'))
+      newId = BlockStates.setValue(newId, 'waterlogged', 'false');
 
     NbtValue? data;
     if (hasBlockEntity) {
@@ -295,9 +388,16 @@ final class ZapperHost {
     if (data == null) {
       StackData.remove(stack, EquipmentComponents.shaperBlockData);
     } else {
-      stack.setCustomComponent(EquipmentComponents.shaperBlockData, EquipmentWire.nbt(data));
+      stack.setCustomComponent(
+        EquipmentComponents.shaperBlockData,
+        EquipmentWire.nbt(data),
+      );
     }
-    env.playSoundAtBlock(world, player.getPosition().toBlockPos().p3, 'confirm');
+    env.playSoundAtBlock(
+      world,
+      player.getPosition().toBlockPos().p3,
+      'confirm',
+    );
     return true;
   }
 
@@ -314,10 +414,13 @@ final class ZapperHost {
     final brush = _ordinal(TerrainBrushes.values, f['brush'] as int);
     final tool = _ordinal(TerrainTools.values, f['tool'] as int);
     final placement = _ordinal(PlacementOptions.values, f['placement'] as int);
-    final px = f['brushParamX'] as int, py = f['brushParamY'] as int, pz = f['brushParamZ'] as int;
+    final px = f['brushParamX'] as int,
+        py = f['brushParamY'] as int,
+        pz = f['brushParamZ'] as int;
     unawaited(() async {
       final stack = player.getInventory().getItemInHand(hand: hand);
-      if (stack == null || await stack.getRegistryKey() != EqItems.worldshaper) return;
+      if (stack == null || await stack.getRegistryKey() != EqItems.worldshaper)
+        return;
       StackData.configureWorldshaper(
         stack,
         pattern: pattern,

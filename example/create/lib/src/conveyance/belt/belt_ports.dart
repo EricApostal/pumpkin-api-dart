@@ -18,7 +18,9 @@ class VersionTracker {
   /// `stillWaiting(handler)`: [version] is `(id, version)` of the inventory, `null` when it does
   /// not count changes.
   bool stillWaiting((int, int)? version) =>
-      version != null && version.$1 == _ignoredId && version.$2 == _ignoredVersion;
+      version != null &&
+      version.$1 == _ignoredId &&
+      version.$2 == _ignoredVersion;
 
   /// `awaitNewVersion(handler)`.
   void awaitNewVersion((int, int)? version) {

@@ -1,4 +1,5 @@
-// The `content` module: the non-block, non-entity global content of the mod.
+// The `content` module: the global content of the mod that no content package owns (damage types,
+// enchantments, sounds, particles, components, tags, advancements) and the plain materials.
 import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
@@ -13,10 +14,15 @@ import 'advancement_data.dart';
 import 'content_registrations.dart';
 import 'content_services.dart';
 import 'enchantments.dart';
+import 'material_blocks.dart';
+import 'material_content.dart';
 
 /// Registers damage types, enchantments, sounds, particles, menu types, data components, the
 /// `create:*` synced registries, tags, advancement triggers and the advancement tree, the map
 /// decoration and the entity data serializer; provides [CreateAdvancements] and [CreateSounds].
+///
+/// Also registers the plain materials (`AllBlocks` ores and storage blocks, `AllItems`
+/// ingredients) that no content package owns; see `material_content.dart`.
 ///
 /// Not registered: mob effects (Create has none), creative tabs (not synced), the datapack registry
 /// `create:potato_projectile/type` (reloadable, not synced; the datapack module ships the JSON).
@@ -29,12 +35,22 @@ final class ContentModule extends CreateModule {
   @override
   void register(CreateRegistry registry) {
     registerGlobalContent(registry, _tree);
+    // The plain materials (ores, storage blocks, ingredients) that no content package owns.
+    for (final item in createMaterialItems()) {
+      registry.item(item);
+    }
+    for (final block in createMaterialBlocks()) {
+      registry.block(block);
+    }
     for (final e in CreateEnchantments.definitions()) {
       registry.enchantment(e);
     }
     // The synced server config as NeoForge clients get it with the handshake (defaults; the
     // infrastructure module pushes the configured values when they differ).
-    registry.neoForgeConfigFile(CreateConfigs.serverFile, _utf8(CreateConfigs().serverToml()));
+    registry.neoForgeConfigFile(
+      CreateConfigs.serverFile,
+      _utf8(CreateConfigs().serverToml()),
+    );
   }
 
   @override
@@ -63,7 +79,9 @@ final class ContentModule extends CreateModule {
       try {
         EntityRegistries.registerDataSerializer('create:${s.key}');
       } on HostException catch (e) {
-        log.error('Could not register the entity data serializer ${s.key}: ${e.message}');
+        log.error(
+          'Could not register the entity data serializer ${s.key}: ${e.message}',
+        );
       }
     }
 

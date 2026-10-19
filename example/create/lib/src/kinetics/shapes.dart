@@ -14,8 +14,14 @@ final class LocalBox {
 
 double _f(double v) => v / 16;
 
-BlockBox _box(double x0, double y0, double z0, double x1, double y1, double z1) =>
-    BlockBox(_f(x0), _f(y0), _f(z0), _f(x1), _f(y1), _f(z1));
+BlockBox _box(
+  double x0,
+  double y0,
+  double z0,
+  double x1,
+  double y1,
+  double z1,
+) => BlockBox(_f(x0), _f(y0), _f(z0), _f(x1), _f(y1), _f(z1));
 
 /// Places [b] in the world frame for a shape facing [facing] (`VoxelShaper.forDirectional`):
 /// the back of the shape sits at the side opposite to [facing]. [longAxis] says where the local
@@ -35,7 +41,14 @@ BlockBox orient(LocalBox b, Dir facing, {KAxis? uAxis, KAxis? vAxis}) {
 
   final lo = <KAxis, double>{ua: b.u0, va: b.v0, a: t0};
   final hi = <KAxis, double>{ua: b.u1, va: b.v1, a: t1};
-  return _box(lo[KAxis.x]!, lo[KAxis.y]!, lo[KAxis.z]!, hi[KAxis.x]!, hi[KAxis.y]!, hi[KAxis.z]!);
+  return _box(
+    lo[KAxis.x]!,
+    lo[KAxis.y]!,
+    lo[KAxis.z]!,
+    hi[KAxis.x]!,
+    hi[KAxis.y]!,
+    hi[KAxis.z]!,
+  );
 }
 
 /// A shape rule per value of the direction property [property] (`facing`).
@@ -54,19 +67,37 @@ List<ShapeRule> directionalRules(
 ];
 
 /// A box given for the Y axis, as seen on the other axes (`VoxelShaper.forAxis`).
-BlockBox axisBox(double x0, double y0, double z0, double x1, double y1, double z1, KAxis axis) => switch (axis) {
+BlockBox axisBox(
+  double x0,
+  double y0,
+  double z0,
+  double x1,
+  double y1,
+  double z1,
+  KAxis axis,
+) => switch (axis) {
   KAxis.y => _box(x0, y0, z0, x1, y1, z1),
   KAxis.x => _box(y0, x0, z0, y1, x1, z1),
   KAxis.z => _box(x0, z0, y0, x1, z1, y1),
 };
 
 /// A shape rule per axis from boxes given for the Y axis (x0,y0,z0,x1,y1,z1 in 16ths).
-List<ShapeRule> axisRules(String property, List<List<double>> boxesForY, {Map<String, String> extraWhen = const {}}) => [
+List<ShapeRule> axisRules(
+  String property,
+  List<List<double>> boxesForY, {
+  Map<String, String> extraWhen = const {},
+}) => [
   for (final axis in KAxis.values)
     ShapeRule(
       when: {property: axis.name, ...extraWhen},
-      collisionShape: BlockShape.boxes([for (final b in boxesForY) axisBox(b[0], b[1], b[2], b[3], b[4], b[5], axis)]),
-      selectionShape: BlockShape.boxes([for (final b in boxesForY) axisBox(b[0], b[1], b[2], b[3], b[4], b[5], axis)]),
+      collisionShape: BlockShape.boxes([
+        for (final b in boxesForY)
+          axisBox(b[0], b[1], b[2], b[3], b[4], b[5], axis),
+      ]),
+      selectionShape: BlockShape.boxes([
+        for (final b in boxesForY)
+          axisBox(b[0], b[1], b[2], b[3], b[4], b[5], axis),
+      ]),
     ),
 ];
 
@@ -92,13 +123,22 @@ const List<List<double>> largeGear = [
 const List<LocalBox> motorBlock = [LocalBox(3, 0, 3, 13, 14, 13)];
 
 /// `CRANK` (back at the wall).
-const List<LocalBox> crank = [LocalBox(5, 0, 5, 11, 6, 11), LocalBox(1, 3, 1, 15, 8, 15)];
+const List<LocalBox> crank = [
+  LocalBox(5, 0, 5, 11, 6, 11),
+  LocalBox(1, 3, 1, 15, 8, 15),
+];
 
 /// `VALVE_HANDLE`.
-const List<LocalBox> valveHandle = [LocalBox(5, 0, 5, 11, 4, 11), LocalBox(1, 3, 1, 15, 8, 15)];
+const List<LocalBox> valveHandle = [
+  LocalBox(5, 0, 5, 11, 4, 11),
+  LocalBox(1, 3, 1, 15, 8, 15),
+];
 
 /// `TURNTABLE_SHAPE`.
-final BlockShape turntableShape = BlockShape.boxes([_box(1, 4, 1, 15, 8, 15), _box(5, 0, 5, 11, 4, 11)]);
+final BlockShape turntableShape = BlockShape.boxes([
+  _box(1, 4, 1, 15, 8, 15),
+  _box(5, 0, 5, 11, 4, 11),
+]);
 
 /// `SPEED_CONTROLLER`.
 final BlockShape speedControllerShape = BlockShape.boxes([
@@ -108,12 +148,17 @@ final BlockShape speedControllerShape = BlockShape.boxes([
 ]);
 
 /// `CUCKOO_CLOCK`.
-final BlockShape cuckooClockShape = BlockShape.boxes([_box(1, 0, 1, 15, 19, 15)]);
+final BlockShape cuckooClockShape = BlockShape.boxes([
+  _box(1, 0, 1, 15, 19, 15),
+]);
 
 /// `GAUGE_SHAPE_UP` oriented by the gauge's facing and `axis_along_first`
 /// (`GaugeShaper`).
 List<ShapeRule> gaugeRules() {
-  const base = [LocalBox(1, 0, 0, 15, 2, 16), LocalBox(2, 2, 1, 14, 14, 15)]; // u = x, t = y, v = z (long)
+  const base = [
+    LocalBox(1, 0, 0, 15, 2, 16),
+    LocalBox(2, 2, 1, 14, 14, 15),
+  ]; // u = x, t = y, v = z (long)
   KAxis longAxis(Dir facing, bool alongFirst) => switch (facing.axis) {
     KAxis.y => alongFirst ? KAxis.x : KAxis.z,
     KAxis.z => alongFirst ? KAxis.x : KAxis.y,
@@ -124,7 +169,9 @@ List<ShapeRule> gaugeRules() {
     for (final alongFirst in [true, false]) {
       final la = longAxis(d, alongFirst);
       final others = KAxis.values.where((x) => x != d.axis && x != la).toList();
-      final boxes = [for (final b in base) orient(b, d, uAxis: others.single, vAxis: la)];
+      final boxes = [
+        for (final b in base) orient(b, d, uAxis: others.single, vAxis: la),
+      ];
       rules.add(
         ShapeRule(
           when: {'facing': d.name, 'axis_along_first': '$alongFirst'},
@@ -144,10 +191,14 @@ final Map<String, List<ShapeRule>> kineticShapeRules = {
   'large_cogwheel': axisRules('axis', largeGear),
   'flywheel': axisRules('axis', largeGear),
   'powered_shaft': axisRules('axis', [eightVoxelPole]),
+  'gantry_shaft': directionalRules('facing', const [
+    LocalBox(4, 0, 4, 12, 16, 12),
+  ]),
   'creative_motor': directionalRules('facing', motorBlock),
   'hand_crank': directionalRules('facing', crank),
   'copper_valve_handle': directionalRules('facing', valveHandle),
-  for (final c in _dyeColors) '${c}_valve_handle': directionalRules('facing', valveHandle),
+  for (final c in _dyeColors)
+    '${c}_valve_handle': directionalRules('facing', valveHandle),
   'speedometer': gaugeRules(),
   'stressometer': gaugeRules(),
 };

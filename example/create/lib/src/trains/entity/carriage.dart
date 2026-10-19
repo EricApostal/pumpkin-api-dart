@@ -40,7 +40,8 @@ class Carriage {
 
   /// `storage` (`TrainCargoManager`). While the cargo lives in the contraption (between
   /// `setContraption` and `swapStorageAfterAssembly`) there is none: see [hasStorage].
-  CarriageStorage get storage => _storage ??= (storageFactory?.call() ?? EmptyCarriageStorage());
+  CarriageStorage get storage =>
+      _storage ??= (storageFactory?.call() ?? EmptyCarriageStorage());
 
   set storage(CarriageStorage? value) => _storage = value;
 
@@ -69,7 +70,8 @@ class Carriage {
   late final TravellingPoint portalScout;
 
   bool isOnIncompatibleTrack() =>
-      leadingBogey().type.isOnIncompatibleTrack(this, true) || trailingBogey().type.isOnIncompatibleTrack(this, false);
+      leadingBogey().type.isOnIncompatibleTrack(this, true) ||
+      trailingBogey().type.isOnIncompatibleTrack(this, false);
 
   void setTrain(Train train) {
     this.train = train;
@@ -103,10 +105,12 @@ class Carriage {
   DimensionalCarriageEntity getDimensional(String dimension) =>
       _entities.putIfAbsent(dimension, () => DimensionalCarriageEntity(this));
 
-  DimensionalCarriageEntity? getDimensionalIfPresent(String dimension) => _entities[dimension];
+  DimensionalCarriageEntity? getDimensionalIfPresent(String dimension) =>
+      _entities[dimension];
 
   /// The dimensional entities (`entities.values()`).
-  Iterable<DimensionalCarriageEntity> get dimensionalEntities => _entities.values;
+  Iterable<DimensionalCarriageEntity> get dimensionalEntities =>
+      _entities.values;
 
   double travel(
     TrainLevel level,
@@ -117,15 +121,19 @@ class Carriage {
     int type,
   ) {
     final train = this.train!;
-    ITrackSelector Function(TravellingPoint) forwardControl = toFollowForward == null
+    ITrackSelector Function(TravellingPoint) forwardControl =
+        toFollowForward == null
         ? train.navigation.control
         : (mp) => mp.follow(toFollowForward);
-    ITrackSelector Function(TravellingPoint) backwardControl = toFollowBackward == null
+    ITrackSelector Function(TravellingPoint) backwardControl =
+        toFollowBackward == null
         ? train.navigation.control
         : (mp) => mp.follow(toFollowBackward);
 
     final onTwoBogeys = isOnTwoBogeys();
-    final stress = train.derailed ? 0.0 : (onTwoBogeys ? bogeySpacing - getAnchorDiff() : 0.0);
+    final stress = train.derailed
+        ? 0.0
+        : (onTwoBogeys ? bogeySpacing - getAnchorDiff() : 0.0);
     blocked = false;
 
     var distanceMoved = distance;
@@ -144,19 +152,33 @@ class Carriage {
         final point = bogey.points.get(actuallyFirstWheel);
         final prevPoint = !actuallyFirstWheel
             ? bogey.points.getFirst()
-            : (!actuallyFirstBogey && onTwoBogeys ? bogeys.getFirst()!.points.getSecond() : null);
+            : (!actuallyFirstBogey && onTwoBogeys
+                  ? bogeys.getFirst()!.points.getSecond()
+                  : null);
         final nextPoint = actuallyFirstWheel
             ? bogey.points.getSecond()
-            : (actuallyFirstBogey && onTwoBogeys ? bogeys.getSecond()!.points.getFirst() : null);
+            : (actuallyFirstBogey && onTwoBogeys
+                  ? bogeys.getSecond()!.points.getFirst()
+                  : null);
 
         final correction = bogeyStress * (actuallyFirstWheel ? 0.5 : -0.5);
         var toMove = distanceMoved;
 
-        final frontTrackSelector = prevPoint == null ? forwardControl(point) : point.follow(prevPoint);
-        final backTrackSelector = nextPoint == null ? backwardControl(point) : point.follow(nextPoint);
+        final frontTrackSelector = prevPoint == null
+            ? forwardControl(point)
+            : point.follow(prevPoint);
+        final backTrackSelector = nextPoint == null
+            ? backwardControl(point)
+            : point.follow(nextPoint);
 
-        final atFront = (type == FIRST || type == BOTH) && actuallyFirstWheel && actuallyFirstBogey;
-        final atBack = (type == LAST || type == BOTH) && !actuallyFirstWheel && (!actuallyFirstBogey || !onTwoBogeys);
+        final atFront =
+            (type == FIRST || type == BOTH) &&
+            actuallyFirstWheel &&
+            actuallyFirstBogey;
+        final atBack =
+            (type == LAST || type == BOTH) &&
+            !actuallyFirstWheel &&
+            (!actuallyFirstBogey || !onTwoBogeys);
 
         final frontListener = train.frontSignalListener();
         final backListener = train.backSignalListener();
@@ -164,21 +186,36 @@ class Carriage {
 
         toMove += correction + bogeyCorrection;
 
-        final trackSelector = toMove > 0 ? frontTrackSelector : backTrackSelector;
+        final trackSelector = toMove > 0
+            ? frontTrackSelector
+            : backTrackSelector;
         final signalListener = toMove > 0
-            ? (atFront ? frontListener : (atBack ? backListener : passiveListener))
-            : (atFront ? backListener : (atBack ? frontListener : passiveListener));
+            ? (atFront
+                  ? frontListener
+                  : (atBack ? backListener : passiveListener))
+            : (atFront
+                  ? backListener
+                  : (atBack ? frontListener : passiveListener));
 
-        final moved = point.travel(graph, toMove, trackSelector, signalListener, point.ignoreTurns(), (c) {
-          for (final dce in _entities.values) {
-            if (dce.pivot != null && c.either((tnl) => tnl.equalsIgnoreDim(dce.pivot!))) return false;
-          }
-          if (_entities.length > 1) {
-            train.status.doublePortal();
-            return true;
-          }
-          return false;
-        });
+        final moved = point.travel(
+          graph,
+          toMove,
+          trackSelector,
+          signalListener,
+          point.ignoreTurns(),
+          (c) {
+            for (final dce in _entities.values) {
+              if (dce.pivot != null &&
+                  c.either((tnl) => tnl.equalsIgnoreDim(dce.pivot!)))
+                return false;
+            }
+            if (_entities.length > 1) {
+              train.status.doublePortal();
+              return true;
+            }
+            return false;
+          },
+        );
 
         blocked |= point.blocked;
 
@@ -198,7 +235,8 @@ class Carriage {
     final leadingPoint = getLeadingPoint();
     final trailingPoint = getTrailingPoint();
     if (leadingPoint.node1 != null && trailingPoint.node1 != null) {
-      if (leadingPoint.node1!.getLocation().dimension != trailingPoint.node1!.getLocation().dimension) {
+      if (leadingPoint.node1!.getLocation().dimension !=
+          trailingPoint.node1!.getLocation().dimension) {
         return bogeySpacing.toDouble();
       }
     }
@@ -217,12 +255,18 @@ class Carriage {
   }
 
   void updateConductors() {
-    if (anyAvailableEntity() == null || _entities.length > 1 || serialisedPassengers.isNotEmpty) return;
+    if (anyAvailableEntity() == null ||
+        _entities.length > 1 ||
+        serialisedPassengers.isNotEmpty)
+      return;
     presentConductors.replace((_) => false);
     for (final dimensionalCarriageEntity in _entities.values) {
       final entity = dimensionalCarriageEntity.entity;
       if (entity != null && entity.isAlive) {
-        presentConductors.replaceWithParams((current, checked) => current || checked, entity.checkConductors());
+        presentConductors.replaceWithParams(
+          (current, checked) => current || checked,
+          entity.checkConductors(),
+        );
       }
     }
   }
@@ -242,7 +286,9 @@ class Carriage {
 
     for (final key in _entities.keys.toList()) {
       final dimensionalCarriageEntity = _entities[key]!;
-      var discard = _currentlyTraversedDimensions.isNotEmpty && !_currentlyTraversedDimensions.contains(key);
+      var discard =
+          _currentlyTraversedDimensions.isNotEmpty &&
+          !_currentlyTraversedDimensions.contains(key);
 
       final currentLevel = level.levelOf(key);
       if (currentLevel == null) continue;
@@ -253,8 +299,13 @@ class Carriage {
         if (discard) {
           _entities.remove(key);
         } else if (dimensionalCarriageEntity.positionAnchor != null &&
-            currentLevel.isActiveChunk(posContaining(dimensionalCarriageEntity.positionAnchor!))) {
-          dimensionalCarriageEntity.createEntity(currentLevel, anyAvailableEntity() == null);
+            currentLevel.isActiveChunk(
+              posContaining(dimensionalCarriageEntity.positionAnchor!),
+            )) {
+          dimensionalCarriageEntity.createEntity(
+            currentLevel,
+            anyAvailableEntity() == null,
+          );
         }
       } else {
         if (discard) {
@@ -314,12 +365,15 @@ class Carriage {
               dce,
               dimension,
               point,
-              leading ? leadingWheelSpacing / 2 : bogeySpacing + trailingWheelSpacing / 2,
+              leading
+                  ? leadingWheelSpacing / 2
+                  : bogeySpacing + trailingWheelSpacing / 2,
               leadingUpsideDown,
               trailingUpsideDown,
             );
 
-      final backAnchorFlip = trailingBogey.isUpsideDown() ^ leadingBogey.isUpsideDown();
+      final backAnchorFlip =
+          trailingBogey.isUpsideDown() ^ leadingBogey.isUpsideDown();
 
       if (isOnTwoBogeys()) {
         dce.rotationAnchors.setFirst(
@@ -329,7 +383,9 @@ class Carriage {
                   dce,
                   dimension,
                   point,
-                  leading ? leadingWheelSpacing / 2 : bogeySpacing + trailingWheelSpacing / 2,
+                  leading
+                      ? leadingWheelSpacing / 2
+                      : bogeySpacing + trailingWheelSpacing / 2,
                   leadingUpsideDown,
                   trailingUpsideDown,
                 ),
@@ -341,7 +397,9 @@ class Carriage {
                   dce,
                   dimension,
                   point,
-                  leading ? leadingWheelSpacing / 2 + bogeySpacing : trailingWheelSpacing / 2,
+                  leading
+                      ? leadingWheelSpacing / 2 + bogeySpacing
+                      : trailingWheelSpacing / 2,
                   leadingUpsideDown,
                   trailingUpsideDown,
                 ),
@@ -356,12 +414,26 @@ class Carriage {
           dce.rotationAnchors.setFirst(
             identical(leadingBogey.points.getFirst(), point)
                 ? point.getPosition(train.graph)
-                : _pivoted(dce, dimension, point, leadingWheelSpacing, leadingUpsideDown, trailingUpsideDown),
+                : _pivoted(
+                    dce,
+                    dimension,
+                    point,
+                    leadingWheelSpacing,
+                    leadingUpsideDown,
+                    trailingUpsideDown,
+                  ),
           );
           dce.rotationAnchors.setSecond(
             identical(leadingBogey.points.getSecond(), point)
                 ? point.getPosition(train.graph)
-                : _pivoted(dce, dimension, point, leadingWheelSpacing, leadingUpsideDown, trailingUpsideDown),
+                : _pivoted(
+                    dce,
+                    dimension,
+                    point,
+                    leadingWheelSpacing,
+                    leadingUpsideDown,
+                    trailingUpsideDown,
+                  ),
           );
         }
       }
@@ -371,7 +443,8 @@ class Carriage {
 
       dce.updateCutoff(leading);
 
-      if (prevmin != dce.minAllowedLocalCoord() || prevmax != dce.maxAllowedLocalCoord()) {
+      if (prevmin != dce.minAllowedLocalCoord() ||
+          prevmax != dce.maxAllowedLocalCoord()) {
         dce.updateRenderedCutoff();
         dce.updatePassengerLoadout();
       }
@@ -390,10 +463,17 @@ class Carriage {
     if (train.graph == null) return dce.pivot?.getLocation();
     final pivot = dce.findPivot(dimension, identical(start, getLeadingPoint()));
     if (pivot == null) return null;
-    final flipped = !identical(start, getLeadingPoint()) && (leadingUpsideDown != trailingUpsideDown);
+    final flipped =
+        !identical(start, getLeadingPoint()) &&
+        (leadingUpsideDown != trailingUpsideDown);
     final startVec = start.getPosition(train.graph, flipped);
-    final portalVec = pivot.getLocation() + (0.0, leadingUpsideDown ? -1.0 : 1.0, 0.0);
-    return VecHelper.lerp(toFloat(offset / startVec.distanceTo(portalVec)), startVec, portalVec);
+    final portalVec =
+        pivot.getLocation() + (0.0, leadingUpsideDown ? -1.0 : 1.0, 0.0);
+    return VecHelper.lerp(
+      toFloat(offset / startVec.distanceTo(portalVec)),
+      startVec,
+      portalVec,
+    );
   }
 
   void alignEntity(TrainLevel level) {
@@ -410,7 +490,8 @@ class Carriage {
 
   CarriageBogey leadingBogey() => bogeys.getFirst()!;
 
-  CarriageBogey trailingBogey() => isOnTwoBogeys() ? bogeys.getSecond()! : leadingBogey();
+  CarriageBogey trailingBogey() =>
+      isOnTwoBogeys() ? bogeys.getSecond()! : leadingBogey();
 
   bool isOnTwoBogeys() => bogeys.getSecond() != null;
 
@@ -439,7 +520,8 @@ class Carriage {
   CTag write(DimensionPalette dimensions) {
     final tag = CTag();
     tag.putCompound('FirstBogey', bogeys.getFirst()!.write(dimensions));
-    if (isOnTwoBogeys()) tag.putCompound('SecondBogey', bogeys.getSecond()!.write(dimensions));
+    if (isOnTwoBogeys())
+      tag.putCompound('SecondBogey', bogeys.getSecond()!.write(dimensions));
     tag.putInt('Spacing', bogeySpacing);
     tag.putBoolean('FrontConductor', presentConductors.getFirst());
     tag.putBoolean('BackConductor', presentConductors.getSecond());
@@ -466,7 +548,9 @@ class Carriage {
 
     final passengerTag = CTag();
     passengerMap.addAll(serialisedPassengers);
-    passengerMap.forEach((seat, nbt) => passengerTag.putCompound('Seat$seat', nbt.copy()));
+    passengerMap.forEach(
+      (seat, nbt) => passengerTag.putCompound('Seat$seat', nbt.copy()),
+    );
     tag.putCompound('Passengers', passengerTag);
 
     tag.putCompoundList('EntityPositioning', [
@@ -484,14 +568,27 @@ class Carriage {
     serialisedEntity.getCompound('Contraption').remove('Passengers');
   }
 
-  static Carriage read(CTag tag, TrackGraph? graph, DimensionPalette dimensions) {
-    final bogey1 = CarriageBogey.read(tag.getCompound('FirstBogey'), graph, dimensions);
-    final bogey2 = tag.contains('SecondBogey') ? CarriageBogey.read(tag.getCompound('SecondBogey'), graph, dimensions) : null;
+  static Carriage read(
+    CTag tag,
+    TrackGraph? graph,
+    DimensionPalette dimensions,
+  ) {
+    final bogey1 = CarriageBogey.read(
+      tag.getCompound('FirstBogey'),
+      graph,
+      dimensions,
+    );
+    final bogey2 = tag.contains('SecondBogey')
+        ? CarriageBogey.read(tag.getCompound('SecondBogey'), graph, dimensions)
+        : null;
 
     final carriage = Carriage(bogey1, bogey2, tag.getInt('Spacing'));
 
     carriage.stalled = tag.getBoolean('Stalled');
-    carriage.presentConductors = Couple.create(tag.getBoolean('FrontConductor'), tag.getBoolean('BackConductor'));
+    carriage.presentConductors = Couple.create(
+      tag.getBoolean('FrontConductor'),
+      tag.getBoolean('BackConductor'),
+    );
     carriage.serialisedEntity = tag.getCompound('Entity').copy();
 
     for (final c in tag.getCompoundList('EntityPositioning')) {
@@ -500,7 +597,8 @@ class Carriage {
 
     final passengersTag = tag.getCompound('Passengers');
     for (final key in passengersTag.keys.toList()) {
-      carriage.serialisedPassengers[int.parse(key.substring(4))] = passengersTag.getCompound(key);
+      carriage.serialisedPassengers[int.parse(key.substring(4))] = passengersTag
+          .getCompound(key);
     }
 
     return carriage;
@@ -556,9 +654,12 @@ class DimensionalCarriageEntity {
 
     final pivotLoc = pivot!.getLocation() + (0.0, 1.0, 0.0);
 
-    final leadingSpacing = carriage.leadingBogey().type.getWheelPointSpacing() / 2;
-    final trailingSpacing = carriage.trailingBogey().type.getWheelPointSpacing() / 2;
-    final anchorSpacing = leadingSpacing + carriage.bogeySpacing + trailingSpacing;
+    final leadingSpacing =
+        carriage.leadingBogey().type.getWheelPointSpacing() / 2;
+    final trailingSpacing =
+        carriage.trailingBogey().type.getWheelPointSpacing() / 2;
+    final anchorSpacing =
+        leadingSpacing + carriage.bogeySpacing + trailingSpacing;
 
     if (carriage.isOnTwoBogeys()) {
       final diff = (trailingAnchor - leadingAnchor).normalized;
@@ -574,22 +675,39 @@ class DimensionalCarriageEntity {
 
     if (leadingIsCurrent && leadingDiff > trailingDiff && leadingDiff > 1) {
       cutoff = 0;
-    } else if (leadingIsCurrent && leadingDiff < trailingDiff && trailingDiff > 1) {
+    } else if (leadingIsCurrent &&
+        leadingDiff < trailingDiff &&
+        trailingDiff > 1) {
       cutoff = 1;
-    } else if (!leadingIsCurrent && leadingDiff > trailingDiff && leadingDiff > 1) {
+    } else if (!leadingIsCurrent &&
+        leadingDiff > trailingDiff &&
+        leadingDiff > 1) {
       cutoff = -1;
-    } else if (!leadingIsCurrent && leadingDiff < trailingDiff && trailingDiff > 1) {
+    } else if (!leadingIsCurrent &&
+        leadingDiff < trailingDiff &&
+        trailingDiff > 1) {
       cutoff = 0;
     } else {
-      cutoff = toFloat(clampNum(1 - (leadingIsCurrent ? leadingDiff : trailingDiff), 0.0, 1.0) * (leadingIsCurrent ? 1 : -1));
+      cutoff = toFloat(
+        clampNum(
+              1 - (leadingIsCurrent ? leadingDiff : trailingDiff),
+              0.0,
+              1.0,
+            ) *
+            (leadingIsCurrent ? 1 : -1),
+      );
     }
   }
 
   TrackNodeLocation? findPivot(String dimension, bool leading) {
     if (pivot != null) return pivot;
 
-    final start = leading ? carriage.getLeadingPoint() : carriage.getTrailingPoint();
-    final end = !leading ? carriage.getLeadingPoint() : carriage.getTrailingPoint();
+    final start = leading
+        ? carriage.getLeadingPoint()
+        : carriage.getTrailingPoint();
+    final end = !leading
+        ? carriage.getLeadingPoint()
+        : carriage.getTrailingPoint();
 
     final portalScout = carriage.portalScout;
     portalScout.node1 = start.node1;
@@ -641,12 +759,15 @@ class DimensionalCarriageEntity {
     cutoff = tag.getFloat('Cutoff');
     discardTicks = tag.getInt('DiscardTicks');
     if (carriage.hasStorage) carriage.storage.read(tag, false);
-    if (tag.contains('Pivot')) pivot = TrackNodeLocation.read(tag.getCompound('Pivot'), null);
+    if (tag.contains('Pivot'))
+      pivot = TrackNodeLocation.read(tag.getCompound('Pivot'), null);
     if (positionAnchor != null) return;
-    if (tag.contains('PositionAnchor')) positionAnchor = tag.getVec3('PositionAnchor');
+    if (tag.contains('PositionAnchor'))
+      positionAnchor = tag.getVec3('PositionAnchor');
     if (tag.contains('RotationAnchors')) {
       final list = tag.getCompoundList('RotationAnchors');
-      Vec3 readV(CTag c) => (c.getDouble('X'), c.getDouble('Y'), c.getDouble('Z'));
+      Vec3 readV(CTag c) =>
+          (c.getDouble('X'), c.getDouble('Y'), c.getDouble('Z'));
       rotationAnchors = Couple.create<Vec3?>(
         list.isNotEmpty ? readV(list[0]) : null,
         list.length > 1 ? readV(list[1]) : null,
@@ -654,9 +775,11 @@ class DimensionalCarriageEntity {
     }
   }
 
-  Vec3? leadingAnchor() => carriage.isOnTwoBogeys() ? rotationAnchors.getFirst() : positionAnchor;
+  Vec3? leadingAnchor() =>
+      carriage.isOnTwoBogeys() ? rotationAnchors.getFirst() : positionAnchor;
 
-  Vec3? trailingAnchor() => carriage.isOnTwoBogeys() ? rotationAnchors.getSecond() : positionAnchor;
+  Vec3? trailingAnchor() =>
+      carriage.isOnTwoBogeys() ? rotationAnchors.getSecond() : positionAnchor;
 
   static const int _intMin = -0x80000000;
   static const int _intMax = 0x7fffffff;
@@ -704,7 +827,8 @@ class DimensionalCarriageEntity {
       }
 
       if (passenger != null) {
-        if (passenger.dimension != cce.dimension && passenger.isPlayer) continue;
+        if (passenger.dimension != cce.dimension && passenger.isPlayer)
+          continue;
         cce.addSittingPassenger(passenger, seatId);
       }
 
@@ -727,7 +851,8 @@ class DimensionalCarriageEntity {
       }
 
       final passengerData = passenger.saveAsPassenger();
-      if (passengerData != null) carriage.serialisedPassengers[seat] = passengerData;
+      if (passengerData != null)
+        carriage.serialisedPassengers[seat] = passengerData;
       passenger.discard();
     }
   }
@@ -747,7 +872,9 @@ class DimensionalCarriageEntity {
       final otherDce = other.value;
       if (identical(otherDce, this)) continue;
       if (sp.dimension == other.key) continue;
-      final loc = otherDce.pivot == null ? otherDce.positionAnchor : otherDce.pivot!.getLocation();
+      final loc = otherDce.pivot == null
+          ? otherDce.positionAnchor
+          : otherDce.pivot!.getLocation();
       if (loc == null) continue;
       sp.teleportThroughPortal(other.key, loc);
       TrainFx.effects.awardAdvancement(sp.uuid, AllAdvancements.trainPortal);
@@ -764,8 +891,13 @@ class DimensionalCarriageEntity {
   }
 
   void createEntity(TrainLevel level, bool loadPassengers) {
-    if (positionAnchor != null) carriage.serialisedEntity.putVec3('Pos', positionAnchor!);
-    final created = CarriageEntities.factory?.spawnFromSaved(level, carriage.serialisedEntity, positionAnchor);
+    if (positionAnchor != null)
+      carriage.serialisedEntity.putVec3('Pos', positionAnchor!);
+    final created = CarriageEntities.factory?.spawnFromSaved(
+      level,
+      carriage.serialisedEntity,
+      positionAnchor,
+    );
 
     if (created == null) {
       _train.invalid = true;
@@ -796,7 +928,8 @@ class DimensionalCarriageEntity {
         }
 
         final passengerData = passenger.saveAsPassenger();
-        if (passengerData != null) carriage.serialisedPassengers[seat] = passengerData;
+        if (passengerData != null)
+          carriage.serialisedPassengers[seat] = passengerData;
       }
     }
 
@@ -832,13 +965,20 @@ class DimensionalCarriageEntity {
       return;
     }
 
-    if (_train.carriageWaitingForChunks == carriage.id) _train.carriageWaitingForChunks = -1;
+    if (_train.carriageWaitingForChunks == carriage.id)
+      _train.carriageWaitingForChunks = -1;
 
     entity.setServerSidePrevPosition();
 
     entity.setPos(anchor);
     entity.yaw = toFloat(math.atan2(diffZ, diffX) * 180 / math.pi) + 180;
-    entity.pitch = toFloat(math.atan2(diffY, math.sqrt(diffX * diffX + diffZ * diffZ)) * 180 / math.pi) * -1;
+    entity.pitch =
+        toFloat(
+          math.atan2(diffY, math.sqrt(diffX * diffX + diffZ * diffZ)) *
+              180 /
+              math.pi,
+        ) *
+        -1;
     entity.moveToHost();
 
     if (!entity.firstPositionUpdate) return;

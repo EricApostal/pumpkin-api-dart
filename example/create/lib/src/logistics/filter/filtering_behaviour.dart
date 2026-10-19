@@ -5,13 +5,15 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../api/value_settings.dart';
 import '../../core/block_entity.dart';
 import '../host/nbt_util.dart';
+import '../host/runtime.dart';
 import '../model/stack.dart';
 import 'filter_item_stack.dart';
 
 /// Items that are not applied as a filter when held (`canShortInteract`).
 const Set<String> _notFilters = {'create:wrench', 'create:mechanical_arm'};
 
-class FilteringBehaviour extends BlockEntityBehaviour implements ValueSettingsTarget, ShortInteractTarget {
+class FilteringBehaviour extends BlockEntityBehaviour
+    implements ValueSettingsTarget, ShortInteractTarget {
   static const String behaviourId = 'Filtering';
 
   @override
@@ -42,7 +44,12 @@ class FilteringBehaviour extends BlockEntityBehaviour implements ValueSettingsTa
   bool recipeFilter = false;
   bool fluidFilter = false;
 
-  FilteringBehaviour({this.predicate, this.callback, this.activeWhen, this.showCountWhen});
+  FilteringBehaviour({
+    this.predicate,
+    this.callback,
+    this.activeWhen,
+    this.showCountWhen,
+  });
 
   /// `getFilter()`.
   LStack get filterItem => filter.item;
@@ -54,7 +61,8 @@ class FilteringBehaviour extends BlockEntityBehaviour implements ValueSettingsTa
   int get maxStackSize => filter.item.isEmpty ? 64 : filter.item.maxStack;
 
   /// `isCountVisible()`.
-  bool get isCountVisible => (showCountWhen?.call() ?? false) && maxStackSize > 1;
+  bool get isCountVisible =>
+      (showCountWhen?.call() ?? false) && maxStackSize > 1;
 
   /// `getAmount()`.
   int get amount => count;
@@ -64,9 +72,11 @@ class FilteringBehaviour extends BlockEntityBehaviour implements ValueSettingsTa
 
   /// `setFilter(stack)`: false if the predicate refuses the stack.
   bool setFilter(LStack stack) {
-    if (stack.isNotEmpty && predicate != null && !predicate!(stack)) return false;
-    filter = FilterItemStack.of(stack);
-    if (!upTo && stack.isNotEmpty) count = count < stack.maxStack ? count : stack.maxStack;
+    if (stack.isNotEmpty && predicate != null && !predicate!(stack))
+      return false;
+    filter = FilterItemStack.of(stack, wire: Lg.loaded ? Lg.i.wire : null);
+    if (!upTo && stack.isNotEmpty)
+      count = count < stack.maxStack ? count : stack.maxStack;
     callback?.call(stack);
     owner.markDirty();
     owner.sendData();
@@ -88,10 +98,16 @@ class FilteringBehaviour extends BlockEntityBehaviour implements ValueSettingsTa
   bool get acceptsValueSettings => isCountVisible;
 
   @override
-  (int row, int value) get valueSettings => (upTo ? 0 : 1, count == 0 ? maxStackSize : count);
+  (int row, int value) get valueSettings =>
+      (upTo ? 0 : 1, count == 0 ? maxStackSize : count);
 
   @override
-  void setValueSettings(Player? player, int row, int value, {required bool ctrlDown}) {
+  void setValueSettings(
+    Player? player,
+    int row,
+    int value, {
+    required bool ctrlDown,
+  }) {
     if (valueSettings == (row, value)) return;
     count = value.clamp(1, maxStackSize);
     upTo = row == 0;
@@ -129,7 +145,10 @@ class FilteringBehaviour extends BlockEntityBehaviour implements ValueSettingsTa
 
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
-    filter = FilterItemStack.of(stackFromNbt(tag.getCompound('Filter')));
+    filter = FilterItemStack.of(
+      stackFromNbt(tag.getCompound('Filter')),
+      wire: Lg.loaded ? Lg.i.wire : null,
+    );
     count = tag.getInt('FilterAmount') ?? 0;
     upTo = tag.getBool('UpTo') ?? false;
     // Migrate from the previous behaviour.

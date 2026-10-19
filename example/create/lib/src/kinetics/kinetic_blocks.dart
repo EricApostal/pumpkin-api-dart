@@ -8,6 +8,7 @@ import '../core/registry.dart';
 import '../manifest/manifest.dart';
 import 'block_entities.dart';
 import 'block_factory.dart';
+import 'gantry/gantry_shaft.dart';
 import 'generators.dart';
 import 'kinetic_block_entity.dart';
 import 'kinetic_blocks_a.dart';
@@ -48,6 +49,7 @@ List<KineticBlockSpec> buildKineticBlocks() {
     sequencedGearshiftSpec(),
     flywheelSpec(),
     speedControllerSpec(),
+    gantryShaftSpec(),
   ];
   final order = {for (final b in kBlocks) 'create:${b.key}': b.index};
   specs.sort((a, b) => order[a.block.key]!.compareTo(order[b.block.key]!));
@@ -81,7 +83,8 @@ final class _LazyValidBlocks extends ListBase<String> {
   String operator [](int index) => _compute()[index];
 
   @override
-  void operator []=(int index, String value) => throw UnsupportedError('read only');
+  void operator []=(int index, String value) =>
+      throw UnsupportedError('read only');
 
   @override
   void add(String element) => extra.add(element);
@@ -94,14 +97,27 @@ final class _LazyValidBlocks extends ListBase<String> {
 final Map<String, List<String>> kineticValidBlocks = {};
 
 /// The block entity types (manifest key -> factory).
-List<BlockEntityTypeSpec> buildKineticBlockEntityTypes(CreateRegistry registry) {
+List<BlockEntityTypeSpec> buildKineticBlockEntityTypes(
+  CreateRegistry registry,
+) {
   final defs = {for (final d in kBlockEntityTypes) d.key: d};
 
-  BlockEntityTypeSpec spec(String key, CreateBlockEntity Function(String worldId, BlockPos pos) create) {
-    final def = defs[key] ?? (throw StateError('No block entity type $key in the manifest'));
-    final valid = _LazyValidBlocks(registry, [for (final b in def.validBlocks) 'create:$b']);
+  BlockEntityTypeSpec spec(
+    String key,
+    CreateBlockEntity Function(String worldId, BlockPos pos) create,
+  ) {
+    final def =
+        defs[key] ??
+        (throw StateError('No block entity type $key in the manifest'));
+    final valid = _LazyValidBlocks(registry, [
+      for (final b in def.validBlocks) 'create:$b',
+    ]);
     kineticValidBlocks['create:$key'] = valid;
-    return BlockEntityTypeSpec(key: 'create:$key', validBlocks: valid, create: create);
+    return BlockEntityTypeSpec(
+      key: 'create:$key',
+      validBlocks: valid,
+      create: create,
+    );
   }
 
   return [
@@ -111,7 +127,10 @@ List<BlockEntityTypeSpec> buildKineticBlockEntityTypes(CreateRegistry registry) 
     spec('encased_shaft', (w, p) => KineticBlockEntity(w, p)),
     spec('encased_cogwheel', (w, p) => SimpleKineticBlockEntity(w, p)),
     spec('encased_large_cogwheel', (w, p) => SimpleKineticBlockEntity(w, p)),
-    spec('adjustable_chain_gearshift', (w, p) => ChainGearshiftBlockEntity(w, p)),
+    spec(
+      'adjustable_chain_gearshift',
+      (w, p) => ChainGearshiftBlockEntity(w, p),
+    ),
     spec('clutch', (w, p) => ClutchBlockEntity(w, p)),
     spec('gearshift', (w, p) => GearshiftBlockEntity(w, p)),
     spec('turntable', (w, p) => TurntableBlockEntity(w, p)),
@@ -124,7 +143,11 @@ List<BlockEntityTypeSpec> buildKineticBlockEntityTypes(CreateRegistry registry) 
     spec('water_wheel', (w, p) => WaterWheelBlockEntity(w, p)),
     spec('large_water_wheel', (w, p) => LargeWaterWheelBlockEntity(w, p)),
     spec('sequenced_gearshift', (w, p) => SequencedGearshiftBlockEntity(w, p)),
-    spec('rotation_speed_controller', (w, p) => SpeedControllerBlockEntity(w, p)),
+    spec(
+      'rotation_speed_controller',
+      (w, p) => SpeedControllerBlockEntity(w, p),
+    ),
+    spec('gantry_shaft', (w, p) => GantryShaftBlockEntity(w, p)),
     spec('speedometer', (w, p) => SpeedGaugeBlockEntity(w, p)),
     spec('stressometer', (w, p) => StressGaugeBlockEntity(w, p)),
   ];

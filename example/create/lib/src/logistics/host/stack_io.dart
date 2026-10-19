@@ -87,14 +87,25 @@ class StackIo {
     }
     final damageable = maxDamage > 0;
     info.learn(key, max, damageable);
-    final sorted = Map.fromEntries(comps.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
-    return LStack(key, count, maxStack: max, damageable: damageable, comps: sorted);
+    final sorted = Map.fromEntries(
+      comps.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+    );
+    return LStack(
+      key,
+      count,
+      maxStack: max,
+      damageable: damageable,
+      comps: sorted,
+    );
   }
 
   /// A new host stack for [s] (owned by the caller), `null` for an empty stack.
   Future<ItemStack?> write(LStack s) async {
     if (s.isEmpty) return null;
-    final out = ItemStack.create(registryKey: s.key, count: s.count > 255 ? 255 : s.count);
+    final out = ItemStack.create(
+      registryKey: s.key,
+      count: s.count > 255 ? 255 : s.count,
+    );
     var customData = s.comps[_customData];
     final logical = <String, String>{};
     for (final e in s.comps.entries) {
@@ -110,13 +121,18 @@ class StackIo {
         _setCustom(out, name, base64Decode(e.value));
         continue;
       }
-      final component = DataComponent.fromWireName(RegistryKeys.toWireName(name));
+      final component = DataComponent.fromWireName(
+        RegistryKeys.toWireName(name),
+      );
       if (component == null) continue;
       try {
         if (e.value == removedComponent) {
           await out.removeComponent(component: component);
         } else {
-          await out.setComponent(component: component, value: base64Decode(e.value));
+          await out.setComponent(
+            component: component,
+            value: base64Decode(e.value),
+          );
         }
       } on Object {
         // a component the host rejects is dropped
@@ -125,13 +141,19 @@ class StackIo {
     final data = _withPrivate(customData, logical);
     if (data != null) {
       try {
-        await out.setComponent(component: DataComponent.customData, value: data);
+        await out.setComponent(
+          component: DataComponent.customData,
+          value: data,
+        );
       } on Object {
         // ignore: the wire form is still there
       }
     } else if (customData != null && customData != removedComponent) {
       try {
-        await out.setComponent(component: DataComponent.customData, value: base64Decode(customData));
+        await out.setComponent(
+          component: DataComponent.customData,
+          value: base64Decode(customData),
+        );
       } on Object {
         // ignore
       }
@@ -160,12 +182,15 @@ class StackIo {
       final map = Map<String, NbtValue>.of(root.asCompound);
       final priv = map.remove(privateDataKey);
       if (priv == null || priv.kind != NbtKind.string) return;
-      final decoded = (jsonDecode(priv.value as String) as Map).cast<String, String>();
+      final decoded = (jsonDecode(priv.value as String) as Map)
+          .cast<String, String>();
       comps.addAll(decoded);
       if (map.isEmpty) {
         comps.remove(_customData);
       } else {
-        comps[_customData] = base64Encode(NetworkNbt.encode(NbtValue.compound(map)));
+        comps[_customData] = base64Encode(
+          NetworkNbt.encode(NbtValue.compound(map)),
+        );
       }
     } on Object {
       // a custom_data value that is no compound stays as it is
@@ -179,7 +204,9 @@ class StackIo {
     var map = <String, NbtValue>{};
     if (existing != null && existing != removedComponent) {
       try {
-        map = Map<String, NbtValue>.of(NetworkNbt.decode(base64Decode(existing))?.asCompound ?? const {});
+        map = Map<String, NbtValue>.of(
+          NetworkNbt.decode(base64Decode(existing))?.asCompound ?? const {},
+        );
       } on Object {
         map = {};
       }

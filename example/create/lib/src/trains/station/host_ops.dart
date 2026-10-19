@@ -15,18 +15,33 @@ const Map<String, String> kTrainsEnglish = {
   'create.bogey.style.standard': 'Standard',
   'create.bogey.style.updated_style': 'Updated style',
   'create.bogey.style.updated_style_and_size': 'Updated style and size',
-  'create.train_assembly.bogey_created': 'Bogey created. Click again to cycle type',
-  'create.train_assembly.bogeys_too_close': 'Bogeys %1\$s and %2\$s are too close to each other',
-  'create.train_assembly.frontmost_bogey_at_station': 'Frontmost Bogey must be at Station Marker',
+  'create.train_assembly.bogey_created':
+      'Bogey created. Click again to cycle type',
+  'create.train_assembly.bogeys_too_close':
+      'Bogeys %1\$s and %2\$s are too close to each other',
+  'create.train_assembly.frontmost_bogey_at_station':
+      'Frontmost Bogey must be at Station Marker',
   'create.train_assembly.no_bogeys': 'No Bogeys Found',
-  'create.train_assembly.no_controls':
-      'Attach at least one forward-facing Train Controls block (Are you missing Super Glue?)',
-  'create.train_assembly.not_connected_in_order': 'Bogeys are not connected in order',
-  'create.train_assembly.nothing_attached': 'No structure attached to Bogey %1\$s',
-  'create.train_assembly.requires_casing': 'Use Train Casing to create bogeys on tracks',
-  'create.train_assembly.sideways_controls': 'Train Controls cannot face sideways',
-  'create.train_assembly.single_bogey_carriage': 'This Bogey type cannot support a carriage on its own',
+  'create.train_assembly.no_controls': 'Attach at least one forward-facing Train Controls block (Are you missing Super Glue?)',
+  'create.train_assembly.not_connected_in_order':
+      'Bogeys are not connected in order',
+  'create.train_assembly.nothing_attached':
+      'No structure attached to Bogey %1\$s',
+  'create.train_assembly.requires_casing':
+      'Use Train Casing to create bogeys on tracks',
+  'create.train_assembly.sideways_controls':
+      'Train Controls cannot face sideways',
+  'create.train_assembly.single_bogey_carriage':
+      'This Bogey type cannot support a carriage on its own',
   'create.train_assembly.too_many_bogeys': 'Too many Bogeys attached: %1\$s',
+  'create.track_target.clear': 'Target position cleared',
+  'create.track_target.set': 'Target position set',
+  'create.track_target.occupied': 'Another target is already at this position',
+  'create.track_target.no_junctions': 'Cannot target a junction',
+  'create.track_target.invalid': 'Not a valid track',
+  'create.track_target.too_far': 'Too far from the selected position',
+  'create.track_target.success': 'Target applied',
+  'create.train.relocate.success': 'Train relocated',
 };
 
 /// `CreateLang.translateDirect(key, args)` rendered with the English texts (`Component.getString`).
@@ -42,7 +57,8 @@ String trainsLang(String key, [List<Object?> args = const []]) {
 }
 
 /// A translatable [Txt] of the station / bogey texts.
-Txt trainsText(String key, [List<Object?> args = const []]) => Txt.literal(trainsLang(key, args));
+Txt trainsText(String key, [List<Object?> args = const []]) =>
+    Txt.literal(trainsLang(key, args));
 
 /// `Component.getString()` of [text], with the station / bogey translations.
 String plainTrainsText(Txt text) {
@@ -50,7 +66,11 @@ String plainTrainsText(Txt text) {
   if (text.literal != null) {
     b.write(text.literal);
   } else {
-    b.write(trainsLang(text.translateKey!, [for (final a in text.args) plainTrainsText(a)]));
+    b.write(
+      trainsLang(text.translateKey!, [
+        for (final a in text.args) plainTrainsText(a),
+      ]),
+    );
   }
   for (final s in text.siblings) {
     b.write(plainTrainsText(s));
@@ -62,12 +82,27 @@ String plainTrainsText(Txt text) {
 /// (`c` red).
 void sendOverlay(Player player, String text, {String? color}) {
   final prefix = color == null ? '' : '§$color';
-  player.sendSystemMessage(text: TextComponent.fromLegacyString(input: '$prefix$text'), overlay: true);
+  player.sendSystemMessage(
+    text: TextComponent.fromLegacyString(input: '$prefix$text'),
+    overlay: true,
+  );
 }
 
 /// Plays a Create sound by entry name (`AllSoundEvents.X.playOnServer`) when the sound service is there.
-void playCreateSound(World world, (int, int, int) pos, String name, {double volume = 1, double pitch = 1}) {
-  Tr.i.service<CreateSounds>()?.playAtBlock(world, pos, name, volume: volume, pitch: pitch);
+void playCreateSound(
+  World world,
+  (int, int, int) pos,
+  String name, {
+  double volume = 1,
+  double pitch = 1,
+}) {
+  Tr.i.service<CreateSounds>()?.playAtBlock(
+    world,
+    pos,
+    name,
+    volume: volume,
+    pitch: pitch,
+  );
 }
 
 /// `ItemStack.shrink(n)` of the item in [hand] (`Inventory`-based, like the decoration module).

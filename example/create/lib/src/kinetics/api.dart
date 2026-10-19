@@ -21,6 +21,7 @@ export 'block_defs.dart'
         EncasedCogDef,
         FacingAxisBlockDef,
         FacingBlockDef,
+        GantryShaftDef,
         KineticBlockDef;
 export 'block_entities.dart'
     show
@@ -38,6 +39,7 @@ export 'block_entities.dart'
         StressGaugeBlockEntity,
         TurntableBlockEntity;
 export 'generating.dart' show GeneratingNodeMixin;
+export 'gantry/gantry_shaft.dart' show GantryShaftBlockEntity;
 export 'generators.dart'
     show
         CreativeMotorBlockEntity,
@@ -56,9 +58,22 @@ export 'kinetic_block_entity.dart'
         SimpleKineticBlockEntity;
 export 'kinetic_blocks.dart' show kineticValidBlocks;
 export 'network.dart' show KineticNetwork;
-export 'node.dart' show ChainModifierNode, KineticBlockRegistry, KineticLevel, KineticNode, KineticNodeMixin, SpeedControllerNode;
+export 'node.dart'
+    show
+        ChainModifierNode,
+        KineticBlockRegistry,
+        KineticLevel,
+        KineticNode,
+        KineticNodeMixin,
+        SpeedControllerNode;
 export 'propagator.dart' show RotationPropagator;
-export 'runtime.dart' show HostKineticLevel, KineticsRuntime, SteamEngineBoilerSource, toBlockPos, toKPos;
+export 'runtime.dart'
+    show
+        HostKineticLevel,
+        KineticsRuntime,
+        SteamEngineBoilerSource,
+        toBlockPos,
+        toKPos;
 export 'sequence.dart' show Instruction, SequenceContext, SequencerInstructions;
 export 'service.dart' show KineticNetworkService;
 export 'transform.dart' show mirrorKineticState, rotateKineticState;

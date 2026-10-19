@@ -32,7 +32,13 @@ final class _StateShapeInfo {
   final List<bool> sideSolid; // by Direction ordinal
   final List<BlockBox> collision;
 
-  _StateShapeInfo(this.isAir, this.replaceable, this.isFullCube, this.sideSolid, this.collision);
+  _StateShapeInfo(
+    this.isAir,
+    this.replaceable,
+    this.isFullCube,
+    this.sideSolid,
+    this.collision,
+  );
 }
 
 /// The [BlockGetter] over a host [World]. States are decoded once per state id and cached for the
@@ -62,7 +68,13 @@ final class HostBlockGetter extends BlockGetter {
     final st = BlockRegistry.stateFromId(id);
     final _StateShapeInfo info;
     if (st == null) {
-      info = _StateShapeInfo(true, true, false, List.filled(6, false), const []);
+      info = _StateShapeInfo(
+        true,
+        true,
+        false,
+        List.filled(6, false),
+        const [],
+      );
     } else {
       info = _StateShapeInfo(
         st.isAir,
@@ -78,7 +90,14 @@ final class HostBlockGetter extends BlockGetter {
         ],
         [
           for (final b in st.collisionShapes)
-            BlockBox(b.min.$1, b.min.$2, b.min.$3, b.max.$1, b.max.$2, b.max.$3),
+            BlockBox(
+              b.min.$1,
+              b.min.$2,
+              b.min.$3,
+              b.max.$1,
+              b.max.$2,
+              b.max.$3,
+            ),
         ],
       );
     }
@@ -96,7 +115,8 @@ final class HostBlockGetter extends BlockGetter {
   bool isLoaded(Pos p) => world.isLoaded(pos: p.toBlockPos());
 
   @override
-  bool isFaceSturdy(Pos p, dir.Direction face) => _shapeOf(idAt(p)).sideSolid[face.index];
+  bool isFaceSturdy(Pos p, dir.Direction face) =>
+      _shapeOf(idAt(p)).sideSolid[face.index];
 
   @override
   List<BlockBox> collisionBoxes(Pos p) => _shapeOf(idAt(p)).collision;
@@ -149,18 +169,28 @@ Future<void> setBlockState(
 }) async {
   final id = stateIdOf(state);
   if (id == null) return;
-  await world.setBlockState(pos: pos.toBlockPos(), state: id, updateFlags: flags);
+  await world.setBlockState(
+    pos: pos.toBlockPos(),
+    state: id,
+    updateFlags: flags,
+  );
+  // The dynamic shape hook (`BlockBehavior.onShape`) is cached per position.
+  world.invalidateShape(pos.toBlockPos());
 }
 
 /// `Level.removeBlock` / `setBlock(AIR)`.
-Future<void> removeBlock(World world, Pos pos, {Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal}) =>
-    setBlockState(world, pos, BState.air, flags: flags);
+Future<void> removeBlock(
+  World world,
+  Pos pos, {
+  Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal,
+}) => setBlockState(world, pos, BState.air, flags: flags);
 
 // -- Waterlogging (ProperWaterloggedBlock) -----------------------------------------------------
 
 /// `ProperWaterloggedBlock.updateWater`: waterlogged blocks keep their fluid ticking.
 void updateWater(World world, Pos pos, BState state) {
-  if (state.flag('waterlogged')) world.scheduleFluidFlow(pos.toBlockPos(), delayTicks: 5);
+  if (state.flag('waterlogged'))
+    world.scheduleFluidFlow(pos.toBlockPos(), delayTicks: 5);
 }
 
 /// `ProperWaterloggedBlock.withWater`: whether [pos] holds a water source, which a block placed
@@ -170,29 +200,84 @@ bool replacesWater(World world, Pos pos) => HostBlockGetter(world).isWater(pos);
 // -- Manifest blocks ---------------------------------------------------------------------------
 
 /// The manifest entry of a block by its key (without the `create:` namespace).
-final Map<String, ManifestBlock> manifestBlocksByKey = {for (final b in kBlocks) b.key: b};
+final Map<String, ManifestBlock> manifestBlocksByKey = {
+  for (final b in kBlocks) b.key: b,
+};
 
 /// The vanilla `MapColor` ids by constant name.
 const Map<String, int> mapColorIds = {
-  'NONE': 0, 'GRASS': 1, 'SAND': 2, 'WOOL': 3, 'FIRE': 4, 'ICE': 5, 'METAL': 6, 'PLANT': 7, 'SNOW': 8,
-  'CLAY': 9, 'DIRT': 10, 'STONE': 11, 'WATER': 12, 'WOOD': 13, 'QUARTZ': 14, 'COLOR_ORANGE': 15,
-  'COLOR_MAGENTA': 16, 'COLOR_LIGHT_BLUE': 17, 'COLOR_YELLOW': 18, 'COLOR_LIGHT_GREEN': 19,
-  'COLOR_PINK': 20, 'COLOR_GRAY': 21, 'COLOR_LIGHT_GRAY': 22, 'COLOR_CYAN': 23, 'COLOR_PURPLE': 24,
-  'COLOR_BLUE': 25, 'COLOR_BROWN': 26, 'COLOR_GREEN': 27, 'COLOR_RED': 28, 'COLOR_BLACK': 29,
-  'GOLD': 30, 'DIAMOND': 31, 'LAPIS': 32, 'EMERALD': 33, 'PODZOL': 34, 'NETHERRACK': 35,
-  'TERRACOTTA_WHITE': 36, 'TERRACOTTA_ORANGE': 37, 'TERRACOTTA_MAGENTA': 38,
-  'TERRACOTTA_LIGHT_BLUE': 39, 'TERRACOTTA_YELLOW': 40, 'TERRACOTTA_LIGHT_GREEN': 41,
-  'TERRACOTTA_PINK': 42, 'TERRACOTTA_GRAY': 43, 'TERRACOTTA_LIGHT_GRAY': 44, 'TERRACOTTA_CYAN': 45,
-  'TERRACOTTA_PURPLE': 46, 'TERRACOTTA_BLUE': 47, 'TERRACOTTA_BROWN': 48, 'TERRACOTTA_GREEN': 49,
-  'TERRACOTTA_RED': 50, 'TERRACOTTA_BLACK': 51, 'CRIMSON_NYLIUM': 52, 'CRIMSON_STEM': 53,
-  'CRIMSON_HYPHAE': 54, 'WARPED_NYLIUM': 55, 'WARPED_STEM': 56, 'WARPED_HYPHAE': 57,
-  'WARPED_WART_BLOCK': 58, 'DEEPSLATE': 59, 'RAW_IRON': 60, 'GLOW_LICHEN': 61,
+  'NONE': 0,
+  'GRASS': 1,
+  'SAND': 2,
+  'WOOL': 3,
+  'FIRE': 4,
+  'ICE': 5,
+  'METAL': 6,
+  'PLANT': 7,
+  'SNOW': 8,
+  'CLAY': 9,
+  'DIRT': 10,
+  'STONE': 11,
+  'WATER': 12,
+  'WOOD': 13,
+  'QUARTZ': 14,
+  'COLOR_ORANGE': 15,
+  'COLOR_MAGENTA': 16,
+  'COLOR_LIGHT_BLUE': 17,
+  'COLOR_YELLOW': 18,
+  'COLOR_LIGHT_GREEN': 19,
+  'COLOR_PINK': 20,
+  'COLOR_GRAY': 21,
+  'COLOR_LIGHT_GRAY': 22,
+  'COLOR_CYAN': 23,
+  'COLOR_PURPLE': 24,
+  'COLOR_BLUE': 25,
+  'COLOR_BROWN': 26,
+  'COLOR_GREEN': 27,
+  'COLOR_RED': 28,
+  'COLOR_BLACK': 29,
+  'GOLD': 30,
+  'DIAMOND': 31,
+  'LAPIS': 32,
+  'EMERALD': 33,
+  'PODZOL': 34,
+  'NETHERRACK': 35,
+  'TERRACOTTA_WHITE': 36,
+  'TERRACOTTA_ORANGE': 37,
+  'TERRACOTTA_MAGENTA': 38,
+  'TERRACOTTA_LIGHT_BLUE': 39,
+  'TERRACOTTA_YELLOW': 40,
+  'TERRACOTTA_LIGHT_GREEN': 41,
+  'TERRACOTTA_PINK': 42,
+  'TERRACOTTA_GRAY': 43,
+  'TERRACOTTA_LIGHT_GRAY': 44,
+  'TERRACOTTA_CYAN': 45,
+  'TERRACOTTA_PURPLE': 46,
+  'TERRACOTTA_BLUE': 47,
+  'TERRACOTTA_BROWN': 48,
+  'TERRACOTTA_GREEN': 49,
+  'TERRACOTTA_RED': 50,
+  'TERRACOTTA_BLACK': 51,
+  'CRIMSON_NYLIUM': 52,
+  'CRIMSON_STEM': 53,
+  'CRIMSON_HYPHAE': 54,
+  'WARPED_NYLIUM': 55,
+  'WARPED_STEM': 56,
+  'WARPED_HYPHAE': 57,
+  'WARPED_WART_BLOCK': 58,
+  'DEEPSLATE': 59,
+  'RAW_IRON': 60,
+  'GLOW_LICHEN': 61,
 };
 
 /// The host block property of a manifest property.
 BlockProperty hostProperty(ManifestProperty p) => switch (p.type) {
   'bool' => BlockProperty.boolean(p.name),
-  'int' => BlockProperty.intRange(p.name, int.parse(p.values.first), int.parse(p.values.last)),
+  'int' => BlockProperty.intRange(
+    p.name,
+    int.parse(p.values.first),
+    int.parse(p.values.last),
+  ),
   _ => BlockProperty.enumeration(p.name, p.values),
 };
 
@@ -218,7 +303,9 @@ CreateBlock manifestBlock(
   String? blockEntityType,
   List<String> tags = const [],
 }) {
-  final m = manifestBlocksByKey[key] ?? (throw ArgumentError.value(key, 'key', 'not in the block manifest'));
+  final m =
+      manifestBlocksByKey[key] ??
+      (throw ArgumentError.value(key, 'key', 'not in the block manifest'));
   return CreateBlock(
     key: 'create:${m.key}',
     properties: [for (final p in m.properties) hostProperty(p)],
@@ -231,7 +318,9 @@ CreateBlock manifestBlock(
     canOcclude: !m.noOcclusion,
     replaceable: m.replaceable,
     mapColor: mapColorIds[m.mapColor] ?? 0,
-    collisionShape: collisionShape ?? (m.noCollision ? BlockShape.empty : BlockShape.fullCube),
+    collisionShape:
+        collisionShape ??
+        (m.noCollision ? BlockShape.empty : BlockShape.fullCube),
     selectionShape: selectionShape ?? BlockShape.fullCube,
     shapeRules: shapeRules,
     drops: drops ?? BlockDrops.selfItem,
@@ -245,7 +334,8 @@ CreateBlock manifestBlock(
 }
 
 /// The `create:blocks/<key>` loot table of a block (the data pack's drops for slabs, doors, glass).
-BlockDrops lootTableOf(String key) => BlockDrops.lootTable('create:blocks/$key');
+BlockDrops lootTableOf(String key) =>
+    BlockDrops.lootTable('create:blocks/$key');
 
 /// The directions of the host's `BlockDirection` as [dir.Direction]s.
 dir.Direction toDirection(BlockDirection d) => dir.Direction.values[d.index];

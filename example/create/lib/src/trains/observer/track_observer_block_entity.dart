@@ -2,11 +2,9 @@
 // the observer edge point it is attached to is activated by a passing train.
 import 'dart:async';
 
-import 'package:pumpkin_api/pumpkin_api.dart';
-
 import '../../api/redstone.dart' show RedstoneDisplayApi;
 import '../../common/host_bridge.dart';
-import '../../common/pos.dart';
+import '../../common/pos.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../redstone/observer/filter_behaviour.dart';
 import '../graph/edge_point_type.dart';
@@ -23,7 +21,9 @@ class TrackObserverBlockEntity extends CreateBlockEntity {
   late final FilterBehaviour filtering;
 
   TrackObserverBlockEntity(super.worldId, super.pos) {
-    edgePoint = addBehaviour(TrackTargetingBehaviour<TrackObserver>(EdgePointType.OBSERVER));
+    edgePoint = addBehaviour(
+      TrackTargetingBehaviour<TrackObserver>(EdgePointType.OBSERVER),
+    );
     filtering = addBehaviour(FilterBehaviour(callback: _onFilterChanged));
   }
 
@@ -31,7 +31,9 @@ class TrackObserverBlockEntity extends CreateBlockEntity {
 
   void _onFilterChanged(String? newFilter) {
     final observer = getObserver();
-    if (observer != null) observer.setFilterAndNotify(worldId, FilterItemStack.ofItem(newFilter));
+    if (observer != null) {
+      observer.setFilterAndNotify(worldId, FilterItemStack.ofItem(newFilter));
+    }
   }
 
   @override
@@ -49,7 +51,9 @@ class TrackObserverBlockEntity extends CreateBlockEntity {
     final pos = _pos;
     final props = lvl.info(pos)?.properties;
     if (props != null && props.containsKey('powered')) {
-      unawaited(lvl.setProps(pos, {'powered': '$shouldBePowered'}, neighbors: true));
+      unawaited(
+        lvl.setProps(pos, {'powered': '$shouldBePowered'}, neighbors: true),
+      );
     }
     final api = Tr.i.service<RedstoneDisplayApi>();
     if (api != null) unawaited(api.notifyGatherers(w, this.pos));

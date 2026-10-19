@@ -7,6 +7,7 @@ import '../core/config.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
 import '../core/registry_apply.dart';
+import '../manifest/canonical_order.dart';
 import '../modules.dart';
 import 'create_neoforge.dart';
 
@@ -66,7 +67,8 @@ final class CreatePlugin extends Plugin {
     // Phase 1: declare.
     final seen = <String>{};
     for (final module in _all) {
-      if (!seen.add(module.name)) throw StateError('Two modules are called ${module.name}');
+      if (!seen.add(module.name))
+        throw StateError('Two modules are called ${module.name}');
       if (!module.isEnabled(config)) {
         log.info('Module ${module.name} is disabled');
         continue;
@@ -75,37 +77,67 @@ final class CreatePlugin extends Plugin {
         module.register(core.registry);
         _active.add(module);
       } catch (e, s) {
-        log.error('Module ${module.name} failed to register, skipped', error: e, stackTrace: s);
+        log.error(
+          'Module ${module.name} failed to register, skipped',
+          error: e,
+          stackTrace: s,
+        );
         rethrow; // A half registered module would shift the ids of everything after it.
       }
     }
+    // The host ids must match the Java mod's registration order for a Create
+    // client to understand them.
+    applyCanonicalOrder(core.registry);
+
     for (final kind in RegistryKind.values) {
       final report = core.registry.reportOf(kind);
       if (!report.isClean) {
-        log.warn('${kind.name}: ${report.missing.length} canonical keys not registered, ${report.extra.length} not in the canonical order');
+        log.warn(
+          '${kind.name}: ${report.missing.length} canonical keys not registered, ${report.extra.length} not in the canonical order',
+        );
       }
     }
 
     // Phase 2: apply to the host, then the framework and the modules.
-    core.ids = await applyRegistry(core.registry, context, core.blockEntities, log, logIds: config.core.logRegistryIds);
+    core.ids = await applyRegistry(
+      core.registry,
+      context,
+      core.blockEntities,
+      log,
+      logIds: config.core.logRegistryIds,
+    );
     core.worlds.install(context);
     core.blockEntities.install(context);
-    core.savedData.install(context, saveIntervalTicks: config.core.saveIntervalTicks);
+    core.savedData.install(
+      context,
+      saveIntervalTicks: config.core.saveIntervalTicks,
+    );
     core.network.install(context);
 
     for (final module in _active) {
       try {
         module.onLoad(CreateContext(core, () => this.context, module.name));
       } catch (e, s) {
-        log.error('Module ${module.name} failed in onLoad', error: e, stackTrace: s);
+        log.error(
+          'Module ${module.name} failed in onLoad',
+          error: e,
+          stackTrace: s,
+        );
       }
     }
 
     if (config.core.neoforge) {
       try {
-        context.declareNeoForge(createNeoForgeDeclaration(core.registry, modVersion: config.core.modVersion));
+        context.declareNeoForge(
+          createNeoForgeDeclaration(
+            core.registry,
+            modVersion: config.core.modVersion,
+          ),
+        );
       } on HostException catch (e) {
-        log.error('Could not declare Create to the NeoForge handshake: ${e.message}');
+        log.error(
+          'Could not declare Create to the NeoForge handshake: ${e.message}',
+        );
         rethrow;
       }
     }
@@ -118,7 +150,11 @@ final class CreatePlugin extends Plugin {
         try {
           module.onServerLoaded(CreateRuntime(core, server, module.name));
         } catch (e, s) {
-          log.error('Module ${module.name} failed in onServerLoaded', error: e, stackTrace: s);
+          log.error(
+            'Module ${module.name} failed in onServerLoaded',
+            error: e,
+            stackTrace: s,
+          );
         }
       }
     });

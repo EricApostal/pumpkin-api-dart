@@ -27,7 +27,8 @@ class StackInfo {
     _damageable[key] = damageable;
   }
 
-  int maxStackOf(String key) => _maxStack[key] ?? (PackageStyles.styleOf(key) != null ? 1 : 64);
+  int maxStackOf(String key) =>
+      _maxStack[key] ?? (PackageStyles.styleOf(key) != null ? 1 : 64);
   bool damageableOf(String key) => _damageable[key] ?? false;
 }
 
@@ -39,8 +40,12 @@ final class StackWire {
   final String? Function(int id) componentNameOf;
   final StackInfo info;
 
-  StackWire({required this.items, required this.componentIdOf, required this.componentNameOf, StackInfo? info})
-    : info = info ?? StackInfo();
+  StackWire({
+    required this.items,
+    required this.componentIdOf,
+    required this.componentNameOf,
+    StackInfo? info,
+  }) : info = info ?? StackInfo();
 
   // -- stack <-> ItemStackData ----------------------------------------------------------------
 
@@ -65,7 +70,9 @@ final class StackWire {
         continue;
       }
       final logical = base64Decode(e.value);
-      final wire = PackageComponents.logical.contains(e.key) ? logicalToWire(e.key, logical) : Uint8List.fromList(logical);
+      final wire = PackageComponents.logical.contains(e.key)
+          ? logicalToWire(e.key, logical)
+          : Uint8List.fromList(logical);
       if (wire != null) added.add((cid, wire));
     }
     return ItemComponentPatch(added: added, removed: removed);
@@ -76,13 +83,19 @@ final class StackWire {
     if (d.isEmpty) return LStack.empty;
     final key = items.keyOf(d.itemId);
     if (key == null) return LStack.empty;
-    var s = LStack(key, d.count, maxStack: info.maxStackOf(key), damageable: info.damageableOf(key));
+    var s = LStack(
+      key,
+      d.count,
+      maxStack: info.maxStackOf(key),
+      damageable: info.damageableOf(key),
+    );
     final comps = <String, String>{};
     for (final (cid, bytes) in d.patch.added) {
       final name = componentNameOf(cid);
       if (name == null) continue;
       List<int>? value = bytes;
-      if (PackageComponents.logical.contains(name)) value = wireToLogical(name, bytes);
+      if (PackageComponents.logical.contains(name))
+        value = wireToLogical(name, bytes);
       if (value != null) comps[name] = base64Encode(value);
     }
     for (final cid in d.patch.removed) {
@@ -90,8 +103,15 @@ final class StackWire {
       if (name != null) comps[name] = removedComponent;
     }
     if (comps.isEmpty) return s;
-    s = LStack(key, d.count,
-        maxStack: s.maxStack, damageable: s.damageable, comps: Map.fromEntries(comps.entries.toList()..sort((a, b) => a.key.compareTo(b.key))));
+    s = LStack(
+      key,
+      d.count,
+      maxStack: s.maxStack,
+      damageable: s.damageable,
+      comps: Map.fromEntries(
+        comps.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+      ),
+    );
     return s;
   }
 
@@ -123,15 +143,25 @@ final class StackWire {
     try {
       switch (name) {
         case PackageComponents.address:
-          return PacketBuffer.encode((w) => w.writeString(utf8.decode(logical)));
+          return PacketBuffer.encode(
+            (w) => w.writeString(utf8.decode(logical)),
+          );
         case PackageComponents.contents:
-          final inv = PackageItem.getContents(LStack('x', 1, comps: {PackageComponents.contents: base64Encode(logical)}));
+          final inv = PackageItem.getContents(
+            LStack(
+              'x',
+              1,
+              comps: {PackageComponents.contents: base64Encode(logical)},
+            ),
+          );
           return PacketBuffer.encode((w) => writeContents(w, inv.stacks));
         case PackageComponents.orderData:
           final data = PackageOrderDataMapper.fromJson(utf8.decode(logical));
           return PacketBuffer.encode((w) => writeOrderData(w, data));
         case PackageComponents.orderContext:
-          final ctx = PackageOrderWithCraftsMapper.fromJson(utf8.decode(logical));
+          final ctx = PackageOrderWithCraftsMapper.fromJson(
+            utf8.decode(logical),
+          );
           return PacketBuffer.encode((w) => writeOrderWithCrafts(w, ctx));
       }
     } on Object {
@@ -148,11 +178,15 @@ final class StackWire {
           return utf8.encode(PacketBuffer.decode(wire, (r) => r.readString()));
         case PackageComponents.contents:
           final slots = PacketBuffer.decode(wire, readContents);
-          return utf8.encode(jsonEncode([for (final s in slots) s.isEmpty ? null : s.toMap()]));
+          return utf8.encode(
+            jsonEncode([for (final s in slots) s.isEmpty ? null : s.toMap()]),
+          );
         case PackageComponents.orderData:
           return utf8.encode(PacketBuffer.decode(wire, readOrderData).toJson());
         case PackageComponents.orderContext:
-          return utf8.encode(PacketBuffer.decode(wire, readOrderWithCrafts).toJson());
+          return utf8.encode(
+            PacketBuffer.decode(wire, readOrderWithCrafts).toJson(),
+          );
       }
     } on Object {
       return null;
@@ -204,7 +238,10 @@ final class StackWire {
 
   List<BigStack> readOrder(PacketReader r) {
     final n = r.readVarInt();
-    return [for (var i = 0; i < n; i++) BigStack(readStack(r), 0)..count = r.readVarInt()];
+    return [
+      for (var i = 0; i < n; i++)
+        BigStack(readStack(r), 0)..count = r.readVarInt(),
+    ];
   }
 
   /// `PackageOrderWithCrafts.STREAM_CODEC`.
@@ -247,7 +284,14 @@ final class StackWire {
     final fragmentIndex = r.readInt();
     final isFinal = r.readBool();
     final context = r.readBool() ? readOrderWithCrafts(r) : null;
-    return PackageOrderData(orderId, linkIndex, isFinalLink, fragmentIndex, isFinal, context);
+    return PackageOrderData(
+      orderId,
+      linkIndex,
+      isFinalLink,
+      fragmentIndex,
+      isFinal,
+      context,
+    );
   }
 }
 

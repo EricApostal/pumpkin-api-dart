@@ -18,6 +18,7 @@ import '../common/pos.dart';
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
 import '../core/module.dart';
+import 'chain/chain_conveyor_port.dart';
 import 'items/item_data.dart';
 
 /// The last block click of a player (`playerUseBlock`): what the host's `placed` event does not
@@ -32,11 +33,19 @@ final class ClickContext {
   final Hand hand;
   final int tick;
 
-  const ClickContext(this.clickedPos, this.face, this.cursor, this.sneaking, this.hand, this.tick);
+  const ClickContext(
+    this.clickedPos,
+    this.face,
+    this.cursor,
+    this.sneaking,
+    this.hand,
+    this.tick,
+  );
 
   /// Whether this click placed a block at [pos] (the neighbour of the clicked block, or the
   /// clicked block itself when it was replaced).
-  bool placedAt(Pos pos) => clickedPos.relative(face) == pos || clickedPos == pos;
+  bool placedAt(Pos pos) =>
+      clickedPos.relative(face) == pos || clickedPos == pos;
 }
 
 /// The runtime of the conveyance module (set in `onLoad`; blocks, block entities and
@@ -44,7 +53,8 @@ final class ClickContext {
 final class ConveyanceRuntime {
   static ConveyanceRuntime? _instance;
 
-  static ConveyanceRuntime get i => _instance ?? (throw StateError('The conveyance module is not loaded'));
+  static ConveyanceRuntime get i =>
+      _instance ?? (throw StateError('The conveyance module is not loaded'));
 
   static bool get loaded => _instance != null;
 
@@ -69,23 +79,36 @@ final class ConveyanceRuntime {
   Logger get log => ctx.log;
   BlockEntityStore get store => ctx.blockEntities;
 
-  KineticNetworkService? get kinetics => ctx.services.find<KineticNetworkService>();
+  KineticNetworkService? get kinetics =>
+      ctx.services.find<KineticNetworkService>();
   CreateConfigs? get configs => ctx.services.find<CreateConfigs>();
   PayloadBus? get bus => ctx.services.find<PayloadBus>();
   CreateSounds? get sounds => ctx.services.find<CreateSounds>();
-  CreateAdvancements? get advancements => ctx.services.find<CreateAdvancements>();
+  CreateAdvancements? get advancements =>
+      ctx.services.find<CreateAdvancements>();
+
+  /// The package ports of the chain conveyors (provided by this module).
+  ChainConveyorPortRegistry get chainPorts =>
+      ctx.services.require<ChainConveyorPortRegistry>();
 
   // -- Config ----------------------------------------------------------------------------------
 
   int get maxBeltLength => configs?.server.kinetics.maxBeltLength.value ?? 20;
-  int get maxChainConveyorLength => configs?.server.kinetics.maxChainConveyorLength.value ?? 32;
-  int get maxEjectorDistance => configs?.server.kinetics.maxEjectorDistance.value ?? 32;
-  int get ejectorScanInterval => configs?.server.kinetics.ejectorScanInterval.value ?? 120;
-  int get fanBlockCheckRate => configs?.server.kinetics.fanBlockCheckRate.value ?? 30;
-  int get defaultExtractionTimer => configs?.server.logistics.defaultExtractionTimer.value ?? 8;
+  int get maxChainConveyorLength =>
+      configs?.server.kinetics.maxChainConveyorLength.value ?? 32;
+  int get maxEjectorDistance =>
+      configs?.server.kinetics.maxEjectorDistance.value ?? 32;
+  int get ejectorScanInterval =>
+      configs?.server.kinetics.ejectorScanInterval.value ?? 120;
+  int get fanBlockCheckRate =>
+      configs?.server.kinetics.fanBlockCheckRate.value ?? 30;
+  int get defaultExtractionTimer =>
+      configs?.server.logistics.defaultExtractionTimer.value ?? 8;
   int get vaultCapacity => configs?.server.logistics.vaultCapacity.value ?? 20;
-  int get chainConveyorCapacity => configs?.server.logistics.chainConveyorCapacity.value ?? 20;
-  int get brassTunnelTimer => configs?.server.logistics.brassTunnelTimer.value ?? 10;
+  int get chainConveyorCapacity =>
+      configs?.server.logistics.chainConveyorCapacity.value ?? 20;
+  int get brassTunnelTimer =>
+      configs?.server.logistics.brassTunnelTimer.value ?? 10;
 
   // -- World access ----------------------------------------------------------------------------
 
@@ -99,14 +122,18 @@ final class ConveyanceRuntime {
   }
 
   /// The block entity at [pos], or `null`.
-  CreateBlockEntity? beAt(String worldId, Pos pos) => store.at(worldId, pos.toBlockPos());
+  CreateBlockEntity? beAt(String worldId, Pos pos) =>
+      store.at(worldId, pos.toBlockPos());
 
-  T? typedAt<T extends CreateBlockEntity>(String worldId, Pos pos) => store.typed<T>(worldId, pos.toBlockPos());
+  T? typedAt<T extends CreateBlockEntity>(String worldId, Pos pos) =>
+      store.typed<T>(worldId, pos.toBlockPos());
 
   /// `BlockEntityBehaviour.get(world, pos, type)`.
-  T? behaviourAt<T extends BlockEntityBehaviour>(String worldId, Pos pos) => beAt(worldId, pos)?.getBehaviour<T>();
+  T? behaviourAt<T extends BlockEntityBehaviour>(String worldId, Pos pos) =>
+      beAt(worldId, pos)?.getBehaviour<T>();
 
-  bool posLoaded(String worldId, Pos pos) => worldOf(worldId)?.isLoaded(pos: pos.toBlockPos()) ?? false;
+  bool posLoaded(String worldId, Pos pos) =>
+      worldOf(worldId)?.isLoaded(pos: pos.toBlockPos()) ?? false;
 
   /// The click of [playerId] that placed a block at [pos] (consumed), or `null`.
   ClickContext? clickFor(Uuid? playerId, Pos pos) {
@@ -118,12 +145,19 @@ final class ConveyanceRuntime {
   }
 
   /// A player by uuid, or `null`.
-  Player? playerOf(Server server, Uuid? id) => id == null ? null : server.getPlayerByUuid(id: id);
+  Player? playerOf(Server server, Uuid? id) =>
+      id == null ? null : server.getPlayerByUuid(id: id);
 
   // -- Effects ---------------------------------------------------------------------------------
 
   /// Plays a Create sound by its `AllSoundEvents` name.
-  void playCreateSound(World world, Pos pos, String name, {double volume = 1, double pitch = 1}) {
+  void playCreateSound(
+    World world,
+    Pos pos,
+    String name, {
+    double volume = 1,
+    double pitch = 1,
+  }) {
     try {
       sounds?.playAtBlock(world, pos, name, volume: volume, pitch: pitch);
     } on Object catch (e) {
@@ -132,7 +166,14 @@ final class ConveyanceRuntime {
   }
 
   /// Plays a sound event at the block centre.
-  void playSound(World world, Pos pos, String sound, {double volume = 1, double pitch = 1, SoundCategory category = SoundCategory.blocks}) {
+  void playSound(
+    World world,
+    Pos pos,
+    String sound, {
+    double volume = 1,
+    double pitch = 1,
+    SoundCategory category = SoundCategory.blocks,
+  }) {
     world.playCustomSound(
       soundName: sound,
       category: category,
@@ -166,19 +207,34 @@ final class ConveyanceRuntime {
   void destroyBlock(String worldId, Pos pos, {bool drop = true}) {
     final w = worldOf(worldId);
     if (w == null) return;
-    fire('Breaking the block at $pos', () => w.breakBlock(pos.toBlockPos(), drop: drop));
+    fire(
+      'Breaking the block at $pos',
+      () => w.breakBlock(pos.toBlockPos(), drop: drop),
+    );
   }
 
   /// Writes [state] at [pos] (flags default to a normal block change).
-  Future<void> setState(String worldId, Pos pos, BState state, {Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal}) async {
+  Future<void> setState(
+    String worldId,
+    Pos pos,
+    BState state, {
+    Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal,
+  }) async {
     final w = worldOf(worldId);
     if (w == null) return;
     await setBlockState(w, pos, state, flags: flags);
   }
 
   /// Fire-and-forget [setState].
-  void setStateLater(String worldId, Pos pos, BState state, {Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal}) =>
-      fire('Setting the state at $pos', () => setState(worldId, pos, state, flags: flags));
+  void setStateLater(
+    String worldId,
+    Pos pos,
+    BState state, {
+    Set<BlockFlagsFlag> flags = BlockUpdateFlags.normal,
+  }) => fire(
+    'Setting the state at $pos',
+    () => setState(worldId, pos, state, flags: flags),
+  );
 }
 
 /// `ProperWaterloggedBlock.withWater`: [state] waterlogged when [pos] holds a water source.
@@ -201,7 +257,8 @@ Uuid uuidFromIntArray(List<int> a) {
 }
 
 /// `Containers.dropItemStack` position helper: the centre of a block plus an offset.
-(double, double, double) blockCenter(Pos p, [double dy = 0]) => (p.$1 + 0.5, p.$2 + 0.5 + dy, p.$3 + 0.5);
+(double, double, double) blockCenter(Pos p, [double dy = 0]) =>
+    (p.$1 + 0.5, p.$2 + 0.5 + dy, p.$3 + 0.5);
 
 /// A random double generator shared by the blocks.
 final math.Random sharedRandom = math.Random();

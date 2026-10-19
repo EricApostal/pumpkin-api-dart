@@ -18,8 +18,14 @@ import 'item_requirement.dart';
 import 'schematic_printer.dart';
 import 'upload_receiver.dart';
 
-BlockBox _box16(double x1, double y1, double z1, double x2, double y2, double z2) =>
-    BlockBox(x1 / 16, y1 / 16, z1 / 16, x2 / 16, y2 / 16, z2 / 16);
+BlockBox _box16(
+  double x1,
+  double y1,
+  double z1,
+  double x2,
+  double y2,
+  double z2,
+) => BlockBox(x1 / 16, y1 / 16, z1 / 16, x2 / 16, y2 / 16, z2 / 16);
 
 /// Rotates a box clockwise around Y by [turns] quarter turns.
 BlockBox _rotateBox(BlockBox b, int turns) {
@@ -44,12 +50,19 @@ BlockShape _tableSelection(Direction facing) {
     _ => 3,
   };
   return BlockShape.boxes([
-    for (final b in [_box16(4, 0, 4, 12, 12, 12), _box16(0, 11, 2, 16, 14, 14)]) _rotateBox(b, turns),
+    for (final b in [_box16(4, 0, 4, 12, 12, 12), _box16(0, 11, 2, 16, 14, 14)])
+      _rotateBox(b, turns),
   ]);
 }
 
-final BlockShape _tablePole = BlockShape.boxes([_box16(4, 0, 4, 12, 2, 12), _box16(5, 2, 5, 11, 14, 11)]);
-final BlockShape _cannonShape = BlockShape.boxes([_box16(1, 0, 1, 15, 8, 15), _box16(0.5, 8, 0.5, 15.5, 11, 15.5)]);
+final BlockShape _tablePole = BlockShape.boxes([
+  _box16(4, 0, 4, 12, 2, 12),
+  _box16(5, 2, 5, 11, 14, 11),
+]);
+final BlockShape _cannonShape = BlockShape.boxes([
+  _box16(1, 0, 1, 15, 8, 15),
+  _box16(0.5, 8, 0.5, 15.5, 11, 15.5),
+]);
 
 /// Schematics: provides [SchematicHooks] (and so `SchematicRequirements`) and [SchematicUploadReceiver].
 final class SchematicsModule extends CreateModule {
@@ -58,9 +71,18 @@ final class SchematicsModule extends CreateModule {
 
   @override
   void register(CreateRegistry registry) {
-    registry.item(const ItemRegistration(key: 'create:empty_schematic', maxStackSize: 1));
-    registry.item(const ItemRegistration(key: 'create:schematic_and_quill', maxStackSize: 1));
-    registry.item(const ItemRegistration(key: 'create:schematic', maxStackSize: 1));
+    registry.item(
+      const ItemRegistration(key: 'create:empty_schematic', maxStackSize: 1),
+    );
+    registry.item(
+      const ItemRegistration(
+        key: 'create:schematic_and_quill',
+        maxStackSize: 1,
+      ),
+    );
+    registry.item(
+      const ItemRegistration(key: 'create:schematic', maxStackSize: 1),
+    );
 
     registry.block(
       manifestBlock(
@@ -69,14 +91,23 @@ final class SchematicsModule extends CreateModule {
         selectionShape: _tableSelection(Direction.south),
         shapeRules: [
           for (final d in Direction.horizontals)
-            ShapeRule(when: {'facing': d.serializedName}, collisionShape: _tablePole, selectionShape: _tableSelection(d)),
+            ShapeRule(
+              when: {'facing': d.serializedName},
+              collisionShape: _tablePole,
+              selectionShape: _tableSelection(d),
+            ),
         ],
-        placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
+        placement: const [
+          PlacementRule.horizontalFacing('facing', opposite: true),
+        ],
         blockEntityType: tableBlockEntityType,
         behavior: BlockBehavior(
           onUse: (server, e) async {
             final rt = SchematicsRuntime.instance;
-            final be = rt.entityAt<SchematicTableBlockEntity>(e.targetWorld.getId(), e.pos.toPos());
+            final be = rt.entityAt<SchematicTableBlockEntity>(
+              e.targetWorld.getId(),
+              e.pos.toPos(),
+            );
             if (be == null) return BlockUseResult.pass;
             await openTableMenu(rt, e.player, be);
             return BlockUseResult.success;
@@ -93,22 +124,36 @@ final class SchematicsModule extends CreateModule {
         behavior: BlockBehavior(
           onPlaced: (server, e) {
             final rt = SchematicsRuntime.instance;
-            final be = rt.entityAt<SchematicannonBlockEntity>(e.targetWorld.getId(), e.pos.toPos());
+            final be = rt.entityAt<SchematicannonBlockEntity>(
+              e.targetWorld.getId(),
+              e.pos.toPos(),
+            );
             final id = e.player;
             final player = id == null ? null : server.getPlayerByUuid(id: id);
             if (be != null && player != null) {
               // (-floor((yaw + (sneaking ? 180 : 0)) * 16 / 360 + 0.5) & 15) * 360 / 16
-              final yaw = player.getYaw() + (player.asEntity().isSneaking() ? 180.0 : 0.0);
-              be.core.defaultYaw = ((-((yaw * 16.0 / 360.0 + 0.5).floor()) & 15) * 360.0 / 16.0);
+              final yaw =
+                  player.getYaw() +
+                  (player.asEntity().isSneaking() ? 180.0 : 0.0);
+              be.core.defaultYaw =
+                  ((-((yaw * 16.0 / 360.0 + 0.5).floor()) & 15) * 360.0 / 16.0);
               be.sendData();
             }
           },
           onNeighborUpdate: (server, e) {
-            SchematicsRuntime.instance.entityAt<SchematicannonBlockEntity>(e.targetWorld.getId(), e.pos.toPos())?.neighbourChanged();
+            SchematicsRuntime.instance
+                .entityAt<SchematicannonBlockEntity>(
+                  e.targetWorld.getId(),
+                  e.pos.toPos(),
+                )
+                ?.neighbourChanged();
           },
           onUse: (server, e) async {
             final rt = SchematicsRuntime.instance;
-            final be = rt.entityAt<SchematicannonBlockEntity>(e.targetWorld.getId(), e.pos.toPos());
+            final be = rt.entityAt<SchematicannonBlockEntity>(
+              e.targetWorld.getId(),
+              e.pos.toPos(),
+            );
             if (be == null) return BlockUseResult.pass;
             await openCannonMenu(rt, e.player, be);
             return BlockUseResult.success;
@@ -116,16 +161,20 @@ final class SchematicsModule extends CreateModule {
         ),
       ),
     );
-    registry.blockEntityType(BlockEntityTypeSpec(
-      key: tableBlockEntityType,
-      validBlocks: ['create:schematic_table'],
-      create: SchematicTableBlockEntity.new,
-    ));
-    registry.blockEntityType(BlockEntityTypeSpec(
-      key: cannonBlockEntityType,
-      validBlocks: ['create:schematicannon'],
-      create: SchematicannonBlockEntity.new,
-    ));
+    registry.blockEntityType(
+      BlockEntityTypeSpec(
+        key: tableBlockEntityType,
+        validBlocks: ['create:schematic_table'],
+        create: SchematicTableBlockEntity.new,
+      ),
+    );
+    registry.blockEntityType(
+      BlockEntityTypeSpec(
+        key: cannonBlockEntityType,
+        validBlocks: ['create:schematicannon'],
+        create: SchematicannonBlockEntity.new,
+      ),
+    );
   }
 
   @override
@@ -144,9 +193,21 @@ final class SchematicsModule extends CreateModule {
     hooks.requirements.blocks['create:belt'] = (state, nbt) {
       final required = <StackRequirement>[];
       final part = state['part'];
-      if (part != 'middle') required.add(const StackRequirement('create:shaft', 1, ItemUseType.consume));
-      if (part == 'start') required.add(const StackRequirement('create:belt_connector', 1, ItemUseType.consume));
-      return required.isEmpty ? ItemRequirement.none : ItemRequirement(required);
+      if (part != 'middle')
+        required.add(
+          const StackRequirement('create:shaft', 1, ItemUseType.consume),
+        );
+      if (part == 'start')
+        required.add(
+          const StackRequirement(
+            'create:belt_connector',
+            1,
+            ItemUseType.consume,
+          ),
+        );
+      return required.isEmpty
+          ? ItemRequirement.none
+          : ItemRequirement(required);
     };
     SchematicPrinter.entityTypeResolver = (nbt) {
       final parsed = BinaryNbt.read(nbt);
@@ -161,15 +222,31 @@ final class SchematicsModule extends CreateModule {
         ? const SchematicLimits()
         : SchematicLimits(
             maxSchematics: configs.server.schematics.maxSchematics.value,
-            maxTotalSchematicSize: configs.server.schematics.maxTotalSchematicSize.value,
-            maxSchematicPacketSize: configs.server.schematics.maxSchematicPacketSize.value,
-            schematicIdleTimeout: configs.server.schematics.schematicIdleTimeout.value,
+            maxTotalSchematicSize:
+                configs.server.schematics.maxTotalSchematicSize.value,
+            maxSchematicPacketSize:
+                configs.server.schematics.maxSchematicPacketSize.value,
+            schematicIdleTimeout:
+                configs.server.schematics.schematicIdleTimeout.value,
           );
-    final receiver = SchematicUploadReceiver(store, limits: limits, warn: ctx.log.warn, info: ctx.log.info);
-    configs?.server.schematics.maxSchematics.onChange((v) => receiver.limits = _limits(configs));
-    configs?.server.schematics.maxTotalSchematicSize.onChange((v) => receiver.limits = _limits(configs));
-    configs?.server.schematics.maxSchematicPacketSize.onChange((v) => receiver.limits = _limits(configs));
-    configs?.server.schematics.schematicIdleTimeout.onChange((v) => receiver.limits = _limits(configs));
+    final receiver = SchematicUploadReceiver(
+      store,
+      limits: limits,
+      warn: ctx.log.warn,
+      info: ctx.log.info,
+    );
+    configs?.server.schematics.maxSchematics.onChange(
+      (v) => receiver.limits = _limits(configs),
+    );
+    configs?.server.schematics.maxTotalSchematicSize.onChange(
+      (v) => receiver.limits = _limits(configs),
+    );
+    configs?.server.schematics.maxSchematicPacketSize.onChange(
+      (v) => receiver.limits = _limits(configs),
+    );
+    configs?.server.schematics.schematicIdleTimeout.onChange(
+      (v) => receiver.limits = _limits(configs),
+    );
 
     final rt = SchematicsRuntime.instance = SchematicsRuntime(
       ctx: ctx,
@@ -194,16 +271,23 @@ final class SchematicsModule extends CreateModule {
   /// `Block.asItem()` from the host's block registry.
   static final Map<String, String?> _items = {};
 
-  static String? _itemOfBlock(String blockKey) => _items.putIfAbsent(blockKey, () {
-    final b = BlockRegistry.of(blockKey);
-    if (b == null) return null;
-    if (b.itemId == 0 && blockKey != 'minecraft:air') {
-      // Create's own blocks have their item under the same key.
-      return blockKey.startsWith('create:') ? blockKey : null;
-    }
-    return ItemRegistries.host.keyOf(b.itemId);
-  });
+  static String? _itemOfBlock(String blockKey) =>
+      _items.putIfAbsent(blockKey, () {
+        final b = BlockRegistry.of(blockKey);
+        if (b == null) return null;
+        if (b.itemId == 0 && blockKey != 'minecraft:air') {
+          // Create's own blocks have their item under the same key.
+          return blockKey.startsWith('create:') ? blockKey : null;
+        }
+        return ItemRegistries.host.keyOf(b.itemId);
+      });
 
   @override
-  void onUnload() => SchematicsRuntime.instance.receiver.shutdown();
+  void onUnload() {
+    try {
+      SchematicsRuntime.instance.receiver.shutdown();
+    } on Object {
+      // `onLoad` never ran (an earlier phase failed), so there is nothing to shut down.
+    }
+  }
 }

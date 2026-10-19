@@ -21,7 +21,6 @@ import 'carriage_contraption.dart';
 import 'carriage_entity_host.dart';
 import 'carriage_sync_data.dart';
 import 'contraption_data.dart';
-import 'train.dart';
 import 'train_level.dart';
 import 'travelling_point.dart';
 
@@ -60,7 +59,12 @@ class CarriageContraptionEntity {
   double xo = 0, yo = 0, zo = 0;
   double yaw = 0, pitch = 0, prevYaw = 0, prevPitch = 0;
 
-  CarriageContraptionEntity(this.host, this.level, this.position, {this.contraption}) {
+  CarriageContraptionEntity(
+    this.host,
+    this.level,
+    this.position, {
+    this.contraption,
+  }) {
     xo = position.$1;
     yo = position.$2;
     zo = position.$3;
@@ -80,13 +84,16 @@ class CarriageContraptionEntity {
 
   List<CarriagePassenger> getPassengers() => host.getPassengers();
 
-  Iterable<CarriagePassenger> getIndirectPassengers() => host.getIndirectPassengers();
+  Iterable<CarriagePassenger> getIndirectPassengers() =>
+      host.getIndirectPassengers();
 
   String? getControllingPlayer() => host.getControllingPlayer();
 
-  void addSittingPassenger(CarriagePassenger passenger, int seat) => host.addSittingPassenger(passenger, seat);
+  void addSittingPassenger(CarriagePassenger passenger, int seat) =>
+      host.addSittingPassenger(passenger, seat);
 
-  void alignPassenger(CarriagePassenger passenger) => host.alignPassenger(passenger);
+  void alignPassenger(CarriagePassenger passenger) =>
+      host.alignPassenger(passenger);
 
   bool isStalled() => host.isStalled();
 
@@ -128,7 +135,9 @@ class CarriageContraptionEntity {
     if (cc == null) return false;
     final facing = cc.getAssemblyDirection();
     final axis = facing.clockWise.axis;
-    final coord = axis.choose(localPos.$3, localPos.$2, localPos.$1) * -facing.axisDirection.step;
+    final coord =
+        axis.choose(localPos.$3, localPos.$2, localPos.$1) *
+        -facing.axisDirection.step;
     return coord >= min && coord <= max;
   }
 
@@ -182,7 +191,10 @@ class CarriageContraptionEntity {
     scheduled = train.runtime.getSchedule() != null;
     host.setScheduled(scheduled);
 
-    final shouldCarriageSyncThisTick = train.shouldCarriageSyncThisTick(level.gameTime, updateInterval);
+    final shouldCarriageSyncThisTick = train.shouldCarriageSyncThisTick(
+      level.gameTime,
+      updateInterval,
+    );
     if (shouldCarriageSyncThisTick && carriageData.isDirty()) {
       host.setCarriageData(carriageData);
       carriageData.setDirty(false);
@@ -218,7 +230,9 @@ class CarriageContraptionEntity {
         final entity = carriage.getDimensional(dimension).entity;
         final otherCC = entity?.contraption;
         if (entity == null || otherCC == null) break;
-        tick = _arrivalSoundReversed ? otherCC.soundQueue.lastTick() : otherCC.soundQueue.firstTick();
+        tick = _arrivalSoundReversed
+            ? otherCC.soundQueue.lastTick()
+            : otherCC.soundQueue.firstTick();
         if (tick != null) break;
       }
 
@@ -237,7 +251,11 @@ class CarriageContraptionEntity {
       final entity = c.getDimensional(dimension).entity;
       final otherCC = entity?.contraption;
       if (entity == null || otherCC == null) continue;
-      keepTicking |= otherCC.soundQueue.tick(entity, _arrivalSoundTicks, _arrivalSoundReversed);
+      keepTicking |= otherCC.soundQueue.tick(
+        entity,
+        _arrivalSoundTicks,
+        _arrivalSoundReversed,
+      );
     }
 
     if (!keepTicking) {
@@ -280,9 +298,12 @@ class CarriageContraptionEntity {
     }
   }
 
-  Txt getContraptionName() => _carriage?.train?.name ?? Txt.translate('create.train');
+  Txt getContraptionName() =>
+      _carriage?.train?.name ?? Txt.translate('create.train');
 
-  Txt getDisplayName() => _carriage == null ? Txt.translate('create.train') : _carriage!.train!.name;
+  Txt getDisplayName() => _carriage == null
+      ? Txt.translate('create.train')
+      : _carriage!.train!.name;
 
   /// `checkConductors()`: which sides have a conductor (blaze burner or a seated conductor).
   Couple<bool> checkConductors() {
@@ -313,7 +334,8 @@ class CarriageContraptionEntity {
     if (carriage.train!.derailed) return false;
 
     final train = carriage.train!;
-    if (train.runtime.getSchedule() != null && !train.runtime.paused) train.status.manualControls();
+    if (train.runtime.getSchedule() != null && !train.runtime.paused)
+      train.status.manualControls();
     train.navigation.cancelNavigation();
     train.runtime.paused = true;
     train.navigation.waitingForSignal = null;
@@ -326,13 +348,22 @@ class CarriageContraptionEntity {
 
   /// `control(controlsLocalPos, heldControls, player)`: the held keys are 0 forward, 1 back,
   /// 2 left, 3 right, 4 jump (navigate to the station ahead), 5 sprint.
-  bool control(Pos controlsLocalPos, Iterable<int> heldControlsIn, CarriagePassenger player) {
+  bool control(
+    Pos controlsLocalPos,
+    Iterable<int> heldControlsIn,
+    CarriagePassenger player,
+  ) {
     final carriage = _carriage;
     if (carriage == null) return false;
     final train = carriage.train!;
     if (train.derailed) return false;
     if (player.isSpectator) return false;
-    if (!host.canInteractWithBlock(player.uuid, VecHelper.getCenterOf(controlsLocalPos), 8)) return false;
+    if (!host.canInteractWithBlock(
+      player.uuid,
+      VecHelper.getCenterOf(controlsLocalPos),
+      8,
+    ))
+      return false;
     final heldControls = heldControlsIn.toList();
     if (heldControls.contains(5)) return false;
 
@@ -369,13 +400,17 @@ class CarriageContraptionEntity {
     if (currentStation != null && spaceDown) {
       _sendPrompt(
         player,
-        Txt.translate('create.train.arrived_at', [Txt.literal(currentStation.name).withColor(0x704630)]).toJson(),
+        Txt.translate('create.train.arrived_at', [
+          Txt.literal(currentStation.name).withColor(0x704630),
+        ]).toJson(),
         false,
       );
       return true;
     }
 
-    if (train.speedBeforeStall != null && targetSpeed != 0 && _signum(train.speedBeforeStall!) != _signum(targetSpeed.toDouble())) {
+    if (train.speedBeforeStall != null &&
+        targetSpeed != 0 &&
+        _signum(train.speedBeforeStall!) != _signum(targetSpeed.toDouble())) {
       train.cancelStall();
     }
 
@@ -383,7 +418,9 @@ class CarriageContraptionEntity {
       _stationMessage = false;
       _sendPrompt(
         player,
-        Txt.translate('create.train.departing_from', [Txt.literal(currentStation.name).withColor(0x704630)]).toJson(),
+        Txt.translate('create.train.departing_from', [
+          Txt.literal(currentStation.name).withColor(0x704630),
+        ]).toJson(),
         false,
       );
     }
@@ -394,7 +431,8 @@ class CarriageContraptionEntity {
         if (!spaceDown) nav.cancelNavigation();
         if (spaceDown) {
           final f = nav.distanceToDestination / _navDistanceTotal;
-          final progress = (clampNum(1 - ((1 - f) * (1 - f)), 0.0, 1.0) * 30).toInt();
+          final progress = (clampNum(1 - ((1 - f) * (1 - f)), 0.0, 1.0) * 30)
+              .toInt();
           final arrived = progress == 0;
           final whiteComponent = Txt.literal('|' * progress);
           final greenComponent = Txt.literal('|' * (30 - progress));
@@ -402,19 +440,28 @@ class CarriageContraptionEntity {
           const fromColor = 0x00FFC244;
           const toColor = 0x00529915;
 
-          final mixedColor = mixColors(toColor, fromColor, toFloat(progress / 30.0));
+          final mixedColor = mixColors(
+            toColor,
+            fromColor,
+            toFloat(progress / 30.0),
+          );
           final targetColor = arrived ? toColor : 0x00544D45;
 
-          final component = greenComponent.withColor(mixedColor).append(whiteComponent.withColor(targetColor));
+          final component = greenComponent
+              .withColor(mixedColor)
+              .append(whiteComponent.withColor(targetColor));
           _sendPrompt(player, component.toJson(), true);
           train.manualTick = true;
           return true;
         }
       }
 
-      final directedSpeed = targetSpeed != 0 ? targetSpeed.toDouble() : train.speed;
+      final directedSpeed = targetSpeed != 0
+          ? targetSpeed.toDouble()
+          : train.speed;
       final lookAhead = nav.findNearestApproachable(
-        !train.doubleEnded || (directedSpeed != 0 ? directedSpeed > 0 : !inverted),
+        !train.doubleEnded ||
+            (directedSpeed != 0 ? directedSpeed > 0 : !inverted),
       );
 
       if (lookAhead != null) {
@@ -435,19 +482,24 @@ class CarriageContraptionEntity {
         ? SteerDirection.right
         : (targetSteer > 0 ? SteerDirection.left : SteerDirection.none);
 
-    var topSpeed = train.maxSpeed() * toFloat(TrainSettings.current.manualTrainSpeedModifier);
+    var topSpeed =
+        train.maxSpeed() *
+        toFloat(TrainSettings.current.manualTrainSpeedModifier);
     final cappedTopSpeed = topSpeed * train.throttle;
 
     final leadingEdge = carriage.getLeadingPoint().edge;
     final trailingEdge = carriage.getTrailingPoint().edge;
-    if (leadingEdge != null && leadingEdge.isTurn() || trailingEdge != null && trailingEdge.isTurn()) {
+    if (leadingEdge != null && leadingEdge.isTurn() ||
+        trailingEdge != null && trailingEdge.isTurn()) {
       topSpeed = train.maxTurnSpeed();
     }
 
     if (slow) topSpeed /= 4;
     train.targetSpeed = math.min(topSpeed, cappedTopSpeed) * targetSpeed;
 
-    final counteringAcceleration = (_signum(targetSpeed.toDouble()) - _signum(train.speed)).abs() > toFloat(1.5);
+    final counteringAcceleration =
+        (_signum(targetSpeed.toDouble()) - _signum(train.speed)).abs() >
+        toFloat(1.5);
 
     if (slow && !counteringAcceleration) train.backwardsDriver = player.uuid;
 
@@ -471,10 +523,14 @@ class CarriageContraptionEntity {
   }
 
   void _sendPrompt(CarriagePassenger player, Object textJson, bool shadow) {
-    if (player.isPlayer) TrainFx.effects.sendPrompt(player.uuid, textJson, shadow);
+    if (player.isPlayer)
+      TrainFx.effects.sendPrompt(player.uuid, textJson, shadow);
   }
 
-  void _displayApproachStationMessage(CarriagePassenger player, GlobalStation station) {
+  void _displayApproachStationMessage(
+    CarriagePassenger player,
+    GlobalStation station,
+  ) {
     _sendPrompt(player, {
       'translate': 'create.contraption.controls.approach_station',
       'with': [

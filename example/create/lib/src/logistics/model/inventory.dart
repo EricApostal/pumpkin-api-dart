@@ -44,9 +44,11 @@ class MemoryInv implements ItemInv {
   /// Called after a change (`onContentsChanged`).
   void Function(int slot)? onChanged;
 
-  MemoryInv(int size, {this.limit = 64, this.validator}) : stacks = List.filled(size, LStack.empty, growable: false);
+  MemoryInv(int size, {this.limit = 64, this.validator})
+    : stacks = List.filled(size, LStack.empty, growable: false);
 
-  MemoryInv.of(List<LStack> contents, {this.limit = 64, this.validator}) : stacks = List.of(contents, growable: false);
+  MemoryInv.of(List<LStack> contents, {this.limit = 64, this.validator})
+    : stacks = List.of(contents, growable: false);
 
   @override
   int get slots => stacks.length;
@@ -67,10 +69,12 @@ class MemoryInv implements ItemInv {
   Future<int> slotLimit(int slot) async => limit;
 
   @override
-  Future<bool> isValid(int slot, LStack stack) async => validator?.call(slot, stack) ?? true;
+  Future<bool> isValid(int slot, LStack stack) async =>
+      validator?.call(slot, stack) ?? true;
 
   @override
-  Future<LStack> extract(int slot, int amount, {bool simulate = false}) async => extractNow(slot, amount, simulate: simulate);
+  Future<LStack> extract(int slot, int amount, {bool simulate = false}) async =>
+      extractNow(slot, amount, simulate: simulate);
 
   /// Synchronous [extract].
   LStack extractNow(int slot, int amount, {bool simulate = false}) {
@@ -93,7 +97,11 @@ class MemoryInv implements ItemInv {
   }
 
   @override
-  Future<LStack> insert(int slot, LStack stack, {bool simulate = false}) async => insertNow(slot, stack, simulate: simulate);
+  Future<LStack> insert(
+    int slot,
+    LStack stack, {
+    bool simulate = false,
+  }) async => insertNow(slot, stack, simulate: simulate);
 
   /// Synchronous [insert].
   LStack insertNow(int slot, LStack stack, {bool simulate = false}) {
@@ -111,7 +119,9 @@ class MemoryInv implements ItemInv {
       if (existing.isEmpty) {
         stacks[slot] = reachedLimit ? stack.withCount(cap) : stack;
       } else {
-        stacks[slot] = existing.withCount(existing.count + (reachedLimit ? cap : stack.count));
+        stacks[slot] = existing.withCount(
+          existing.count + (reachedLimit ? cap : stack.count),
+        );
       }
       onChanged?.call(slot);
     }
@@ -119,7 +129,10 @@ class MemoryInv implements ItemInv {
   }
 
   /// `ItemHelper.getNonEmptyStacks`.
-  List<LStack> nonEmpty() => [for (final s in stacks) if (s.isNotEmpty) s];
+  List<LStack> nonEmpty() => [
+    for (final s in stacks)
+      if (s.isNotEmpty) s,
+  ];
 
   /// `TransferUtil.insertItemStacked` on memory.
   LStack insertStackedNow(LStack stack, {bool simulate = false}) {
@@ -143,9 +156,14 @@ class MemoryInv implements ItemInv {
 
 /// `TransferUtil.insertItemStacked` / `ResourceHandlerUtil.insertStacking`: fills the slots that
 /// already hold the item first, then the empty ones. Returns the remainder.
-Future<LStack> insertStacked(ItemInv inv, LStack stack, {bool simulate = false}) async {
+Future<LStack> insertStacked(
+  ItemInv inv,
+  LStack stack, {
+  bool simulate = false,
+}) async {
   if (stack.isEmpty) return stack;
-  if (inv is StackedInserter) return (inv as StackedInserter).insertAnywhere(stack, simulate: simulate);
+  if (inv is StackedInserter)
+    return (inv as StackedInserter).insertAnywhere(stack, simulate: simulate);
   var rest = stack;
   for (var pass = 0; pass < 2 && rest.isNotEmpty; pass++) {
     for (var slot = 0; slot < inv.slots && rest.isNotEmpty; slot++) {
@@ -158,7 +176,9 @@ Future<LStack> insertStacked(ItemInv inv, LStack stack, {bool simulate = false})
 }
 
 /// A coherent view of an inventory used for one pass of the logic: all stacks read once.
-Future<List<LStack>> readAll(ItemInv inv) async => [for (var i = 0; i < inv.slots; i++) await inv.stackAt(i)];
+Future<List<LStack>> readAll(ItemInv inv) async => [
+  for (var i = 0; i < inv.slots; i++) await inv.stackAt(i),
+];
 
 // ------------------------------------------------------------------------------------------------
 // InventoryIdentifier
@@ -184,7 +204,8 @@ final class SingleInventoryId extends InventoryIdentifier {
   bool contains(BlockFacePos face) => pos == face.$1;
 
   @override
-  bool operator ==(Object other) => other is SingleInventoryId && other.pos == pos;
+  bool operator ==(Object other) =>
+      other is SingleInventoryId && other.pos == pos;
 
   @override
   int get hashCode => pos.hashCode;
@@ -212,7 +233,10 @@ final class PairInventoryId extends InventoryIdentifier {
   bool contains(BlockFacePos face) => first == face.$1 || second == face.$1;
 
   @override
-  bool operator ==(Object other) => other is PairInventoryId && other.first == first && other.second == second;
+  bool operator ==(Object other) =>
+      other is PairInventoryId &&
+      other.first == first &&
+      other.second == second;
 
   @override
   int get hashCode => Object.hash(first, second);
@@ -228,7 +252,8 @@ final class BoundsInventoryId extends InventoryIdentifier {
   bool contains(BlockFacePos face) => bounds.isInside(face.$1);
 
   @override
-  bool operator ==(Object other) => other is BoundsInventoryId && other.bounds == bounds;
+  bool operator ==(Object other) =>
+      other is BoundsInventoryId && other.bounds == bounds;
 
   @override
   int get hashCode => bounds.hashCode;
@@ -246,7 +271,10 @@ final class MultiFaceInventoryId extends InventoryIdentifier {
 
   @override
   bool operator ==(Object other) =>
-      other is MultiFaceInventoryId && other.pos == pos && other.sides.length == sides.length && other.sides.containsAll(sides);
+      other is MultiFaceInventoryId &&
+      other.pos == pos &&
+      other.sides.length == sides.length &&
+      other.sides.containsAll(sides);
 
   @override
   int get hashCode => Object.hash(pos, Object.hashAllUnordered(sides));

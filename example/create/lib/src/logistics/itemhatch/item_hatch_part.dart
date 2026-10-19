@@ -1,0 +1,185 @@
+// The item hatch block and its block entity (`ItemHatchBlock`, `ItemHatchBlockEntity`): deposits
+// the player's items into the inventory behind it, filtered by its filter slot.
+import 'dart:async';
+
+import 'package:pumpkin_api/pumpkin_api.dart';
+
+import '../../api/util.dart' hide pos;
+import '../../core/block_entity.dart';
+import '../../core/blocks.dart';
+import '../../core/module.dart';
+import '../../core/registry.dart';
+import '../filter/filtering_behaviour.dart';
+import '../host/host_inventory.dart';
+import '../host/lg_block_entity.dart';
+import '../host/link_keys.dart';
+import '../host/lvl.dart';
+import '../host/player_items.dart';
+import '../host/runtime.dart';
+import '../logistics_part.dart';
+import '../model/inventory.dart';
+import '../model/stack.dart';
+
+/// `ItemHatchBlockEntity`: only the filter slot.
+class ItemHatchBlockEntity extends LgBlockEntity {
+  static const String type = 'create:item_hatch';
+
+  late FilteringBehaviour filtering;
+
+  final Map<String, dynamic> _state = {};
+
+  ItemHatchBlockEntity(super.worldId, super.pos) {
+    filtering = addBehaviour(FilteringBehaviour());
+  }
+
+  @override
+  Map<String, dynamic> get state => _state;
+
+  @override
+  void readState(Map<String, dynamic> map) {
+    _state
+      ..clear()
+      ..addAll(map);
+  }
+
+  @override
+  Map<String, dynamic> stateToMap() => {
+    'filter': filtering.filterItem.isEmpty
+        ? null
+        : filtering.filterItem.toJson(),
+  };
+
+  @override
+  void onLoad() {
+    super.onLoad();
+    final saved = state['filter'];
+    if (saved is String) filtering.setFilter(LStackMapper.fromJson(saved));
+  }
+
+  @override
+  void onRemoved() {
+    filtering.setFilter(LStack.empty);
+    super.onRemoved();
+  }
+}
+
+/// `ItemHatchBlock`.
+CreateBlock itemHatchBlock() => CreateBlock(
+  key: 'create:item_hatch',
+  properties: [
+    horizontalFacingProperty,
+    CreateProps.open,
+    CreateProps.waterlogged,
+  ],
+  hardness: 3,
+  blastResistance: 6,
+  requiresCorrectTool: true,
+  soundType: 'netherite_block',
+  blockEntityType: ItemHatchBlockEntity.type,
+  placement: const [PlacementRule.clickedFace('facing', opposite: true)],
+  behavior: BlockBehavior(onUse: _onUse, onScheduledTick: _onScheduledTick),
+);
+
+Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
+  final be = Lg.i.store.typed<ItemHatchBlockEntity>(
+    e.targetWorld.getId(),
+    e.pos,
+  );
+  if (be == null) return BlockUseResult.pass;
+  if (!e.withItem) return BlockUseResult.pass;
+
+  final info = BlockStates.info(e.stateIndex);
+  final facing =
+      Direction.byName(info?.properties['facing'] ?? 'north') ??
+      Direction.north;
+  final world = e.targetWorld;
+  final targetPos = e.pos.toPos().relative(facing);
+  final targetInv = hostInvAt(world, targetPos.toBlockPos(), Lg.i.io);
+  if (targetInv == null) return BlockUseResult.pass;
+
+  final inventory = playerInventory(e.player);
+  final depositInHand = !e.sneaking;
+  final selected = e.player.getSelectedSlot();
+  var anyInserted = false;
+
+  for (var slot = 0; slot < inventory.getSize(); slot++) {
+    final isHotbar = slot < 9;
+    if (depositInHand != isHotbar) continue;
+    if (depositInHand && slot != selected) continue;
+
+    final hostStack = inventory.getItem(slot: slot);
+    if (hostStack == null) continue;
+    final stack = await Lg.i.read(hostStack);
+    if (stack.isEmpty) continue;
+
+    if (be.filtering.filterItem.isNotEmpty && !be.filtering.test(stack))
+      continue;
+
+    final remainder = await insertStacked(targetInv, stack, simulate: true);
+    if (remainder.count == stack.count) continue;
+
+    final toInsert = stack.withCount(stack.count - remainder.count);
+    final removed = await inventory.removeItem(slot: slot);
+    final rest = removed == null ? LStack.empty : await Lg.i.read(removed);
+    final leftover = await insertStacked(targetInv, toInsert);
+    anyInserted = true;
+    if (leftover.isNotEmpty) {
+      // Edge case: the handler accepted less than the simulation promised.
+      final host = await Lg.i.write(rest.withCount(leftover.count));
+      if (host != null) await inventory.setItem(slot: slot, item: host);
+    } else if (rest.count > toInsert.count) {
+      final host = await Lg.i.write(
+        rest.withCount(rest.count - toInsert.count),
+      );
+      if (host != null) await inventory.setItem(slot: slot, item: host);
+    }
+  }
+
+  if (!anyInserted) {
+    inventory.dispose();
+    return BlockUseResult.success;
+  }
+
+  await Lvl(world).setProps(e.pos.toPos(), {'open': 'true'}, neighbors: true);
+  world.scheduleBlockTick(
+    pos: e.pos,
+    delayTicks: 10,
+    priority: TickPriority.normal,
+  );
+  inventory.dispose();
+  return BlockUseResult.success;
+}
+
+Future<void> _onScheduledTick(Server server, CustomBlockTickEventData e) async {
+  final info = BlockStates.info(e.stateIndex);
+  if (info?.properties['open'] != 'true') return;
+  await e.targetWorld.setBlockState(
+    pos: e.pos,
+    state: BlockStates.setValues(e.stateIndex, {'open': 'false'}),
+    updateFlags: BlockUpdateFlags.clientsOnly,
+  );
+}
+
+/// The `item_hatch` part.
+final class ItemHatchPart extends LogisticsPart {
+  @override
+  String get name => 'itemhatch';
+
+  @override
+  void register(CreateRegistry registry) {
+    registry.block(itemHatchBlock());
+    registry.blockEntityType(
+      const BlockEntityTypeSpec(
+        key: ItemHatchBlockEntity.type,
+        validBlocks: ['create:item_hatch'],
+        create: ItemHatchBlockEntity.new,
+        tickInterval: 1,
+      ),
+    );
+  }
+
+  @override
+  void onLoad(CreateContext ctx, LgRuntime rt) {
+    unawaited(Future<void>.value());
+  }
+}

@@ -1,8 +1,12 @@
 import 'content/content_module.dart';
+import 'contraptions/contraptions_module.dart';
+import 'conveyance/conveyance_module.dart';
 import 'core/module.dart';
+import 'fluids/fluids_module.dart';
 import 'infrastructure/infrastructure_module.dart';
 import 'kinetics/kinetics_module.dart';
 import 'logistics/logistics_module.dart';
+import 'trains/trains_module.dart';
 import 'decoration/decoration_module.dart';
 import 'equipment/equipment_module.dart';
 import 'modules/datapack_module.dart';
@@ -21,16 +25,15 @@ final List<CreateModule> allModules = [
   ContentModule(), // damage types, enchantments, sounds, particles, components, tags, advancements; services
   SmokeTestModule(), // framework smoke test, active with core.debug_smoke_test
   KineticsModule(), // kinetic network: shafts, cogwheels, gearboxes, motors, gauges, water wheels, ...
+  FluidsModule(), // pipes, pumps, tanks, spouts, drains, hose pulleys, potions; boiler source for kinetics
   ProcessingModule(), // processing machines: crusher, press, mixer, basin, saw, fan, crafter, deployer, arm, ...; recipes
   LogisticsModule(), // packages and stock: packager, ports, stock ticker, factory gauge, table cloth, filters
-  // FluidsModule(),
-  // ContraptionsModule(),
-  // TrainsModule(),
+  ConveyanceModule(), // belts, chain conveyors, chutes, funnels, tunnels, vaults, crates, depots
+  ContraptionsModule(), // contraption assembly/entities, actors (harvester, plough, seat, ...), actuators (bearings, pistons, ...)
+  TrainsModule(), // track graph, signals, stations, schedules, trains and carriages
   RedstoneModule(), // redstone links, controllers, diodes, display links, nixie tubes, observers, ...
   EquipmentModule(), // wrench, zapper, symmetry wand, potato cannon, armor, toolbox, bells, blueprint, clipboard
   DecorationModule(),
   SchematicsModule(), // schematic table, schematicannon, uploads, schematic API hooks
-  // WorldgenModule(),
-  // ContentModule(),
   DatapackModule(), // ships the data pack (recipes, loot tables, advancements, tags)
 ];

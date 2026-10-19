@@ -4,11 +4,10 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../common/host_bridge.dart';
-import '../../common/pos.dart';
+import '../../common/pos.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../graph/edge_point_type.dart';
 import '../support/level.dart';
-import '../support/runtime.dart';
 import '../track/track_targeting_behaviour.dart';
 import 'signal_boundary.dart';
 import 'signal_types.dart';
@@ -26,7 +25,9 @@ class SignalBlockEntity extends CreateBlockEntity {
   bool lastReportedPower = false;
 
   SignalBlockEntity(super.worldId, super.pos) {
-    edgePoint = addBehaviour(TrackTargetingBehaviour<SignalBoundary>(EdgePointType.SIGNAL));
+    edgePoint = addBehaviour(
+      TrackTargetingBehaviour<SignalBoundary>(EdgePointType.SIGNAL),
+    );
   }
 
   Pos get _pos => pos.toPos();
@@ -43,7 +44,10 @@ class SignalBlockEntity extends CreateBlockEntity {
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
     _state = readEnumByName(tag.getString('State') ?? '', SignalState.values);
-    _overlay = readEnumByName(tag.getString('Overlay') ?? '', OverlayState.values);
+    _overlay = readEnumByName(
+      tag.getString('Overlay') ?? '',
+      OverlayState.values,
+    );
     lastReportedPower = tag.getBool('Power') ?? false;
   }
 
@@ -82,7 +86,11 @@ class SignalBlockEntity extends CreateBlockEntity {
       final stateType = SignalType.bySerializedName(props['type']);
       final targetType = boundary.getTypeFor(_pos);
       if (stateType != targetType) {
-        spawn(() => lvl.setProps(_pos, {'type': targetType.serializedName}, neighbors: true));
+        spawn(
+          () => lvl.setProps(_pos, {
+            'type': targetType.serializedName,
+          }, neighbors: true),
+        );
       }
     }
 
@@ -108,7 +116,8 @@ class SignalBlockEntity extends CreateBlockEntity {
     if (_state == state) return;
     if (state == SignalState.RED && _switchToRedAfterTrainEntered > 0) return;
     _state = state;
-    _switchToRedAfterTrainEntered = state == SignalState.GREEN || state == SignalState.YELLOW ? 15 : 0;
+    _switchToRedAfterTrainEntered =
+        state == SignalState.GREEN || state == SignalState.YELLOW ? 15 : 0;
     notifyUpdate();
   }
 

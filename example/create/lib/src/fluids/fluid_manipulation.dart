@@ -20,7 +20,7 @@ import 'pipe_blocks.dart';
 /// What the manipulation behaviours need of their block entity.
 abstract interface class ManipulationHost {
   /// The world, `null` while it is unloaded.
-  FluidWorld? get world;
+  FluidWorld? get fluidWorld;
 
   /// `blockEntity.getBlockPos()`.
   Pos get hostPos;
@@ -64,7 +64,7 @@ abstract class FluidManipulation {
     setValidationTimer();
   }
 
-  FluidWorld get level => host.world!;
+  FluidWorld get level => host.fluidWorld!;
 
   bool get isInfinite => infinite;
 
@@ -81,11 +81,11 @@ abstract class FluidManipulation {
 
   int setLongValidationTimer() => revalidateIn = validationTimer() * 2;
 
-  int maxRange() => host.world?.config.hosePulleyRange ?? 128;
+  int maxRange() => host.fluidWorld?.config.hosePulleyRange ?? 128;
 
-  int maxBlocks() => host.world?.config.hosePulleyBlockThreshold ?? 10000;
+  int maxBlocks() => host.fluidWorld?.config.hosePulleyBlockThreshold ?? 10000;
 
-  bool fillInfinite() => host.world?.config.fillInfinite ?? false;
+  bool fillInfinite() => host.fluidWorld?.config.fillInfinite ?? false;
 
   /// `reset()`.
   void reset() {
@@ -102,7 +102,7 @@ abstract class FluidManipulation {
 
   /// `scheduleUpdatesInAffectedArea()`.
   void scheduleUpdatesInAffectedArea() {
-    final world = host.world;
+    final world = host.fluidWorld;
     final area = affectedArea;
     if (world == null || area == null) return;
     final box = area.inflatedBy(1);
@@ -199,7 +199,7 @@ abstract class FluidManipulation {
   /// `canDrainInfinitely(fluid)`.
   bool canDrainInfinitely(String? fluid) {
     if (fluid == null) return false;
-    final world = host.world;
+    final world = host.fluidWorld;
     if (world == null) return false;
     if (maxBlocks() == -1) return false;
     return switch (world.config.bottomlessFluidMode) {
@@ -249,7 +249,7 @@ class FluidFilling extends FluidManipulation {
   /// `tick()`.
   void tick() {
     final root = rootPos;
-    if (infinityCheckFrontier.isNotEmpty && root != null && host.world != null) {
+    if (infinityCheckFrontier.isNotEmpty && root != null && host.fluidWorld != null) {
       final fluid = level.fluidAt(root);
       if (!fluid.isEmpty) continueValidation(fluid.fluid);
     }
@@ -636,7 +636,7 @@ class FluidDraining extends FluidManipulation {
   /// `tick()`.
   void tick() {
     final root = rootPos;
-    if (root != null && host.world != null) isValid = checkValid(level, root);
+    if (root != null && host.fluidWorld != null) isValid = checkValid(level, root);
 
     if (frontier.isNotEmpty) {
       continueSearch();

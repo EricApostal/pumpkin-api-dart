@@ -3,7 +3,6 @@
 // groups, observers), collisions with other trains, derailing, the manual and scheduled
 // navigation, coupling stress and the persistence of all of it. `tick` is called once per server
 // tick by the railway manager (`GlobalRailwayManager`), `earlyTick` before it.
-import 'dart:collection';
 import 'dart:math' as math;
 
 import '../../content/advancement_ids.dart';
@@ -13,9 +12,7 @@ import '../../common/pos.dart';
 import '../../common/vec_helper.dart';
 import '../../redstone/support/text.dart' show Txt;
 import '../graph/dimension_palette.dart';
-import '../graph/discovered_path.dart';
 import '../graph/edge_point_type.dart';
-import '../graph/track_edge.dart';
 import '../graph/track_graph.dart';
 import '../graph/track_graph_location.dart';
 import '../graph/track_node.dart';
@@ -23,13 +20,10 @@ import '../manager/create.dart';
 import '../observer/track_observer.dart';
 import '../schedule/schedule_runtime.dart' show ScheduleRuntime, State;
 import '../signal/signal_boundary.dart';
-import '../signal/signal_edge_group.dart';
 import '../signal/signal_types.dart';
-import '../signal/track_edge_point.dart';
 import '../station/global_station.dart';
 import '../util/ctag.dart';
 import 'carriage.dart';
-import 'carriage_contraption.dart';
 import 'navigation.dart';
 import 'train_icon_type.dart';
 import 'train_level.dart';
@@ -159,7 +153,10 @@ class Train {
         continue;
       }
 
-      final cachedMatch = cachedObserverFiltering.putIfAbsent(uuid, () => Pair.of(-1, false));
+      final cachedMatch = cachedObserverFiltering.putIfAbsent(
+        uuid,
+        () => Pair.of(-1, false),
+      );
       var shouldActivate = cachedMatch.getSecond();
 
       if (cachedMatch.getFirst() == storageVersion) {
@@ -274,7 +271,8 @@ class Train {
             if (leadingAnchor == null || trailingAnchor == null) continue;
 
             var distanceTo = leadingAnchor.distanceSquaredTo(trailingAnchor);
-            if (carriage.leadingBogey().isUpsideDown() != previousCarriage.trailingBogey().isUpsideDown()) {
+            if (carriage.leadingBogey().isUpsideDown() !=
+                previousCarriage.trailingBogey().isUpsideDown()) {
               distanceTo = math.sqrt(distanceTo - 4);
             } else {
               distanceTo = math.sqrt(distanceTo);
@@ -317,14 +315,23 @@ class Train {
 
     for (var index = 0; index < carriageCount; index++) {
       final i = iterateFromBack ? carriageCount - 1 - index : index;
-      final leadingStress = i == 0 ? 0.0 : stress[i - 1] * -(iterateFromBack ? trailingModifier : leadingModifier);
-      final trailingStress = i == stress.length ? 0.0 : stress[i] * (iterateFromBack ? leadingModifier : trailingModifier);
+      final leadingStress = i == 0
+          ? 0.0
+          : stress[i - 1] *
+                -(iterateFromBack ? trailingModifier : leadingModifier);
+      final trailingStress = i == stress.length
+          ? 0.0
+          : stress[i] * (iterateFromBack ? leadingModifier : trailingModifier);
 
       final carriage = carriages[i];
 
-      final toFollowForward = i == 0 ? null : carriages[i - 1].getTrailingPoint();
+      final toFollowForward = i == 0
+          ? null
+          : carriages[i - 1].getTrailingPoint();
 
-      final toFollowBackward = i == carriageCount - 1 ? null : carriages[i + 1].getLeadingPoint();
+      final toFollowBackward = i == carriageCount - 1
+          ? null
+          : carriages[i + 1].getLeadingPoint();
 
       final totalStress = derailed ? 0.0 : leadingStress + trailingStress;
 
@@ -344,9 +351,13 @@ class Train {
       blocked |= carriage.blocked || carriage.isOnIncompatibleTrack();
 
       final onTwoBogeys = carriage.isOnTwoBogeys();
-      maxStress = math.max(maxStress, onTwoBogeys ? carriage.bogeySpacing - carriage.getAnchorDiff() : 0);
+      maxStress = math.max(
+        maxStress,
+        onTwoBogeys ? carriage.bogeySpacing - carriage.getAnchorDiff() : 0,
+      );
       maxStress = math.max(maxStress, carriage.leadingBogey().getStress());
-      if (onTwoBogeys) maxStress = math.max(maxStress, carriage.trailingBogey().getStress());
+      if (onTwoBogeys)
+        maxStress = math.max(maxStress, carriage.trailingBogey().getStress());
 
       if (index == 0) {
         distance = actualDistance;
@@ -379,7 +390,8 @@ class Train {
       final point = couple.getFirst();
       if (point is GlobalStation) {
         final station = point;
-        if (!station.canApproachFrom(couple.getSecond().getSecond()) || !identical(navigation.destination, station)) {
+        if (!station.canApproachFrom(couple.getSecond().getSecond()) ||
+            !identical(navigation.destination, station)) {
           return false;
         }
         speed = 0;
@@ -397,21 +409,26 @@ class Train {
 
       if (point is! SignalBoundary) return false;
       final signal = point;
-      if (navigation.waitingForSignal != null && navigation.waitingForSignal!.getFirst() == signal.getId()) {
+      if (navigation.waitingForSignal != null &&
+          navigation.waitingForSignal!.getFirst() == signal.getId()) {
         speed = 0;
         navigation.distanceToSignal = 0;
         return true;
       }
 
       final groupId = signal.getGroup(couple.getSecond().getSecond());
-      final signalEdgeGroup = groupId == null ? null : Create.RAILWAYS.signalEdgeGroups[groupId];
+      final signalEdgeGroup = groupId == null
+          ? null
+          : Create.RAILWAYS.signalEdgeGroups[groupId];
       if (signalEdgeGroup == null) return false;
 
-      if ((runtime.getSchedule() == null || runtime.paused) && signalEdgeGroup.isOccupiedUnless(this)) {
+      if ((runtime.getSchedule() == null || runtime.paused) &&
+          signalEdgeGroup.isOccupiedUnless(this)) {
         for (final c in carriages) {
           c.forEachPresentEntity((cce) {
             final uuid = cce.getControllingPlayer();
-            if (uuid != null) TrainFx.effects.awardAdvancement(uuid, AllAdvancements.redSignal);
+            if (uuid != null)
+              TrainFx.effects.awardAdvancement(uuid, AllAdvancements.redSignal);
           });
         }
       }
@@ -426,7 +443,9 @@ class Train {
     speedBeforeStall = null;
     for (final c in carriages) {
       c.stalled = false;
-      c.forEachPresentEntity((cce) => cce.getContraption()?.data.cancelActorStalls());
+      c.forEachPresentEntity(
+        (cce) => cce.getContraption()?.data.cancelActorStalls(),
+      );
     }
   }
 
@@ -435,7 +454,9 @@ class Train {
     if (boundaryId != null && occupiedSignalBlocks.containsKey(groupId)) {
       if (boundaryId == occupiedSignalBlocks[groupId]) return false;
     }
-    final had = occupiedSignalBlocks.containsKey(groupId) && occupiedSignalBlocks[groupId] != null;
+    final had =
+        occupiedSignalBlocks.containsKey(groupId) &&
+        occupiedSignalBlocks[groupId] != null;
     occupiedSignalBlocks[groupId] = boundaryId;
     return !had;
   }
@@ -459,11 +480,18 @@ class Train {
     if (navigation.destination == null) return;
 
     final blockingSignal = navigation.waitingForSignal;
-    var fullRefresh = navigation.distanceToDestination > 100 && navigation.distanceToDestination % 100 > 20;
-    var signalRefresh = blockingSignal != null && navigation.distanceToSignal % 50 > 5;
-    var partialRefresh = navigation.distanceToDestination < 100 && navigation.distanceToDestination % 50 > 5;
+    var fullRefresh =
+        navigation.distanceToDestination > 100 &&
+        navigation.distanceToDestination % 100 > 20;
+    var signalRefresh =
+        blockingSignal != null && navigation.distanceToSignal % 50 > 5;
+    var partialRefresh =
+        navigation.distanceToDestination < 100 &&
+        navigation.distanceToDestination % 50 > 5;
 
-    final toSubstract = navigation.destinationBehindTrain ? -distance : distance;
+    final toSubstract = navigation.destinationBehindTrain
+        ? -distance
+        : distance;
     final navigatingManually = runtime.paused;
 
     navigation.distanceToDestination -= toSubstract;
@@ -475,10 +503,16 @@ class Train {
     fullRefresh &= navigation.distanceToDestination % 100 <= 20;
     partialRefresh &= navigation.distanceToDestination % 50 <= 5;
 
-    if (blockingSignal != null && navigation.ticksWaitingForSignal % 100 == 50) {
+    if (blockingSignal != null &&
+        navigation.ticksWaitingForSignal % 100 == 50) {
       final blockingId = blockingSignal.getFirst();
-      final signal = blockingId == null ? null : graph!.getPoint(EdgePointType.SIGNAL, blockingId);
-      fullRefresh |= signal != null && signal.types.get(blockingSignal.getSecond()) == SignalType.CROSS_SIGNAL;
+      final signal = blockingId == null
+          ? null
+          : graph!.getPoint(EdgePointType.SIGNAL, blockingId);
+      fullRefresh |=
+          signal != null &&
+          signal.types.get(blockingSignal.getSecond()) ==
+              SignalType.CROSS_SIGNAL;
     }
 
     if (signalRefresh) navigation.waitingForSignal = null;
@@ -563,9 +597,16 @@ class Train {
     train.crash();
   }
 
-  Pair<Train, Vec3>? findCollidingTrain(TrainLevel level, Vec3 start, Vec3 end, String dimension) {
+  Pair<Train, Vec3>? findCollidingTrain(
+    TrainLevel level,
+    Vec3 start,
+    Vec3 end,
+    String dimension,
+  ) {
     final diff = end - start;
-    final maxDistanceSqr = math.pow(TrainSettings.current.maxAssemblyLength, 2.0).toDouble();
+    final maxDistanceSqr = math
+        .pow(TrainSettings.current.maxAssemblyLength, 2.0)
+        .toDouble();
 
     trains:
     for (final train in Create.RAILWAYS.trains.values.toList()) {
@@ -582,13 +623,18 @@ class Train {
           final otherTrailing = otherCarriage.getTrailingPoint();
           if (otherLeading.edge == null || otherTrailing.edge == null) continue;
           final otherDimension = otherLeading.node1!.getLocation().dimension;
-          if (otherDimension != otherTrailing.node1!.getLocation().dimension) continue;
+          if (otherDimension != otherTrailing.node1!.getLocation().dimension)
+            continue;
           if (otherDimension != dimension) continue;
 
           var start2 = otherLeading.getPosition(train.graph);
           var end2 = otherTrailing.getPosition(train.graph);
 
-          if (math.min(start2.distanceSquaredTo(start), end2.distanceSquaredTo(start)) > maxDistanceSqr) {
+          if (math.min(
+                start2.distanceSquaredTo(start),
+                end2.distanceSquaredTo(start),
+              ) >
+              maxDistanceSqr) {
             continue trains;
           }
 
@@ -599,19 +645,35 @@ class Train {
 
           lastPoint = end2;
 
-          if ((end.$2 < end2.$2 - 3 || end2.$2 < end.$2 - 3) && (start.$2 < start2.$2 - 3 || start2.$2 < start.$2 - 3)) {
+          if ((end.$2 < end2.$2 - 3 || end2.$2 < end.$2 - 3) &&
+              (start.$2 < start2.$2 - 3 || start2.$2 < start.$2 - 3)) {
             continue;
           }
 
           final diff2 = end2 - start2;
           final normedDiff = diff.normalized;
           final normedDiff2 = diff2.normalized;
-          var intersect = VecHelper.intersect(start, start2, normedDiff, normedDiff2, Axis.y);
+          var intersect = VecHelper.intersect(
+            start,
+            start2,
+            normedDiff,
+            normedDiff2,
+            Axis.y,
+          );
 
           if (intersect == null) {
-            final intersectSphere = VecHelper.intersectSphere(start2, normedDiff2, start, toFloat(.125));
+            final intersectSphere = VecHelper.intersectSphere(
+              start2,
+              normedDiff2,
+              start,
+              toFloat(.125),
+            );
             if (intersectSphere == null) continue;
-            if (!mthEqual(normedDiff2.dot((intersectSphere - start2).normalized), 1)) continue;
+            if (!mthEqual(
+              normedDiff2.dot((intersectSphere - start2).normalized),
+              1,
+            ))
+              continue;
             intersect = [
               intersectSphere.distanceTo(start) - .125,
               intersectSphere.distanceTo(start2) - .125,
@@ -643,14 +705,21 @@ class Train {
         for (final entity in e.getIndirectPassengers()) {
           if (!entity.isPlayer) continue;
           final controllingPlayer = e.getControllingPlayer();
-          if (controllingPlayer != null && controllingPlayer == entity.uuid) continue;
-          TrainFx.effects.awardAdvancement(entity.uuid, AllAdvancements.trainCrash);
+          if (controllingPlayer != null && controllingPlayer == entity.uuid)
+            continue;
+          TrainFx.effects.awardAdvancement(
+            entity.uuid,
+            AllAdvancements.trainCrash,
+          );
         }
       });
     }
 
     if (backwardsDriver != null) {
-      TrainFx.effects.awardAdvancement(backwardsDriver!, AllAdvancements.trainCrashBackwards);
+      TrainFx.effects.awardAdvancement(
+        backwardsDriver!,
+        AllAdvancements.trainCrashBackwards,
+      );
     }
   }
 
@@ -669,7 +738,10 @@ class Train {
 
       entity.getContraption()?.returnStorageForDisassembly(carriage.storage);
       final target = pos
-          .relative(assemblyDirection, backwards ? offset + carriage.bogeySpacing : offset)
+          .relative(
+            assemblyDirection,
+            backwards ? offset + carriage.bogeySpacing : offset,
+          )
           .belowBy(carriage.leadingBogey().isUpsideDown() ? 2 : 0);
       entity.setPos(target.toVec3());
       entity.disassemble();
@@ -678,13 +750,18 @@ class Train {
         if (bogey == null) continue;
         final bogeyPosition = bogey.getAnchorPosition();
         if (bogeyPosition == null) continue;
-        TrainFx.effects.setBogeyData(dimension, posContaining(bogeyPosition), bogey.bogeyData);
+        TrainFx.effects.setBogeyData(
+          dimension,
+          posContaining(bogeyPosition),
+          bogey.bogeyData,
+        );
       }
 
       offset += carriage.bogeySpacing;
 
       if (i < carriageSpacing.length) {
-        offset += carriageSpacing[backwards ? carriageSpacing.length - i - 1 : i];
+        offset +=
+            carriageSpacing[backwards ? carriageSpacing.length - i - 1 : i];
       }
     }
 
@@ -693,7 +770,12 @@ class Train {
       currentStation.cancelReservation(this);
       final blockEntityPos = currentStation.getBlockEntityPos();
       if (blockEntityPos != null && dimension != null) {
-        TrainFx.effects.noteDisassembledTrain(dimension, blockEntityPos, name.copy(), mapColorIndex);
+        TrainFx.effects.noteDisassembledTrain(
+          dimension,
+          blockEntityPos,
+          name.copy(),
+          mapColorIndex,
+        );
       }
     }
 
@@ -716,7 +798,8 @@ class Train {
   bool isTravellingOn(TrackNode node) {
     var affected = false;
     forEachTravellingPoint((tp) {
-      if (identical(tp.node1, node) || identical(tp.node2, node)) affected = true;
+      if (identical(tp.node1, node) || identical(tp.node2, node))
+        affected = true;
     });
     return affected;
   }
@@ -724,7 +807,9 @@ class Train {
   void detachFromTracks() {
     migratingPoints.clear();
     navigation.cancelNavigation();
-    forEachTravellingPoint((tp) => migratingPoints.add(TrainMigration.fromPoint(tp)));
+    forEachTravellingPoint(
+      (tp) => migratingPoints.add(TrainMigration.fromPoint(tp)),
+    );
     graph = null;
   }
 
@@ -735,7 +820,9 @@ class Train {
     }
   }
 
-  void forEachTravellingPointBackwards(void Function(TravellingPoint, double) callback) {
+  void forEachTravellingPointBackwards(
+    void Function(TravellingPoint, double) callback,
+  ) {
     double lastWheelOffset = 0;
     for (var i = 0; i < carriages.length; i++) {
       final index = carriages.length - i - 1;
@@ -744,7 +831,12 @@ class Train {
       final trailSpacing = trailingBogey.type.getWheelPointSpacing();
 
       // trailing point
-      callback(trailingBogey.trailing(), i == 0 ? 0 : carriageSpacing[index] - lastWheelOffset - trailSpacing / 2);
+      callback(
+        trailingBogey.trailing(),
+        i == 0
+            ? 0
+            : carriageSpacing[index] - lastWheelOffset - trailSpacing / 2,
+      );
 
       // inside 1st bogey
       callback(trailingBogey.leading(), trailSpacing);
@@ -757,7 +849,10 @@ class Train {
       final leadSpacing = carriage.leadingBogey().type.getWheelPointSpacing();
 
       // between bogeys
-      callback(leadingBogey.trailing(), carriage.bogeySpacing - lastWheelOffset - leadSpacing / 2);
+      callback(
+        leadingBogey.trailing(),
+        carriage.bogeySpacing - lastWheelOffset - leadSpacing / 2,
+      );
 
       // inside 2nd bogey
       callback(trailingBogey.leading(), leadSpacing);
@@ -799,7 +894,8 @@ class Train {
       migratingPoints.clear();
       if (derailed) status.successfulMigration();
       derailed = false;
-      if (runtime.getSchedule() != null && runtime.state == State.IN_TRANSIT) runtime.state = State.PRE_TRANSIT;
+      if (runtime.getSchedule() != null && runtime.state == State.IN_TRANSIT)
+        runtime.state = State.PRE_TRANSIT;
       final currentStation = getCurrentStation();
       if (currentStation != null) currentStation.reserveFor(this);
       updateSignalBlocks = true;
@@ -812,8 +908,10 @@ class Train {
     var length = 0;
     for (var i = 0; i < carriages.length; i++) {
       final carriage = carriages[i];
-      if (i == 0) length += carriage.leadingBogey().type.getWheelPointSpacing() ~/ 2;
-      if (i == carriages.length - 1) length += carriage.trailingBogey().type.getWheelPointSpacing() ~/ 2;
+      if (i == 0)
+        length += carriage.leadingBogey().type.getWheelPointSpacing() ~/ 2;
+      if (i == carriages.length - 1)
+        length += carriage.trailingBogey().type.getWheelPointSpacing() ~/ 2;
 
       length += carriage.bogeySpacing;
       if (i < carriageSpacing.length) length += carriageSpacing[i];
@@ -937,20 +1035,29 @@ class Train {
     });
   }
 
-  bool shouldCarriageSyncThisTick(int gameTicks, int updateInterval) => (gameTicks + tickOffset) % updateInterval == 0;
+  bool shouldCarriageSyncThisTick(int gameTicks, int updateInterval) =>
+      (gameTicks + tickOffset) % updateInterval == 0;
 
   Couple<Couple<TrackNode?>> getEndpointEdges() {
-    final pts = Couple.create(carriages.first.getLeadingPoint(), carriages.last.getTrailingPoint());
+    final pts = Couple.create(
+      carriages.first.getLeadingPoint(),
+      carriages.last.getTrailingPoint(),
+    );
     return pts.map((tp) => Couple.create<TrackNode?>(tp.node1, tp.node2));
   }
 
   int getNavigationPenalty() {
     if (manualTick) return Penalties.MANUAL_TRAIN;
-    if (runtime.getSchedule() == null || runtime.paused) return Penalties.IDLE_TRAIN;
-    if (navigation.waitingForSignal != null && navigation.ticksWaitingForSignal > 0) {
-      return Penalties.WAITING_TRAIN + math.min(navigation.ticksWaitingForSignal ~/ 20, 1000);
+    if (runtime.getSchedule() == null || runtime.paused)
+      return Penalties.IDLE_TRAIN;
+    if (navigation.waitingForSignal != null &&
+        navigation.ticksWaitingForSignal > 0) {
+      return Penalties.WAITING_TRAIN +
+          math.min(navigation.ticksWaitingForSignal ~/ 20, 1000);
     }
-    if (navigation.destination != null && navigation.distanceToDestination < 50 || navigation.distanceToSignal < 20) {
+    if (navigation.destination != null &&
+            navigation.distanceToDestination < 50 ||
+        navigation.distanceToSignal < 20) {
       return Penalties.ARRIVING_TRAIN;
     }
     return Penalties.ANY_TRAIN;
@@ -977,17 +1084,31 @@ class Train {
 
   double maxSpeed() {
     final t = TrainSettings.current;
-    return toFloat(toFloat(fuelTicks > 0 ? t.poweredTrainTopSpeed : t.trainTopSpeed) / 20);
+    return toFloat(
+      toFloat(fuelTicks > 0 ? t.poweredTrainTopSpeed : t.trainTopSpeed) / 20,
+    );
   }
 
   double maxTurnSpeed() {
     final t = TrainSettings.current;
-    return toFloat(toFloat(fuelTicks > 0 ? t.poweredTrainTurningTopSpeed : t.trainTurningTopSpeed) / 20);
+    return toFloat(
+      toFloat(
+            fuelTicks > 0
+                ? t.poweredTrainTurningTopSpeed
+                : t.trainTurningTopSpeed,
+          ) /
+          20,
+    );
   }
 
   double acceleration() {
     final t = TrainSettings.current;
-    return toFloat(toFloat(fuelTicks > 0 ? t.poweredTrainAcceleration : t.trainAcceleration) / 400);
+    return toFloat(
+      toFloat(
+            fuelTicks > 0 ? t.poweredTrainAcceleration : t.trainAcceleration,
+          ) /
+          400,
+    );
   }
 
   CTag write(DimensionPalette dimensions) {
@@ -995,12 +1116,15 @@ class Train {
     tag.putUuid('Id', id);
     if (owner != null) tag.putUuid('Owner', owner!);
     if (graph != null) tag.putUuid('Graph', graph!.id);
-    tag.putCompoundList('Carriages', [for (final c in carriages) c.write(dimensions)]);
+    tag.putCompoundList('Carriages', [
+      for (final c in carriages) c.write(dimensions),
+    ]);
     tag.putIntArray('CarriageSpacing', carriageSpacing);
     tag.putBoolean('DoubleEnded', doubleEnded);
     tag.putDouble('Speed', speed);
     tag.putDouble('Throttle', throttle);
-    if (speedBeforeStall != null) tag.putDouble('SpeedBeforeStall', speedBeforeStall!);
+    if (speedBeforeStall != null)
+      tag.putDouble('SpeedBeforeStall', speedBeforeStall!);
     tag.putInt('Fuel', fuelTicks);
     tag.putDouble('TargetSpeed', targetSpeed);
     tag.putString('IconType', icon.id);
@@ -1018,9 +1142,15 @@ class Train {
             if (e.value != null) c.putUuid('Boundary', e.value!);
           }),
     ]);
-    tag.putCompoundList('ReservedSignalBlocks', [for (final uid in reservedSignalBlocks) CTag()..putUuid('Id', uid)]);
-    tag.putCompoundList('OccupiedObservers', [for (final uid in occupiedObservers) CTag()..putUuid('Id', uid)]);
-    tag.putCompoundList('MigratingPoints', [for (final tm in migratingPoints) tm.write(dimensions)]);
+    tag.putCompoundList('ReservedSignalBlocks', [
+      for (final uid in reservedSignalBlocks) CTag()..putUuid('Id', uid),
+    ]);
+    tag.putCompoundList('OccupiedObservers', [
+      for (final uid in occupiedObservers) CTag()..putUuid('Id', uid),
+    ]);
+    tag.putCompoundList('MigratingPoints', [
+      for (final tm in migratingPoints) tm.write(dimensions),
+    ]);
 
     tag.putCompound('Runtime', runtime.write());
     tag.putCompound('Navigation', navigation.write(dimensions));
@@ -1028,7 +1158,11 @@ class Train {
     return tag;
   }
 
-  static Train read(CTag tag, Map<String, TrackGraph> trackNetworks, DimensionPalette dimensions) {
+  static Train read(
+    CTag tag,
+    Map<String, TrackGraph> trackNetworks,
+    DimensionPalette dimensions,
+  ) {
     final id = tag.getUuid('Id')!;
     final owner = tag.getUuid('Owner');
     final graphId = tag.getUuid('Graph');
@@ -1041,11 +1175,20 @@ class Train {
     final doubleEnded = tag.getBoolean('DoubleEnded');
     final mapColorIndex = tag.getInt('MapColorIndex');
 
-    final train = Train(id, owner, graph, carriages, carriageSpacing, doubleEnded, mapColorIndex);
+    final train = Train(
+      id,
+      owner,
+      graph,
+      carriages,
+      carriageSpacing,
+      doubleEnded,
+      mapColorIndex,
+    );
 
     train.speed = tag.getDouble('Speed');
     train.throttle = tag.getDouble('Throttle');
-    if (tag.contains('SpeedBeforeStall')) train.speedBeforeStall = tag.getDouble('SpeedBeforeStall');
+    if (tag.contains('SpeedBeforeStall'))
+      train.speedBeforeStall = tag.getDouble('SpeedBeforeStall');
     train.targetSpeed = tag.getDouble('TargetSpeed');
     train.icon = TrainIconType.byId(tag.getString('IconType'));
     train.name = componentFromJson(tag.getString('Name'));
@@ -1112,7 +1255,10 @@ class Train {
     for (final carriage in carriages) {
       final dce = carriage.getDimensionalIfPresent(level.dimension);
       if (dce == null || dce.positionAnchor == null) continue;
-      distance = math.min(distance, toFloat(dce.positionAnchor!.distanceSquaredTo(location)));
+      distance = math.min(
+        distance,
+        toFloat(dce.positionAnchor!.distanceSquaredTo(location)),
+      );
     }
     return distance;
   }

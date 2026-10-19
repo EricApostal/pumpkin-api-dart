@@ -61,8 +61,9 @@ class AxisBlockDef extends KineticBlockDef {
   KAxis rotationAxis(KState state) => state.axisOf(property) ?? KAxis.y;
 
   @override
-  bool hasShaftTowards(KState state, Dir face) =>
-      shaftAlongAxis ? face.axis == rotationAxis(state) : face.axis != rotationAxis(state);
+  bool hasShaftTowards(KState state, Dir face) => shaftAlongAxis
+      ? face.axis == rotationAxis(state)
+      : face.axis != rotationAxis(state);
 
   @override
   bool get isSmallCog => _small;
@@ -89,8 +90,11 @@ class FacingBlockDef extends KineticBlockDef {
   final bool shaftAtFront;
   final bool _hideStress;
 
-  const FacingBlockDef({this.property = 'facing', this.shaftAtFront = true, bool hideStressImpact = false})
-    : _hideStress = hideStressImpact;
+  const FacingBlockDef({
+    this.property = 'facing',
+    this.shaftAtFront = true,
+    bool hideStressImpact = false,
+  }) : _hideStress = hideStressImpact;
 
   Dir facing(KState s) => s.dirOf(property) ?? Dir.north;
 
@@ -98,7 +102,8 @@ class FacingBlockDef extends KineticBlockDef {
   KAxis rotationAxis(KState state) => facing(state).axis;
 
   @override
-  bool hasShaftTowards(KState state, Dir face) => face == (shaftAtFront ? facing(state) : facing(state).opposite);
+  bool hasShaftTowards(KState state, Dir face) =>
+      face == (shaftAtFront ? facing(state) : facing(state).opposite);
 
   @override
   bool get hideStressImpact => _hideStress;
@@ -110,7 +115,8 @@ class FacingAxisBlockDef extends FacingBlockDef {
   const FacingAxisBlockDef({super.property, super.hideStressImpact});
 
   @override
-  bool hasShaftTowards(KState state, Dir face) => facing(state).axis == face.axis;
+  bool hasShaftTowards(KState state, Dir face) =>
+      facing(state).axis == face.axis;
 }
 
 /// A block with a `facing` and an `axis_along_first` property
@@ -130,7 +136,8 @@ class DirectionalAxisBlockDef extends KineticBlockDef {
   }
 
   @override
-  bool hasShaftTowards(KState state, Dir face) => face.axis == rotationAxis(state);
+  bool hasShaftTowards(KState state, Dir face) =>
+      face.axis == rotationAxis(state);
 }
 
 /// Encased cogwheels: the cog on the axis, shafts sticking out of the ends that
@@ -145,7 +152,8 @@ class EncasedCogDef extends KineticBlockDef {
 
   @override
   bool hasShaftTowards(KState state, Dir face) =>
-      face.axis == rotationAxis(state) && state.flag(face.isPositive ? 'top_shaft' : 'bottom_shaft');
+      face.axis == rotationAxis(state) &&
+      state.flag(face.isPositive ? 'top_shaft' : 'bottom_shaft');
 
   @override
   bool get isSmallCog => !large;
@@ -156,7 +164,8 @@ class EncasedCogDef extends KineticBlockDef {
   @override
   bool areStatesKineticallyEquivalent(KState oldState, KState newState) {
     if (newState.flag('top_shaft') != oldState.flag('top_shaft')) return false;
-    if (newState.flag('bottom_shaft') != oldState.flag('bottom_shaft')) return false;
+    if (newState.flag('bottom_shaft') != oldState.flag('bottom_shaft'))
+      return false;
     return super.areStatesKineticallyEquivalent(oldState, newState);
   }
 }
@@ -166,7 +175,8 @@ class SequencedGearshiftDef extends KineticBlockDef {
   const SequencedGearshiftDef();
 
   @override
-  KAxis rotationAxis(KState state) => state.flag('vertical') ? KAxis.y : (state.axisOf('axis') ?? KAxis.x);
+  KAxis rotationAxis(KState state) =>
+      state.flag('vertical') ? KAxis.y : (state.axisOf('axis') ?? KAxis.x);
 
   @override
   bool hasShaftTowards(KState state, Dir face) {
@@ -175,7 +185,8 @@ class SequencedGearshiftDef extends KineticBlockDef {
   }
 
   @override
-  bool areStatesKineticallyEquivalent(KState oldState, KState newState) => false;
+  bool areStatesKineticallyEquivalent(KState oldState, KState newState) =>
+      false;
 }
 
 /// The gearbox: shafts on every side but the axis (`face.axis != axis`).
@@ -189,7 +200,8 @@ class ChainGearshiftDef extends AxisBlockDef {
 
   @override
   bool areStatesKineticallyEquivalent(KState oldState, KState newState) =>
-      super.areStatesKineticallyEquivalent(oldState, newState) && oldState.flag('powered') == newState.flag('powered');
+      super.areStatesKineticallyEquivalent(oldState, newState) &&
+      oldState.flag('powered') == newState.flag('powered');
 }
 
 /// The cuckoo clock: the shaft sticks out of the back.
@@ -202,7 +214,8 @@ class CuckooClockDef extends KineticBlockDef {
   KAxis rotationAxis(KState state) => facing(state).axis;
 
   @override
-  bool hasShaftTowards(KState state, Dir face) => face == facing(state).opposite;
+  bool hasShaftTowards(KState state, Dir face) =>
+      face == facing(state).opposite;
 }
 
 /// The turntable: a shaft at the bottom, vertical axis.
@@ -214,6 +227,26 @@ class TurntableDef extends KineticBlockDef {
 
   @override
   bool hasShaftTowards(KState state, Dir face) => face == Dir.down;
+}
+
+/// The gantry shaft: a shaft along its `facing` axis. The powered state is part of the kinetic
+/// state (`GantryShaftBlock.areStatesKineticallyEquivalent`).
+class GantryShaftDef extends KineticBlockDef {
+  const GantryShaftDef();
+
+  Dir facing(KState s) => s.dirOf('facing') ?? Dir.north;
+
+  @override
+  KAxis rotationAxis(KState state) => facing(state).axis;
+
+  @override
+  bool hasShaftTowards(KState state, Dir face) =>
+      face.axis == facing(state).axis;
+
+  @override
+  bool areStatesKineticallyEquivalent(KState oldState, KState newState) =>
+      super.areStatesKineticallyEquivalent(oldState, newState) &&
+      oldState.flag('powered') == newState.flag('powered');
 }
 
 /// The radii of the rotation indicator particles (`getParticleInitialRadius` /

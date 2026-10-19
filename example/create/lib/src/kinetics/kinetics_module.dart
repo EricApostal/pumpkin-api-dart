@@ -41,6 +41,8 @@ final class KineticsModule extends CreateModule {
     for (final type in buildKineticBlockEntityTypes(registry)) {
       registry.blockEntityType(type);
     }
+    // `VerticalGearboxItem`: an item that places `create:gearbox` (linked in onLoad).
+    registry.item(const ItemRegistration(key: 'create:vertical_gearbox'));
   }
 
   @override
@@ -51,7 +53,12 @@ final class KineticsModule extends CreateModule {
       (v) => v.toMap(),
       const KineticsSettings(),
     );
-    final rt = KineticsRuntime(settings, ctx.blockEntities, ctx.worlds, ctx.log);
+    final rt = KineticsRuntime(
+      settings,
+      ctx.blockEntities,
+      ctx.worlds,
+      ctx.log,
+    );
     _runtime = rt;
     final configs = ctx.services.find<cfg.CreateConfigs>();
     if (configs != null) rt.useConfigs(configs);
@@ -61,9 +68,14 @@ final class KineticsModule extends CreateModule {
       final def = spec.def;
       if (def != null) rt.blocks.register(spec.block.key, def);
     }
-    rt.blocks.chainDriveBlocks.addAll(['create:encased_chain_drive', 'create:adjustable_chain_gearshift']);
+    rt.blocks.chainDriveBlocks.addAll([
+      'create:encased_chain_drive',
+      'create:adjustable_chain_gearshift',
+    ]);
 
-    ctx.services.provide<KineticNetworkService>(KineticNetworkService(rt, [for (final s in _specs) s.block]));
+    ctx.services.provide<KineticNetworkService>(
+      KineticNetworkService(rt, [for (final s in _specs) s.block]),
+    );
     ctx.services.provide<KineticSpeedLookup>(_SpeedLookup(rt));
 
     // Remember the last block use of every player: the host's placed event carries
@@ -77,7 +89,10 @@ final class KineticsModule extends CreateModule {
       }
       final face = Dir.fromName(e.face.name);
       if (face == null) return;
-      rt.useRecords.put(e.player.getId().asString, UseRecord(e.blockPos, face, e.sneaking, itemKey, e.cursor));
+      rt.useRecords.put(
+        e.player.getId().asString,
+        UseRecord(e.blockPos, face, e.sneaking, itemKey, e.cursor),
+      );
     });
 
     // CogwheelBlockItem.onItemUseFirst: place the next cogwheel diagonally.
@@ -90,7 +105,13 @@ final class KineticsModule extends CreateModule {
         return e;
       }
       if (key != 'create:cogwheel' && key != 'create:large_cogwheel') return e;
-      final placed = await cogwheelItemUseFirst(rt, server, e, key, rt.kineticBlocks);
+      final placed = await cogwheelItemUseFirst(
+        rt,
+        server,
+        e,
+        key,
+        rt.kineticBlocks,
+      );
       return placed ? e.copyWith(useResult: ItemUseFirstResult.success) : e;
     });
 
@@ -101,14 +122,19 @@ final class KineticsModule extends CreateModule {
     // The vertical gearbox item places the gearbox block (VerticalGearboxItem).
     if (ctx.ids.of(RegistryKind.items, 'create:vertical_gearbox') != null) {
       try {
-        BlockRegistries.host.setBlockItem('create:vertical_gearbox', 'create:gearbox');
+        BlockRegistries.host.setBlockItem(
+          'create:vertical_gearbox',
+          'create:gearbox',
+        );
       } on BlockRegistryException catch (e) {
         ctx.log.warn('Could not link the vertical gearbox item: ${e.message}');
       }
     }
 
-    ctx.log.info('Kinetics: ${_specs.length} blocks, max rotation speed ${settings.maxRotationSpeed} RPM'
-        '${settings.disableStress ? ', stress disabled' : ''}.');
+    ctx.log.info(
+      'Kinetics: ${_specs.length} blocks, max rotation speed ${settings.maxRotationSpeed} RPM'
+      '${settings.disableStress ? ', stress disabled' : ''}.',
+    );
   }
 
   /// Binds to the services of modules that load after this one (wrench registry,
@@ -123,7 +149,9 @@ final class KineticsModule extends CreateModule {
     if (bus != null) {
       bindKineticPackets(bus);
     } else {
-      runtime.log.warn('No payload bus: the stressometer, the sequencer and value settings are not handled.');
+      runtime.log.warn(
+        'No payload bus: the stressometer, the sequencer and value settings are not handled.',
+      );
     }
     final encasing = runtime.services.find<EncasingRegistry>();
     if (encasing != null) _registerEncasing(encasing, rt);
@@ -131,7 +159,9 @@ final class KineticsModule extends CreateModule {
     if (wrench != null) {
       installKineticWrench(wrench, rt, [for (final s in _specs) s.block.key]);
     } else {
-      runtime.log.warn('No wrench registry: the wrench does not know the kinetic blocks.');
+      runtime.log.warn(
+        'No wrench registry: the wrench does not know the kinetic blocks.',
+      );
     }
   }
 
@@ -169,7 +199,10 @@ void _registerEncasing(EncasingRegistry registry, KineticsRuntime rt) {
           rt,
           rt.worlds.touch(c.world),
           c.pos,
-          encasedShaftState(variant, KAxis.fromName(c.state['axis']) ?? KAxis.y),
+          encasedShaftState(
+            variant,
+            KAxis.fromName(c.state['axis']) ?? KAxis.y,
+          ),
         ),
       ),
     );
@@ -177,13 +210,21 @@ void _registerEncasing(EncasingRegistry registry, KineticsRuntime rt) {
       registry.addVariant(
         large ? 'create:large_cogwheel' : 'create:cogwheel',
         EncasedVariant(
-          encasedKey: 'create:${variant}_encased${large ? '_large' : ''}_cogwheel',
+          encasedKey:
+              'create:${variant}_encased${large ? '_large' : ''}_cogwheel',
           casingItemKey: casing,
           handleEncasing: (c) {
             final worldId = rt.worlds.touch(c.world);
             final level = rt.level(worldId);
             final axis = KAxis.fromName(c.state['axis']) ?? KAxis.y;
-            final target = encasedCogwheelState(rt.blocks, level.stateAt, toKPos(c.pos), variant, large, axis);
+            final target = encasedCogwheelState(
+              rt.blocks,
+              level.stateAt,
+              toKPos(c.pos),
+              variant,
+              large,
+              axis,
+            );
             return KineticOps.switchToBlockState(rt, worldId, c.pos, target);
           },
         ),

@@ -3,7 +3,8 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../core/blocks.dart';
-import '../../kinetics/placement.dart' show rotatedPillarAxis;
+import '../../kinetics/placement.dart'
+    show clickedFaceForPlacedState, rotatedPillarAxis;
 import '../processing_runtime.dart';
 import '../support/kinetics_bridge.dart';
 import 'crushing_keys.dart';
@@ -51,7 +52,7 @@ CreateBlock buildCrushingWheelControllerBlock() => createBlockFromManifest(
   useLootTable: false,
   pistonBehavior: PistonBehavior.block,
   shapeRules: _controllerShapeRules(),
-  behavior: withDynamicShape(
+  behavior: withEntityCollisionShape(
     BlockBehavior(
       onEntityCollision: _controllerEntityInside,
       onUpdateShape: _controllerUpdateShape,
@@ -105,7 +106,8 @@ Future<PlacementContext?> _placementContext(
   final record = c.rt.useRecords.matching(player.asString, pos);
   final clicked =
       record?.face ??
-      (face == null ? Dir.up : Dir.fromName(face.name) ?? Dir.up);
+      (face == null ? null : Dir.fromName(face.name)?.opposite) ??
+      clickedFaceForPlacedState(c.state);
   return PlacementContext(
     pos: KPos(pos.x, pos.y, pos.z),
     clickedFace: clicked,
@@ -196,15 +198,25 @@ List<ShapeRule> _controllerShapeRules() {
   ];
 }
 
-/// `CrushingWheelControllerBlock.getCollisionShape`: empty for the entity being crushed so it
-/// stays inside the block (the host's shape hook has no entity, so it is empty while the
-/// controller is occupied).
-List<BlockBox>? _controllerShape(Server server, CustomBlockShapeEventData e) {
-  if (e.kind != BlockShapeKind.collision) return null;
+/// `CrushingWheelControllerBlock.getCollisionShape`: empty for the entity being crushed (it
+/// would be pushed out otherwise) and for an item this controller ejected, so the output can
+/// land on the block instead of falling back through the open side.
+List<BlockBox>? _controllerShape(
+  Server server,
+  CustomBlockCollisionShapeEventData e,
+) {
   final rt = ProcessingRuntime.instance;
   final worldId = rt.worlds.touch(e.targetWorld);
   final be = rt.store.typed<CrushingWheelControllerBlockEntity>(worldId, e.pos);
-  return be != null && be.isOccupied ? const <BlockBox>[] : null;
+  if (be == null) return null;
+  final state = KineticsRuntime.instance.level(worldId).stateAt(toKPos(e.pos));
+  // `if (!state.getValue(VALID)) return standardShape;`
+  if (!state.flag('valid')) return null;
+  if (be.isProcessingEntity(e.entityId)) return const <BlockBox>[];
+  if ((state.dirOf('facing') ?? Dir.north) == Dir.up) return null;
+  final entity = e.targetWorld.getEntityById(id: e.entityId);
+  if (entity != null && be.bypasses(entity)) return const <BlockBox>[];
+  return null;
 }
 
 /// `CrushingWheelControllerBlock.entityInside`: start crushing the entity that touches the

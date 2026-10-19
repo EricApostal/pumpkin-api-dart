@@ -256,13 +256,15 @@ final class HostMinecartAccess implements MinecartAccess {
   void ejectPassengers() => _entity?.ejectPassengers();
 }
 
-/// Whether [state] is a rail block.
+/// Whether [state] is a rail block: the `minecraft:rails` block tag (`create:cart_assembler` and
+/// `create:controller_rail` are tagged with it, like the vanilla rails).
 bool isRailState(BState state) =>
     state.key == 'minecraft:rail' ||
     state.key == 'minecraft:powered_rail' ||
     state.key == 'minecraft:detector_rail' ||
     state.key == 'minecraft:activator_rail' ||
-    state.key == 'create:controller_rail';
+    state.key == 'create:controller_rail' ||
+    state.key == 'create:cart_assembler';
 
 /// `MinecartSim2020.getRailVec`.
 Vec3 railVec(RailShape shape) => switch (shape) {

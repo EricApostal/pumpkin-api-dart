@@ -1,8 +1,10 @@
 // `SchematicPrinter` (pure): walks a [SchematicWorld] block by block and decides what the
 // schematicannon (or the creative placement) has to do at each step.
 import '../api/block_state.dart';
+import '../common/binary_nbt.dart';
 import '../common/direction.dart';
 import '../common/pos.dart';
+import '../core/nbt.dart';
 import 'item_requirement.dart';
 import 'material_checklist.dart';
 import 'schematic_world.dart';
@@ -202,11 +204,15 @@ final class SchematicPrinter {
     final bounds = _world!.bounds;
     var cp = currentPos!.relative(Direction.east);
     final inBounds = cp.offset(-bounds.minX, -bounds.minY, -bounds.minZ);
-    if (inBounds.$1 > bounds.xSpan) cp = (bounds.minX, cp.$2, cp.$3 + 1).west;
-    if (inBounds.$3 > bounds.zSpan) cp = (cp.$1, cp.$2 + 1, bounds.minZ).west;
+    // `BoundingBox.getXSpan()`/`getZSpan()`/`getYSpan()` are exclusive (`max - min`); the
+    // inclusive spans of [BlockBounds] would step one column/layer too far.
+    if (inBounds.$1 > bounds.maxX - bounds.minX)
+      cp = (bounds.minX, cp.$2, cp.$3 + 1).west;
+    if (inBounds.$3 > bounds.maxZ - bounds.minZ)
+      cp = (cp.$1, cp.$2 + 1, bounds.minZ).west;
     currentPos = cp;
     // End of blocks reached
-    if (cp.$2 > bounds.ySpan) {
+    if (cp.$2 > bounds.maxY) {
       printStage = PrintStage.deferredBlocks;
       return false;
     }
@@ -238,13 +244,21 @@ final class SchematicPrinter {
     for (final p in const ['age', 'level_honey', 'hatch', 'stage']) {
       if (s.has(p)) return s.setValue(p, '0');
     }
-    if (s.key.endsWith('cauldron') && s.key != 'minecraft:cauldron')
-      return const BState('minecraft:cauldron');
-    if (s.has('composter_level')) return s.setValue('composter_level', '0');
-    if (s.key == 'minecraft:composter') return s.setValue('level', '0');
+    if (_cauldrons.contains(s.key)) return const BState('minecraft:cauldron');
+    if (s.key == 'minecraft:composter' && s.has('level')) {
+      return s.setValue('level', '0');
+    }
     if (s.has('extended')) return s.setFlag('extended', false);
     return s;
   }
+
+  /// `BlockTags.CAULDRONS`.
+  static const Set<String> _cauldrons = {
+    'minecraft:cauldron',
+    'minecraft:water_cauldron',
+    'minecraft:lava_cauldron',
+    'minecraft:powder_snow_cauldron',
+  };
 
   // -- checks ----------------------------------------------------------------------------------
 
@@ -330,11 +344,25 @@ final class SchematicPrinter {
   }
 
   /// The entity type key of a schematic entity (its `id` tag).
-  static String? entityTypeOf(SchematicEntity e) =>
-      entityTypeResolver?.call(e.nbt);
+  static String? entityTypeOf(SchematicEntity e) {
+    final custom = entityTypeResolver;
+    if (custom != null) return custom(e.nbt);
+    return _idOfNbt(e.nbt);
+  }
 
-  /// Reads the `id` of entity NBT; set by the module (binary NBT parsing).
+  /// Reads the `id` of entity NBT; a resolver can replace the binary parser.
   static String? Function(List<int> nbt)? entityTypeResolver;
+
+  static String? _idOfNbt(List<int> nbt) {
+    try {
+      final parsed = BinaryNbt.read(nbt);
+      if (parsed == null || parsed.root.kind != NbtKind.compound) return null;
+      final id = parsed.root.asCompound['id'];
+      return id != null && id.value is String ? id.value as String : null;
+    } on Object {
+      return null;
+    }
+  }
 
   /// `markAllBlockRequirements`: returns the number of blocks that have to be placed.
   int markAllBlockRequirements(
@@ -367,8 +395,10 @@ final class SchematicPrinter {
       final requirement = typeKey == null
           ? ItemRequirement.invalid
           : requirements.ofEntity(typeKey, e.nbt);
-      if (requirement.isEmpty) return;
-      if (requirement.isInvalid) return;
+      // Java returns on the first entity without a requirement; continuing keeps the entities
+      // after it on the checklist (a spawner-only entity should not hide the next one).
+      if (requirement.isEmpty) continue;
+      if (requirement.isInvalid) continue;
       checklist.require(requirement);
     }
   }

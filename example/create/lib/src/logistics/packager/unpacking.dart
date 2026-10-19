@@ -2,7 +2,16 @@
 // behind its facing; the handler is chosen by the block at the target position
 // (`AllUnpackingHandlers`).
 import '../model/inventory.dart';
+import '../model/orders.dart';
 import '../model/stack.dart';
+
+/// Where a package is being unpacked: the order context of the box (`PackageItem.getOrderContext`)
+/// and, for the handlers that need the block entity, the position of the target (see
+/// `host/unpacking_host.dart`).
+abstract interface class UnpackTarget {
+  /// `PackageItem.getOrderContext(box)`: the recipe the order was placed for, if any.
+  PackageOrderWithCrafts? get orderContext;
+}
 
 /// `UnpackingHandler.unpack`: insert [items] into [target], or only check that they fit.
 abstract interface class UnpackingHandler {
@@ -10,6 +19,7 @@ abstract interface class UnpackingHandler {
     ItemInv target,
     List<LStack> items, {
     required bool simulate,
+    UnpackTarget? where,
   });
 }
 
@@ -22,6 +32,7 @@ final class DefaultUnpackingHandler implements UnpackingHandler {
     ItemInv target,
     List<LStack> items, {
     required bool simulate,
+    UnpackTarget? where,
   }) async {
     if (!simulate) {
       // Some inventories do not support slot-by-slot precision; the simulate pass already
@@ -93,17 +104,25 @@ final class VoidingUnpackingHandler implements UnpackingHandler {
     ItemInv target,
     List<LStack> items, {
     required bool simulate,
+    UnpackTarget? where,
   }) async => true;
 }
 
-/// `AllUnpackingHandlers`: the handlers registered per block key.
+/// `AllUnpackingHandlers`: the handlers registered per block key. The handlers that need the
+/// block entity (basin, mechanical crafter) register themselves from
+/// `host/unpacking_host.dart`; the pure rules stay usable without a running server.
 abstract final class UnpackingHandlers {
   static const UnpackingHandler defaultHandler = DefaultUnpackingHandler();
   static const UnpackingHandler voiding = VoidingUnpackingHandler();
 
-  static const Map<String, UnpackingHandler> _byBlock = {
+  static final Map<String, UnpackingHandler> _byBlock = {
     'create:creative_crate': voiding,
   };
+
+  /// `UnpackingHandler.REGISTRY.register`: the host registers the handlers of the blocks it
+  /// knows (`create:basin`, `create:mechanical_crafter`).
+  static void register(String blockKey, UnpackingHandler handler) =>
+      _byBlock[blockKey] = handler;
 
   static UnpackingHandler of(String blockKey) =>
       _byBlock[blockKey] ?? defaultHandler;

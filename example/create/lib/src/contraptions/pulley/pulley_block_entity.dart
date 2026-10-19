@@ -3,7 +3,6 @@
 //
 // Java: `content/contraptions/pulley/PulleyBlockEntity`.
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
@@ -17,6 +16,7 @@ import '../core/movement_checks.dart';
 import '../entity/contraption_entity.dart';
 import '../entity/i_control_contraption.dart';
 import '../piston/linear_actuator_block_entity.dart';
+import '../piston/linear_actuator_logic.dart' show pulleyExtensionRange;
 import 'pulley_contraption.dart';
 
 /// `AllBlocks.ROPE` / `AllBlocks.PULLEY_MAGNET`.
@@ -167,27 +167,33 @@ class PulleyBlockEntity extends LinearActuatorBlockEntity {
   Future<void> _placeRopes() async {
     final world = this.world;
     if (world == null) return;
+    final level = HostBlockGetter(world);
     final length = offset.truncate();
+
+    // `PulleyBlockEntity.disassemble`: the old block is destroyed first (dropping only when it
+    // has no collision shape), then the rope is placed with the fluid state of the position.
+    Future<void> replace(Pos p, BState state) async {
+      if (!level.stateAt(p).isAir) {
+        await world.breakBlock(
+          BlockPos(x: p.$1, y: p.$2, z: p.$3),
+          drop: level.collisionBoxes(p).isEmpty,
+        );
+      }
+      await setBlockState(world, p, state);
+    }
+
     if (length > 0) {
       final magnetPos = localPos.belowBy(length);
-      final fluid = HostBlockGetter(world).isWater(magnetPos);
-      await world.breakBlock(
-        BlockPos(x: magnetPos.$1, y: magnetPos.$2, z: magnetPos.$3),
-        drop: false,
-      );
-      await setBlockState(
-        world,
+      await replace(
         magnetPos,
-        BState(pulleyMagnetKey, {'waterlogged': '$fluid'}),
+        BState(pulleyMagnetKey, {'waterlogged': '${level.isWater(magnetPos)}'}),
       );
     }
     for (var i = 1; i <= length - 1; i++) {
       final ropePos = localPos.belowBy(i);
-      final fluid = HostBlockGetter(world).isWater(ropePos);
-      await setBlockState(
-        world,
+      await replace(
         ropePos,
-        BState(ropeKey, {'waterlogged': '$fluid'}),
+        BState(ropeKey, {'waterlogged': '${level.isWater(ropePos)}'}),
       );
     }
   }
@@ -223,13 +229,10 @@ class PulleyBlockEntity extends LinearActuatorBlockEntity {
   int getExtensionRange() {
     final world = this.world;
     if (world == null) return 0;
-    final minY = world.getMinY();
-    return math.max(
-      0,
-      math.min(
-        ActuatorRuntime.instance.settings.maxRopeLength,
-        (this.pos.y - 1) - minY,
-      ),
+    return pulleyExtensionRange(
+      y: this.pos.y,
+      minY: world.getMinY(),
+      maxRopeLength: ActuatorRuntime.instance.settings.maxRopeLength,
     );
   }
 

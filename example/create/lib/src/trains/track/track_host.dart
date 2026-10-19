@@ -2,7 +2,9 @@
 // track block (`TrackBlockEntityHost`) and the one of a fake track block
 // (`FakeTrackBlockEntityHost`). The logic itself lives in `track_block_entity.dart` /
 // `fake_track_block.dart`; this file only forwards the host lifecycle and keeps the plugin block
-// entities in step with block state changes.
+// entities in step with block state changes. It also holds the host half of `TrackBlockItem`:
+// `useOn` runs from the `itemUseFirst` event (`useTrackItemOnBlock`), because the host has no
+// item behaviour hook.
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -15,13 +17,16 @@ import '../../common/pos.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../manifest/manifest.dart';
 import '../entity/train_level.dart' show TrainSettings;
+import '../station/host_ops.dart' show playCreateSound, sendOverlay;
 import '../support/ctag_host.dart';
 import '../support/runtime.dart';
 import '../util/ctag.dart';
 import 'fake_track_block.dart';
 import 'i_track_block.dart';
 import 'track_block_entity.dart';
+import 'track_block_item.dart';
 import 'track_level.dart';
+import 'track_placement.dart' show ConnectingFrom, TrackPlacement;
 
 /// `TrackLevel` over a host [World]. Reads go through [HostBlockGetter]; block writes keep the
 /// track and fake track block entities in the store, like Java's `EntityBlock.newBlockEntity`.
@@ -126,10 +131,11 @@ final class HostTrackLevel extends TrackLevel {
         priority: TickPriority.normal,
       );
 
-  /// The host does not expose the block tick queue; scheduling the same tick twice is harmless
-  /// (`TrackBlock.onPlace` only uses this to avoid a duplicate one-tick delay).
+  /// The host does not expose the block tick queue's block argument; `hasScheduledTick` answers
+  /// for the block currently at the position, which is the block key this code asks about.
   @override
-  bool hasScheduledTick(Pos pos, String blockKey) => false;
+  bool hasScheduledTick(Pos pos, String blockKey) =>
+      world.hasScheduledTick(pos: pos.toBlockPos());
 
   @override
   bool hasNonWaterFluid(Pos pos) {
@@ -299,23 +305,57 @@ final class FakeTrackBlockEntityHost extends CreateBlockEntity {
   }
 }
 
-/// The player as `TrackPlacement` and `BezierConnection` use it, over a host [Player]. Only the
-/// inventory hand-over and the creative flag are used by the curve removal; the host exposes no
-/// look angle, so [getLookAngle] is the zero vector (the placement packets carry the look angle
-/// themselves).
+/// The player as `TrackPlacement` and `BezierConnection` use it, over a host [Player].
+///
+/// `TrackPlacement.tryConnect` reads and writes the player's inventory synchronously, so [load]
+/// takes a snapshot of the 36 main slots and the offhand first; [flush] writes the slots the
+/// algorithm changed back to the host inventory (the Java code mutates the live `Inventory`).
+/// The plain constructor is for the curve item hand-over of `BezierConnection.addItemsToPlayer`,
+/// which needs neither the inventory nor the look angle.
 final class HostTrackPlacementPlayer implements TrackPlacementPlayer {
   final Player player;
 
-  HostTrackPlacementPlayer(this.player);
+  final TrackInventory? _snapshot;
+
+  /// The stacks of the snapshot when it was taken, to find the slots that changed.
+  final List<TrackItemStack?> _before = [];
+  TrackItemStack? _offhandBefore;
+
+  HostTrackPlacementPlayer(this.player, [this._snapshot]);
+
+  /// Reads the slots `TrackPlacement` uses (`getNonEquipmentItems()`, the selected slot and the
+  /// offhand) into a player the placement can read and write.
+  static Future<HostTrackPlacementPlayer> load(Player player) async {
+    final inventory = player.getInventory();
+    final main = inventory.asInventory();
+    // One host call for the 36 slots instead of one per slot.
+    final hostItems = main.getAllItems();
+    final items = <TrackItemStack?>[];
+    for (var slot = 0; slot < 36; slot++) {
+      items.add(
+        await _readStack(slot < hostItems.length ? hostItems[slot] : null),
+      );
+    }
+    final offhand = await _readStack(inventory.getOffHand());
+    final result = HostTrackPlacementPlayer(
+      player,
+      TrackInventory(items, inventory.getSelectedSlot(), offhand),
+    );
+    // The placement mutates the snapshot in place (it clears the `connecting_from` component of
+    // the selected slot), so the "before" side has to be a copy.
+    result._before.addAll(items.map((s) => s?.copy()));
+    result._offhandBefore = offhand?.copy();
+    return result;
+  }
 
   @override
-  Vec3 getLookAngle() => vec3Zero;
+  Vec3 getLookAngle() => player.lookDirection;
 
   @override
   bool isCreative() => player.getGamemode() == GameMode.creative;
 
   @override
-  TrackInventory get inventory => TrackInventory(const [], 0);
+  TrackInventory get inventory => _snapshot ?? TrackInventory(const [], 0);
 
   @override
   void placeItemBackInInventory(String itemKey, int count) {
@@ -324,4 +364,248 @@ final class HostTrackPlacementPlayer implements TrackPlacementPlayer {
       player.give(ItemStack.create(registryKey: itemKey, count: count)),
     );
   }
+
+  /// Writes the slots the placement changed back: the stack count and the removal of the
+  /// `connecting_from` component of the selected slot. Unchanged slots are left alone, so the
+  /// client is not resynced for them.
+  Future<void> flush() async {
+    final snapshot = _snapshot;
+    if (snapshot == null) return;
+    final inventory = player.getInventory();
+    final main = inventory.asInventory();
+    for (var slot = 0; slot < snapshot.nonEquipmentItems.length; slot++) {
+      final now = snapshot.nonEquipmentItems[slot];
+      final before = slot < _before.length ? _before[slot] : null;
+      if (now == null || now.count <= 0) {
+        if (before != null) await main.setItem(slot: slot, item: null);
+        continue;
+      }
+      if (before != null &&
+          before.count == now.count &&
+          (before.connectingFrom != null) == (now.connectingFrom != null)) {
+        continue;
+      }
+      final stack = main.getItem(slot: slot);
+      if (stack == null) continue;
+      await stack.setCount(count: now.count);
+      if (now.connectingFrom == null) {
+        _removeComponent(stack, trackConnectingFromComponent);
+      }
+      await main.setItem(slot: slot, item: stack);
+    }
+
+    final offhand = snapshot.offhand;
+    final offhandBefore = _offhandBefore;
+    if (offhand == null || offhand.count <= 0) {
+      if (offhandBefore != null) await inventory.setOffHand(item: null);
+      return;
+    }
+    if (offhandBefore != null &&
+        offhandBefore.count == offhand.count &&
+        (offhandBefore.connectingFrom != null) ==
+            (offhand.connectingFrom != null)) {
+      return;
+    }
+    final stack = inventory.getOffHand();
+    if (stack == null) return;
+    await stack.setCount(count: offhand.count);
+    if (offhand.connectingFrom == null) {
+      _removeComponent(stack, trackConnectingFromComponent);
+    }
+    await inventory.setOffHand(item: stack);
+  }
+
+  static Future<TrackItemStack?> _readStack(ItemStack? stack) async {
+    if (stack == null) return null;
+    try {
+      final itemKey = await stack.getRegistryKey();
+      final count = await stack.getCount();
+      return TrackItemStack(
+        itemKey,
+        count,
+        connectingFrom: readConnectingFrom(stack),
+        extendedCurve: readBoolComponent(stack, trackExtendedCurveComponent),
+      );
+    } finally {
+      // The copies `getItem` / `getAllItems` / `getOffHand` hand out own a host resource.
+      stack.dispose();
+    }
+  }
+}
+
+/// `stack.get(AllDataComponents.TRACK_CONNECTING_FROM)`.
+ConnectingFrom? readConnectingFrom(ItemStack stack) {
+  final bytes = stack.customComponent(trackConnectingFromComponent);
+  if (bytes == null) return null;
+  try {
+    return PacketBuffer.decode(bytes, ConnectingFrom.read);
+  } on Object {
+    return null;
+  }
+}
+
+/// A boolean data component (`create:track_extended_curve`), `null` when absent.
+bool? readBoolComponent(ItemStack stack, String key) {
+  final bytes = stack.customComponent(key);
+  if (bytes == null) return null;
+  try {
+    return PacketBuffer.decode(bytes, (r) => r.readBool());
+  } on Object {
+    return null;
+  }
+}
+
+/// `stack.remove(component)`, ignoring a component the stack does not have.
+void _removeComponent(ItemStack stack, String key) {
+  try {
+    stack.removeCustomComponent(key);
+  } on Object {
+    // the stack has no such component: nothing to clear
+  }
+}
+
+/// `TrackBlockItem.useOn(context)` on the host, through the `itemUseFirst` hook.
+///
+/// Returns `null` when the click is not for this item (the host goes on and places a single
+/// block), else what the host should do with it. The first click on a track selects it (the
+/// `connecting_from` component of the held stack); the second click runs
+/// [TrackBlockItem.useOn] -> [TrackPlacement.tryConnect], which places the extents of both ends
+/// and the curve - the whole run - so the host must not place the clicked block itself.
+Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
+  // Java: an off-hand use falls through to `super.useOn`.
+  if (e.hand == Hand.left) return null;
+
+  final String itemKey;
+  try {
+    itemKey = await e.stack.getRegistryKey();
+  } on Object {
+    return null;
+  }
+  if (!TrackBlockRegistry.keys.contains(itemKey)) return null;
+
+  final player = e.player;
+  final world = player.getWorld();
+  final level = HostTrackLevel(world, Tr.i.store);
+  final stack = TrackItemStack(
+    itemKey,
+    await e.stack.getCount(),
+    connectingFrom: readConnectingFrom(e.stack),
+    extendedCurve: readBoolComponent(e.stack, trackExtendedCurveComponent),
+  );
+  final pos = e.blockPos.toPos();
+  final lookVec = player.lookDirection;
+
+  // The player the placement reads and writes; its slots are written back below, after the
+  // placement took the items it needs.
+  final placementPlayer = await HostTrackPlacementPlayer.load(player);
+  final result = await TrackBlockItem.useOn(
+    level: level,
+    player: placementPlayer,
+    stack: stack,
+    clickedPos: pos,
+    clickedFace: e.face.toDirection(),
+    clickedState: level.stateAt(pos),
+    lookVec: lookVec,
+    yRot: player.getYaw(),
+    sneaking: _isSneaking(player),
+  );
+  await placementPlayer.flush();
+
+  switch (result.outcome) {
+    case TrackUseOutcome.pass:
+      // No selection and no track clicked: the host places the single block.
+      return null;
+    case TrackUseOutcome.selected:
+      if (!await _writeConnectingFrom(player, e.hand, stack.connectingFrom!)) {
+        // The host refused the component: the click is not a selection, so let the block place.
+        return null;
+      }
+      // `SoundEvents.ITEM_FRAME_ADD_ITEM` at the clicked block.
+      world.playCustomSound(
+        soundName: 'minecraft:entity.item_frame.add_item',
+        category: SoundCategory.blocks,
+        pos: pos.center,
+        volume: 0.75,
+        pitch: 1,
+      );
+      return ItemUseFirstResult.success;
+    case TrackUseOutcome.selectionCleared:
+      await clearTrackComponents(player, e.hand);
+      _overlay(player, result.message);
+      return ItemUseFirstResult.success;
+    case TrackUseOutcome.junctionStart:
+    case TrackUseOutcome.turnStart:
+      _overlay(player, result.message);
+      return ItemUseFirstResult.success;
+    case TrackUseOutcome.failed:
+      return ItemUseFirstResult.consume;
+    case TrackUseOutcome.denied:
+      _overlay(
+        player,
+        result.message,
+        white: result.message == 'create.track.second_point',
+      );
+      playCreateSound(world, pos, 'deny');
+      return ItemUseFirstResult.consume;
+    case TrackUseOutcome.placed:
+      // Java clears both components of the main hand stack and plays the block's place sound.
+      await clearTrackComponents(player, e.hand);
+      world.playCustomSound(
+        soundName: 'minecraft:block.metal.place',
+        category: SoundCategory.blocks,
+        pos: pos.center,
+        volume: 1,
+        // `soundtype.getPitch() * 0.8F` of the metal sound type.
+        pitch: 0.8,
+      );
+      return ItemUseFirstResult.success;
+  }
+}
+
+/// `stack.set(AllDataComponents.TRACK_CONNECTING_FROM, value)` on the held stack. The event's
+/// stack is a copy, so the component is written to the item in the player's hand. Returns false
+/// when the host rejects the component (the data component type or its codec is not registered).
+Future<bool> _writeConnectingFrom(Player player, Hand hand, ConnectingFrom value) async {
+  final stack = player.getItemInHand(hand: hand);
+  if (stack == null) return false;
+  try {
+    stack.setCustomComponent(
+      trackConnectingFromComponent,
+      PacketBuffer.encode(value.write),
+    );
+  } on Object catch (error) {
+    Tr.i.log.warn('Cannot store $trackConnectingFromComponent: $error');
+    return false;
+  }
+  await player.setItemInHand(hand: hand, stack: stack);
+  return true;
+}
+
+/// `stack.remove(TRACK_CONNECTING_FROM)` and `stack.remove(TRACK_EXTENDED_CURVE)` of the stack
+/// in [hand] (`TrackBlockItem.useOn` clears the selection of the main hand stack).
+Future<void> clearTrackComponents(Player player, Hand hand) async {
+  final stack = player.getItemInHand(hand: hand);
+  if (stack == null) return;
+  for (final key in const [trackConnectingFromComponent, trackExtendedCurveComponent]) {
+    try {
+      stack.removeCustomComponent(key);
+    } on Object {
+      // the stack does not have the component
+    }
+  }
+  await player.setItemInHand(hand: hand, stack: stack);
+}
+
+bool _isSneaking(Player player) {
+  final entity = player.asEntity();
+  try {
+    return entity.isSneaking();
+  } finally {
+    entity.dispose();
+  }
+}
+
+void _overlay(Player player, String? key, {bool white = false}) {
+  if (key == null) return;
+  sendOverlay(player, trackMessage(key), color: white ? 'f' : 'c');
 }

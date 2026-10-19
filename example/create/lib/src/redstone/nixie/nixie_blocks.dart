@@ -177,7 +177,12 @@ final class NixieTubeBlocks {
         drops: isOrange ? null : BlockDrops.lootTable('create:blocks/$key'),
         behavior: BlockBehavior(
           onPlaced: _onPlaced,
-          onNeighborUpdate: (server, e) => Lvl(e.targetWorld).scheduleTick(e.pos.toPos(), 1),
+          // `neighborChanged`: one tick per position, not one per neighbour.
+          onNeighborUpdate: (server, e) {
+            final world = e.targetWorld;
+            if (world.hasScheduledTick(pos: e.pos)) return;
+            Lvl(world).scheduleTick(e.pos.toPos(), 1);
+          },
           onScheduledTick: (server, e) async => _updateDisplayed(Lvl(e.targetWorld), e.pos, e.targetWorld, force: false),
           onUse: _onUse,
           canConnectRedstone: (server, e) => e.direction != null,

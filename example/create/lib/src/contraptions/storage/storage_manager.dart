@@ -3,7 +3,9 @@
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../core/nbt.dart';
+import '../core/contraption.dart';
 import '../core/level.dart';
+import '../core/movement.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_info.dart';
 import 'mounted_storage.dart';
@@ -17,6 +19,35 @@ final class StorageSync {
   const StorageSync(this.items, this.fluids);
 
   bool get isEmpty => items.isEmpty && fluids.isEmpty;
+
+  /// `MountedStorageSyncPacket`: the fields of `create:mounted_storage_sync`, as the payload bus
+  /// hands them over (`{contraptionId, items: {pos: nbt}, fluids: {pos: nbt}}`). Storages of an
+  /// unknown type are dropped, like a failed codec on the client.
+  static StorageSync fromWire(Map<String, Object?> fields) {
+    final items = <Pos, MountedItemStorage>{};
+    final fluids = <Pos, MountedFluidStorage>{};
+    final rawItems = fields['items'];
+    if (rawItems is Map) {
+      for (final e in rawItems.entries) {
+        final pos = e.key;
+        final value = e.value;
+        if (pos is! (int, int, int) || value is! NbtValue) continue;
+        final storage = MountedStorages.decodeItem(NbtMap.of(value));
+        if (storage != null) items[pos] = storage;
+      }
+    }
+    final rawFluids = fields['fluids'];
+    if (rawFluids is Map) {
+      for (final e in rawFluids.entries) {
+        final pos = e.key;
+        final value = e.value;
+        if (pos is! (int, int, int) || value is! NbtValue) continue;
+        final storage = MountedStorages.decodeFluid(NbtMap.of(value));
+        if (storage != null) fluids[pos] = storage;
+      }
+    }
+    return StorageSync(items, fluids);
+  }
 }
 
 class MountedStorageManager {
@@ -200,8 +231,12 @@ class MountedStorageManager {
     return StorageSync(items, fluids);
   }
 
-  /// `read`.
-  void read(NbtMap nbt, {bool clientPacket = false}) {
+  /// `read`. [contraption] is given on the client for the initial `afterSync` callbacks.
+  void read(
+    NbtMap nbt, {
+    bool clientPacket = false,
+    Contraption? contraption,
+  }) {
     reset();
     try {
       for (final v in nbt.getList('items')) {
@@ -229,6 +264,58 @@ class MountedStorageManager {
       // an unreadable storage leaves the others; initialize() below makes the manager valid
     }
     initialize();
+
+    // for client sync, run initial afterSync callbacks
+    if (!clientPacket || contraption == null) return;
+    for (final e in _allItemStorages.entries) {
+      final s = e.value;
+      if (s is SyncedMountedStorage) {
+        (s as SyncedMountedStorage).afterSync(contraption, e.key);
+      }
+    }
+    for (final e in _fluids.entries) {
+      final s = e.value;
+      if (s is SyncedMountedStorage) {
+        (s as SyncedMountedStorage).afterSync(contraption, e.key);
+      }
+    }
+  }
+
+  /// `handleSync`: applies the storages of a `MountedStorageSyncPacket`; the packet only carries
+  /// the changed ones, the others are kept. Then runs their `afterSync` callbacks.
+  void handleSync(StorageSync sync, Contraption contraption) {
+    final items = Map<Pos, MountedItemStorage>.of(allItemStorages);
+    final fluids = Map<Pos, MountedFluidStorage>.of(fluidStorages);
+    reset();
+
+    // track freshly synced storages (identity: two storages may compare equal by content)
+    final synced = <SyncedMountedStorage, Pos>{};
+
+    try {
+      // re-add the existing ones, then override them with the synced ones
+      items.forEach((pos, storage) => addItemStorage(storage, pos));
+      fluids.forEach((pos, storage) => addFluidStorage(storage, pos));
+      sync.items.forEach((pos, storage) {
+        addItemStorage(storage, pos);
+        if (storage is SyncedMountedStorage) {
+          synced[storage as SyncedMountedStorage] = pos;
+        }
+      });
+      sync.fluids.forEach((pos, storage) {
+        addFluidStorage(storage, pos);
+        if (storage is SyncedMountedStorage) {
+          synced[storage as SyncedMountedStorage] = pos;
+        }
+      });
+    } on Object {
+      // an exception leaves the manager valid through initialize() below
+    }
+
+    initialize();
+
+    for (final e in synced.entries) {
+      e.key.afterSync(contraption, e.value);
+    }
   }
 
   /// `readLegacy`: the `Storage`/`FluidStorage` lists of contraptions saved before the codec.
@@ -302,6 +389,25 @@ class MountedStorageManager {
               .toValue(),
       ]);
     }
+  }
+
+  /// `getAllItemStorages()[localPos]`: the storage of the block at [localPos], if any.
+  MountedItemStorage? storageAt(Pos localPos) {
+    _assertInitialized();
+    return _allItemStorages[localPos];
+  }
+
+  /// `handlePlayerStorageInteraction(contraption, player, localPos)`: whether clicking [localPos]
+  /// opens a container. The host then opens the menu of [storageAt]; a client host checks
+  /// [isInteractable] instead, because it does not have the storages.
+  bool handlePlayerStorageInteraction(
+    Contraption contraption,
+    InteractingPlayer player,
+    Pos localPos,
+  ) {
+    if (!isInitialized) return false;
+    if (contraption.blocks[localPos] == null) return false;
+    return _allItemStorages[localPos]?.menuLayout != null;
   }
 
   /// Whether a position holds a storage a player can open.

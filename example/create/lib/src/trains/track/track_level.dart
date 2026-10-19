@@ -7,6 +7,8 @@
 // (`track_host.dart`) is the host implementation, [MemoryTrackLevel] the one tests use.
 import 'dart:math' as math;
 
+import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockBox;
+
 import '../../common/common.dart';
 import '../../api/block_state.dart';
 import 'bezier_track_point_location.dart';
@@ -16,6 +18,13 @@ import 'track_placement.dart' show ConnectingFrom;
 
 /// `BlockStateProperties.WATERLOGGED` property name.
 const String waterloggedProperty = 'waterlogged';
+
+/// `AllDataComponents.TRACK_CONNECTING_FROM`: the track end a held track item connects from.
+const String trackConnectingFromComponent = 'create:track_connecting_from';
+
+/// `AllDataComponents.TRACK_EXTENDED_CURVE`: the client's "maximise turn" hint for the next
+/// placement (`PlaceExtendedCurvePacket`).
+const String trackExtendedCurveComponent = 'create:track_extended_curve';
 
 /// `ProperWaterloggedBlock.withWater(level, state, pos)`: waterlogged blocks placed in a water
 /// source become waterlogged, air placed in water becomes water.
@@ -205,4 +214,91 @@ abstract class TrackPlacementPlayer {
 
   /// `inv.placeItemBackInInventory(new ItemStack(item, count))`.
   void placeItemBackInInventory(String itemKey, int count);
+}
+
+/// A [TrackLevel] over a map of block states, for tests and for simulating a placement: blocks
+/// absent from [blocks] are air, tracks have no block entity, and no block is water, tagged or
+/// sturdy.
+final class MemoryTrackLevel extends TrackLevel {
+  final Map<Pos, BState> blocks;
+  final math.Random _random;
+
+  MemoryTrackLevel([Map<Pos, BState>? blocks, math.Random? random])
+    : blocks = blocks ?? <Pos, BState>{},
+      _random = random ?? math.Random(0);
+
+  @override
+  String get dimension => 'minecraft:overworld';
+
+  @override
+  BState stateAt(Pos p) => blocks[p] ?? BState.air;
+
+  @override
+  bool isLoaded(Pos p) => true;
+
+  @override
+  bool isFaceSturdy(Pos p, Direction face) => false;
+
+  @override
+  List<BlockBox> collisionBoxes(Pos p) => const [];
+
+  @override
+  bool supportShapeEmpty(Pos p) => true;
+
+  @override
+  bool canBeReplaced(Pos p) => stateAt(p).isAir;
+
+  @override
+  bool hasTag(Pos p, String tag) => false;
+
+  @override
+  bool isWater(Pos p) => false;
+
+  @override
+  TrackBlockEntity? getTrackBlockEntity(Pos pos) => null;
+
+  @override
+  FakeTrackBlockEntity? getFakeTrackBlockEntity(Pos pos) => null;
+
+  @override
+  TrackLevel? getLevel(String dimension) => this;
+
+  @override
+  Future<void> setBlock(Pos pos, BState state) async => blocks[pos] = state;
+
+  @override
+  void removeBlockEntity(Pos pos) {}
+
+  @override
+  Future<void> removeBlock(Pos pos) async => blocks[pos] = BState.air;
+
+  @override
+  Future<bool> destroyBlock(Pos pos, bool dropBlock) async {
+    blocks[pos] = BState.air;
+    return true;
+  }
+
+  @override
+  void scheduleTick(Pos pos, String blockKey, int delay) {}
+
+  @override
+  bool hasScheduledTick(Pos pos, String blockKey) => false;
+
+  @override
+  bool hasNonWaterFluid(Pos pos) => false;
+
+  @override
+  void sendRemoveBlockEntity(Pos pos) {}
+
+  @override
+  math.Random get random => _random;
+
+  @override
+  void spawnItemEntity(Vec3 pos, String itemKey, int count) {}
+
+  @override
+  void sendBlockParticles(String blockKey, Vec3 pos) {}
+
+  @override
+  PaveBlockInfo? paveBlockOf(String itemKey) => null;
 }

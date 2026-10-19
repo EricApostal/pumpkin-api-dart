@@ -627,3 +627,40 @@ class CombinedFluidTanks implements FluidTanks {
     return out;
   }
 }
+
+/// Gives the stacks of [next] the components of the stacks of [previous] they continue, so a
+/// stack moved inside the menu does not lose them. A stack continues a previous one when the
+/// slot still holds the same item, or when exactly one stack of that item and count left its
+/// slot and exactly one stack of that item and count appeared.
+void carryStackComponents(List<StoredStack> previous, List<StoredStack> next) {
+  for (var i = 0; i < next.length && i < previous.length; i++) {
+    final before = previous[i], after = next[i];
+    if (after.isEmpty || before.components == null) continue;
+    if (before.item == after.item) {
+      next[i] = StoredStack(after.item, after.count, before.components);
+    }
+  }
+  final donors = <(String, int), List<int>>{};
+  for (var i = 0; i < previous.length; i++) {
+    final stack = previous[i];
+    if (stack.isEmpty || stack.components == null) continue;
+    if (i < next.length && next[i].item == stack.item) continue;
+    donors.putIfAbsent((stack.item, stack.count), () => []).add(i);
+  }
+  if (donors.isEmpty) return;
+  final takers = <(String, int), List<int>>{};
+  for (var i = 0; i < next.length; i++) {
+    final stack = next[i];
+    if (stack.isEmpty || stack.components != null) continue;
+    if (i < previous.length && previous[i].item == stack.item) continue;
+    takers.putIfAbsent((stack.item, stack.count), () => []).add(i);
+  }
+  for (final entry in takers.entries) {
+    final from = donors[entry.key];
+    // only an unambiguous move: one stack left and one arrived
+    if (from == null || from.length != 1 || entry.value.length != 1) continue;
+    final components = previous[from.single].components;
+    final taker = entry.value.single;
+    next[taker] = StoredStack(next[taker].item, next[taker].count, components);
+  }
+}

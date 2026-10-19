@@ -5,6 +5,7 @@ import 'package:create/src/data/datapack.g.dart';
 import 'package:create/src/data/pack_format.dart';
 import 'package:create/src/processing/common/stack.dart';
 import 'package:create/src/processing/common/storage.dart';
+import 'package:create/src/processing/crusher/crushing_logic.dart';
 import 'package:create/src/processing/recipe/heat.dart';
 import 'package:create/src/processing/recipe/ingredient.dart';
 import 'package:create/src/processing/recipe/output.dart';
@@ -273,6 +274,53 @@ void main() {
       expect(t.fill(const PFluid('minecraft:lava', 10)), 0);
       expect(t.drainAny(400).amount, 400);
       expect(t.fluid.amount, 600);
+    });
+  });
+
+  group('crushing wheel recipe selection', () {
+    // `CrushingWheelControllerBlockEntity.findRecipe`: `create:crushing` first, then
+    // `create:milling`; the same input may have both.
+    final book = RecipeBook(tags)
+      ..add(
+        parseRecipe(
+              'create:crushing/iron_ore',
+              j('{"type":"create:crushing","ingredients":[{"item":"minecraft:iron_ore"}],"processing_time":250,"results":[{"id":"create:crushed_raw_iron"}]}'),
+            )!,
+      )
+      ..add(
+        parseRecipe(
+              'create:milling/iron_ore',
+              j('{"type":"create:milling","ingredients":[{"item":"minecraft:iron_ore"}],"processing_time":100,"results":[{"id":"minecraft:iron_ingot"}]}'),
+            )!,
+      )
+      ..add(
+        parseRecipe(
+              'create:milling/stone',
+              j('{"type":"create:milling","ingredients":[{"item":"minecraft:stone"}],"processing_time":100,"results":[{"id":"minecraft:cobblestone"}]}'),
+            )!,
+      );
+
+    test('a crushing recipe wins over a milling one for the same input', () {
+      final match = crushingRecipeFor(book, const PStack('minecraft:iron_ore', 1))!;
+      expect(match.recipe.type, CreateRecipeType.crushing);
+      expect(match.recipe.id, 'create:crushing/iron_ore');
+      expect(match.recipe.processingDuration, 250);
+    });
+
+    test('falls back to a milling recipe when there is no crushing one', () {
+      final match = crushingRecipeFor(book, const PStack('minecraft:stone', 1))!;
+      expect(match.recipe.type, CreateRecipeType.milling);
+      expect(match.recipe.id, 'create:milling/stone');
+    });
+
+    test('an empty stack or an unknown item selects nothing', () {
+      expect(crushingRecipeFor(book, PStack.empty), isNull);
+      expect(crushingRecipeFor(book, const PStack('minecraft:dirt', 1)), isNull);
+    });
+
+    test('the timer of an inserted stack is the recipe duration', () {
+      final match = crushingRecipeFor(book, const PStack('minecraft:stone', 4))!;
+      expect(match.recipe.processingDuration, 100);
     });
   });
 

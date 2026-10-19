@@ -11,6 +11,7 @@ import '../common/direction.dart';
 import '../common/pos.dart';
 import '../common/vec_helper.dart';
 import '../core/nbt.dart';
+import 'nbt_processors.dart' show sanitizeEntityItems;
 import 'state_transform.dart';
 
 /// A block of a template.
@@ -73,8 +74,10 @@ final class SchematicEntity {
 
   const SchematicEntity(this.relativePos, this.relativeBlockPos, this.nbt);
 
-  /// The NBT with `Pos` set to the absolute [position] (a fresh UUID is assigned on spawn).
-  List<int> withPosition(Vec3 position) {
+  /// The NBT with `Pos` set to the absolute [position] (a fresh UUID is assigned on spawn). When
+  /// [blockPos] is given and the tag carries `block_pos`, that position is updated too
+  /// (`StructureTemplate.placeEntities`).
+  List<int> withPosition(Vec3 position, {Pos? blockPos}) {
     final parsed = BinaryNbt.read(nbt);
     if (parsed == null || parsed.root.kind != NbtKind.compound) return nbt;
     final m = {...parsed.root.asCompound};
@@ -83,6 +86,13 @@ final class SchematicEntity {
       NbtValue.double64(position.$2),
       NbtValue.double64(position.$3),
     ]);
+    if (blockPos != null && m.containsKey('block_pos')) {
+      m['block_pos'] = NbtValue.list([
+        NbtValue.int32(blockPos.$1),
+        NbtValue.int32(blockPos.$2),
+        NbtValue.int32(blockPos.$3),
+      ]);
+    }
     m.remove('UUID');
     return BinaryNbt.write(NbtValue.compound(m), name: parsed.name);
   }
@@ -95,6 +105,16 @@ final class SchematicWorld {
   final Map<Pos, SchematicBlock> _blocks = {};
   final List<SchematicEntity> entities = [];
   BlockBounds _bounds = BlockBounds.single(posZero);
+
+  /// `StructureTransform.apply(BlockEntity)` for the block entities of a loaded schematic: the
+  /// rotation around Y and the mirroring of their saved data. The contraptions module installs
+  /// the lookup in [MovedBlockTransformers] here; without it the data is left as saved.
+  static void Function(
+    String typeKey,
+    Map<String, NbtValue> data,
+    BlockRotation rotation,
+    BlockMirror mirror,
+  )? blockEntityTransform;
 
   SchematicWorld(this.anchor);
 
@@ -111,7 +131,7 @@ final class SchematicWorld {
     for (final b in template.blocks) {
       if (b.state.key == 'minecraft:structure_void') continue;
       final p = transformPos(b.pos, mirror, rotation, posZero);
-      world.setBlock(p, SchematicBlock(transformState(b.state, mirror, rotation), b.nbt));
+      world.setBlock(p, SchematicBlock(transformState(b.state, mirror, rotation), _transformBlockEntity(b.nbt, mirror, rotation)));
     }
     for (final e in template.entities) {
       world.entities.add(_transformEntity(e, mirror, rotation));
@@ -120,6 +140,20 @@ final class SchematicWorld {
     final far = transformPos(template.size.offset(-1, -1, -1), mirror, rotation, posZero);
     world._bounds = world._bounds.encapsulatePos(far);
     return world;
+  }
+
+  /// `StructureTransform.apply(be)` on the saved data of one block entity.
+  static List<int>? _transformBlockEntity(List<int>? nbt, BlockMirror mirror, BlockRotation rotation) {
+    final transform = blockEntityTransform;
+    if (nbt == null || transform == null) return nbt;
+    if (mirror == BlockMirror.none && rotation == BlockRotation.none) return nbt;
+    final parsed = BinaryNbt.read(nbt);
+    if (parsed == null || parsed.root.kind != NbtKind.compound) return nbt;
+    final data = parsed.root.asCompound;
+    final id = data['id'];
+    if (id == null || id.kind != NbtKind.string) return nbt;
+    transform(id.value as String, data, rotation, mirror);
+    return BinaryNbt.write(NbtValue.compound(data), name: parsed.name);
   }
 
   /// `setBlock`: stores [block] at the relative [pos] and widens the bounds.
@@ -163,7 +197,9 @@ final class SchematicWorld {
   static bool _isFurnace(String key) =>
       key == 'minecraft:furnace' || key == 'minecraft:blast_furnace' || key == 'minecraft:smoker';
 
-  /// `StructureTemplate.transform(Vec3, ...)` of an entity.
+  /// `StructureTemplate.transform(Vec3, ...)` of an entity, plus the component sanitizing of
+  /// `SchematicLevel.addFreshEntity` (item frames and armor stands may not carry unsafe item
+  /// components into the world).
   static SchematicEntity _transformEntity(TemplateEntity e, BlockMirror mirror, BlockRotation rotation) {
     final pos = transformVec(e.pos, mirror, rotation, posZero);
     final blockPos = transformPos(e.blockPos, mirror, rotation, posZero);
@@ -176,7 +212,8 @@ final class SchematicWorld {
       if (rot != null && rot.kind == NbtKind.list) {
         final items = rot.value as List<NbtValue>;
         if (items.length >= 2) {
-          var yaw = (items[0].value as num).toDouble();
+          // `Entity.rotate`/`Entity.mirror` start from `Mth.wrapDegrees(getYRot())`.
+          var yaw = _wrapDegrees((items[0].value as num).toDouble());
           final pitch = items[1].value;
           yaw = switch (mirror) {
             BlockMirror.leftRight => 180.0 - yaw,
@@ -187,6 +224,7 @@ final class SchematicWorld {
           m['Rotation'] = NbtValue.list([NbtValue.float(yaw), NbtValue.float((pitch as num).toDouble())]);
         }
       }
+      sanitizeEntityItems(m);
       m['Pos'] = NbtValue.list([NbtValue.double64(pos.$1), NbtValue.double64(pos.$2), NbtValue.double64(pos.$3)]);
       nbt = Uint8List.fromList(BinaryNbt.write(NbtValue.compound(m), name: parsed.name));
     }
@@ -198,6 +236,14 @@ final class SchematicWorld {
 
   @override
   String toString() => 'SchematicWorld(anchor $anchor, ${_blocks.length} blocks, bounds $_bounds)';
+}
+
+/// `Mth.wrapDegrees`: the angle in `-180..180`.
+double _wrapDegrees(double angle) {
+  var a = angle % 360;
+  if (a >= 180) a -= 360;
+  if (a < -180) a += 360;
+  return a;
 }
 
 /// `Math.max(10, ...)`-style helper used by the launched items; kept here for the distance maths.

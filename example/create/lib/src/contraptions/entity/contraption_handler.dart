@@ -46,6 +46,15 @@ abstract final class ContraptionHandler {
   static AbstractContraptionEntity? entityById(String worldId, int id) =>
       _loaded[worldId]?[id];
 
+  /// The contraption entity with [id] in any loaded world.
+  static AbstractContraptionEntity? entityByIdAnyWorld(int id) {
+    for (final world in _loaded.values) {
+      final found = world[id];
+      if (found != null) return found;
+    }
+    return null;
+  }
+
   /// Forgets the contraptions of a world that unloaded.
   static void forgetWorld(String worldId) {
     _loaded.remove(worldId);

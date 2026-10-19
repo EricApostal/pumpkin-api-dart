@@ -2,6 +2,9 @@
 // fragments of one order into new packages (or passes single packages on).
 import 'dart:async';
 
+import '../../../common/host_bridge.dart';
+import '../../../conveyance/transport/crate/creative_crate_block_entity.dart'
+    show CreativeCrateBlockEntity;
 import '../../host/runtime.dart';
 import '../../model/inventory.dart';
 import '../../model/orders.dart';
@@ -22,7 +25,11 @@ class RepackagerBlockEntity extends PackagerBlockEntity {
     if (animationTicks > 0) return false;
 
     final targetInv = targetInventory;
-    if (targetInv == null) return false;
+    if (targetInv == null || targetsPackager) return false;
+
+    // A creative crate swallows the box; there is never space to report, but it still accepts.
+    final targetIsCreativeCrate =
+        store.at(worldId, targetPos.toBlockPos()) is CreativeCrateBlockEntity;
 
     var anySpace = false;
     for (var slot = 0; slot < targetInv.slots; slot++) {
@@ -33,7 +40,7 @@ class RepackagerBlockEntity extends PackagerBlockEntity {
       }
     }
 
-    if (!anySpace) return false;
+    if (!targetIsCreativeCrate && !anySpace) return false;
     if (simulate) return true;
 
     previouslyUnwrapped = box;
@@ -55,7 +62,7 @@ class RepackagerBlockEntity extends PackagerBlockEntity {
     if (queuedExitingPackages.isNotEmpty) return;
 
     final targetInv = targetInventory;
-    if (targetInv == null) return;
+    if (targetInv == null || targetsPackager) return;
 
     await _attemptToRepackage(targetInv);
     if (heldBox.isEmpty) return;

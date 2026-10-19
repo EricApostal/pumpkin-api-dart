@@ -133,6 +133,67 @@ void main() {
     });
   });
 
+  group('a block placed into a spinning network', () {
+    // What placing a block does: `BlockEntityStore.createAt` makes the entity with no speed,
+    // source or network and `updateSpeed` still set, so the first `tick()` runs
+    // `kineticTickStart()` -> `attachKinetics()` -> `RotationPropagator.handleAdded`.
+    test('a shaft added to a spinning line joins it on its first tick', () {
+      final level = FakeLevel();
+      final motor = level.motor(0, 0, 0, 16, facing: Dir.east);
+      final first = level.shaft(1, 0, 0);
+      level.tickAll(2);
+      expect(first.theoreticalSpeed, 16);
+
+      final added = level.shaft(2, 0, 0);
+      expect(added.needsSpeedUpdate, isTrue);
+      expect(added.theoreticalSpeed, 0);
+      expect(added.source, isNull);
+      expect(added.network, isNull);
+
+      level.tickAll(1);
+
+      expect(added.theoreticalSpeed, 16);
+      expect(added.source, first.kpos);
+      expect(added.network, motor.kpos.packed);
+      expect(added.needsSpeedUpdate, isFalse);
+      expect(first.theoreticalSpeed, 16);
+      expect(level.networks[motor.kpos.packed]!.members.length, 3);
+    });
+
+    test('a cogwheel added next to a spinning shaft joins it on its first tick', () {
+      final level = FakeLevel();
+      final motor = level.motor(0, 0, 0, 16, facing: Dir.east);
+      final shaft = level.shaft(1, 0, 0);
+      level.tickAll(2);
+      expect(shaft.theoreticalSpeed, 16);
+
+      final cog = level.cog(2, 0, 0, axis: KAxis.x);
+      expect(cog.theoreticalSpeed, 0);
+
+      level.tickAll(1);
+
+      expect(cog.theoreticalSpeed, 16);
+      expect(cog.source, shaft.kpos);
+      expect(cog.network, motor.kpos.packed);
+    });
+
+    test('a block placed on a running network does not disturb the existing members', () {
+      final level = FakeLevel();
+      level.motor(0, 0, 0, 32, facing: Dir.east);
+      final shafts = [for (var x = 1; x <= 3; x++) level.shaft(x, 0, 0)];
+      level.tickAll(2);
+      final before = [for (final s in shafts) (s.theoreticalSpeed, s.source, s.network)];
+
+      level.shaft(4, 0, 0);
+      level.tickAll(2);
+
+      for (var i = 0; i < shafts.length; i++) {
+        expect((shafts[i].theoreticalSpeed, shafts[i].source, shafts[i].network), before[i]);
+      }
+      expect(level.destroyed, isEmpty);
+    });
+  });
+
   group('cogwheels', () {
     test('adjacent small cogs reverse the direction', () {
       final level = FakeLevel();

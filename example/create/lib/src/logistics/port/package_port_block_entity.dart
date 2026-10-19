@@ -8,7 +8,10 @@ import '../../api/util.dart' hide pos;
 import '../../conveyance/chain/chain_conveyor_block_entity.dart';
 import '../../conveyance/chain/chain_conveyor_logic.dart';
 import '../../conveyance/chain/chain_conveyor_port.dart';
+import '../../conveyance/items/inventory.dart' hide insertStacked;
 import '../../conveyance/items/item_data.dart';
+import '../../conveyance/transport/transport_inventory_api.dart'
+    show ItemInventoryProvider;
 import '../host/host_inventory.dart';
 import '../host/lg_block_entity.dart';
 import '../host/lvl.dart';
@@ -27,7 +30,8 @@ abstract interface class FrogportPuller {
 }
 
 /// `PackagePortBlockEntity`.
-abstract class PackagePortBlockEntity extends LgBlockEntity {
+abstract class PackagePortBlockEntity extends LgBlockEntity
+    implements ItemInventoryProvider {
   /// The 18 package slots (`inventory` in Java; named `packages` here because `inventory` is a
   /// host top-level name).
   final MemoryInv packages = MemoryInv(
@@ -51,6 +55,27 @@ abstract class PackagePortBlockEntity extends LgBlockEntity {
   String? get filterString => acceptsPackages ? addressFilter : null;
 
   bool get isBackedUp => packages.nonEmpty().length >= packages.slots;
+
+  /// `PackagePortAutomationInventoryWrapper`: the buffer as automation sees it. A box can only
+  /// be taken out when the port does not want it (it does not match the address filter), and a
+  /// box the port wants cannot be put in by automation.
+  @override
+  ItemInventory? itemInventory(Direction? side) => _automation;
+
+  late final ItemInventory _automation = _PackagePortAutomationInventory(this);
+
+  /// The buffer stack at [slot] in the conveyance value type (`ItemValue`).
+  ItemValue packageValue(int slot) => packageValueOf(packages.at(slot));
+
+  /// The buffer stack at [slot] as a logistics stack.
+  LStack packageStack(int slot) => packageFrom(packageValue(slot));
+
+  /// [stack] in the conveyance value type.
+  ItemValue packageValueOf(LStack stack) =>
+      stack.isEmpty ? ItemValue.empty : toItemValue(stack, Lg.i.wire);
+
+  /// [value] as a logistics stack.
+  LStack packageFrom(ItemValue value) => fromItemValue(value, Lg.i.wire);
 
   @override
   void readState(Map<String, dynamic> map) {
@@ -312,8 +337,6 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   void _tryPushingToAdjacentInventories() {
     if (packages.nonEmpty().isEmpty) return;
     failedLastExport = false;
-    final w = world;
-    if (w == null) return;
     final below = pos.toPos().below;
 
     // A packager below exposes its tray as an inventory: inserting a package unpacks it.
@@ -326,11 +349,11 @@ class FrogportBlockEntity extends PackagePortBlockEntity
       return;
     }
 
-    final inv = hostInvAt(
-      w,
-      below.toBlockPos(),
+    final inv = inventoryAt(
+      worldId,
+      below,
       Lg.i.io,
-      side: Direction.up.toHost(),
+      side: Direction.up,
     );
     if (inv == null) return;
     for (var slot = 0; slot < packages.slots; slot++) {
@@ -385,9 +408,6 @@ class FrogportBlockEntity extends PackagePortBlockEntity
     if (!_exportToTarget(PackageStyles.defaultBox(), simulate: true)) return;
     if (await _tryPullingFrom(packages)) return;
 
-    final w = world;
-    if (w == null) return;
-
     // The packager below exposes its held box through its capability in Java; plugin block
     // entities have no item handler here, so the box is taken from the block entity directly.
     final below = store.typed<PackagerBlockEntity>(
@@ -404,11 +424,11 @@ class FrogportBlockEntity extends PackagePortBlockEntity
       }
     }
 
-    final inv = hostInvAt(
-      w,
-      pos.toPos().below.toBlockPos(),
+    final inv = inventoryAt(
+      worldId,
+      pos.toPos().below,
       Lg.i.io,
-      side: Direction.up.toHost(),
+      side: Direction.up,
     );
     if (inv == null) return;
     await _tryPullingFrom(inv);
@@ -485,5 +505,53 @@ class PostboxBlockEntity extends PackagePortBlockEntity {
         'open': open ? 'true' : 'false',
       }, neighbors: true),
     );
+  }
+}
+
+/// `PackagePortAutomationInventoryWrapper`: what a hopper (or another plugin inventory) sees of
+/// the port's buffer.
+final class _PackagePortAutomationInventory implements ItemInventory {
+  final PackagePortBlockEntity be;
+
+  _PackagePortAutomationInventory(this.be);
+
+  MemoryInv get _buffer => be.packages;
+
+  @override
+  int get slots => _buffer.slots;
+
+  @override
+  ItemValue getStack(int slot) => be.packageValue(slot);
+
+  @override
+  int slotLimit(int slot) => _buffer.limit;
+
+  @override
+  bool isItemValid(int slot, ItemValue stack) =>
+      _buffer.validator?.call(slot, be.packageFrom(stack)) ?? true;
+
+  @override
+  ItemValue insert(int slot, ItemValue stack, {bool simulate = false}) {
+    if (!PackageItem.isPackage(be.packageFrom(stack))) return stack;
+    final filter = be.filterString;
+    if (filter != null && PackageItem.matchBoxAddress(be.packageFrom(stack), filter)) {
+      return stack;
+    }
+    return be.packageValueOf(
+      _buffer.insertNow(slot, be.packageFrom(stack), simulate: simulate),
+    );
+  }
+
+  @override
+  ItemValue extract(int slot, int amount, {bool simulate = false}) {
+    // `super.extractItem(slot, 64, true)`: only a whole box is ever offered.
+    final preview = _buffer.at(slot);
+    if (!PackageItem.isPackage(preview)) return ItemValue.empty;
+    final filter = be.filterString;
+    if (filter == null || !PackageItem.matchBoxAddress(preview, filter)) {
+      return ItemValue.empty;
+    }
+    final taken = _buffer.extractNow(slot, amount, simulate: simulate);
+    return be.packageValueOf(taken);
   }
 }

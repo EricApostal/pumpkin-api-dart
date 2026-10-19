@@ -68,7 +68,11 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
   @override
   void onLoad() {
     lazyTickRate = 3;
-    _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
+    // `WindmillBearingBlockEntity.addBehaviours` removes the movement mode again; both behaviours
+    // would write the same `ScrollValue` key otherwise.
+    if (!isWindmill) {
+      _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
+    }
     super.onLoad();
   }
 
@@ -183,6 +187,15 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
     factory.spawn(worldId, entity);
     movedContraption = entity;
 
+    // `AllSoundEvents.CONTRAPTION_ASSEMBLE.playOnServer(level, worldPosition)`.
+    world?.playCustomSound(
+      soundName: 'create:contraption_assemble',
+      category: SoundCategory.blocks,
+      pos: localPos.center,
+      volume: 1,
+      pitch: 1,
+    );
+
     running = true;
     angle = 0;
     sendData();
@@ -197,6 +210,14 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
     sequencedAngleLimit = -1;
     if (isWindmill) applyRotation();
     if (contraption != null) {
+      // `AllSoundEvents.CONTRAPTION_DISASSEMBLE.playOnServer(level, worldPosition)`.
+      world?.playCustomSound(
+        soundName: 'create:contraption_disassemble',
+        category: SoundCategory.blocks,
+        pos: localPos.center,
+        volume: 1,
+        pitch: 1,
+      );
       unawaited(contraption.disassemble());
     }
     movedContraption = null;
@@ -334,8 +355,24 @@ class WindmillBearingBlockEntity extends MechanicalBearingBlockEntity {
   @override
   void onLoad() {
     super.onLoad();
-    _movementDirection = addBehaviour(ScrollValueBehaviour().between(0, 1));
+    _movementDirection = addBehaviour(
+      ScrollValueBehaviour()
+          .between(0, 1)
+          .withCallback((_) => _onDirectionChanged()),
+    );
   }
+
+  /// `onDirectionChanged`: a running windmill reverses at once.
+  void _onDirectionChanged() {
+    if (!running) return;
+    updateGeneratedRotation();
+  }
+
+  /// The windmill has the rotation direction instead of the movement mode.
+  @override
+  List<ValueSettingsTarget> get valueSettingsTargets => [
+    if (_movementDirection case final m?) m,
+  ];
 
   @override
   void updateGeneratedRotation() {

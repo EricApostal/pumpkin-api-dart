@@ -332,6 +332,24 @@ void main() {
     expect(isItemUpright(const ItemValue('minecraft:stone', 1)), isFalse);
     expect(isItemUpright(const ItemValue('minecraft:water_bucket', 1)), isTrue);
   });
+
+  group('belt tunnel axis', () {
+    BState beltFacing(Direction facing) =>
+        BState('create:belt', {'facing': facing.serializedName});
+
+    test('follows the axis of the belt below, not a fixed one', () {
+      // the belt stores a direction, so reading it as an axis yields nothing and a tunnel
+      // built on a north/south belt would silently come out east/west
+      expect(beltAxis(beltFacing(Direction.north)), Axis.z);
+      expect(beltAxis(beltFacing(Direction.south)), Axis.z);
+      expect(beltAxis(beltFacing(Direction.east)), Axis.x);
+      expect(beltAxis(beltFacing(Direction.west)), Axis.x);
+    });
+
+    test('a tunnel with no belt under it falls back to the x axis', () {
+      expect(beltAxis(const BState('minecraft:air', {})), Axis.x);
+    });
+  });
 }
 
 extension on Matcher {

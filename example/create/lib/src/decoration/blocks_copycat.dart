@@ -34,20 +34,13 @@ BState? acceptedStateOfItem(String itemKey, {required bool panel, d.Direction? f
 }
 
 /// `CopycatPanelBlock.prepareMaterial`: trapdoors take the panel's orientation.
-BState preparePanelMaterial(BState panel, Player player, double cursorY, BState material, DecorationRuntime rt) {
-  if (!isTrapdoorMaterial(material)) return material;
-  final panelFacing = panel.dir('facing')!;
-  var m = material;
-  if (panelFacing == d.Direction.down) m = m.setValue('half', 'top');
-  if (panelFacing.axis == d.Axis.y) {
-    return m.setValue('facing', rt.horizontalDirection(player).serializedName).setFlag('open', false);
-  }
-  final clickedNearTop = cursorY > .5;
-  return m
-      .setFlag('open', true)
-      .setValue('half', clickedNearTop ? 'top' : 'bottom')
-      .setValue('facing', panelFacing.serializedName);
-}
+BState preparePanelMaterial(BState panel, Player player, double cursorY, BState material, DecorationRuntime rt) =>
+    panelTrapdoorMaterial(
+      panel,
+      horizontalDirection: rt.horizontalDirection(player),
+      cursorY: cursorY,
+      material: material,
+    );
 
 BlockBehavior copycatBehavior(DecorationRuntime rt, {required bool panel}) {
   CopycatBlockEntity? be(World world, Pos pos) =>

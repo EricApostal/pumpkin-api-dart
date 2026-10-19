@@ -20,6 +20,7 @@ import '../model/manager.dart';
 import '../model/orders.dart';
 import '../model/stack.dart';
 import '../requester/auto_request_data.dart';
+import 'stock_keeper_menu.dart';
 import 'stock_ticker_block_entity.dart';
 
 /// `StockTickerBlock`.
@@ -36,6 +37,14 @@ CreateBlock stockTickerBlock() => CreateBlock(
 );
 
 Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
+  // `StockTickerBlock.useItemOn`: a `LogisticallyLinkedBlockItem` places itself against the
+  // ticker instead of opening the keeper (`create:redstone_requester`).
+  final inventory = e.player.getInventory();
+  final held = inventory.getItemInHand(hand: Hand.right);
+  inventory.dispose();
+  if (held != null && await held.getRegistryKey() == 'create:redstone_requester') {
+    return BlockUseResult.pass;
+  }
   final be = Lg.i.store.typed<StockTickerBlockEntity>(
     e.targetWorld.getId(),
     e.pos,
@@ -52,7 +61,36 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
     be.clearPayments();
     return BlockUseResult.success;
   }
+
+  // `StockTickerBlock.useItemOn`: the category screen needs a keeper (a heater or a seated
+  // player next to the ticker).
+  if (!be.isKeeperPresent) {
+    e.player.sendSystemMessage(
+      text: TextComponent.translate(
+        key: 'create.stock_ticker.keeper_missing',
+        with_: const [],
+      ),
+      overlay: true,
+    );
+    return BlockUseResult.success;
+  }
+  await StockKeeperMenus.openCategory(e.player, be);
   return BlockUseResult.success;
+}
+
+/// `SeatEntity` of the contraptions module (only its type key is needed here).
+const String _seatEntityKey = 'create:seat';
+
+/// `BlockEntityConfigurationPacket.handle`: no spectator or adventure player, the position
+/// loaded, and the player within [maxRange] blocks of the block.
+bool _mayConfigure(Player player, Pos pos, {int maxRange = 20}) {
+  if (player.isSpectator || player.isAdventure) return false;
+  if (!player.getWorld().isLoaded(pos: pos.toBlockPos())) return false;
+  final (x, y, z) = player.getPosition();
+  final dx = x - (pos.$1 + 0.5),
+      dy = y - (pos.$2 + 0.5),
+      dz = z - (pos.$3 + 0.5);
+  return dx * dx + dy * dy + dz * dz < maxRange * maxRange;
 }
 
 /// The `stock` part: the stock ticker and the stock keeper payloads.
@@ -77,20 +115,21 @@ final class StockPart extends LogisticsPart {
   void onLoad(CreateContext ctx, LgRuntime rt) {
     final bus = rt.bus;
 
-    // `LogisticalStockRequestPacket`: send the recent summary in chunks.
+    // `LogisticalStockRequestPacket`: send the recent summary in chunks. The packet is handled by
+    // any stock checking block entity (the stock ticker and the redstone requester) and allows a
+    // long range, because the requester screen refreshes its stock list from afar.
     bus.onServerbound('create:logistics_stock_request', (player, fields) {
       final pos = fields['pos'] as Pos;
-      final be = rt.store.typed<StockTickerBlockEntity>(
-        rt.playerWorldId(player),
-        pos.toBlockPos(),
-      );
-      if (be == null) return;
+      if (!_mayConfigure(player, pos, maxRange: 4096)) return;
+      final be = rt.store.at(rt.playerWorldId(player), pos.toBlockPos());
+      if (be is! StockCheckingBlockEntity) return;
       unawaited(_sendStock(player, be));
     });
 
     // `PackageOrderRequestPacket`: a package order from the stock keeper screen.
     bus.onServerbound('create:logistics_package_request', (player, fields) {
       final pos = fields['pos'] as Pos;
+      if (!_mayConfigure(player, pos)) return;
       final be = rt.store.typed<StockTickerBlockEntity>(
         rt.playerWorldId(player),
         pos.toBlockPos(),
@@ -99,6 +138,8 @@ final class StockPart extends LogisticsPart {
       final order = decodeOrder(fields['order']);
       final address = fields['address'] as String? ?? '';
       if (fields['encodeRequester'] == true) {
+        // `player.closeContainer()`: the requester screen closes itself.
+        player.closePluginMenu();
         unawaited(_programRequester(player, be, order, address));
         return;
       }
@@ -116,9 +157,77 @@ final class StockPart extends LogisticsPart {
       );
     });
 
+    // `StockTickerInteractionHandler.interactWithLogisticsManager`: right-clicking a keeper (a
+    // living entity riding a seat) opens the stock keeper when exactly one stock ticker is next
+    // to it. The seat entity belongs to the contraptions module; the vehicle type key is enough.
+    ctx.host.intercept(Events.playerInteractEntity, (server, e) async {
+      if (e.action != EntityInteractionAction.interact) return e;
+      if (e.player.isSpectator) return e;
+      final target = e.player.getWorld().getEntityById(id: e.entityId);
+      if (target == null) return e;
+      final vehicle = target.getVehicle();
+      if (vehicle == null) return e;
+      final vehicleKey = 'create:${vehicle.getType().wireName.replaceAll('-', '_')}';
+      if (vehicleKey != _seatEntityKey) return e;
+      if (target.asLiving() == null) return e;
+      // `getStockTickerPosition`: the seat's block, the four horizontal sides and the two heights.
+      final (px, py, pz) = target.getPosition();
+      final base = (px.floor(), py.floor(), pz.floor());
+      final world = e.player.getWorld();
+      final found = <Pos>[];
+      for (final side in Direction.planeHorizontal) {
+        for (final y in [0, 1]) {
+          final candidate = (base.$1 + side.stepX, base.$2 + y, base.$3 + side.stepZ);
+          final state = world.getBlockState(pos: candidate.toBlockPos());
+          if (state.blockName == 'create:stock_ticker') found.add(candidate);
+        }
+      }
+      if (found.length != 1) return e;
+      final pos = found.single;
+      final be = rt.store.typed<StockTickerBlockEntity>(
+        rt.playerWorldId(e.player),
+        pos.toBlockPos(),
+      );
+      if (be == null) return e;
+      final uuid = e.player.getId().asString;
+      if (!be.behaviour.mayInteract(uuid)) {
+        e.player.sendSystemMessage(
+          text: TextComponent.translate(
+            key: 'create.stock_keeper.locked',
+            with_: const [],
+          ),
+          overlay: true,
+        );
+        return e.cancel();
+      }
+      final showLockOption =
+          be.behaviour.mayAdministrate(uuid) &&
+          rt.global.isLockable(be.behaviour.freqId);
+      final opened = await StockKeeperMenus.openRequest(
+        e.player,
+        be,
+        showLockOption: showLockOption,
+        currentlyLocked: rt.global.isLocked(be.behaviour.freqId),
+      );
+      if (!opened) return e;
+      await _sendStock(e.player, be);
+      return e.cancel();
+    });
+
+    // `GhostItemSubmitPacket` of the stock keeper's category screen: the edited filter item.
+    bus.onServerbound('create:submit_ghost_item', (player, fields) {
+      final menu = player.currentPluginMenu;
+      if (menu == null || menu.menuType != stockKeeperCategoryMenuType) return;
+      final slot = fields['slot'] as int? ?? -1;
+      final item = fields['item'];
+      final stack = item is ItemStackData ? rt.wire.fromData(item) : LStack.empty;
+      unawaited(StockKeeperMenus.submitGhost(player, slot, stack));
+    });
+
     // `StockKeeperLockPacket`.
     bus.onServerbound('create:lock_stock_keeper', (player, fields) {
       final pos = fields['pos'] as Pos;
+      if (!_mayConfigure(player, pos)) return;
       final be = rt.store.typed<StockTickerBlockEntity>(
         rt.playerWorldId(player),
         pos.toBlockPos(),
@@ -137,6 +246,7 @@ final class StockPart extends LogisticsPart {
       fields,
     ) {
       final pos = fields['pos'] as Pos;
+      if (!_mayConfigure(player, pos)) return;
       final be = rt.store.typed<StockTickerBlockEntity>(
         rt.playerWorldId(player),
         pos.toBlockPos(),
@@ -156,6 +266,7 @@ final class StockPart extends LogisticsPart {
     // `StockKeeperCategoryRefundPacket`: the removed category's filter item is given back.
     bus.onServerbound('create:refund_stock_keeper_category', (player, fields) {
       final pos = fields['pos'] as Pos;
+      if (!_mayConfigure(player, pos)) return;
       final be = rt.store.typed<StockTickerBlockEntity>(
         rt.playerWorldId(player),
         pos.toBlockPos(),
@@ -167,6 +278,7 @@ final class StockPart extends LogisticsPart {
     // `StockKeeperCategoryHidingPacket`: a per-player display preference of the stock keeper.
     bus.onServerbound('create:stock_keeper_hide_category', (player, fields) {
       final pos = fields['pos'] as Pos;
+      if (!_mayConfigure(player, pos)) return;
       final be = rt.store.typed<StockTickerBlockEntity>(
         rt.playerWorldId(player),
         pos.toBlockPos(),
@@ -229,7 +341,7 @@ final class StockPart extends LogisticsPart {
     }
   }
 
-  Future<void> _sendStock(Player player, StockTickerBlockEntity be) async {
+  Future<void> _sendStock(Player player, StockCheckingBlockEntity be) async {
     final summary = await be.getRecentSummary();
     for (final (last, entries) in summary.divideForResponse()) {
       Lg.i.bus.sendClientbound('create:logistics_stock_response', player, {

@@ -82,20 +82,16 @@ final class Lvl {
     return power;
   }
 
-  /// `getPower` of the redstone link and the nixie tube: the strongest signal around [pos]. The
+  /// `getPower` of the redstone link and the nixie tube: the strongest signal around [pos].
   /// Java reads every neighbour twice, once from its own side and once as if looking from above
-  /// (which lets redstone wire that does not point at the block count); the host only has the
-  /// first, so adjacent redstone wire is read from its `power` property. [facing] is the
-  /// block's `facing`: the wire behind it is skipped.
+  /// (the second read lets blocks that only answer for the `UP` side count); [facing] is the
+  /// block's `facing`: the block behind it is skipped in the second loop.
   Future<int> linkStylePower(Pos pos, Direction facing) async {
     var power = await maxSignalAround(pos);
     for (final d in Direction.values) {
       if (facing.opposite == d) continue;
-      final info = this.info(pos.relative(d));
-      if (info != null && info.key == 'minecraft:redstone_wire') {
-        final wire = int.tryParse(info.properties['power'] ?? '') ?? 0;
-        if (wire > power) power = wire;
-      }
+      final s = await signalFrom(pos.relative(d), Direction.up);
+      if (s > power) power = s;
     }
     return power;
   }

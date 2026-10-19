@@ -16,6 +16,7 @@ import 'cart_assemble_rail_type.dart';
 import 'cart_assembler_block_entity.dart';
 import 'minecart_contraption_item.dart' show shrinkHeld;
 import 'mounted_contraption.dart';
+import 'mounted_shapes.dart';
 
 /// The cart assembler and the anchor it becomes inside a contraption.
 List<CreateBlock> buildMountedBlocks() => [
@@ -23,18 +24,27 @@ List<CreateBlock> buildMountedBlocks() => [
     'cart_assembler',
     blockEntityType: 'create:cart_assembler',
     behavior: cartAssemblerBehavior(),
+    // `CartAssemblerBlock.getShape` (the outline) follows the rail axis. Its `getCollisionShape`
+    // is empty for a minecart, the player shape for a player and a full block for everything
+    // else; the entity-dependent answer is `onEntityCollisionShape` in the behavior, the
+    // registered collision stays the full cube.
+    shapeRules: cartAssemblerShapeRules(),
   ),
-  // `MinecartAnchorBlock.getShape`: invisible and without collision.
-  manifestBlock(
-    'minecart_anchor',
-    collisionShape: BlockShape.empty,
-    selectionShape: BlockShape.empty,
-  ),
+  // `MinecartAnchorBlock.getShape` is `Shapes.empty()`: invisible. Its collision stays the
+  // default full block of a stone block; the anchor only ever exists inside a contraption.
+  manifestBlock('minecart_anchor', selectionShape: BlockShape.empty),
 ];
 
 /// The cart assembler reacts to a cart passing through it: the entity is queued, the rail type
 /// switches with an item, and the block only exists on a rail (the item places it).
 BlockBehavior cartAssemblerBehavior() => BlockBehavior(
+  // `getCollisionShape`: a minecart passes through the assembler, a player stands on the
+  // player collision shape, every other entity collides with the full block. The registered
+  // collision shape stays the full cube; this hook replaces it per entity.
+  onEntityCollisionShape: (server, e) => cartAssemblerCollisionForEntity(
+    HostBlockGetter.stateOfId(e.stateIndex)['shape'],
+    e.entityType,
+  ),
   onEntityCollision: (server, e) async {
     final pos = (e.pos.x, e.pos.y, e.pos.z);
     final level = ActuatorHosts.levelOf(e.targetWorld.getId());
@@ -147,6 +157,8 @@ Future<bool> useCartAssemblerItem(
       : Direction.fromYRot(e.player.getYaw()).axisDirection ==
             AxisDirection.positive;
 
+  // `newState` is the assembler's default state with the rail shape, type and backwards flag;
+  // `POWERED` and `WATERLOGGED` stay at their defaults (`false`).
   await setBlockState(
     world,
     pos,
@@ -154,7 +166,6 @@ Future<bool> useCartAssemblerItem(
       'shape': shape!,
       'rail_type': type.serializedName,
       'backwards': '$backwards',
-      'waterlogged': '${railState.flag('waterlogged')}',
     }),
   );
   world.playCustomSound(

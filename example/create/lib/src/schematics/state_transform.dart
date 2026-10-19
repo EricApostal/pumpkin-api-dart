@@ -4,8 +4,9 @@
 // `shape`, door `hinge`, crafter `orientation`). `StructureTemplate` placement mirrors first and
 // then rotates ([transformState]).
 //
-// Blocks with a rotation that depends on more than their properties (Create's belts and a few
-// others) keep their state; that is the one known gap compared to the Java blocks.
+// Create's own overrides are ported too: `DirectionalAxisKineticBlock`/`BracketBlock`
+// (`axis_along_first` cycles on a quarter turn), `BeltBlock` (a vertical belt swaps start/end when
+// its facing turns) and `TrackBlock` (`TrackShape`).
 import '../api/block_state.dart';
 import '../common/direction.dart';
 
@@ -26,10 +27,9 @@ BState rotateState(BState s, BlockRotation r) {
 
   // facing (6 directions or horizontal)
   final facing = s['facing'];
-  if (facing != null) {
-    final d = Direction.byName(facing);
-    if (d != null && !_noFacingRotation(s))
-      changed['facing'] = r.rotate(d).serializedName;
+  final facingDir = facing == null ? null : Direction.byName(facing);
+  if (facingDir != null) {
+    changed['facing'] = r.rotate(facingDir).serializedName;
   }
 
   // axis: only the horizontal axes swap on a quarter turn
@@ -59,17 +59,41 @@ BState rotateState(BState s, BlockRotation r) {
 
   // rail shapes
   final shape = s['shape'];
-  if (shape != null && _railShapes.contains(shape)) {
-    changed['shape'] = _rotateRail(shape, r);
+  if (shape != null) {
+    if (_railShapes.contains(shape)) {
+      changed['shape'] = _rotateRail(shape, r);
+    } else if (_isTrack(s)) {
+      changed['shape'] = _rotateTrackShape(shape, r);
+    }
   }
 
-  // crafter orientation
+  // crafter / jigsaw orientation
   final orientation = s['orientation'];
   if (orientation != null) {
     final o = _parseOrientation(orientation);
     if (o != null)
       changed['orientation'] =
           '${r.rotate(o.$1).serializedName}_${r.rotate(o.$2).serializedName}';
+  }
+
+  // Create: `DirectionalAxisKineticBlock.rotate` / `BracketBlock.rotate` cycle
+  // `axis_along_first` on every odd quarter turn (deployer, piston, gantry carriage, bracket,
+  // valve, chain drive).
+  final alongFirst = s['axis_along_first'];
+  if (alongFirst != null &&
+      (r == BlockRotation.clockwise90 ||
+          r == BlockRotation.counterclockwise90)) {
+    changed['axis_along_first'] = alongFirst == 'true' ? 'false' : 'true';
+  }
+
+  // Create: `BeltBlock.rotate` swaps the ends of a vertical belt when its facing turns.
+  if (s.key == 'create:belt' &&
+      s['slope'] == 'vertical' &&
+      facingDir != null &&
+      facingDir.axisDirection != r.rotate(facingDir).axisDirection) {
+    final part = s['part'];
+    if (part == 'start') changed['part'] = 'end';
+    if (part == 'end') changed['part'] = 'start';
   }
 
   if (changed.isEmpty) return s;
@@ -84,7 +108,9 @@ BState mirrorState(BState s, BlockMirror m) {
   final facing = s['facing'];
   final shape = s['shape'];
 
-  // Stairs mirror their corner shapes.
+  // Stairs mirror their corner shapes (`StairBlock.mirror`): `LEFT_RIGHT` turns both inner and
+  // outer corners into their opposite, `FRONT_BACK` only the outer ones (the inner shapes are
+  // symmetric along X).
   if (facing != null &&
       shape != null &&
       _stairShapes.contains(shape) &&
@@ -96,13 +122,7 @@ BState mirrorState(BState s, BlockMirror m) {
           (m == BlockMirror.frontBack && d.axis == Axis.x);
       if (onMirroredAxis) {
         final rotated = rotateState(s, BlockRotation.clockwise180);
-        return rotated.setValue('shape', switch (shape) {
-          'inner_left' => 'inner_right',
-          'inner_right' => 'inner_left',
-          'outer_left' => 'outer_right',
-          'outer_right' => 'outer_left',
-          _ => shape,
-        });
+        return rotated.setValue('shape', _mirrorStairShape(shape, m));
       }
       return s;
     }
@@ -110,7 +130,7 @@ BState mirrorState(BState s, BlockMirror m) {
 
   var out = s;
   // Facing blocks turn around when they look along the mirrored axis.
-  if (facing != null && !_noFacingRotation(s)) {
+  if (facing != null) {
     final d = Direction.byName(facing);
     if (d != null) {
       final r = m.getRotation(d);
@@ -142,8 +162,12 @@ BState mirrorState(BState s, BlockMirror m) {
     out = BState(out.key, props);
   }
 
-  if (shape != null && _railShapes.contains(shape)) {
-    out = out.setValue('shape', _mirrorRail(shape, m));
+  if (shape != null) {
+    if (_railShapes.contains(shape)) {
+      out = out.setValue('shape', _mirrorRail(shape, m));
+    } else if (_isTrack(s)) {
+      out = out.setValue('shape', _mirrorTrackShape(shape, m));
+    }
   }
 
   // `ChestBlock.mirror` keeps a double chest together by swapping its left and right halves.
@@ -169,9 +193,77 @@ BState mirrorState(BState s, BlockMirror m) {
   return out;
 }
 
-/// Blocks whose `facing` is not a direction they turn with (none among the ones we know; the hook
-/// exists for blocks added later).
-bool _noFacingRotation(BState s) => false;
+/// The stair shape after [m] (`StairBlock.mirror`).
+String _mirrorStairShape(String shape, BlockMirror m) => m == BlockMirror.leftRight
+    ? switch (shape) {
+        'inner_left' => 'inner_right',
+        'inner_right' => 'inner_left',
+        'outer_left' => 'outer_right',
+        'outer_right' => 'outer_left',
+        _ => shape,
+      }
+    : switch (shape) {
+        'outer_left' => 'outer_right',
+        'outer_right' => 'outer_left',
+        _ => shape,
+      };
+
+// ---- Create tracks ------------------------------------------------------------------------------
+
+/// `TrackBlock` uses its own `TrackShape` (`TrackShape.getSerializedName()` lowercases the
+/// constant name: `zo`, `xo`, `pd`, `nd`, `an`, `as`, `ae`, `aw`, `tn`, ..., `cr_pdx`, ...).
+bool _isTrack(BState s) => s.key == 'create:track';
+
+/// `TrackShape.clockwise`: one clockwise quarter turn.
+const Map<String, String> _clockwiseTrack = {
+  'pd': 'nd',
+  'nd': 'pd',
+  'xo': 'zo',
+  'zo': 'xo',
+  'ae': 'as',
+  'as': 'aw',
+  'aw': 'an',
+  'an': 'ae',
+  'cr_pdx': 'cr_ndz',
+  'cr_ndx': 'cr_pdz',
+  'cr_pdz': 'cr_ndx',
+  'cr_ndz': 'cr_pdx',
+};
+
+/// `TrackShape.mirror` for `LEFT_RIGHT` (invert Z).
+const Map<String, String> _zMirrorTrack = {
+  'pd': 'nd',
+  'nd': 'pd',
+  'an': 'as',
+  'as': 'an',
+  'cr_pdx': 'cr_ndx',
+  'cr_ndx': 'cr_pdx',
+  'cr_pdz': 'cr_ndz',
+  'cr_ndz': 'cr_pdz',
+};
+
+/// `TrackShape.mirror` for `FRONT_BACK` (invert X).
+const Map<String, String> _xMirrorTrack = {
+  'pd': 'nd',
+  'nd': 'pd',
+  'ae': 'aw',
+  'aw': 'ae',
+  'cr_pdx': 'cr_ndx',
+  'cr_ndx': 'cr_pdx',
+  'cr_pdz': 'cr_ndz',
+  'cr_ndz': 'cr_pdz',
+};
+
+String _rotateTrackShape(String shape, BlockRotation r) {
+  var out = shape;
+  for (var i = 0; i < r.index; i++) {
+    out = _clockwiseTrack[out] ?? out;
+  }
+  return out;
+}
+
+String _mirrorTrackShape(String shape, BlockMirror m) =>
+    (m == BlockMirror.leftRight ? _zMirrorTrack : _xMirrorTrack)[shape] ?? shape;
 
 // ---- rails -----------------------------------------------------------------------------------
 

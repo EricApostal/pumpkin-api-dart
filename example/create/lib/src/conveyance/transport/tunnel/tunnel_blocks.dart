@@ -14,6 +14,7 @@ import '../../../core/block_entity.dart';
 import '../../../core/registry.dart';
 import '../../../processing/transport/transport_behaviours.dart' as pt;
 import '../../behaviours/belt_interfaces.dart';
+import '../../belt/belt_geometry.dart' show beltAxis;
 import '../../runtime.dart';
 import '../../shapes.dart';
 import '../transport_inventory.dart';
@@ -173,10 +174,7 @@ BState getTunnelState(
   var state = BState(blockKey, {...block.definition.defaultState});
   final belt = level.stateAt(pos.below);
   if (belt.key == 'create:belt') {
-    state = state.setValue(
-      'axis',
-      (belt.axisOf('facing') ?? Axis.x).serializedName,
-    );
+    state = state.setValue('axis', beltAxis(belt).serializedName);
   }
   final axis = state.axisOf('axis') ?? Axis.x;
 
@@ -210,7 +208,7 @@ bool hasValidOutput(
 ) {
   final state = level.stateAt(pos.relative(side));
   if (state.key == 'create:belt')
-    return (state.axisOf('facing') ?? Axis.x) == side.axis;
+    return beltAxis(state) == side.axis;
   final be = ConveyanceRuntime.i.beAt(worldId, pos.relative(side));
   if (be is DirectBeltInput)
     return (be as DirectBeltInput).canInsertFromSide(side);

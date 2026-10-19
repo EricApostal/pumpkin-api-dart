@@ -12,13 +12,46 @@ import 'pulley_block_entity.dart';
 
 const String ropePulleyKey = 'create:rope_pulley';
 
+/// `HorizontalAxisKineticBlock.getPreferredHorizontalAxis`: the axis of the horizontal shaft
+/// next to the pulley, `null` when no neighbour or two different axes want it.
+Axis? preferredPulleyAxis(BlockGetter level, Pos pos) {
+  Axis? preferred;
+  for (final side in Direction.horizontals) {
+    if (!prefersShaftConnection(level, pos.relative(side), side)) continue;
+    if (preferred != null && preferred != side.axis) return null;
+    preferred = side.axis;
+  }
+  return preferred;
+}
+
 /// The pulley and rope block definitions.
 List<CreateBlock> buildPulleyBlocks() => [
   manifestBlock(
     'rope_pulley',
     placement: const [PlacementRule.horizontalAxis('axis')],
+    blockEntityType: ropePulleyKey,
     behavior: BlockBehavior(
+      onPlaced: (server, e) async {
+        // `HorizontalAxisKineticBlock.getStateForPlacement`: a neighbouring shaft decides the
+        // axis; otherwise the horizontal direction turned clockwise, which is the axis
+        // perpendicular to the one the host's `horizontalAxis` rule picked.
+        if (e.moved || e.player == null) return;
+        final pos = (e.pos.x, e.pos.y, e.pos.z);
+        final state = HostBlockGetter.stateOfId(e.stateIndex);
+        final current = state.axisOf('axis') ?? Axis.x;
+        final preferred = preferredPulleyAxis(
+          HostBlockGetter(e.targetWorld),
+          pos,
+        );
+        final axis = preferred ??
+            (current == Axis.x ? Axis.z : Axis.x);
+        final next = state.setValue('axis', axis.serializedName);
+        if (next != state) await setBlockState(e.targetWorld, pos, next);
+      },
       onUseWithoutItem: (server, e) async {
+        if (e.player.isAdventure || e.player.isSpectator) {
+          return BlockUseResult.pass;
+        }
         if (e.sneaking) return BlockUseResult.pass;
         final runtime = ActuatorRuntime.maybe;
         final be = runtime?.store.at(e.targetWorld.getId(), e.pos);
@@ -47,6 +80,8 @@ List<CreateBlock> buildPulleyBlocks() => [
 /// pulley it hangs from.
 BlockBehavior ropeBehavior() => BlockBehavior(
   onStateReplaced: (server, e) async {
+    // `RopeBlockBase.affectNeighborsAfterRemoval`: a rope moved by a piston keeps its neighbours.
+    if (e.moved) return;
     final world = e.targetWorld;
     final pos = (e.pos.x, e.pos.y, e.pos.z);
     final above = pos.above;

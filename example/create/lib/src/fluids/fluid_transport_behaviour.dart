@@ -117,7 +117,7 @@ class ValveTransportBehaviour extends StraightPipeTransportBehaviour {
 
   @override
   bool canPullFluidFrom(FStack fluid, BState state, Direction direction) {
-    if (!state.flag('enabled')) return false;
+    if (!PipeBlocks.valveAllowsPull(state)) return false;
     return super.canPullFluidFrom(fluid, state, direction);
   }
 }

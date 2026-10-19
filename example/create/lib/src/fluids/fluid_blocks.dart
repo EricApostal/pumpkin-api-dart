@@ -796,12 +796,13 @@ CreateBlock pumpBlock() {
           nearestLooking(player),
           player.asEntity().isSneaking(),
         );
+        var state = c.state;
         if (preferred != null) {
-          unawaited(
-            c.setState(c.state.set('facing', preferred.serializedName)),
-          );
+          state = state.set('facing', preferred.serializedName);
+          unawaited(c.setState(state));
         }
-        _propagateKinetic(c);
+        // The facing decides the open sides, so propagate the state just placed.
+        _propagateKineticState(c, state);
       },
     ),
   );
@@ -823,7 +824,32 @@ CreateBlock valveBlock() {
       neighbor: (c, e) => _kineticNeighbour(c, e),
       scheduledTick: (c) => _propagateKinetic(c),
       replaced: (c, e) => _propagateKinetic(c),
-      afterPlaced: (c, e) => _propagateKinetic(c),
+      afterPlaced: (c, e) {
+        // `FluidValveBlock.getStateForPlacement` (`DirectionalAxisKineticBlock`): pick the
+        // `axis_along_first` that lets the valve gate the pipe it was placed on.
+        final playerId = e.player;
+        final player = playerId == null
+            ? null
+            : c.server.getPlayerByUuid(id: playerId);
+        var state = c.state;
+        if (player != null) {
+          // `Entity.getHorizontalDirection()`.
+          final look = Direction.fromYRot(player.getYaw());
+          final facing = toFluidDir(c.state.dirOf('facing') ?? Dir.north);
+          final alongFirst = PipeStateLogic.valveAxisAlignmentForPlacement(
+            fluidWorldOf(c.world),
+            kposOf(c),
+            facing,
+            look,
+          );
+          if (state.flag('axis_along_first') != alongFirst) {
+            state = state.setFlag('axis_along_first', alongFirst);
+            unawaited(c.setState(state));
+          }
+        }
+        // The axis decides the open sides, so propagate the state just placed.
+        _propagateKineticState(c, state);
+      },
     ),
   );
   return block;
@@ -839,12 +865,15 @@ CreateBlock hosePulleyBlock() {
     behavior: buildKineticBehavior(
       () => block,
       afterPlaced: (c, e) {
+        // `HosePulleyBlock.getStateForPlacement`: the pipe is on
+        // `HORIZONTAL_FACING.getCounterClockWise()`, so the facing is the
+        // counter-clockwise neighbour of the preferred (pipe) side.
         final preferred = PipeStateLogic.hosePulleyPreferredSide(
           fluidWorldOf(c.world),
           kposOf(c),
         );
         if (preferred == null) return;
-        final facing = preferred.opposite;
+        final facing = preferred.counterClockWise;
         if (facing.isHorizontal) {
           unawaited(c.setState(c.state.set('facing', facing.serializedName)));
         }
@@ -862,11 +891,14 @@ extension KStateToBState on KState {
   BState get bState => BState(block, props);
 }
 
-void _propagateKinetic(HookCtx c) => FluidPropagator.propagateChangedPipe(
-  fluidWorldOf(c.world),
-  kposOf(c),
-  c.state.bState,
-);
+void _propagateKinetic(HookCtx c) => _propagateKineticState(c, c.state);
+
+void _propagateKineticState(HookCtx c, KState state) =>
+    FluidPropagator.propagateChangedPipe(
+      fluidWorldOf(c.world),
+      kposOf(c),
+      state.bState,
+    );
 
 void _kineticNeighbour(HookCtx c, CustomBlockNeighborUpdateEventData e) {
   final world = fluidWorldOf(c.world);

@@ -19,11 +19,9 @@ import '../support/runtime.dart';
 import 'bezier_track_point_location.dart';
 import 'i_track_block.dart';
 import 'track_host.dart';
+import 'track_level.dart' show trackExtendedCurveComponent;
 import 'track_propagator.dart';
 import 'track_targeting_block_item.dart';
-
-/// `AllDataComponents.TRACK_EXTENDED_CURVE`.
-const String trackExtendedCurveComponent = 'create:track_extended_curve';
 
 /// Installs the three handlers on the payload bus.
 void installCurvedTrackPackets(CreateContext ctx) {

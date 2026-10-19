@@ -51,14 +51,16 @@ BlockBehavior kineticBehaviorWith(
   priority: base.priority,
 );
 
-/// Rebuilds [base] with [onShape] added (the controller's dynamic collision shape).
-BlockBehavior withDynamicShape(
+/// Rebuilds [base] with the entity-aware collision shape added
+/// (`CrushingWheelControllerBlock.getCollisionShape`: empty for the entity being crushed and
+/// for an output item that this controller ejected, so it does not fall back through).
+BlockBehavior withEntityCollisionShape(
   BlockBehavior base,
   FutureOr<List<BlockBox>?> Function(
     Server server,
-    CustomBlockShapeEventData event,
+    CustomBlockCollisionShapeEventData event,
   )
-  onShape,
+  onEntityCollisionShape,
 ) => BlockBehavior(
   onNeighborUpdate: base.onNeighborUpdate,
   onPlaced: base.onPlaced,
@@ -73,7 +75,8 @@ BlockBehavior withDynamicShape(
   onWeakPower: base.onWeakPower,
   onStrongPower: base.onStrongPower,
   onComparatorOutput: base.onComparatorOutput,
-  onShape: onShape,
+  onShape: base.onShape,
+  onEntityCollisionShape: onEntityCollisionShape,
   onUse: base.onUse,
   onUseWithItem: base.onUseWithItem,
   onUseWithoutItem: base.onUseWithoutItem,

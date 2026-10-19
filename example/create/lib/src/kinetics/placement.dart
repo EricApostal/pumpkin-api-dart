@@ -47,6 +47,24 @@ final class PlacementContext {
   KPos get placedOnPos => pos.relative(clickedFace.opposite);
 }
 
+/// The clicked face a placement had, recovered from the state the host placed
+/// (`getStateForPlacement` runs before the block exists, so its own state is not
+/// readable then).
+///
+/// The host's placed event does not carry the click; when no `UseRecord` matches
+/// (blocks placed by automation, or when the click record was not kept) the
+/// declared placement rules have already turned the clicked face into the state:
+/// `clickedAxis` into `axis`, `clickedFace` into `facing`. Using that instead of
+/// a made-up `up` keeps a cogwheel on a side face on the clicked axis and a shaft
+/// on the clicked face's axis.
+Dir clickedFaceForPlacedState(KState placed) {
+  final facing = placed.dirOf('facing');
+  if (facing != null) return facing;
+  final axis = placed.axisOf('axis');
+  if (axis != null) return axis.positive;
+  return Dir.up;
+}
+
 /// `Direction.orderedByNearest(entity)`: all six directions, the one the player
 /// looks at first (yaw / pitch in degrees, Minecraft's convention).
 List<Dir> orderedByNearest(double yaw, double pitch) {
@@ -134,6 +152,12 @@ Dir? _preferredSide(PlacementContext ctx, List<Dir> sides) {
 
 /// `HorizontalAxisKineticBlock.getPreferredHorizontalAxis`.
 KAxis? preferredHorizontalAxis(PlacementContext ctx) => preferredHorizontalFacing(ctx)?.axis;
+
+/// `MechanicalPressBlock.getStateForPlacement`: a neighbouring horizontal shaft
+/// decides the facing as it is, otherwise `HorizontalKineticBlock`'s
+/// `getHorizontalDirection().getOpposite()`.
+Dir mechanicalPressFacing(PlacementContext ctx) =>
+    preferredHorizontalFacing(ctx) ?? ctx.horizontal.opposite;
 
 /// `CogWheelBlock.isValidCogwheelPosition`.
 bool isValidCogwheelPosition(

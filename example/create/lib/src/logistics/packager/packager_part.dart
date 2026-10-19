@@ -15,6 +15,7 @@ import '../logistics_part.dart';
 import '../model/package.dart';
 import '../model/stack.dart';
 import 'packager_block_entity.dart';
+import 'unpacking_host.dart';
 import 'repackager/repackager_block_entity.dart';
 
 /// The `facing` property of the packagers (manifest value order).
@@ -163,8 +164,7 @@ final class PackagerPart extends LogisticsPart {
 
   @override
   void onLoad(CreateContext ctx, LgRuntime rt) {
-    // The package entity is spawned by the package part; the packager only needs the inventory
-    // helpers, which are pure.
-    unawaited(Future<void>.value());
+    // `AllUnpackingHandlers.registerDefaults`: the handlers that look at the target block entity.
+    registerHostUnpackingHandlers();
   }
 }

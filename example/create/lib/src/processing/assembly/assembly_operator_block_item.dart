@@ -45,10 +45,15 @@ abstract final class AssemblyOperatorBlockItem {
     register(
       'create:mechanical_press',
       'create:mechanical_press',
-      placement: (context, world, target, player) => KState(
-        'create:mechanical_press',
-        {'facing': _horizontal(context, player).opposite.name},
-      ),
+      // `MechanicalPressBlock.getStateForPlacement`: a neighbouring horizontal shaft
+      // decides the facing as it is, else `HorizontalKineticBlock`'s
+      // `getHorizontalDirection().getOpposite()`.
+      placement: (context, world, target, player) {
+        final facing = context == null
+            ? _horizontal(context, player).opposite
+            : mechanicalPressFacing(context);
+        return KState('create:mechanical_press', {'facing': facing.name});
+      },
     );
     register(
       'create:mechanical_mixer',
@@ -155,6 +160,8 @@ abstract final class AssemblyOperatorBlockItem {
     final level = KineticsRuntime.instance.level(worldId);
     return PlacementContext(
       pos: toKPos(target.toBlockPos()),
+      // `AssemblyOperatorBlockItem.adjustContext` builds the context with
+      // `Direction.UP` as the clicked face; only top-face clicks get here.
       clickedFace: Dir.up,
       nearestLooking: nearestLookingDirection(
         player.getYaw(),

@@ -1023,6 +1023,15 @@ final class ContraptionHost {
     return entities[worldId]?[id];
   }
 
+  /// `world.getEntity(id)` without knowing the world (`MountedStorageSyncPacket.handle`).
+  AbstractContraptionEntity? entityByIdAnyWorld(int id) {
+    for (final worldId in entities.keys) {
+      final found = entityById(worldId, id);
+      if (found != null) return found;
+    }
+    return ContraptionHandler.entityByIdAnyWorld(id);
+  }
+
   ControlledContraptionEntity createControlled(
     String worldId,
     Pos controllerPos,

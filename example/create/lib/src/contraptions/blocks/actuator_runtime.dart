@@ -3,8 +3,12 @@
 // read it through [ActuatorRuntime.instance] (the store constructs them without a module context).
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/block_state.dart';
+import '../../common/common.dart';
 import '../../core/block_entity.dart';
 import '../../core/worlds.dart';
+import '../../kinetics/api.dart' show KineticsRuntime;
+import '../../kinetics/geometry.dart' show Dir, KState;
 import '../../infrastructure/config/create_configs.dart';
 import '../core/structure_info.dart';
 
@@ -107,4 +111,17 @@ final class ActuatorRuntime {
   void dispose() {
     if (identical(_instance, this)) _instance = null;
   }
+}
+
+/// `DirectionalAxisKineticBlock.prefersConnectionTo(level, pos, side, true)`: the block at
+/// [neighbour] has a shaft sticking out toward the position [side] looks from. The placement of
+/// the piston, the gantry carriage and the pulley use it to pick their rotation axis.
+bool prefersShaftConnection(BlockGetter level, Pos neighbour, Direction side) {
+  if (!KineticsRuntime.isLoaded) return false;
+  final state = level.stateAt(neighbour);
+  final kState = KState(state.key, state.props);
+  final def = KineticsRuntime.instance.blocks.defFor(kState);
+  final dir = Dir.fromName(side.serializedName);
+  if (def == null || dir == null) return false;
+  return def.hasShaftTowards(kState, dir.opposite);
 }

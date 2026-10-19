@@ -349,6 +349,39 @@ void main() {
       expect(copycatCycleMaterial(const BState('minecraft:stone'), valid6), isNull);
     });
 
+    test('cycleMaterial follows the property domains of the material', () {
+      // The FACING property cycles in its declared order (north, east, south, west, up, down).
+      bool valid6(BState s) => true;
+      expect(copycatCycleMaterial(const BState('minecraft:observer', {'facing': 'west'}), valid6)!['facing'], 'up');
+      expect(copycatCycleMaterial(const BState('minecraft:observer', {'facing': 'down'}), valid6)!['facing'], 'north');
+      // A four-valued facing turns clockwise instead (`HORIZONTAL_FACING`), never up.
+      bool valid4(BState s) => s['facing'] != 'up' && s['facing'] != 'down';
+      expect(copycatCycleMaterial(const BState('minecraft:oak_trapdoor', {'facing': 'west', 'half': 'top', 'open': 'false'}), valid4)!['facing'], 'north');
+      // A closed trapdoor turns its facing; only an open one turns its half.
+      final closed = copycatCycleMaterial(const BState('minecraft:oak_trapdoor', {'facing': 'north', 'half': 'top', 'open': 'false'}), valid4)!;
+      expect(closed['facing'], 'east');
+      expect(closed['half'], 'top');
+      // HORIZONTAL_AXIS only knows x and z.
+      bool validHorizontalAxis(BState s) => s['axis'] != 'y';
+      expect(copycatCycleMaterial(const BState('minecraft:oak_wood', {'axis': 'x'}), validHorizontalAxis)!['axis'], 'z');
+      expect(copycatCycleMaterial(const BState('minecraft:oak_wood', {'axis': 'z'}), validHorizontalAxis)!['axis'], 'x');
+      // Rose quartz lamps have `powering` rather than `lit`.
+      expect(copycatCycleMaterial(const BState('create:rose_quartz_lamp', {'powering': 'false'}), valid6)!['powering'], 'true');
+    });
+
+    test('accepted states keep the orientation a property cannot take', () {
+      bool valid(BState s) => s.key != 'minecraft:oak_wood' || s['axis'] != 'y';
+      const wood = MaterialCandidate(defaultState: BState('minecraft:oak_wood', {'axis': 'y'}));
+      // A HORIZONTAL_AXIS property is not set for a vertical face.
+      expect(copycatAcceptedState(wood, isAcceptedRegardless: (_) => false, valid: valid, face: Direction.up)!['axis'], 'y');
+      expect(copycatAcceptedState(wood, isAcceptedRegardless: (_) => false, valid: valid, face: Direction.east)!['axis'], 'x');
+      // Copycats are not materials; the plain copycat base is.
+      const copycatPanel = MaterialCandidate(defaultState: BState('create:copycat_panel', {'facing': 'up'}));
+      expect(copycatAcceptedState(copycatPanel, isAcceptedRegardless: (_) => false, valid: (s) => true), isNull);
+      const copycatBase = MaterialCandidate(defaultState: BState('create:copycat_base'));
+      expect(copycatAcceptedState(copycatBase, isAcceptedRegardless: (_) => false, valid: (s) => true), const BState('create:copycat_base'));
+    });
+
     test('special cases', () {
       expect(isBarsMaterial(const BState('minecraft:iron_bars', {'north': 'false', 'east': 'false', 'south': 'false', 'west': 'false'})), isTrue);
       expect(isBarsMaterial(const BState('minecraft:glass_pane', {'north': 'false', 'east': 'false', 'south': 'false', 'west': 'false'})), isFalse);
@@ -358,6 +391,75 @@ void main() {
     test('material NBT map round trip', () {
       const m = BState('minecraft:oak_log', {'axis': 'z'});
       expect(materialFromMap(materialToMap(m)), m);
+    });
+  });
+
+  group('copycat panel material', () {
+    BState panel(String facing) => BState('create:copycat_panel', {'facing': facing, 'waterlogged': 'false'});
+    const trapdoor = BState('minecraft:oak_trapdoor', {
+      'facing': 'north',
+      'half': 'bottom',
+      'open': 'false',
+      'powered': 'false',
+      'waterlogged': 'false',
+    });
+
+    test('a trapdoor on a wall panel opens toward the panel facing', () {
+      final top = panelTrapdoorMaterial(
+        panel('north'),
+        horizontalDirection: Direction.south,
+        cursorY: 0.75,
+        material: trapdoor,
+      );
+      expect(top['facing'], 'north');
+      expect(top['half'], 'top');
+      expect(top.flag('open'), isTrue);
+
+      final bottom = panelTrapdoorMaterial(
+        panel('west'),
+        horizontalDirection: Direction.south,
+        cursorY: 0.25,
+        material: trapdoor,
+      );
+      expect(bottom['facing'], 'west');
+      expect(bottom['half'], 'bottom');
+      expect(bottom.flag('open'), isTrue);
+    });
+
+    test('a trapdoor on a floor or ceiling panel stays closed', () {
+      final up = panelTrapdoorMaterial(
+        panel('up'),
+        horizontalDirection: Direction.east,
+        cursorY: 0.9,
+        material: trapdoor,
+      );
+      expect(up['facing'], 'east');
+      expect(up.flag('open'), isFalse);
+      expect(up['half'], 'bottom');
+
+      // A panel facing down puts the closed trapdoor on the ceiling half.
+      final down = panelTrapdoorMaterial(
+        panel('down'),
+        horizontalDirection: Direction.east,
+        cursorY: 0.1,
+        material: trapdoor,
+      );
+      expect(down['facing'], 'east');
+      expect(down.flag('open'), isFalse);
+      expect(down['half'], 'top');
+    });
+
+    test('materials that are not trapdoors are left alone', () {
+      const stone = BState('minecraft:stone');
+      expect(
+        panelTrapdoorMaterial(panel('north'), horizontalDirection: Direction.south, cursorY: 0.9, material: stone),
+        same(stone),
+      );
+      const bars = BState('minecraft:iron_bars', {'north': 'false', 'east': 'false', 'south': 'false', 'west': 'false'});
+      expect(
+        panelTrapdoorMaterial(panel('north'), horizontalDirection: Direction.south, cursorY: 0.9, material: bars),
+        same(bars),
+      );
     });
   });
 

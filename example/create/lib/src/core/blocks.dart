@@ -165,6 +165,7 @@ class CreateBlock {
       onStrongPower: user.onStrongPower,
       onComparatorOutput: user.onComparatorOutput,
       onShape: user.onShape,
+      onEntityCollisionShape: user.onEntityCollisionShape,
       onUse: user.onUse,
       onUseWithItem: user.onUseWithItem,
       onUseWithoutItem: user.onUseWithoutItem,

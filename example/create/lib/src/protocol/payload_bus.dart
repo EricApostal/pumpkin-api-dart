@@ -83,6 +83,11 @@ final class PayloadBus {
   void onServerbound(String id, void Function(Player player, Map<String, Object?> fields) handler) =>
       _hub.onServerbound(id, handler);
 
+  /// Handles the clientbound payload [id] (`create:mounted_storage_sync`) when this plugin runs
+  /// on a client. The handler receives the fields of the payload, decoded like a serverbound one.
+  void onClientbound(String id, void Function(Player player, Map<String, Object?> fields) handler) =>
+      _hub.onClientbound(id, handler);
+
   /// Sends the clientbound payload [id] to [player]. Invalid [fields], an oversized payload
   /// or a player that disconnected are logged (rate-limited) and ignored.
   void sendClientbound(String id, Player player, Map<String, Object?> fields) {

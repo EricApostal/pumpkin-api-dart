@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/block_entity.dart';
 import '../core/blocks.dart' show CreateBlock;
+import '../core/perf.dart';
 import '../core/worlds.dart';
 import '../api/config.dart' as cfg;
 import 'geometry.dart';
@@ -75,11 +76,29 @@ final class HostKineticLevel extends KineticLevel {
   KState stateAt(KPos pos) {
     final w = world;
     if (w == null) return KState.air;
-    return runtime.states.decode(w.getBlockStateId(pos: toBlockPos(pos)));
+    if (!Perf.enabled) {
+      return runtime.states.decode(w.getBlockStateId(pos: toBlockPos(pos)));
+    }
+    final watch = Stopwatch()..start();
+    try {
+      return runtime.states.decode(w.getBlockStateId(pos: toBlockPos(pos)));
+    } finally {
+      Perf.record('host.getBlockStateId', watch.elapsedMicroseconds);
+    }
   }
 
   @override
-  bool isLoaded(KPos pos) => world?.isLoaded(pos: toBlockPos(pos)) ?? false;
+  bool isLoaded(KPos pos) {
+    final w = world;
+    if (w == null) return false;
+    if (!Perf.enabled) return w.isLoaded(pos: toBlockPos(pos));
+    final watch = Stopwatch()..start();
+    try {
+      return w.isLoaded(pos: toBlockPos(pos));
+    } finally {
+      Perf.record('host.isLoaded', watch.elapsedMicroseconds);
+    }
+  }
 
   final Set<KPos> _destroying = {};
 

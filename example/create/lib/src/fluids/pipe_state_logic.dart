@@ -126,4 +126,52 @@ abstract final class PipeStateLogic {
     }
     return preferredSide?.opposite;
   }
+
+  /// `DirectionalAxisKineticBlock.getStateForPlacement` as `FluidValveBlock` uses it: the
+  /// `axis_along_first` that makes the valve's pipe axis (`valvePipeAxis`) run along the pipes it
+  /// is placed on. The kinetic shaft preferences of the base class are not expressible through
+  /// [FluidWorld]; the pipe preferences are.
+  static bool valveAxisAlignmentForPlacement(
+    FluidWorld world,
+    Pos pos,
+    Direction facing,
+    Direction horizontalLook,
+  ) {
+    var alongFirst = false;
+    final faceAxis = facing.axis;
+
+    if (faceAxis.isHorizontal) {
+      alongFirst = faceAxis == Axis.z;
+      final positivePerpendicular = faceAxis == Axis.x
+          ? Direction.south
+          : Direction.east;
+      bool prefers(Direction side) =>
+          canConnectTo(world, pos.relative(side), world.stateAt(pos.relative(side)), side);
+      if (prefers(positivePerpendicular) ||
+          prefers(positivePerpendicular.opposite)) {
+        alongFirst = faceAxis == Axis.x;
+      }
+    } else {
+      alongFirst = horizontalLook.axis == Axis.x;
+      Direction? preferredSide;
+      for (final side in Direction.horizontals) {
+        if (!canConnectTo(
+          world,
+          pos.relative(side.clockWise),
+          world.stateAt(pos.relative(side.clockWise)),
+          side.clockWise,
+        )) {
+          continue;
+        }
+        if (preferredSide != null && preferredSide.axis != side.axis) {
+          preferredSide = null;
+          break;
+        }
+        preferredSide = side;
+      }
+      if (preferredSide != null) alongFirst = preferredSide.axis == Axis.x;
+    }
+
+    return alongFirst;
+  }
 }

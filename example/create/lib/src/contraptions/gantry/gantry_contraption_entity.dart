@@ -18,6 +18,7 @@ import '../core/nbt_map.dart';
 import '../core/structure_transform.dart';
 import '../entity/contraption_entity.dart';
 import 'gantry_contraption.dart';
+import 'gantry_logic.dart';
 
 /// The parts of a `GantryShaftBlockEntity` a gantry needs.
 abstract interface class GantryShaftLike {
@@ -133,8 +134,30 @@ class GantryContraptionEntity extends AbstractContraptionEntity {
     if (sequencedOffsetLimit >= 0) {
       speed = speed.clamp(-sequencedOffsetLimit, sequencedOffsetLimit);
     }
+
+    // `checkPinionShaft`: moving into the next block along the shaft needs a shaft that can
+    // assemble on there; otherwise the gantry lets go.
+    final movementVec = direction.unitVec3 * speed;
+    final next = (
+      current.$1 + movementVec.$1,
+      current.$2 + movementVec.$2,
+      current.$3 + movementVec.$3,
+    );
+    final axis = direction.axis;
+    if (gantryCrossedShaftEnd(
+          axis.choose(current.$1, current.$2, current.$3),
+          axis.choose(next.$1, next.$2, next.$3),
+          speed,
+          direction.axisDirection.step,
+        ) &&
+        !shaft.canAssembleOn) {
+      host.setDeltaMovement(vec3Zero);
+      unawaited(disassemble());
+      return;
+    }
+
     axisMotion = speed;
-    host.setDeltaMovement(direction.unitVec3 * speed);
+    host.setDeltaMovement(movementVec);
   }
 
   void _sendUpdate() {

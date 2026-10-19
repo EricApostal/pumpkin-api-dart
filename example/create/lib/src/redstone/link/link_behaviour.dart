@@ -3,6 +3,7 @@
 // the other modules through `api/redstone.dart`.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/equipment.dart' show ClipboardCloneable;
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/pos.dart';
@@ -15,7 +16,8 @@ import 'link_network.dart';
 typedef SlotTest = bool Function(bool first, Vec3 localHit);
 
 /// `LinkBehaviour`.
-class LinkBehaviour extends BlockEntityBehaviour implements RedstoneLinkable {
+class LinkBehaviour extends BlockEntityBehaviour
+    implements RedstoneLinkable, ClipboardCloneable {
   static const String behaviourId = 'Link';
 
   @override
@@ -163,6 +165,36 @@ class LinkBehaviour extends BlockEntityBehaviour implements RedstoneLinkable {
   bool testHit(bool first, Vec3 hit) {
     final p = owner.pos;
     return slotTest(first, (hit.$1 - p.x, hit.$2 - p.y, hit.$3 - p.z));
+  }
+
+  // -- Clipboard (`ClipboardCloneable`) ---------------------------------------------------------
+
+  @override
+  String get clipboardKey => 'Frequencies';
+
+  /// `writeToClipboard`: both frequency items under `First` / `Last` (`TransferUtil.saveItem`).
+  @override
+  bool writeToClipboard(NbtCompound tag, BlockDirection side) {
+    tag.putCompound('First', frequencyToNbt(frequencyFirst));
+    tag.putCompound('Last', frequencyToNbt(frequencyLast));
+    return true;
+  }
+
+  /// `readFromClipboard`: a tag without both keys is refused; [simulate] only checks it.
+  @override
+  bool readFromClipboard(
+    NbtCompound tag,
+    Player player,
+    BlockDirection side,
+    bool simulate,
+  ) {
+    final first = tag.getCompound('First');
+    final last = tag.getCompound('Last');
+    if (first == null || last == null) return false;
+    if (simulate) return true;
+    setFrequency(true, frequencyFromNbt(first));
+    setFrequency(false, frequencyFromNbt(last));
+    return true;
   }
 
   // -- NBT -------------------------------------------------------------------------------------

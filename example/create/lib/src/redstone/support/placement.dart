@@ -146,6 +146,15 @@ PlacedProps directedPlacement(PlaceCtx ctx, bool Function(Pos pos) detect) {
   return {'target': target, 'facing': preferred.serializedName};
 }
 
+/// `RedstoneLinkBlock.canSurvive` for a link that is about to be placed at [pos]: the link
+/// hangs on the block that was clicked. The host reports the placement face as
+/// `CustomBlockCanPlaceEventData.face`, which points from the new block towards the clicked
+/// block (`BlockPlaceContext.getClickedFace().getOpposite()`), so the support is
+/// `pos.relative(face)` (Java: `pos.relative(FACING.getOpposite())`, `FACING` being the
+/// clicked face).
+bool linkCanSurvive(Pos pos, Direction face, bool Function(Pos support) canBeReplaced) =>
+    !canBeReplaced(pos.relative(face));
+
 /// `DirectedDirectionalBlock.getTargetDirection`.
 Direction directedTargetDirection(String target, Direction facing) => switch (target) {
   'ceiling' => Direction.up,

@@ -73,6 +73,19 @@ abstract class MountedItemStorage implements ItemSlots {
   /// Number of menu rows, 0 if it cannot be shown (storages that are not 1-6 rows of 9 slots).
   int get menuRows =>
       slots > 0 && slots % 9 == 0 && slots <= 54 ? slots ~/ 9 : 0;
+
+  /// Whether the menu is the 3x3 dispenser one instead of a chest one
+  /// (`DispenserMountedStorage.createMenuProvider`).
+  bool get usesDispenserMenu => false;
+
+  /// `createMenuProvider`: the layout of the menu this storage opens, `null` when it has none.
+  /// The host opens a vanilla chest / dispenser screen of [menuRows] rows or of 3x3.
+  ({bool dispenser, int rows})? get menuLayout {
+    if (!canOpen) return null;
+    if (usesDispenserMenu) return slots == 9 ? (dispenser: true, rows: 0) : null;
+    final rows = menuRows;
+    return rows == 0 ? null : (dispenser: false, rows: rows);
+  }
 }
 
 /// `SyncedMountedStorage`: a storage whose changes are sent to clients.
@@ -82,6 +95,11 @@ mixin SyncedMountedStorage {
   bool get isDirty => dirty;
 
   void markClean() => dirty = false;
+
+  /// `afterSync(contraption, localPos)`: runs after the storage was synced from the server.
+  /// Java writes the content into the block entity the client-side contraption carries; the port
+  /// has no client-side block entities, so this is the hook a client host may override.
+  void afterSync(Object contraption, Pos localPos) {}
 }
 
 /// `WrapperMountedItemStorage`: a storage backed by an [ItemStackHandler].
@@ -185,6 +203,9 @@ class ChestMountedStorage extends SimpleMountedStorage {
 /// `DispenserMountedStorage`: a 9x9 menu, silent.
 class DispenserMountedStorage extends SimpleMountedStorage {
   DispenserMountedStorage(super.type, super.wrapped);
+
+  @override
+  bool get usesDispenserMenu => true;
 
   @override
   String? get openingSound => null;

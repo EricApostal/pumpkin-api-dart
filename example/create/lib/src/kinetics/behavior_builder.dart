@@ -11,6 +11,7 @@ import 'geometry.dart';
 import 'kinetic_block_entity.dart';
 import 'placement.dart';
 import 'use_records.dart';
+import '../core/perf.dart';
 import 'runtime.dart';
 
 /// What a hook knows about the block it is called for.
@@ -116,24 +117,31 @@ BlockBehavior buildKineticBehavior(
 }) {
   return BlockBehavior(
     onPlaced: (server, e) async {
+      final watch = Perf.enabled ? (Stopwatch()..start()) : null;
       final block = blockRef();
-      final c = makeCtx(server, block, e.targetWorld, e.pos, e.stateIndex);
-      final be = c.be;
-      if (be != null && e.oldStateId != null) {
-        final old = c.rt.states.decode(e.oldStateId!);
-        final keep = c.rt.keepKineticInfo.remove(
-          '${c.worldId}:${c.kpos.packed}',
-        );
-        applyKineticBlockChange(c.rt, be, old, c.state, keepInfo: keep);
+      try {
+        final c = makeCtx(server, block, e.targetWorld, e.pos, e.stateIndex);
+        final be = c.be;
+        if (be != null && e.oldStateId != null) {
+          final old = c.rt.states.decode(e.oldStateId!);
+          final keep = c.rt.keepKineticInfo.remove(
+            '${c.worldId}:${c.kpos.packed}',
+          );
+          applyKineticBlockChange(c.rt, be, old, c.state, keepInfo: keep);
+        }
+        final playerId = e.player;
+        if (playerId != null) {
+          be?.queueRotationIndicators(); // KineticBlock.setPlacedBy
+          final spec = specRef?.call();
+          final fix = spec?.placement;
+          if (fix != null) await _placementFix(server, c, e, playerId, fix);
+        }
+        if (afterPlaced != null) await afterPlaced(c, e);
+      } finally {
+        if (watch != null) {
+          Perf.record('place.kinetic(${block.key})', watch.elapsedMicroseconds);
+        }
       }
-      final playerId = e.player;
-      if (playerId != null) {
-        be?.queueRotationIndicators(); // KineticBlock.setPlacedBy
-        final spec = specRef?.call();
-        final fix = spec?.placement;
-        if (fix != null) await _placementFix(server, c, e, playerId, fix);
-      }
-      if (afterPlaced != null) await afterPlaced(c, e);
     },
     onNeighborUpdate: neighbor == null
         ? null
@@ -216,7 +224,7 @@ Future<void> _placementFix(
   final yaw = player.getYaw();
   final pitch = player.getPitch();
   final level = c.level;
-  final clickedFace = record?.face ?? (c.state.dirOf('facing') ?? Dir.up);
+  final clickedFace = record?.face ?? clickedFaceForPlacedState(c.state);
   final ctx = PlacementContext(
     pos: c.kpos,
     clickedFace: clickedFace,

@@ -123,6 +123,30 @@ BState? copycatCycleMaterial(BState material, bool Function(BState state) valid)
   return null;
 }
 
+/// `CopycatPanelBlock.prepareMaterial` for a trapdoor material: the trapdoor takes the panel's
+/// orientation, and its half from the panel's facing or the height of the click. [cursorY] is the
+/// hit location's y inside the block (0..1). Materials that are not trapdoors are returned
+/// unchanged.
+BState panelTrapdoorMaterial(
+  BState panel, {
+  required Direction horizontalDirection,
+  required double cursorY,
+  required BState material,
+}) {
+  if (!isTrapdoorMaterial(material)) return material;
+  final panelFacing = panel.dir('facing')!;
+  var m = material;
+  if (panelFacing == Direction.down) m = m.setValue('half', 'top');
+  if (panelFacing.axis == Axis.y) {
+    return m.setValue('facing', horizontalDirection.serializedName).setFlag('open', false);
+  }
+  final clickedNearTop = cursorY > .5;
+  return m
+      .setFlag('open', true)
+      .setValue('half', clickedNearTop ? 'top' : 'bottom')
+      .setValue('facing', panelFacing.serializedName);
+}
+
 /// The key set of `NbtUtils.writeBlockState`: `Name` and `Properties`.
 Map<String, Object> materialToMap(BState material) => {
   'Name': material.key,

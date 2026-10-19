@@ -148,6 +148,9 @@ final class MechanicalCrafterBlockEntity extends KineticBlockEntity
   }
 
   /// `ConnectedInput.getInventories`: the inventories of the group, in insertion order.
+  List<ItemStorage> get connectedInventories => _inventories();
+
+  /// `ConnectedInput.getInventories`: the inventories of the group, in insertion order.
   List<ItemStorage> _inventories() {
     if (!input.isController) {
       final controllerPos = pos.toPos() + input.data.first;

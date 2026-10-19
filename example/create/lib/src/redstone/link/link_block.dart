@@ -4,12 +4,14 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/equipment.dart' show ClipboardCloneable, ClipboardCloneables;
 import '../../api/panel_support.dart';
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../support/level.dart';
 import '../support/manifest_block.dart';
+import '../support/placement.dart';
 import '../support/rs_runtime.dart';
 import '../support/shapes.dart';
 import 'link_behaviour.dart';
@@ -19,7 +21,8 @@ Direction _facing(Map<String, String> p) =>
     Direction.byName(p['facing'] ?? 'north') ?? Direction.north;
 
 /// `RedstoneLinkBlockEntity`.
-final class RedstoneLinkBlockEntity extends CreateBlockEntity {
+final class RedstoneLinkBlockEntity extends CreateBlockEntity
+    implements ClipboardCloneables {
   static const String type = 'create:redstone_link';
 
   bool receivedSignalChanged = false;
@@ -49,6 +52,11 @@ final class RedstoneLinkBlockEntity extends CreateBlockEntity {
       ),
     );
   }
+
+  /// `LinkBehaviour` is a `ClipboardCloneable` (`Frequencies`): the clipboard copies and
+  /// pastes the two frequency items of the link.
+  @override
+  List<ClipboardCloneable> get clipboardCloneables => [link];
 
   bool _slotTest(bool first, Vec3 localHit) {
     final props = world == null
@@ -184,18 +192,23 @@ final class RedstoneLinkBlock {
         onPlaced: _onPlaced,
         onNeighborUpdate: _onNeighborUpdate,
         onScheduledTick: _onTick,
+        onStateReplaced: _onStateReplaced,
         onCanPlace: (server, e) {
           final face = e.face?.toDirection();
           if (face == null) return e.canPlace;
           return e.canPlace &&
-              !Lvl(e.targetWorld)
-                  .canBeReplaced(e.pos.toPos().relative(face.opposite));
+              linkCanSurvive(
+                e.pos.toPos(),
+                face,
+                Lvl(e.targetWorld).canBeReplaced,
+              );
         },
         onWeakPower: (server, e) => _received(e),
         onStrongPower: (server, e) {
           final p = block.stateOf(e.stateIndex);
-          // getDirectSignal: only towards the facing side.
-          if (e.face.toDirection().opposite != _facing(p)) return 0;
+          // `getDirectSignal`: only towards the side the link faces (`side == FACING`); `e.face`
+          // is the side facing the reader, like Java's `side`.
+          if (e.face.toDirection() != _facing(p)) return 0;
           return _received(e);
         },
         canConnectRedstone: (server, e) => e.direction != null,
@@ -258,6 +271,19 @@ final class RedstoneLinkBlock {
     if (props == null || props['receiver'] == 'true') return;
     // sendBlockUpdated for the link and the block it sits on.
     Rs.i.be<RedstoneLinkBlockEntity>(e.targetWorld, e.pos)?.sendData();
+  }
+
+  /// `RedstoneLinkBlockEntity.remove()` -> `updateSelfAndAttached`: the link and the block it
+  /// sits on re-read their neighbours (a link that hung on a lamp leaves it behind).
+  Future<void> _onStateReplaced(
+    Server server,
+    CustomBlockStateReplacedEventData e,
+  ) async {
+    final lvl = Lvl(e.targetWorld);
+    final pos = e.pos.toPos();
+    final attached = pos.relative(_facing(block.stateOf(e.oldStateIndex)).opposite);
+    await lvl.updateNeighbors(pos);
+    await lvl.updateNeighbors(attached);
   }
 
   /// `useWithoutItem`: a sneaking click toggles between transmitting and receiving.

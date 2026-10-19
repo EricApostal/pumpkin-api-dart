@@ -9,6 +9,12 @@ import 'package:create/src/trains/entity/carriage.dart';
 import 'package:create/src/trains/entity/carriage_bogey.dart';
 import 'package:create/src/trains/entity/carriage_storage.dart';
 import 'package:create/src/trains/entity/train.dart';
+import 'package:create/src/trains/graph/edge_point_type.dart';
+import 'package:create/src/trains/graph/dimension_palette.dart' show overworldId;
+import 'package:create/src/trains/graph/track_edge.dart';
+import 'package:create/src/trains/graph/track_graph.dart';
+import 'package:create/src/trains/graph/track_node.dart';
+import 'package:create/src/trains/graph/track_node_location.dart';
 import 'package:create/src/trains/manager/create.dart';
 import 'package:create/src/trains/schedule/condition/cargo_threshold_condition.dart';
 import 'package:create/src/trains/schedule/condition/fluid_threshold_condition.dart';
@@ -40,6 +46,9 @@ import 'package:create/src/trains/schedule/schedule_menu.dart';
 import 'package:create/src/trains/schedule/schedule_runtime.dart';
 import 'package:create/src/trains/schedule/schedule_services.dart';
 import 'package:create/src/trains/schedule/train_edit_packet.dart';
+import 'package:create/src/trains/station/global_package_port.dart';
+import 'package:create/src/trains/station/global_station.dart';
+import 'package:create/src/trains/track/track_material.dart';
 import 'package:create/src/trains/util/ctag.dart';
 import 'package:test/test.dart';
 
@@ -883,6 +892,137 @@ void main() {
       final noServer = FakeLevel()..hasServer = false;
       expect(FetchPackagesInstruction().start(rt, noServer), isNull);
       expect(rt.currentEntry, 0);
+    });
+  });
+
+  group('station and offline buffer', () {
+    CTag packageStack() => CTag()
+      ..putString('id', 'create:cardboard_package_12x12')
+      ..putInt('count', 1);
+
+    CTag ingots(int count) => CTag()
+      ..putString('id', 'minecraft:iron_ingot')
+      ..putInt('count', count);
+
+    test('the offline buffer keeps packages one per slot', () {
+      // `CreateItemStackHandler.getCapacity` caps a slot at the item's own stack size, so the
+      // (max stack 1) packages never merge; ordinary items still stack to 64.
+      final buffer = OfflineBuffer();
+      expect(buffer.insertItemStacked(packageStack()), isNull);
+      expect(buffer.insertItemStacked(packageStack()), isNull);
+      expect(buffer.getStackInSlot(0)!.getInt('count'), 1);
+      expect(buffer.getStackInSlot(1)!.getInt('count'), 1);
+
+      expect(buffer.insertItemStacked(ingots(70)), isNull);
+      expect(buffer.getStackInSlot(2)!.getInt('count'), 64);
+      expect(buffer.getStackInSlot(3)!.getInt('count'), 6);
+
+      // a full buffer hands the remainder back instead of merging over the limit
+      final full = OfflineBuffer(1)..setStackInSlot(0, ingots(64));
+      final rest = full.insertItemStacked(ingots(5))!;
+      expect(rest.getInt('count'), 5);
+      expect(full.getStackInSlot(0)!.getInt('count'), 64);
+    });
+
+    test('the offline buffer round-trips the Size/Items layout of the Java handler', () {
+      final buffer = OfflineBuffer()
+        ..setStackInSlot(3, ingots(5))
+        ..setStackInSlot(0, packageStack());
+      final tag = buffer.serializeNBT();
+      expect(tag.getInt('Size'), 18);
+      final items = tag.getCompoundList('Items');
+      expect([for (final i in items) i.getInt('Slot')], [0, 3]);
+      expect(items.first.getString('id'), 'create:cardboard_package_12x12');
+
+      final back = OfflineBuffer()..deserializeNBT(tag);
+      expect(back.getSlots(), 18);
+      expect(back.getStackInSlot(0)!.getString('id'), 'create:cardboard_package_12x12');
+      expect(back.getStackInSlot(3)!.getInt('count'), 5);
+      expect(back.getStackInSlot(3)!.contains('Slot'), isFalse);
+
+      // a saved Size resizes the buffer, out of range slots are dropped
+      back.deserializeNBT(
+        CTag()
+          ..putInt('Size', 2)
+          ..putCompoundList('Items', [
+            CTag()
+              ..putInt('Slot', 1)
+              ..putString('id', 'minecraft:stone')
+              ..putInt('count', 3),
+            CTag()
+              ..putInt('Slot', 7)
+              ..putString('id', 'minecraft:dirt')
+              ..putInt('count', 1),
+          ]),
+      );
+      expect(back.getSlots(), 2);
+      expect(back.getStackInSlot(1)!.getString('id'), 'minecraft:stone');
+    });
+
+    test('a station reserves the nearest train and reports arrival and departure', () {
+      final graph = TrackGraph('00000000-0000-4000-8000-0000000000f1');
+      final a = TrackNode(TrackNodeLocation(0, 0, 0).inDimension(overworldId), 1, (0.0, 1.0, 0.0));
+      final b = TrackNode(TrackNodeLocation(0, 0, 20).inDimension(overworldId), 2, (0.0, 1.0, 0.0));
+      graph
+        ..addNode(a)
+        ..addNode(b);
+      final edge = TrackEdge(a, b, null, TrackMaterial.ANDESITE);
+      graph
+        ..putConnection(a, b, edge)
+        ..putConnection(b, a, TrackEdge(b, a, null, TrackMaterial.ANDESITE));
+      final station = GlobalStation()
+        ..setId('00000000-0000-4000-8000-0000000000f3')
+        ..setLocation(Couple.create(a.location, b.location), 19.0)
+        ..name = 'Central';
+      station.setType(EdgePointType.STATION);
+      graph.addPoint(EdgePointType.STATION, station);
+
+      final block =
+          AbstractBogeyBlock.byKey('create:small_bogey') ?? StandardBogeyBlock.registerStandardBlocks().first;
+      Train trainOn(String id) {
+        final c = Carriage(CarriageBogey(block, false, null), CarriageBogey(block, false, null), 3);
+        c.storage = FakeCargo();
+        c.presentConductors = Couple.create(true, true);
+        return Train(id, null, graph, [c], <int>[], false, 0);
+      }
+
+      final near = trainOn('00000000-0000-4000-8000-0000000000a1')
+        ..navigation.distanceToDestination = 10;
+      final far = trainOn('00000000-0000-4000-8000-0000000000a2')
+        ..navigation.distanceToDestination = 40;
+
+      // `reserveFor` keeps the train that is closest to the station
+      station.reserveFor(far);
+      station.reserveFor(near);
+      station.reserveFor(far);
+      expect(station.getNearestTrain(), same(near));
+
+      // `getImminentTrain` only reports a train that is navigating to the station within 30 blocks
+      expect(station.getImminentTrain(), isNull);
+      near.navigation.destination = station;
+      expect(station.getImminentTrain(), same(near));
+      near.navigation.distanceToDestination = 31;
+      expect(station.getImminentTrain(), isNull);
+      near.navigation.distanceToDestination = 10;
+
+      // `getPresentTrain` requires the train to stand at this station
+      expect(station.getPresentTrain(), isNull);
+      near.setCurrentStation(station);
+      expect(station.getPresentTrain(), same(near));
+      expect(station.getImminentTrain(), same(near));
+
+      // leaving the station forgets the reservation
+      near.leaveStation();
+      expect(near.getCurrentStation(), isNull);
+      expect(station.getPresentTrain(), isNull);
+      expect(station.getNearestTrain(), isNull);
+
+      // an assembling station accepts no approaches and no paths through it
+      expect(station.canApproachFrom(b), isTrue);
+      expect(station.canNavigateVia(a), isTrue);
+      station.assembling = true;
+      expect(station.canApproachFrom(b), isFalse);
+      expect(station.canNavigateVia(a), isFalse);
     });
   });
 

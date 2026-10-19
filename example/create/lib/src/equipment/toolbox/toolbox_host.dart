@@ -641,16 +641,76 @@ final class ToolboxHost {
     if (e.mode == MenuClickMode.quickCraft) {
       return e.changedSlots.any((s) => s.slot < ToolboxInv.slotCount) ? e.copyWith(cancelled: true) : e;
     }
-    if (!onToolbox) return e;
+    if (!onToolbox) {
+      // A shift-click from the player inventory moves into the compartments with the toolbox
+      // rules (`ToolboxMenu.quickMoveStack`), which the host's generic quick move cannot express
+      // (a compartment's filter and `canFitInsideContainerItems`).
+      if (e.mode == MenuClickMode.quickMove) {
+        await _quickMoveInto(e.player, be, slot);
+        return e.copyWith(cancelled: true);
+      }
+      return e;
+    }
     switch (e.mode) {
       case MenuClickMode.pickup:
         await _pickupClick(e.player, be, slot, e.button, e.cursorStack);
       case MenuClickMode.quickMove:
         await _quickMoveOut(e.player, be, slot);
+      case MenuClickMode.swap:
+        await _swapWithHotbar(e.player, be, slot, e.button);
+      case MenuClickMode.throw_:
+        await _throwFromSlot(e.player, be, slot, e.button);
       default:
         break;
     }
     return e.copyWith(cancelled: true);
+  }
+
+  /// The player inventory index behind menu slot [menuSlot] (`playerInventory: true`: the main
+  /// inventory 9 to 35 first, then the hotbar 0 to 8).
+  static int _inventoryIndexOf(int menuSlot) =>
+      (menuSlot - ToolboxInv.slotCount + 9) % 36;
+
+  /// `ToolboxMenu.quickMoveStack(index >= size)`: merges the player's stack into the compartments
+  /// that take it and writes the remainder back.
+  Future<void> _quickMoveInto(Player player, ToolboxBlockEntity be, int menuSlot) async {
+    final index = _inventoryIndexOf(menuSlot);
+    if (index < 0 || index > 35) return;
+    final storage = player.getInventory().asInventory();
+    final source = await StackCodec.read(storage.getItem(slot: index));
+    if (source.isEmpty) return;
+    final rest = be.inv.insertStacked(source);
+    if (rest.count == source.count) return;
+    await _setHotbar(storage, index, rest);
+    be.sendData();
+    await _refreshViewers(be);
+  }
+
+  /// The vanilla number-key swap: the hotbar stack and the clicked slot change places when the
+  /// compartment takes the hotbar stack (`ToolboxSlot.mayPlace`).
+  Future<void> _swapWithHotbar(Player player, ToolboxBlockEntity be, int slot, int hotbar) async {
+    if (hotbar < 0 || hotbar > 8) return;
+    final storage = player.getInventory().asInventory();
+    final hotbarStack = await StackCodec.read(storage.getItem(slot: hotbar));
+    final displaced = be.inv.swapIn(slot, hotbarStack);
+    if (displaced == null) return;
+    await _setHotbar(storage, hotbar, displaced);
+    be.sendData();
+    await _refreshViewers(be);
+  }
+
+  /// Q / Ctrl+Q on a toolbox slot: the item is dropped in front of the player (`Slot.remove` and
+  /// `Player.drop` of the vanilla click logic).
+  Future<void> _throwFromSlot(Player player, ToolboxBlockEntity be, int slot, int button) async {
+    final stack = be.inv.slots[slot];
+    if (stack.isEmpty) return;
+    final extracted = be.inv.extractItem(slot, button == 0 ? 1 : stack.count);
+    final host = await StackCodec.write(extracted);
+    if (host != null) {
+      await player.getWorld().dropItem(player.getPosition(), host);
+    }
+    be.sendData();
+    await _refreshViewers(be);
   }
 
   /// `ToolboxMenu.clicked` for a left / right click on a toolbox slot.
@@ -683,8 +743,13 @@ final class ToolboxHost {
         final placed = place - remainder.countOrZero;
         final left = carried.count - placed;
         carried = left <= 0 ? TStack.empty : carried.copyWithCount(left);
+      } else if (inv.isItemValid(slot, carried) && carried.count <= ToolboxInv.slotLimit) {
+        // Vanilla: a different item the compartment takes swaps with the cursor. (A filtered
+        // compartment refuses it, `mayPlace` is false.)
+        inv.extractItem(slot, slotStack.count);
+        inv.insertItem(slot, carried);
+        carried = slotStack;
       }
-      // a different item in a filtered compartment is refused (`mayPlace` is false)
     }
     final host = await StackCodec.write(carried);
     try {

@@ -95,12 +95,14 @@ final class KineticBlockData {
   );
 }
 
+final Map<String, int> _maxStackByItem = {
+  for (final i in kItems) i.key: i.maxStack,
+};
+
 int? _itemMaxStack(String? itemKey) {
   if (itemKey == null) return null;
-  for (final i in kItems) {
-    if (i.key == itemKey) return i.maxStack == 64 ? null : i.maxStack;
-  }
-  return null;
+  final max = _maxStackByItem[itemKey];
+  return max == null || max == 64 ? null : max;
 }
 
 /// The data of `create:<path>`: manifest stats and properties, the shapes of

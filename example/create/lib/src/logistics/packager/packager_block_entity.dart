@@ -6,6 +6,15 @@ import 'dart:math';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart' hide pos;
+import '../../common/bounds.dart';
+import '../../conveyance/items/inventory.dart' show ItemInventory;
+import '../../conveyance/items/item_data.dart';
+import '../../conveyance/transport/crate/creative_crate_block_entity.dart'
+    show CreativeCrateBlockEntity;
+import '../../conveyance/transport/vault/item_vault_block_entity.dart'
+    show ItemVaultBlockEntity;
+import '../../conveyance/transport/transport_inventory_api.dart'
+    show ItemInventoryProvider;
 import '../factory/factory_panel_block_entity.dart';
 import '../host/host_inventory.dart';
 import '../host/lg_block_entity.dart';
@@ -21,8 +30,10 @@ import '../model/network.dart';
 import '../model/orders.dart';
 import '../model/package.dart';
 import '../model/stack.dart';
+import '../port/conveyance_items.dart';
 import '../port/package_port_block_entity.dart';
 import 'unpacking.dart';
+import 'unpacking_host.dart';
 
 /// `AllInventoryIdentifiers`: which inventory a packager faces, so two packagers on the same
 /// inventory do not request items from each other.
@@ -38,6 +49,13 @@ abstract final class InventoryIdentifiers {
     final info = Lvl(world).info(pos);
     final key = info?.key ?? 'minecraft:air';
     final props = info?.properties ?? const <String, String>{};
+
+    // Vaults: every part of the multiblock names the whole box, so two packagers on the same
+    // vault do not each report its contents.
+    if (key == 'create:item_vault') {
+      final bounds = PackagerBlockEntity.vaultBounds(worldId, pos);
+      if (bounds != null) return BoundsInventoryId(bounds);
+    }
 
     // Double chests: a chest with a `type` and a `facing` property pairs with its neighbour.
     if (props.containsKey('type') && props.containsKey('facing')) {
@@ -58,7 +76,8 @@ abstract final class InventoryIdentifiers {
 }
 
 /// `PackagerBlockEntity`. The animation of the tray is visual only and skipped.
-class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
+class PackagerBlockEntity extends LgBlockEntity
+    implements PackagerHandle, ItemInventoryProvider {
   static const String type = 'create:packager';
 
   /// `CYCLE`: ticks of the tray animation.
@@ -230,10 +249,47 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
   Pos get targetPos => _pos.relative(facing.opposite);
 
   /// `targetInventory.getInventory()`.
-  ItemInv? get targetInventory {
-    final w = world;
-    if (w == null) return null;
-    return hostInvAt(w, targetPos.toBlockPos(), Lg.i.io, side: facing.toHost());
+  ItemInv? get targetInventory => inventoryAt(
+    worldId,
+    targetPos,
+    Lg.i.io,
+    side: facing,
+  );
+
+  /// `PackagerItemHandler`: the tray seen as a one-slot inventory. A package inserted into it
+  /// is unpacked into the inventory behind the packager; the box it currently holds can be
+  /// taken out again.
+  @override
+  ItemInventory? itemInventory(Direction? side) => _tray ??= _PackagerInventory(this);
+
+  _PackagerInventory? _tray;
+
+  /// The block entity at [targetPos], when it is a packager (its tray is not a real inventory).
+  bool get targetsPackager =>
+      store.at(worldId, targetPos.toBlockPos()) is PackagerBlockEntity;
+
+  /// `ItemVaultBlockEntity.getInvId`: the bounds of the vault the part at [pos] belongs to.
+  static BlockBounds? vaultBounds(String worldId, Pos pos) {
+    final be = Lg.i.store.typed<ItemVaultBlockEntity>(
+      worldId,
+      pos.toBlockPos(),
+    );
+    if (be == null) return null;
+    final controller = be.isController
+        ? be
+        : Lg.i.store.typed<ItemVaultBlockEntity>(
+            worldId,
+            be.controller.toBlockPos(),
+          );
+    if (controller == null) return null;
+    final origin = controller.partPos;
+    final axis = controller.mainConnectionAxis;
+    final far = switch (axis) {
+      Axis.x => origin.offset(controller.length, controller.radius, controller.radius),
+      Axis.z => origin.offset(controller.radius, controller.radius, controller.length),
+      Axis.y => origin.offset(controller.radius, controller.length, controller.radius),
+    };
+    return BlockBounds.fromCorners(origin, far);
   }
 
   /// `getIdentifiedInventory()`.
@@ -369,7 +425,16 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
     final inv = targetInventory;
     if (inv == null) return false;
 
-    final unpacked = await handler.unpack(inv, items, simulate: simulate);
+    final unpacked = await handler.unpack(
+      inv,
+      items,
+      simulate: simulate,
+      where: HostUnpackTarget(
+        worldId,
+        targetPos,
+        orderContext: PackageItem.getOrderContext(box),
+      ),
+    );
     if (unpacked && !simulate) {
       previouslyUnwrapped = box;
       animationInward = true;
@@ -390,6 +455,8 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
 
     final targetInv = targetInventory;
     if (targetInv == null) return;
+    // `targetInv instanceof PackagerItemHandler`: a packager does not pull out of another's tray.
+    if (targetsPackager) return;
 
     var anyItemPresent = false;
     final extractedItems = MemoryInv(PackageItem.slots);
@@ -529,9 +596,53 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
     notifyUpdate();
   }
 
-  /// `updateSignAddress()`: signs are read through a block entity the host does not expose, so
-  /// the address stays empty.
-  void updateSignAddress() {}
+  /// `updateSignAddress()`: an adjacent sign (front, else back text) supplies the address that a
+  /// redstone-triggered packager stamps onto its boxes.
+  void updateSignAddress() {
+    signBasedAddress = '';
+    final world = this.world;
+    if (world == null) return;
+    for (final side in Direction.values) {
+      final address = _signAt(world, _pos.relative(side));
+      if (address == null || address.trim().isEmpty) continue;
+      signBasedAddress = address;
+    }
+    // There is no ComputerCraft bridge in this port, so a custom address never stays attached.
+    if (hasCustomComputerAddress) {
+      signBasedAddress = customComputerAddress;
+    } else {
+      hasCustomComputerAddress = false;
+    }
+  }
+
+  /// `getSign(side)`: the front text of the sign at [p], else its back text.
+  static String? _signAt(World world, Pos p) {
+    final be = world.getBlockEntity(pos: p.toBlockPos());
+    SignText Function()? front;
+    SignText Function()? back;
+    switch (be) {
+      case BlockEntityTypeSignBlockEntity(:final value):
+        front = value.getFrontText;
+        back = value.getBackText;
+      case BlockEntityTypeHangingSignBlockEntity(:final value):
+        front = value.getFrontText;
+        back = value.getBackText;
+      default:
+        return null;
+    }
+    String? read(SignText Function() text) {
+      final address = StringBuffer();
+      for (final message in text().messages) {
+        final trimmed = message.trim();
+        if (trimmed.isEmpty) continue;
+        address.write('$trimmed ');
+      }
+      final joined = address.toString().trim();
+      return joined.isEmpty ? null : joined;
+    }
+
+    return read(front) ?? read(back);
+  }
 
   void _wakeTheFrogs() {
     final above = store.typed<FrogportBlockEntity>(
@@ -555,7 +666,20 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
 
     final available = InventorySummary();
     final inv = targetInventory;
-    if (inv == null) {
+    if (inv == null || targetsPackager) {
+      _available = available;
+      _availableTick = now;
+      return available;
+    }
+
+    // `targetInv instanceof BottomlessItemHandler`: a creative crate has an endless supply.
+    final crate = store.typed<CreativeCrateBlockEntity>(
+      worldId,
+      targetPos.toBlockPos(),
+    );
+    if (crate != null) {
+      final supplied = fromItemValue(crate.suppliedStack, Lg.i.wire);
+      if (supplied.isNotEmpty) available.add(supplied, BigStack.inf);
       _available = available;
       _availableTick = now;
       return available;
@@ -653,5 +777,63 @@ class PackagerBlockEntity extends LgBlockEntity implements PackagerHandle {
       }
     }
     queuedExitingPackages.clear();
+  }
+}
+
+/// `PackagerItemHandler`: the packager's tray. One slot holding the box it is working on;
+/// inserting a package unpacks it into the inventory behind the packager (the box itself is
+/// never kept), taking it out returns the box the tray currently holds.
+final class _PackagerInventory implements ItemInventory {
+  final PackagerBlockEntity be;
+
+  _PackagerInventory(this.be);
+
+  @override
+  int get slots => 1;
+
+  @override
+  ItemValue getStack(int slot) {
+    final box = be.heldBox;
+    return box.isEmpty ? ItemValue.empty : toItemValue(box, Lg.i.wire);
+  }
+
+  @override
+  int slotLimit(int slot) => 1;
+
+  @override
+  bool isItemValid(int slot, ItemValue stack) =>
+      PackageItem.isPackage(fromItemValue(stack, Lg.i.wire));
+
+  @override
+  Future<ItemValue> insert(
+    int slot,
+    ItemValue stack, {
+    bool simulate = false,
+  }) async {
+    final box = fromItemValue(stack, Lg.i.wire);
+    if (!PackageItem.isPackage(box)) return stack;
+    if (be.heldBox.isNotEmpty ||
+        be.queuedExitingPackages.isNotEmpty ||
+        be.animationTicks != 0) {
+      return stack;
+    }
+    if (!await be.unwrapBox(box, simulate: true)) return stack;
+    if (!simulate) {
+      await be.unwrapBox(box, simulate: false);
+      await be.triggerStockCheck();
+    }
+    return stack.count > 1 ? stack.withCount(stack.count - 1) : ItemValue.empty;
+  }
+
+  @override
+  ItemValue extract(int slot, int amount, {bool simulate = false}) {
+    if (amount <= 0 || be.animationTicks != 0) return ItemValue.empty;
+    final box = be.heldBox;
+    if (box.isEmpty) return ItemValue.empty;
+    if (!simulate) {
+      be.heldBox = LStack.empty;
+      be.notifyUpdate();
+    }
+    return toItemValue(box, Lg.i.wire);
   }
 }

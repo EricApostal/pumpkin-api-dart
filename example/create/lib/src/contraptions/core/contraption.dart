@@ -12,6 +12,7 @@ import 'dart:math' as math;
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../core/nbt.dart' show NbtKind, NbtValue;
+import '../../core/perf.dart';
 import '../storage/storage_manager.dart';
 import '../storage/stacks.dart';
 import 'collision.dart';
@@ -189,7 +190,17 @@ class Contraption {
   /// kind after [searchMovedStructure].
   Future<bool> assemble(ContraptionLevel level, Pos pos) async {
     disassembled = false;
-    return searchMovedStructure(level, pos, null);
+    final watch = Perf.enabled ? (Stopwatch()..start()) : null;
+    try {
+      return searchMovedStructure(level, pos, null);
+    } finally {
+      if (watch != null) {
+        Perf.record(
+          'assemble.${typeId}(blocks=${blocks.length})',
+          watch.elapsedMicroseconds,
+        );
+      }
+    }
   }
 
   /// `canBeStabilized(facing, localPos)`: whether a bearing at [localPos] facing [facing] creates
@@ -233,7 +244,14 @@ class Contraption {
       return false;
     for (var limit = 100000; limit > 0; limit--) {
       if (frontier.isEmpty) return true;
-      if (!moveBlock(level, forcedDirection, frontier, visited)) return false;
+      if (!Perf.enabled) {
+        if (!moveBlock(level, forcedDirection, frontier, visited)) return false;
+        continue;
+      }
+      final watch = Stopwatch()..start();
+      final moved = moveBlock(level, forcedDirection, frontier, visited);
+      Perf.record('assemble.moveBlock', watch.elapsedMicroseconds);
+      if (!moved) return false;
     }
     throw AssemblyException.structureTooLarge(level.settings.maxBlocksMoved);
   }
@@ -395,7 +413,7 @@ class Contraption {
     if (!visited.contains(offset)) {
       final blockState = level.stateAt(offset);
       if (blockState.key == 'create:piston_extension_pole' &&
-          (blockState.axisOf('facing') ?? Axis.y) == direction.axis) {
+          (blockState.dir('facing')?.axis ?? Axis.y) == direction.axis) {
         frontier.add(offset);
       }
       if (isPistonState(blockState)) {
@@ -417,17 +435,17 @@ class Contraption {
     Set<Pos> visited,
     BState state,
   ) {
-    final axis = state.axisOf('facing') ?? Axis.y;
+    final axis = state.dir('facing')?.axis ?? Axis.y;
     for (final d in Iterate.directionsInAxis(axis)) {
       final offset = pos.relative(d);
       if (visited.contains(offset)) continue;
       final blockState = level.stateAt(offset);
       if (blockState.key == 'create:piston_extension_pole' &&
-          (blockState.axisOf('facing') ?? Axis.y) == d.axis) {
+          (blockState.dir('facing')?.axis ?? Axis.y) == d.axis) {
         frontier.add(offset);
       }
       if (blockState.key == 'create:mechanical_piston_head' &&
-          (blockState.axisOf('facing') ?? Axis.y) == d.axis) {
+          (blockState.dir('facing')?.axis ?? Axis.y) == d.axis) {
         frontier.add(offset);
       }
       if (isPistonState(blockState)) {
@@ -455,7 +473,7 @@ class Contraption {
       final o = pos.relative(d);
       final offsetState = level.stateAt(o);
       if (offsetState.key == 'create:gantry_shaft' &&
-          (offsetState.axisOf('facing') ?? Axis.y) == d.axis &&
+          (offsetState.dir('facing')?.axis ?? Axis.y) == d.axis &&
           !visited.contains(o)) {
         frontier.add(o);
       }
@@ -524,7 +542,8 @@ class Contraption {
   }
 
   /// `BeltBlock.nextSegmentPosition` for a straight belt segment: the next block in the facing
-  /// direction until the end of the segment. Sloped belts are handled by the belt module's hook.
+  /// direction until the end of the segment. Sloped and vertical belts are handled by the
+  /// `beltNextSegment` hook the contraptions module installs.
   static Pos? _beltNextSegment(BState state, Pos pos, bool forward) {
     final part = state['part'];
     if (part == null) return null;
@@ -578,7 +597,7 @@ class Contraption {
     if (!visited.contains(offset)) {
       final poleState = level.stateAt(offset);
       if (poleState.key == 'create:piston_extension_pole' &&
-          (poleState.axisOf('facing') ?? Axis.y) == direction.axis) {
+          (poleState.dir('facing')?.axis ?? Axis.y) == direction.axis) {
         frontier.add(offset);
       }
     }
@@ -854,7 +873,7 @@ class Contraption {
       }
     }
 
-    storage.read(nbt, clientPacket: spawnData);
+    storage.read(nbt, clientPacket: spawnData, contraption: this);
 
     actors.clear();
     for (final v in nbt.getList('Actors')) {

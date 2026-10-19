@@ -165,7 +165,20 @@ class ToolboxInv {
     return reachedLimit ? stack.copyWithCount(stack.count - limit) : TStack.empty;
   }
 
+  /// `ToolboxInventory.setStackInSlot` without the settle: assigns the compartment filter when it
+  /// is empty.
   void setStackInSlotNoFilter(int slot, TStack stack) => slots[slot] = stack;
+
+  /// The toolbox side of a number-key swap (`Slot.set` + `Slot.remove` of the vanilla click
+  /// logic): [stack] replaces the contents of [slot] and the displaced stack is returned, or
+  /// `null` when the compartment refuses [stack] (`mayPlace`).
+  TStack? swapIn(int slot, TStack stack) {
+    if (!stack.isEmpty && !isItemValid(slot, stack)) return null;
+    final previous = slots[slot];
+    if (previous.isEmpty && stack.isEmpty) return TStack.empty;
+    setStackInSlot(slot, stack);
+    return previous;
+  }
 
   void _assignFilter(int slot, TStack stack) {
     final compartment = slot ~/ stacksPerCompartment;

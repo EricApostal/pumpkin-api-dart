@@ -6,6 +6,10 @@
 #
 # Set ALLOW_PERMISSIONS to pre-approve plugin permissions.
 # Set PORT_OFFSET (e.g. 100) to run several smoke tests at the same time.
+# Set STARTUP_SECONDS to how long to wait before typing commands, and
+# SERVER_TIMEOUT to the hard limit on the whole run. A first run against a new
+# plugin build spends about three minutes AOT-compiling the component before the
+# server starts, so the defaults are generous; a cached run starts in seconds.
 #
 # Each command is typed into the server console one second apart, after the
 # server has started. `stop` is appended automatically.
@@ -14,7 +18,7 @@ set -e
 WASM="$1"; shift
 : "${PUMPKIN_BIN:?set PUMPKIN_BIN to a pumpkin server binary (release builds start much faster)}"
 : "${PUMPKIN_CONFIG:=$(dirname "$PUMPKIN_BIN")/../../pumpkin.toml}"
-: "${STARTUP_SECONDS:=14}"
+: "${STARTUP_SECONDS:=240}"
 : "${PORT_OFFSET:=0}"
 JAVA=$((35565 + PORT_OFFSET)); RCON=$((35575 + PORT_OFFSET)); BEDROCK=$((29132 + PORT_OFFSET))
 
@@ -46,7 +50,7 @@ cd "$DIR"
   for command in "$@"; do echo "$command"; sleep 1; done
   echo stop
   sleep 3
-) | timeout 180 "$PUMPKIN_BIN" 2>&1 | sed 's/\x1b\[[0-9;]*m//g'
+) | timeout "${SERVER_TIMEOUT:-420}" "$PUMPKIN_BIN" 2>&1 | sed 's/\x1b\[[0-9;]*m//g'
 
 # SHOW_FILES=1 lists what the plugins left under plugins/data.
 if [ -n "$SHOW_FILES" ]; then

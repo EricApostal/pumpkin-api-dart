@@ -19,6 +19,7 @@ import '../core/structure_info.dart';
 import '../entity/contraption_entity.dart';
 import '../entity/controlled_contraption_entity.dart';
 import '../entity/i_control_contraption.dart';
+import 'linear_actuator_logic.dart';
 import 'piston_blocks.dart';
 import 'piston_contraption.dart';
 
@@ -156,10 +157,14 @@ abstract class LinearActuatorBlockEntity extends KineticBlockEntity
     if (movedContraption != null) sendData();
   }
 
-  int getGridOffset(double offset) => clampNum((offset + .5).truncate(), 0, getExtensionRange());
+  int getGridOffset(double offset) => actuatorGridOffset(offset, getExtensionRange());
 
-  double getInterpolatedOffset(double partialTicks) =>
-      clampNum(offset + (partialTicks - .5) * getMovementSpeed(), 0.0, getExtensionRange().toDouble());
+  double getInterpolatedOffset(double partialTicks) => actuatorInterpolatedOffset(
+    offset,
+    partialTicks,
+    getMovementSpeed(),
+    getExtensionRange(),
+  );
 
   @override
   void onSpeedChanged(double previousSpeed) {
@@ -239,12 +244,12 @@ abstract class LinearActuatorBlockEntity extends KineticBlockEntity
       disassemble();
       return;
     }
-    if (movementMode == MovementMode.moveNeverPlace) {
-      waitingForSpeedChange = true;
-      return;
-    }
-    final initial = getInitialOffset();
-    if ((offset + .5).truncate() != initial && movementMode == MovementMode.movePlaceReturned) {
+    if (actuatorWaitsForSpeedChange(
+      neverPlace: movementMode == MovementMode.moveNeverPlace,
+      placeReturned: movementMode == MovementMode.movePlaceReturned,
+      offset: offset,
+      initialOffset: getInitialOffset(),
+    )) {
       waitingForSpeedChange = true;
       return;
     }
@@ -335,6 +340,11 @@ class MechanicalPistonBlockEntity extends LinearActuatorBlockEntity implements P
   @override
   void clearAssemblyExceptionIfHeadMissing() {
     if (lastException == null) return;
+    // `MechanicalPistonBlock.tick`: only clear when the piston still has a pole behind it, on
+    // the piston's own axis.
+    final direction = blockStateNow.dir('facing') ?? Direction.north;
+    final behind = HostBlockGetter(world!).stateAt(localPos.relative(direction.opposite));
+    if (!pistonHasPoleBehind(direction, behind)) return;
     lastException = null;
     sendData();
   }
@@ -400,6 +410,7 @@ class MechanicalPistonBlockEntity extends LinearActuatorBlockEntity implements P
   @override
   void disassemble() {
     if (!running && movedContraption == null) return;
+    final world = this.world;
     if (!removed) {
       final state = blockStateNow;
       if (isPistonStateKey(state.key)) {
@@ -411,10 +422,26 @@ class MechanicalPistonBlockEntity extends LinearActuatorBlockEntity implements P
                     'state': 'extended',
                   }) ??
                   0,
-              updateFlags: {BlockFlagsFlag.notifyListeners, BlockFlagsFlag.forceState},
+              // Java `3 | 16`: notify neighbours and clients, force the state.
+              updateFlags: {
+                BlockFlagsFlag.notifyNeighbors,
+                BlockFlagsFlag.notifyListeners,
+                BlockFlagsFlag.forceState,
+              },
             )
             .catchError((Object _) {}));
       }
+    } else if (world != null) {
+      // `MechanicalPistonBlockEntity.disassemble`: a removed piston still breaks its head and
+      // poles (`playerWillDestroy` with a `null` player, so they drop). The state at the
+      // position is air already, so the facing comes from the moving contraption.
+      final moving = movedContraption?.contraption;
+      final direction = moving is PistonContraption
+          ? moving.orientation
+          : (blockStateNow.dir('facing') ?? Direction.north);
+      unawaited(
+        destroyPistonExtensions(world, localPos, direction, drop: true),
+      );
     }
     final contraption = movedContraption;
     if (contraption != null) {
@@ -433,19 +460,13 @@ class MechanicalPistonBlockEntity extends LinearActuatorBlockEntity implements P
   }
 
   @override
-  double getMovementSpeed() {
-    var movementSpeed = clampNum(convertToLinear(speed), -.49, .49);
-    final pistonDirection = blockStateNow.dir('facing') ?? Direction.north;
-    final movementModifier =
-        pistonDirection.axisDirection.step * (pistonDirection.axis == Axis.z ? -1 : 1);
-    movementSpeed = movementSpeed * -movementModifier;
-    final extensionRange = getExtensionRange();
-    movementSpeed = clampNum(movementSpeed, 0 - offset, extensionRange.toDouble() - offset);
-    if (sequencedOffsetLimit >= 0) {
-      movementSpeed = clampNum(movementSpeed, -sequencedOffsetLimit, sequencedOffsetLimit);
-    }
-    return movementSpeed;
-  }
+  double getMovementSpeed() => pistonMovementSpeed(
+    speed: speed,
+    facing: blockStateNow.dir('facing') ?? Direction.north,
+    offset: offset,
+    extensionRange: getExtensionRange(),
+    sequencedOffsetLimit: sequencedOffsetLimit,
+  );
 
   @override
   int getExtensionRange() => extensionLength;

@@ -11,6 +11,7 @@ import '../../api/wrenchable.dart';
 import '../../common/common.dart';
 import '../../core/blocks.dart';
 import '../blocks/actuator_runtime.dart';
+import 'linear_actuator_logic.dart';
 import 'piston_contraption.dart';
 
 const String mechanicalPistonKey = 'create:mechanical_piston';
@@ -22,13 +23,17 @@ const String pistonHeadKey = 'create:mechanical_piston_head';
 List<CreateBlock> buildPistonBlocks() => [
   manifestBlock(
     'mechanical_piston',
-    placement: const [PlacementRule.clickedFace('facing')],
+    // `DirectionalAxisKineticBlock.getFacingForPlacement`: the nearest looking direction,
+    // opposite (a sneaking player flips it; the host rule cannot see sneaking).
+    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
     behavior: pistonBehavior(sticky: false),
+    blockEntityType: mechanicalPistonKey,
   ),
   manifestBlock(
     'sticky_mechanical_piston',
-    placement: const [PlacementRule.clickedFace('facing')],
+    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
     behavior: pistonBehavior(sticky: true),
+    blockEntityType: mechanicalPistonKey,
   ),
   manifestBlock(
     'piston_extension_pole',
@@ -51,7 +56,28 @@ List<CreateBlock> buildPistonBlocks() => [
 /// `MechanicalPistonBlock` behaviour: an empty hand starts the assembly, a slime ball makes the
 /// piston sticky, a neighbour change rechecks the head, and breaking the base removes the head.
 BlockBehavior pistonBehavior({required bool sticky}) => BlockBehavior(
+  onPlaced: (server, e) async {
+    // `DirectionalAxisKineticBlock.getStateForPlacement`: a shaft above or below turns the
+    // piston's rotation axis. (A vertical facing uses the player's horizontal look, which the
+    // placement event does not carry; the host default stays.)
+    if (e.moved || e.player == null) return;
+    final pos = (e.pos.x, e.pos.y, e.pos.z);
+    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final facing = state.dir('facing') ?? Direction.north;
+    if (!facing.axis.isHorizontal) return;
+    final level = HostBlockGetter(e.targetWorld);
+    final alongFirst = pistonAlongFirstForPlacement(
+      facing,
+      (Direction side) =>
+          prefersShaftConnection(level, pos.relative(side), side),
+    );
+    final next = state.setFlag('axis_along_first', alongFirst);
+    if (next != state) await setBlockState(e.targetWorld, pos, next);
+  },
   onUseWithItem: (server, e) async {
+    // `Player.mayBuild()`: adventure and spectator players cannot place blocks.
+    if (e.player.isAdventure || e.player.isSpectator)
+      return BlockUseResult.tryEmptyHand;
     if (e.sneaking) return BlockUseResult.tryEmptyHand;
     final String itemKey;
     try {
@@ -107,44 +133,50 @@ BlockBehavior pistonBehavior({required bool sticky}) => BlockBehavior(
     final state = HostBlockGetter.stateOfId(e.stateIndex);
     final direction = state.dir('facing') ?? Direction.north;
     final drop = e.player.getGamemode() != GameMode.creative;
-    final maxPoles = ActuatorRuntime.instance.settings.maxPistonPoles;
-
-    Pos? head;
-    for (var offset = 1; offset < maxPoles; offset++) {
-      final current = pos.relative(direction, offset);
-      final block = HostBlockGetter(world).stateAt(current);
-      if (isPistonPole(block) && block.axisOf('facing') == direction.axis)
-        continue;
-      if (isPistonHead(block) && block.dir('facing') == direction)
-        head = current;
-      break;
-    }
-
-    if (head != null) {
-      for (final p in pos.boxTo(head)) {
-        if (p == pos) continue;
-        await world.breakBlock(
-          BlockPos(x: p.$1, y: p.$2, z: p.$3),
-          drop: drop,
-        );
-      }
-    }
-
-    for (var offset = 1; offset < maxPoles; offset++) {
-      final current = pos.relative(direction.opposite, offset);
-      final block = HostBlockGetter(world).stateAt(current);
-      if (isPistonPole(block) && block.axisOf('facing') == direction.axis) {
-        await world.breakBlock(
-          BlockPos(x: current.$1, y: current.$2, z: current.$3),
-          drop: drop,
-        );
-        continue;
-      }
-      break;
-    }
+    await destroyPistonExtensions(world, pos, direction, drop: drop);
     return true;
   },
 );
+
+/// `MechanicalPistonBlock.playerWillDestroy`: break the head (with the poles in front of the
+/// base) and the poles behind the base. Also runs when a moving piston is removed
+/// (`MechanicalPistonBlockEntity.disassemble` calls it with a `null` player, so everything
+/// drops).
+Future<void> destroyPistonExtensions(
+  World world,
+  Pos pos,
+  Direction direction, {
+  required bool drop,
+}) async {
+  final maxPoles = ActuatorRuntime.instance.settings.maxPistonPoles;
+  final level = HostBlockGetter(world);
+
+  Pos? head;
+  for (var offset = 1; offset < maxPoles; offset++) {
+    final current = pos.relative(direction, offset);
+    final block = level.stateAt(current);
+    if (pistonPoleMatchesAxis(block, direction.axis)) continue;
+    if (isPistonHead(block) && block.dir('facing') == direction) head = current;
+    break;
+  }
+
+  if (head != null) {
+    for (final p in pos.boxTo(head)) {
+      if (p == pos) continue;
+      await world.breakBlock(BlockPos(x: p.$1, y: p.$2, z: p.$3), drop: drop);
+    }
+  }
+
+  for (var offset = 1; offset < maxPoles; offset++) {
+    final current = pos.relative(direction.opposite, offset);
+    final block = level.stateAt(current);
+    if (!pistonPoleMatchesAxis(block, direction.axis)) break;
+    await world.breakBlock(
+      BlockPos(x: current.$1, y: current.$2, z: current.$3),
+      drop: drop,
+    );
+  }
+}
 
 /// `MechanicalPistonHeadBlock.playerWillDestroy`: remove the poles and retract the base.
 BlockBehavior pistonHeadBehavior() => BlockBehavior(
@@ -163,8 +195,7 @@ BlockBehavior pistonHeadBehavior() => BlockBehavior(
     ) {
       final current = pos.relative(direction.opposite, offset);
       final block = HostBlockGetter(world).stateAt(current);
-      if (isPistonPole(block) && block.axisOf('facing') == direction.axis)
-        continue;
+      if (pistonPoleMatchesAxis(block, direction.axis)) continue;
       if (isPistonStateKey(block.key) && block.dir('facing') == direction)
         base = current;
       break;

@@ -96,7 +96,12 @@ abstract final class PumpLogic {
         final inbound = pipeGraph[pipePos]!.faces[pipeSide]!;
         final pipeBehaviour = FluidPropagator.getPipe(level, pipePos);
         if (pipeBehaviour == null) continue;
-        pipeBehaviour.addPressure(pipeSide, inbound, speed / parallelBranches);
+        // `Math.abs(getSpeed())`: a pump turning backwards pushes just as hard.
+        pipeBehaviour.addPressure(
+          pipeSide,
+          inbound,
+          speed.abs() / parallelBranches,
+        );
       }
     }
   }

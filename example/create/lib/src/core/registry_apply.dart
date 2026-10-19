@@ -2,6 +2,7 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import 'block_entity.dart';
+import 'perf.dart';
 import 'registry.dart';
 import 'shape_rule_checks.dart';
 
@@ -44,14 +45,16 @@ Future<AppliedIds> applyRegistry(
   // Items (block items are in the list already).
   final itemBase = ItemRegistries.host.vanillaCount;
   var n = 0;
-  for (final e in registry.items.entries) {
-    check(
-      RegistryKind.items,
-      e.key,
-      ItemRegistries.host.register(e.value),
-      itemBase + n++,
-    );
-  }
+  Perf.measure('applyRegistry.items', () {
+    for (final e in registry.items.entries) {
+      check(
+        RegistryKind.items,
+        e.key,
+        ItemRegistries.host.register(e.value),
+        itemBase + n++,
+      );
+    }
+  });
 
   // Blocks, placement rules, block items.
   final blockBase = BlockRegistries.host.vanillaBlockCount;
@@ -62,55 +65,63 @@ Future<AppliedIds> applyRegistry(
   // stops at the first failure. Check all of them first so a single start names
   // every bad definition. `BlockDefinition.validate()` covers properties, shapes
   // and limits but not these two lists.
-  for (final e in blocks) {
-    final issues = <String>[
-      ...e.value.definition.validate(),
-      ...checkShapeRules(e.value.definition),
-      ...checkPlacementRules(e.value),
-    ];
-    if (issues.isNotEmpty) {
-      log.error(
-        'Block `${e.key}` would be rejected by the host:\n  ${issues.join('\n  ')}',
+  Perf.measure('applyRegistry.blockValidation', () {
+    for (final e in blocks) {
+      final issues = <String>[
+        ...e.value.definition.validate(),
+        ...checkShapeRules(e.value.definition),
+        ...checkPlacementRules(e.value),
+      ];
+      if (issues.isNotEmpty) {
+        log.error(
+          'Block `${e.key}` would be rejected by the host:\n  ${issues.join('\n  ')}',
+        );
+      }
+    }
+  });
+  Perf.measure('applyRegistry.blocks', () {
+    for (final e in blocks) {
+      check(
+        RegistryKind.blocks,
+        e.key,
+        BlockRegistries.host.register(e.value.definition),
+        blockBase + n++,
       );
     }
-  }
-  for (final e in blocks) {
-    check(
-      RegistryKind.blocks,
-      e.key,
-      BlockRegistries.host.register(e.value.definition),
-      blockBase + n++,
-    );
-  }
-  final registered = {
-    for (final b in BlockRegistries.host.registeredBlocks) b.key: b,
-  };
-  for (final e in blocks) {
-    final block = e.value;
-    final entry = registered[block.key];
-    if (entry != null) {
-      block.blockId = entry.id;
-      block.baseStateId = entry.baseStateId;
+  });
+  Perf.measure('applyRegistry.blockLinks', () {
+    final registered = {
+      for (final b in BlockRegistries.host.registeredBlocks) b.key: b,
+    };
+    for (final e in blocks) {
+      final block = e.value;
+      final entry = registered[block.key];
+      if (entry != null) {
+        block.blockId = entry.id;
+        block.baseStateId = entry.baseStateId;
+      }
+      if (block.placement.isNotEmpty)
+        BlockPlacements.host.setRules(block.key, block.placement);
+      final itemKey = block.itemKey;
+      if (itemKey != null) BlockRegistries.host.setBlockItem(itemKey, block.key);
     }
-    if (block.placement.isNotEmpty)
-      BlockPlacements.host.setRules(block.key, block.placement);
-    final itemKey = block.itemKey;
-    if (itemKey != null) BlockRegistries.host.setBlockItem(itemKey, block.key);
-  }
+  });
 
   // Block entity types.
   final beBase = BlockEntityRegistries.host.vanillaCount;
   n = 0;
-  for (final e in registry.blockEntityTypes.entries) {
-    check(
-      RegistryKind.blockEntityTypes,
-      e.key,
-      BlockEntityRegistries.host.register(e.key, e.value.validBlocks),
-      beBase + n++,
-    );
-    store.registerType(e.value);
-  }
-  store.applyTicking();
+  Perf.measure('applyRegistry.blockEntityTypes', () {
+    for (final e in registry.blockEntityTypes.entries) {
+      check(
+        RegistryKind.blockEntityTypes,
+        e.key,
+        BlockEntityRegistries.host.register(e.key, e.value.validBlocks),
+        beBase + n++,
+      );
+      store.registerType(e.value);
+    }
+    store.applyTicking();
+  });
 
   // Menus and data components.
   final menuBase = MenuRegistries.host.vanillaCount;
@@ -185,20 +196,22 @@ Future<AppliedIds> applyRegistry(
   }
 
   // Tags.
-  for (final kind in TagKind.values) {
-    for (final e in registry.tags[kind]!.entries) {
-      switch (kind) {
-        case TagKind.block:
-          BlockRegistries.host.registerTag(e.key, e.value);
-        case TagKind.item:
-          ItemRegistries.host.registerTag(e.key, e.value);
-        case TagKind.fluid:
-          FluidRegistries.registerTag(e.key, e.value);
-        case TagKind.entityType:
-          EntityRegistries.registerTag(e.key, e.value);
+  Perf.measure('applyRegistry.tags', () {
+    for (final kind in TagKind.values) {
+      for (final e in registry.tags[kind]!.entries) {
+        switch (kind) {
+          case TagKind.block:
+            BlockRegistries.host.registerTag(e.key, e.value);
+          case TagKind.item:
+            ItemRegistries.host.registerTag(e.key, e.value);
+          case TagKind.fluid:
+            FluidRegistries.registerTag(e.key, e.value);
+          case TagKind.entityType:
+            EntityRegistries.registerTag(e.key, e.value);
+        }
       }
     }
-  }
+  });
 
   // Plugin synced registries and datapack registries (ExtraRegistries).
   for (final spec in registry.syncedRegistries.entries.map((e) => e.value)) {
@@ -254,12 +267,14 @@ Future<AppliedIds> applyRegistry(
   });
 
   // Block behaviours need the blocks, commands the permissions.
-  for (final e in blocks) {
-    await soft('the behaviour of ${e.key}', () async {
-      final behavior = e.value.buildBehavior(store);
-      if (behavior != null) host.registerBlockBehavior(e.key, behavior);
-    });
-  }
+  await Perf.measureAsync('applyRegistry.behaviors', () async {
+    for (final e in blocks) {
+      await soft('the behaviour of ${e.key}', () async {
+        final behavior = e.value.buildBehavior(store);
+        if (behavior != null) host.registerBlockBehavior(e.key, behavior);
+      });
+    }
+  });
   for (final c in registry.commands) {
     await soft('the command /${c.name}', () async {
       host.command(

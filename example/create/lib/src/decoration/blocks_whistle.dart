@@ -56,7 +56,9 @@ BlockBehavior whistleBehavior(DecorationRuntime rt) {
         level: HostBlockGetter(world),
         pos: pos,
         defaultState: BState(block.key, block.definition.defaultState),
-        clickedFace: dirOf(face),
+        // `CustomBlockCanPlaceEventData.face` points from the placed block to the clicked one
+        // (`final_face` in the host), the opposite of `BlockPlaceContext.getClickedFace()`.
+        clickedFace: dirOf(face).opposite,
         horizontalDirection: rt.horizontalDirection(player),
         hasNeighborSignal: false,
       );

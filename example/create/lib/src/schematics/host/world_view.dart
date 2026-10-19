@@ -81,23 +81,22 @@ final class HostPrinterView implements PrinterTargetView {
 }
 
 /// `BlockHelper.prepareBlockEntityData`: the data that may be placed with a block. Blocks tagged
-/// `create:safe_nbt` keep everything, registered writers filter, everything else places without
-/// data; `NBTProcessors.process` then drops the data of a sign or clipboard whose text carries a
-/// click event.
+/// `create:safe_nbt` keep everything, registered writers filter, other Create block entities keep
+/// only their safe behaviours (`SmartBlockEntity.writeSafe`, here the bracket), everything else
+/// places without data; `NBTProcessors.process` then drops the data of a sign or clipboard whose
+/// text carries a click event.
 List<int>? prepareBlockEntityData(
   SchematicHooks hooks,
   BState state,
   List<int>? nbt,
 ) {
   if (nbt == null) return null;
-  final writer = hooks.safeNbtWriters[state.key];
   final List<int>? data;
-  if (writer != null) {
-    data = writer(state, nbt);
-  } else if (Tags.block(state.key, 'create:safe_nbt')) {
+  if (Tags.block(state.key, 'create:safe_nbt')) {
     data = nbt;
   } else {
-    return null;
+    final writer = hooks.safeNbtWriters[state.key];
+    data = writer != null ? writer(state, nbt) : _safeBehaviourData(state, nbt);
   }
   if (data == null) return null;
   final isSign = Tags.block(state.key, 'minecraft:all_signs');
@@ -112,6 +111,29 @@ List<int>? prepareBlockEntityData(
     isLectern: isLectern,
     isCreativeCrate: state.key == 'create:creative_crate',
   );
+}
+
+/// The keys `SmartBlockEntity.writeSafe` keeps through the safe behaviours of Create's block
+/// entities. The port models the bracket behaviour (`BracketedBlockEntityBehaviour.isSafeNBT`);
+/// the data of every other behaviour is dropped like Java drops an unsafe one.
+const Set<String> safeBehaviourKeys = {'Bracket'};
+
+/// `PartialSafeNBT.writeSafe` for a Create block entity: `id` plus the safe behaviour data, or
+/// null when there is none (which places the block with no data, like before).
+List<int>? _safeBehaviourData(BState state, List<int>? nbt) {
+  if (!state.key.startsWith('create:')) return null;
+  if (nbt == null) return null;
+  final parsed = BinaryNbt.read(nbt);
+  if (parsed == null || parsed.root.kind != NbtKind.compound) return null;
+  final root = parsed.root.asCompound;
+  final kept = <String, NbtValue>{
+    for (final key in safeBehaviourKeys)
+      if (root[key] != null) key: root[key]!,
+  };
+  if (kept.isEmpty) return null;
+  final id = root['id'];
+  if (id != null) kept['id'] = id;
+  return BinaryNbt.write(NbtValue.compound(kept), name: parsed.name);
 }
 
 /// The blocks whose block entity data only operators may set (`OP_ONLY_CUSTOM_DATA`). Mob

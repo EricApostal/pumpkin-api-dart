@@ -1,17 +1,41 @@
 // `GlobalPackagePort` (pure): a postbox connected to a station, remembered by the graph so that mail
 // can be moved while the postbox' chunk is unloaded (the offline buffer).
+import '../../manifest/manifest.dart' show kItems;
 import '../manager/create.dart';
 import '../util/ctag.dart';
 import 'mail_transfer.dart';
 
 /// `CreateItemStackHandler(18)` over saved item stacks.
 class OfflineBuffer implements PackageInventory {
-  /// `maxStackSize` of the stacks (set by the owner of the package items).
-  static int Function(CTag stack) stackLimit = (_) => 64;
+  /// `Item.ABSOLUTE_MAX_STACK_SIZE`: the slot limit of the Java handler.
+  static const int absoluteMaxStackSize = 99;
 
+  /// `getCapacity(slot, resource)` of the Java handler: the slot limit capped by the item's own
+  /// stack size (`CreateItemStackHandler.getStackLimit`). The owner of the package items may
+  /// install a better resolver; by default the Create manifest answers, which makes packages
+  /// (max stack 1) occupy one slot each instead of merging into a count.
+  static int Function(CTag stack) stackLimit = defaultStackLimit;
+
+  /// The `maxStackSize` of the item of [stack], from the manifest (`64` for unknown items, e.g.
+  /// vanilla ones).
+  static int defaultStackLimit(CTag stack) {
+    final id = stack.getString('id');
+    if (id.isEmpty) return 64;
+    final key = id.contains(':') ? id.substring(id.indexOf(':') + 1) : id;
+    final limit = _manifestLimits[key] ?? 64;
+    return limit < absoluteMaxStackSize ? limit : absoluteMaxStackSize;
+  }
+
+  static final Map<String, int> _manifestLimits = {
+    for (final item in kItems) item.key: item.maxStack,
+  };
+
+  /// Growable so that [deserializeNBT] can apply a saved `Size` (Java `setSize` replaces the
+  /// handler's stack list).
   final List<CTag?> stacks;
 
-  OfflineBuffer([int size = 18]) : stacks = List<CTag?>.filled(size, null);
+
+  OfflineBuffer([int size = 18]) : stacks = List<CTag?>.filled(size, null, growable: true);
 
   @override
   int getSlots() => stacks.length;

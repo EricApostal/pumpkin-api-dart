@@ -16,7 +16,6 @@ import 'actors_registration.dart';
 import 'actuators_registration.dart';
 import 'blocks/actuator_contract.dart';
 import 'blocks/actuator_runtime.dart';
-import 'core/contraption.dart';
 import 'core/structure_info.dart';
 import 'entity/contraption_collider.dart';
 import 'entity/contraption_entity.dart';
@@ -24,6 +23,8 @@ import 'entity/contraption_handler.dart';
 import 'entity/contraption_packets.dart';
 import 'entity/translating_contraption.dart';
 import 'entity/host_contraption_entities.dart';
+import 'storage/host_mounted_storage.dart';
+import 'storage/storage_manager.dart';
 
 /// The contraption entity types the base module registers.
 const List<String> _contraptionEntityTypes = [
@@ -34,6 +35,7 @@ const List<String> _contraptionEntityTypes = [
 
 final class ContraptionsModule extends CreateModule {
   ContraptionHost? _host;
+  MountedStorageHost? _storageHost;
 
   @override
   String get name => 'contraptions';
@@ -110,6 +112,23 @@ final class ContraptionsModule extends CreateModule {
 
     ContraptionPackets.install(ctx, host);
 
+    // The menu of a mounted storage (Java `MountedItemStorage.handleInteraction`).
+    final storageHost = MountedStorageHost(host, ctx);
+    _storageHost = storageHost;
+    storageHost.install();
+    ContraptionEntityHooks.openStorage = storageHost.openStorage;
+
+    // `MountedStorageSyncPacket.handle`: applies the storages the server sent to the client's
+    // contraption (`MountedStorageManager.handleSync`). A server never receives this payload.
+    bus?.onClientbound('create:mounted_storage_sync', (player, fields) {
+      final id = fields['contraptionId'];
+      if (id is! int) return;
+      final entity = host.entityByIdAnyWorld(id);
+      final contraption = entity?.contraption;
+      if (contraption == null) return;
+      contraption.storage.handleSync(StorageSync.fromWire(fields), contraption);
+    });
+
     ctx.listen(Events.worldTick, (server, e) async {
       await host.tick(e.targetWorld.getId());
     });
@@ -132,6 +151,8 @@ final class ContraptionsModule extends CreateModule {
   void onUnload() {
     unloadActuatorContent();
     unloadActorContent();
+    _storageHost?.clear();
+    _storageHost = null;
     _host?.clear();
     _host = null;
     ActuatorHosts.reset();
@@ -149,8 +170,5 @@ final class ContraptionsModule extends CreateModule {
     ContraptionHostHooks.sitPassenger = null;
     ContraptionHostHooks.entityTypeOf = null;
     ContraptionHostHooks.spawned = null;
-    ContraptionMovementHooks.addAttachedChasses = null;
-    ContraptionMovementHooks.chassisIncludedPositions = null;
-    ContraptionMovementHooks.beltNextSegment = null;
   }
 }

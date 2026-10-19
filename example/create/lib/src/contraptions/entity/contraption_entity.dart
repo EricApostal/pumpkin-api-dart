@@ -211,8 +211,9 @@ class ContraptionRotationState {
 
 /// Hooks the storage / actor modules install.
 abstract final class ContraptionEntityHooks {
-  /// `MountedStorageManager.handlePlayerStorageInteraction(contraption, player, localPos)`.
-  static bool Function(
+  /// `MountedStorageManager.handlePlayerStorageInteraction(contraption, player, localPos)`; the
+  /// host opens the menu (`MountedItemStorage.handleInteraction`) and reports whether it did.
+  static Future<bool> Function(
     Contraption contraption,
     InteractingPlayer player,
     Pos localPos,
@@ -463,7 +464,7 @@ abstract class AbstractContraptionEntity implements ContraptionEntityHandle {
         return result;
       }
       final open = ContraptionEntityHooks.openStorage;
-      return open != null && open(c, player, localPos);
+      return open != null && await open(c, player, localPos);
     }
 
     if (player.isPassenger) return false;

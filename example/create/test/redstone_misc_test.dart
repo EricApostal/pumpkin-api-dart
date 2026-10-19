@@ -114,6 +114,48 @@ void main() {
       expect(analogLeverConnected('floor', Direction.north), Direction.up);
       expect(analogLeverConnected('wall', Direction.east), Direction.east);
     });
+
+    test('analog lever: every changeState transition of the 16 states', () {
+      // `AnalogLeverBlockEntity.changeState(back)`: a normal click adds one, a sneak click
+      // subtracts one, both clamped to 0..15. `changed` is what restarts the 15 tick
+      // `ChangeTimer` (`lastChange`), so it must be true exactly when the state moves.
+      for (var state = 0; state <= 15; state++) {
+        final up = analogLeverStep(state, back: false);
+        final down = analogLeverStep(state, back: true);
+        expect(up.state, state == 15 ? 15 : state + 1, reason: 'state $state forward');
+        expect(up.changed, state != 15, reason: 'state $state forward changed');
+        expect(down.state, state == 0 ? 0 : state - 1, reason: 'state $state back');
+        expect(down.changed, state != 0, reason: 'state $state back changed');
+      }
+    });
+
+    test('analog lever walks 0 to 15 and back one step at a time', () {
+      var state = 0;
+      for (var expected = 1; expected <= 15; expected++) {
+        final step = analogLeverStep(state, back: false);
+        expect(step, (state: expected, changed: true));
+        state = step.state;
+      }
+      expect(analogLeverStep(state, back: false), (state: 15, changed: false));
+      for (var expected = 14; expected >= 0; expected--) {
+        final step = analogLeverStep(state, back: true);
+        expect(step, (state: expected, changed: true));
+        state = step.state;
+      }
+      expect(analogLeverStep(state, back: true), (state: 0, changed: false));
+    });
+
+    test('analog lever pitch rises with the state and stays within the lever click range', () {
+      var previous = analogLeverPitch(0);
+      expect(previous, closeTo(0.25 + 5 / 15 * 0.5, 1e-9));
+      for (var state = 1; state <= 15; state++) {
+        final pitch = analogLeverPitch(state);
+        expect(pitch, greaterThan(previous));
+        expect(pitch, lessThan(1.0));
+        previous = pitch;
+      }
+      expect(analogLeverPitch(15), closeTo(0.25 + 20 / 15 * 0.5, 1e-9));
+    });
   });
 
   group('controller rail', () {

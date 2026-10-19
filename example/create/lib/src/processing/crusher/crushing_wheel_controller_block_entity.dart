@@ -20,7 +20,6 @@ import '../common/storage.dart';
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
 import '../recipe/recipe_book.dart';
-import '../recipe/recipe_type.dart';
 import '../transport/transport_behaviours.dart';
 import 'crushing_keys.dart';
 import 'crushing_logic.dart';
@@ -79,6 +78,9 @@ class CrushingWheelControllerBlockEntity extends CreateBlockEntity
 
   bool get hasEntity => entityId != null;
 
+  /// Whether [id] is the entity this controller is crushing (`processingEntity == entity`).
+  bool isProcessingEntity(int id) => entityId == id;
+
   bool get isOccupied => hasEntity || !inventory.isEmpty;
 
   /// `supportsDirectBeltInput(side)`: belts may hand items to the output side only.
@@ -94,12 +96,8 @@ class CrushingWheelControllerBlockEntity extends CreateBlockEntity
 
   /// `findRecipe`: `create:crushing` first, then `create:milling` (Java does the same for the
   /// crushing wheels).
-  RecipeMatch? findRecipe(PStack stack) {
-    if (stack.isEmpty) return null;
-    final book = ProcessingRuntime.instance.recipes;
-    return book.findForInput(CreateRecipeType.crushing, stack) ??
-        book.findForInput(CreateRecipeType.milling, stack);
-  }
+  RecipeMatch? findRecipe(PStack stack) =>
+      crushingRecipeFor(ProcessingRuntime.instance.recipes, stack);
 
   /// `itemInserted`: the timer of the item that just entered slot 0.
   void itemInserted(PStack stack) {
@@ -188,6 +186,9 @@ class CrushingWheelControllerBlockEntity extends CreateBlockEntity
     searchForEntity = false;
     if (world != null) _invalidateShape(world);
   }
+
+  /// Whether [entity] carries this controller's `BypassCrushingWheel` marker.
+  bool bypasses(Entity entity) => _isBypassed(entity);
 
   bool _isBypassed(Entity entity) {
     final tree = entity.getCustomData(

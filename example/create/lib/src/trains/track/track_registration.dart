@@ -2,18 +2,20 @@
 // block entity types, the track block's callbacks and the fake track's random tick.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../api/block_state.dart';
 import '../../api/blocks.dart';
 import '../../common/host_bridge.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
-import '../support/runtime.dart';
+import '../station/host_ops.dart' show sendOverlay;
 import '../station/station_block_entity.dart';
+import '../support/runtime.dart';
 import 'fake_track_block.dart';
 import 'i_track_block.dart';
 import 'track_block.dart';
+import 'track_block_item.dart';
 import 'track_host.dart';
+import 'track_level.dart';
 import 'track_material.dart';
 import 'track_voxel_shapes.dart';
 
@@ -133,10 +135,51 @@ Future<BlockUseResult> _trackUse(
   return BlockUseResult.tryEmptyHand;
 }
 
-/// Phase 2: the material deserialisation warning.
+/// Phase 2: the material deserialisation warning and the track item's `useOn`.
 void loadTrack(CreateContext ctx) {
   TrackMaterial.onDeserializeFailure = (name) =>
       ctx.log.warn('Unknown track material `$name`');
+
+  // `TrackBlockItem.useOn`: the host has no item behaviour hook, so the click is taken before
+  // the block and the item act on it. The first click on a track stores the curve start in the
+  // held stack, the second runs `TrackPlacement.tryConnect`, which places the whole run.
+  ctx.host.intercept(Events.itemUseFirst, (server, e) async {
+    if (e.useResult != ItemUseFirstResult.pass) return e;
+    final result = await useTrackItemOnBlock(e);
+    return result == null ? e : e.copyWith(useResult: result);
+  });
+
+  // `TrackBlockItem.use` in the air: a sneak-click with a stack that is connecting clears the
+  // selection (`clearSelection`), otherwise the item is used normally.
+  ctx.host.intercept(Events.playerUseItem, (server, e) async {
+    if (e.clickedPos != null) return e;
+    final String itemKey;
+    try {
+      itemKey = await e.item.getRegistryKey();
+    } on Object {
+      return e;
+    }
+    if (TrackBlockRegistry.of(itemKey) == null) return e;
+    final stack = TrackItemStack(
+      itemKey,
+      1,
+      connectingFrom: readConnectingFrom(e.item),
+    );
+    final entity = e.player.asEntity();
+    final bool sneaking;
+    try {
+      sneaking = entity.isSneaking();
+    } finally {
+      entity.dispose();
+    }
+    if (!TrackBlockItem.use(stack, sneaking: sneaking)) return e;
+    await clearTrackComponents(e.player, e.hand);
+    sendOverlay(
+      e.player,
+      trackMessage('create.track.selection_cleared'),
+    );
+    return e.cancel();
+  });
 }
 
 /// Phase 3: nothing.

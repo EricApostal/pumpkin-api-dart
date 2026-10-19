@@ -6,5 +6,5 @@ export '../../api/kinetics.dart';
 export '../../kinetics/behavior_builder.dart' show HookCtx, buildKineticBehavior, makeCtx;
 export '../../kinetics/block_data.dart' show KineticBlockData, kineticBlockData, manifestBlockOf;
 export '../../kinetics/block_factory.dart' show KineticBlockSpec, applyKineticBlockChange, createBlockFromManifest, setKState, stateOfEvent;
-export '../../kinetics/placement.dart' show PlacementContext, horizontalDirection, nearestLookingDirection, orderedByNearest;
+export '../../kinetics/placement.dart' show PlacementContext, clickedFaceForPlacedState, horizontalDirection, mechanicalPressFacing, nearestLookingDirection, orderedByNearest, preferredHorizontalFacing;
 export '../../kinetics/use_records.dart' show UseRecord, UseRecords;

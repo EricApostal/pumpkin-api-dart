@@ -8,6 +8,11 @@ import '../../common/direction.dart';
 import '../../common/pos.dart';
 import '../../common/vec_helper.dart';
 
+/// The axis of a belt: Java `belt.getValue(BeltBlock.HORIZONTAL_FACING).getAxis()`. The belt
+/// stores a direction under `facing`, not an axis, so this reads `dir`; [Axis.x] when there is
+/// no direction (e.g. a tunnel without a belt under it).
+Axis beltAxis(BState belt) => belt.dir('facing')?.axis ?? Axis.x;
+
 /// `BeltSlope`.
 enum BeltSlope {
   horizontal,

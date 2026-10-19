@@ -63,8 +63,17 @@ final class AdvancementTree {
     tree.triggers.add(inventoryCheckTrigger);
     for (final def in defs ?? kAdvancements) {
       if (def.kind != 'create' || def.rawJson == null) continue;
-      final doc = jsonDecode(def.rawJson!) as Map<String, dynamic>;
+      final raw = def.rawJson!;
+      // Most advancements have neither a criterion the plugin rewrites nor a `_builtin`
+      // trigger; their JSON is registered as it is, without decoding and encoding it again.
+      if (!raw.contains('minecraft:inventory_changed') &&
+          !raw.contains('_builtin')) {
+        tree.json[def.id] = raw;
+        continue;
+      }
+      final doc = jsonDecode(raw) as Map<String, dynamic>;
       final criteria = (doc['criteria'] as Map<String, dynamic>);
+      var rewritten = false;
       for (final e in criteria.entries.toList()) {
         final c = e.value as Map<String, dynamic>;
         final trigger = c['trigger'] as String;
@@ -82,11 +91,12 @@ final class AdvancementTree {
             'trigger': inventoryCheckTrigger,
             'conditions': {'plugin_tag': crit.tag},
           };
+          rewritten = true;
         } else if (trigger.endsWith('_builtin')) {
           tree.awardable.add(def.id);
         }
       }
-      tree.json[def.id] = jsonEncode(doc);
+      tree.json[def.id] = rewritten ? jsonEncode(doc) : raw;
     }
     return tree;
   }

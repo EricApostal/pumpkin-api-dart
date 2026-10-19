@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart' hide pos;
+import '../../api/payloads.dart' show ItemStackData;
 import '../../api/value_settings.dart';
 import '../../core/module.dart';
 import '../../core/nbt.dart';
@@ -14,6 +15,7 @@ import '../../core/registry.dart';
 import '../factory/factory_panel_block_entity.dart';
 import '../host/runtime.dart';
 import '../logistics_part.dart';
+import '../model/stack.dart';
 import 'filter_item_stack.dart';
 import 'filter_menu_session.dart';
 import 'filtering_behaviour.dart';
@@ -82,6 +84,30 @@ final class FilterPart extends LogisticsPart {
       FilterMenuSessions.forget(e.player);
     });
 
+    // The filter screen mirrors the player inventory and its ghost slots, so the plugin applies
+    // the ghost clicks (`GhostItemMenu.clicked` / `quickMoveStack`) and writes the player
+    // inventory mirror back.
+    ctx.host.intercept(Events.menuClick, (server, e) async {
+      if (FilterMenuKind.ofMenuType(e.menuType) == null) return e;
+      final handled = await FilterMenuSessions.handleClick(e.player, e);
+      return handled ? e.copyWith(cancelled: true) : e;
+    });
+    ctx.listen(Events.menuSlotChanged, (server, e) {
+      if (FilterMenuKind.ofMenuType(e.menuType) == null) return;
+      unawaited(FilterMenuSessions.handleSlotChanged(e.player, e));
+    });
+
+    // `GhostItemSubmitPacket` of a filter screen (a JEI drag onto a ghost slot). The schedule and
+    // stock keeper screens handle their own slots on the same channel.
+    rt.bus.onServerbound('create:submit_ghost_item', (player, fields) {
+      final menu = player.currentPluginMenu;
+      if (menu == null || FilterMenuKind.ofMenuType(menu.menuType) == null) return;
+      final slot = fields['slot'] as int? ?? -1;
+      final item = fields['item'];
+      final stack = item is ItemStackData ? rt.wire.fromData(item) : LStack.empty;
+      unawaited(FilterMenuSessions.submitGhost(player, slot, stack));
+    });
+
     // `FilterScreenPacket`.
     rt.bus.onServerbound('create:configure_filter', (player, fields) {
       final option = fields['option'] as int? ?? -1;
@@ -104,8 +130,11 @@ final class FilterPart extends LogisticsPart {
     // value settings board. The redstone module routes its own behaviours; this handler adds the
     // logistics ones (the bus runs every handler of the channel).
     rt.bus.onServerbound('create:value_settings', (player, fields) async {
+      // `BlockEntityConfigurationPacket.handle`.
+      if (player.isSpectator || player.isAdventure) return;
       final pos = fields['pos'] as Pos;
       final worldId = rt.playerWorldId(player);
+      if (!player.getWorld().isLoaded(pos: pos.toBlockPos())) return;
       final be = rt.store.at(worldId, pos.toBlockPos());
       if (be == null) return;
 

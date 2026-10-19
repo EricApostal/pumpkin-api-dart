@@ -1,15 +1,20 @@
 // The server side of the filter screens (`FilterMenu`, `AttributeFilterMenu`,
-// `PackageFilterMenu`). The host does not expose the state of a mod menu that a Create client
-// opened (`Menus.getOpenMenu` only reports plugin menus), so the plugin keeps the filter state
-// itself and applies the `create:configure_filter` / `create:clear_container` payloads to it.
+// `PackageFilterMenu`). The screens are opened as plugin menus without server tracked slots
+// (`Menus.getOpenMenu` only reports plugin menus), so the plugin keeps the filter state itself:
+// the ghost inventory lives in the session, `create:configure_filter` / `create:clear_container`
+// change it, and the clicks on the client's ghost slots arrive as `menu-click-event` and are
+// applied with the same rules (`filter_menu_clicks.dart`). Every change is written back at once,
+// so the server state and the client's copy stay in step.
 //
-// The edited stack is either the filter item in the player's hand (the normal case: using a
-// filter item opens its screen) or the filter item in a block entity's filter slot (the block
-// entity the player is looking at). Every change is written back at once, so the server state
-// and the client's copy stay in step even though no Java menu saves it on close.
+// The edited stack is the filter item in the player's hand (using a filter item opens its
+// screen, `FilterItem.use`).
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api.dart' hide ItemAttribute;
+// The `menus` interface (options, rules, cursor) is not part of the public wrappers yet.
+// ignore: implementation_imports
+import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import '../../core/nbt.dart';
@@ -17,33 +22,10 @@ import '../host/runtime.dart';
 import '../model/package.dart';
 import '../model/stack.dart';
 import 'filter_item_stack.dart';
-import 'filtering_behaviour.dart';
+import 'filter_menu_clicks.dart';
 import 'item_attribute.dart';
 
-/// Which filter screen is open.
-enum FilterMenuKind {
-  list('create:filter'),
-  attribute('create:attribute_filter'),
-  package('create:package_filter');
-
-  const FilterMenuKind(this.menuType);
-
-  final String menuType;
-
-  static FilterMenuKind? of(String filterItemKey) => switch (filterItemKey) {
-    FilterItemKeys.list => list,
-    FilterItemKeys.attribute => attribute,
-    FilterItemKeys.package => package,
-    _ => null,
-  };
-
-  static FilterMenuKind? ofMenuType(String menuType) {
-    for (final kind in values) {
-      if (kind.menuType == menuType) return kind;
-    }
-    return null;
-  }
-}
+export 'filter_menu_clicks.dart' show FilterMenuKind;
 
 /// Where the edited filter stack lives.
 abstract interface class FilterTarget {
@@ -88,21 +70,6 @@ final class HeldFilterTarget implements FilterTarget {
   }
 }
 
-/// The filter item in a block entity's filter slot (`FilteringBehaviour`).
-final class BehaviourFilterTarget implements FilterTarget {
-  final FilteringBehaviour behaviour;
-
-  const BehaviourFilterTarget(this.behaviour);
-
-  @override
-  Future<void> write(LStack filter) async {
-    behaviour.setFilter(filter);
-  }
-
-  @override
-  void dispose() {}
-}
-
 /// One open filter screen: its kind, the target and the editable state.
 final class FilterMenuSession {
   final FilterMenuKind kind;
@@ -114,12 +81,15 @@ final class FilterMenuSession {
   /// The filter stack the session started from (other components are preserved).
   final LStack current;
 
-  /// `GhostItemMenu.ghostInventory`: 18 slots for a list filter.
-  final List<LStack> ghostItems = List<LStack>.filled(
-    18,
-    LStack.empty,
-    growable: false,
+  /// `GhostItemMenu.ghostInventory`: 18 slots for a list filter, 2 for an attribute filter
+  /// (slot [attributeDisplaySlot] only displays the selected attributes) and none for a package
+  /// filter.
+  late final FilterGhostMenu ghost = FilterGhostMenu(
+    kind,
+    slots: List<LStack>.filled(ghostSlotCount(kind), LStack.empty, growable: false),
   );
+
+  List<LStack> get ghostItems => ghost.slots;
 
   bool blacklist = false;
   bool respectNbt = false;
@@ -244,6 +214,40 @@ final class FilterMenuSession {
         }
     }
     return false;
+  }
+
+  /// `GhostItemMenu.clicked` / `quickMoveStack` for one click on the client's menu. [menuSlot]
+  /// is the client's slot index: the player inventory slots 0 to 35, then the ghost slots.
+  /// [source] is the stack of the clicked player inventory slot (only read for a shift-click from
+  /// it). Returns whether the ghost inventory changed.
+  bool applyClick({
+    required int menuSlot,
+    required int button,
+    required GhostClickMode mode,
+    required LStack carried,
+    LStack source = LStack.empty,
+    bool creative = false,
+  }) => ghost.apply(
+    ghost.click(
+      menuSlot: menuSlot,
+      button: button,
+      mode: mode,
+      carried: carried,
+      source: source,
+      creative: creative,
+    ),
+  );
+
+  /// `GhostItemSubmitPacket.handle` (a JEI drag onto a ghost slot): writes the slot directly.
+  /// Returns false for a slot the menu does not have.
+  bool setGhost(int slot, LStack stack) {
+    if (slot < 0 || slot >= ghostItems.length) return false;
+    // The display slot of the attribute filter lists the selection; JEI never targets it.
+    if (kind == FilterMenuKind.attribute && slot == attributeDisplaySlot) {
+      return false;
+    }
+    ghostItems[slot] = stack;
+    return true;
   }
 
   /// `IClearableMenu.clearContents` of the three menus.
@@ -398,24 +402,130 @@ abstract final class FilterMenuSessions {
         : target;
     final session = FilterMenuSession.fromStack(filter, heldTarget);
     final extra = Lg.i.wire.toData(filter).encode();
-    final int containerId;
-    try {
-      containerId = player.openPluginMenu(
-        kind.menuType,
-        'Filter',
-        extraData: extra,
+    final result = raw.menus.openMenuWithOptions(
+      player: player,
+      menuTypeKey: kind.menuType,
+      title: TextComponent.translate(
+        key: 'item.${kind.menuType.replaceFirst(':', '.')}',
+        with_: const [],
+      ),
+      extraData: extra,
+      slotCount: filterMenuSlotCount(kind),
+      options: MenuOptions(
+        applyVanillaClicks: true,
+        // The client's menu adds the player inventory first (`AbstractFilterMenu.addSlots`), so
+        // the server tracks a mirror of it instead of the host's player-inventory layout.
+        playerInventory: false,
+        rules: _rules(kind),
+      ),
+    );
+    if (result is! OkResult<int, String>) {
+      // A Bedrock player, an unknown menu type, bad rules or a closed registration.
+      Lg.i.log.warn(
+        'Could not open ${kind.menuType}: ${(result as ErrorResult<int, String>).value}',
       );
-    } on Object catch (e) {
-      // A Bedrock player, an unknown menu type or a closed registration.
-      Lg.i.log.warn('Could not open ${kind.menuType}: $e');
       heldTarget.dispose();
       return;
     }
+    final containerId = result.value;
     session.containerId = containerId;
     // A session that was still open is replaced (its changes were already written by every
     // configure packet).
     _byPlayer.remove(player.getId().asString)?.dispose();
     put(player, session);
+    await _fill(player, session);
+  }
+
+  /// The click rules of the screen: the ghost slots, and the player inventory mirror as normal
+  /// slots. Shift-clicks are handled by [handleClick].
+  static MenuClickRules _rules(FilterMenuKind kind) => MenuClickRules(
+    slotRules: [
+      for (var i = 0; i < ghostSlotCount(kind); i++)
+        MenuSlotRule(
+          slot: ghostMenuPlayerSlots + i,
+          kind: kind == FilterMenuKind.attribute && i == attributeDisplaySlot
+              ? const MenuSlotKindLocked()
+              : const MenuSlotKindGhost(),
+          maxStackSize: 1,
+        ),
+    ],
+    quickMoveTargets: const [],
+  );
+
+  /// Sends the player inventory mirror and the ghost slots to the client.
+  static Future<void> _fill(Player player, FilterMenuSession session) async {
+    final playerInventory = player.getInventory();
+    final inventory = playerInventory.asInventory();
+    playerInventory.dispose();
+    try {
+      for (var menuSlot = 0; menuSlot < ghostMenuPlayerSlots; menuSlot++) {
+        final index = inventoryIndexAt(menuSlot);
+        if (index == null) continue;
+        await _setSlotHostAsync(player, menuSlot, inventory.getItem(slot: index));
+      }
+    } finally {
+      inventory.dispose();
+    }
+    for (var i = 0; i < session.ghostItems.length; i++) {
+      await _setSlotAsync(player, ghostMenuPlayerSlots + i, session.ghostItems[i]);
+    }
+    if (session.kind == FilterMenuKind.attribute) {
+      // `AttributeFilterMenu.init`: the display slot holds a name tag that lists the selection.
+      try {
+        final tag = ItemStack.create(registryKey: 'minecraft:name_tag', count: 1);
+        await tag.setCustomName(
+          name: TextComponent.translate(
+            key: 'create.gui.attribute_filter.selected_attributes',
+            with_: const [],
+          ),
+        );
+        player.setPluginMenuSlot(
+          ghostMenuPlayerSlots + attributeDisplaySlot,
+          tag,
+        );
+      } on Object {
+        // the menu closed meanwhile
+      }
+    }
+    try {
+      raw.menus.setMenuClickRules(player: player, rules: _rules(session.kind));
+    } on Object {
+      // the menu closed meanwhile
+    }
+  }
+
+  /// Puts the host stack [stack] into the open menu's [menuSlot] (a copy is sent).
+  static Future<void> _setSlotHostAsync(
+    Player player,
+    int menuSlot,
+    ItemStack? stack,
+  ) async {
+    try {
+      if (stack == null || await stack.getCount() == 0) {
+        player.clearPluginMenuSlot(menuSlot);
+      } else {
+        player.setPluginMenuSlot(menuSlot, stack);
+      }
+    } on Object {
+      // the menu closed meanwhile
+    }
+  }
+
+  static Future<void> _setSlotAsync(
+    Player player,
+    int menuSlot,
+    LStack? stack,
+  ) async {
+    final host = stack == null || stack.isEmpty ? null : await Lg.i.write(stack);
+    try {
+      if (host == null) {
+        player.clearPluginMenuSlot(menuSlot);
+      } else {
+        player.setPluginMenuSlot(menuSlot, host);
+      }
+    } on Object {
+      // the menu closed meanwhile
+    }
   }
 
   /// Saves and forgets the session of [player] (menu closed or player left).
@@ -460,35 +570,214 @@ abstract final class FilterMenuSessions {
     await session.save();
   }
 
-  /// The open session, or one built from the filter item the player edits: the filter slot of
-  /// the block entity they look at, else the filter item in their hand.
+  /// `Events.menuClick` of a filter screen. The host applies the vanilla clicks to the player
+  /// inventory mirror and the ghost slots; the shift-clicks, number keys and creative clones on
+  /// the ghost slots follow `GhostItemMenu` and are applied here. Returns whether the click was
+  /// handled (the host must not apply it).
+  static Future<bool> handleClick(Player player, MenuClickEventData e) async {
+    final session = get(player);
+    if (session == null || e.containerId != session.containerId) return false;
+    if (!await _isStillValid(player, session)) {
+      // `HeldItemGhostItemMenu.stillValid`: the item left the selected slot (or was replaced),
+      // the screen no longer edits it.
+      unawaited(close(player, containerId: session.containerId));
+      return true;
+    }
+
+    final ghost = e.slot >= ghostMenuPlayerSlots &&
+        e.slot < filterMenuSlotCount(session.kind);
+    if (!ghost) {
+      if (e.mode != MenuClickMode.quickMove) return false;
+      // `GhostItemMenu.quickMoveStack(index < 36)`: a copy of one item goes into the ghost
+      // inventory, the player's stack stays.
+      final source = await _playerStack(player, e.slot);
+      if (source.isEmpty) return true;
+      if (session.applyClick(
+        menuSlot: e.slot,
+        button: e.button,
+        mode: GhostClickMode.quickMove,
+        carried: LStack.empty,
+        source: source,
+      )) {
+        await session.save();
+        await _sendGhosts(player, session);
+      }
+      return true;
+    }
+
+    final index = e.slot - ghostMenuPlayerSlots;
+    switch (e.mode) {
+      case MenuClickMode.quickMove:
+        // `quickMoveStack(index >= 36)`: one item leaves the filter.
+        final current = session.ghostItems[index];
+        if (current.isEmpty) return true;
+        session.ghostItems[index] = current.count > 1
+            ? current.withCount(current.count - 1)
+            : LStack.empty;
+        await session.save();
+        await _sendGhosts(player, session);
+        return true;
+      case MenuClickMode.swap:
+        // A number key puts one item of the hotbar stack into the filter slot.
+        final hotbar = await _hotbarStack(player, e.button);
+        if (hotbar.isEmpty) return true;
+        session.setGhost(index, hotbar.withCount(1));
+        await session.save();
+        await _sendGhosts(player, session);
+        return true;
+      case MenuClickMode.clone:
+        // A creative middle click puts the filter entry on the cursor.
+        final current = session.ghostItems[index];
+        if (!player.isCreative || current.isEmpty) return true;
+        try {
+          raw.menus.setMenuCursor(
+            player: player,
+            stack: await Lg.i.write(current.withCount(current.maxStack)),
+          );
+        } on Object {
+          // the menu closed
+        }
+        return true;
+      default:
+        // `GhostItemMenu.clicked` writes one item of the cursor into the slot; the host's ghost
+        // slot rule does exactly that.
+        return false;
+    }
+  }
+
+  /// `Events.menuSlotChanged`: the player inventory mirror is written back to the real
+  /// inventory, the ghost slots the host changed (a cursor click) are mirrored into the session.
+  static Future<void> handleSlotChanged(
+    Player player,
+    MenuSlotChangedEventData e,
+  ) async {
+    final session = get(player);
+    if (session == null || e.containerId != session.containerId) return;
+    var ghostChanged = false;
+    final playerInventory = player.getInventory();
+    final inventory = playerInventory.asInventory();
+    playerInventory.dispose();
+    try {
+      for (final change in e.changes) {
+        if (change.slot >= ghostMenuPlayerSlots) {
+          final index = change.slot - ghostMenuPlayerSlots;
+          if (index < 0 || index >= session.ghostItems.length) continue;
+          if (session.kind == FilterMenuKind.attribute &&
+              index == attributeDisplaySlot) {
+            continue;
+          }
+          session.ghostItems[index] = await Lg.i.read(change.stack);
+          ghostChanged = true;
+          continue;
+        }
+        final index = inventoryIndexAt(change.slot);
+        if (index == null) continue;
+        // The mirror can fall behind the real inventory (an item picked up while the screen is
+        // open). When it did, the menu's value is stale: keep the real stack and correct the
+        // client instead of overwriting it.
+        final previous = await Lg.i.read(change.previous);
+        final real = await Lg.i.read(inventory.getItem(slot: index));
+        if (!previous.sameItemSameComponents(real)) {
+          await _setSlotHostAsync(
+            player,
+            change.slot,
+            inventory.getItem(slot: index),
+          );
+          continue;
+        }
+        final count = await change.stack.getCount();
+        await inventory.setItem(
+          slot: index,
+          item: count <= 0 ? null : change.stack,
+        );
+      }
+    } finally {
+      inventory.dispose();
+    }
+    if (ghostChanged) await session.save();
+  }
+
+  /// `create:submit_ghost_item` for a filter screen (a JEI drag onto a ghost slot).
+  static Future<void> submitGhost(Player player, int slot, LStack stack) async {
+    final session = get(player);
+    if (session == null) return;
+    if (!session.setGhost(slot, stack)) return;
+    await session.save();
+    await _sendGhosts(player, session);
+  }
+
+  /// Sends the session's ghost slots to the open menu.
+  static Future<void> _sendGhosts(Player player, FilterMenuSession session) async {
+    for (var i = 0; i < session.ghostItems.length; i++) {
+      if (session.kind == FilterMenuKind.attribute && i == attributeDisplaySlot) {
+        continue;
+      }
+      await _setSlotAsync(
+        player,
+        ghostMenuPlayerSlots + i,
+        session.ghostItems[i],
+      );
+    }
+  }
+
+  /// The stack of the player inventory slot behind menu slot [menuSlot]
+  /// (`MenuBase.addPlayerSlots`: the main inventory 9 to 35, then the hotbar 0 to 8).
+  static Future<LStack> _playerStack(Player player, int menuSlot) async {
+    final index = inventoryIndexAt(menuSlot);
+    if (index == null) return LStack.empty;
+    final playerInventory = player.getInventory();
+    final inventory = playerInventory.asInventory();
+    playerInventory.dispose();
+    try {
+      return await Lg.i.read(inventory.getItem(slot: index));
+    } finally {
+      inventory.dispose();
+    }
+  }
+
+  static Future<LStack> _hotbarStack(Player player, int hotbar) async {
+    if (hotbar < 0 || hotbar > 8) return LStack.empty;
+    final playerInventory = player.getInventory();
+    final inventory = playerInventory.asInventory();
+    playerInventory.dispose();
+    try {
+      return await Lg.i.read(inventory.getItem(slot: hotbar));
+    } finally {
+      inventory.dispose();
+    }
+  }
+
+  /// `HeldItemGhostItemMenu.stillValid`: the screen belongs to the selected hotbar slot and the
+  /// item is still the filter it edits. The client closes its screen on a change too.
+  static Future<bool> _isStillValid(
+    Player player,
+    FilterMenuSession session,
+  ) async {
+    final target = session.target;
+    if (target is! HeldFilterTarget) return true;
+    if (player.getSelectedSlot() != target.slot) return false;
+    final held = await _playerStack(
+      player,
+      playerMenuSlotOf(target.slot),
+    );
+    return held.isNotEmpty && held.key == session.current.key;
+  }
+
+  /// The session of the screen the player has open. The payloads act on the open screen only
+  /// (`player.containerMenu instanceof FilterMenu` in Java), so a packet that arrives with no
+  /// filter screen open is ignored instead of editing a filter the player only looks at.
   static Future<FilterMenuSession?> resolve(Player player) async {
     final open = get(player);
     if (open != null) return open;
 
-    // `create:clear_container` is shared with the blueprint and linked-controller screens. Those
-    // are plugin menus of other types, so their packets must not reach a held filter item.
+    // `create:clear_container` is shared with the blueprint and linked-controller screens.
     final menu = player.currentPluginMenu;
-    if (menu != null && FilterMenuKind.ofMenuType(menu.menuType) == null) {
+    if (menu == null || FilterMenuKind.ofMenuType(menu.menuType) == null) {
       return null;
     }
 
-    final hit = player.getTargetBlockExact(
-      maxDistance: 6,
-      includeFluids: false,
-    );
-    if (hit != null) {
-      final be = Lg.i.store.at(Lg.i.playerWorldId(player), hit.pos);
-      final behaviour = be?.getBehaviour<FilteringBehaviour>();
-      final filter = behaviour?.filter;
-      if (behaviour != null && filter != null && filter.isFilterItem) {
-        return FilterMenuSession.fromStack(
-          filter.item,
-          BehaviourFilterTarget(behaviour),
-        );
-      }
-    }
-
+    // The screen is open but the session was lost (a plugin reload): rebuild it from the held
+    // filter item, the stack the screen edits.
     final playerInventory = player.getInventory();
     final inventory = playerInventory.asInventory();
     playerInventory.dispose();

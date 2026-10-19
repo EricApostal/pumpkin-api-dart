@@ -55,8 +55,9 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
   @override
   void tick() {
     super.tick();
-    if (ticksSinceMinecartUpdate < cartAssemblerCooldown)
+    if (ticksSinceMinecartUpdate < cartAssemblerCooldown) {
       ticksSinceMinecartUpdate++;
+    }
     final cart = cartToAssemble;
     cartToAssemble = null;
     if (cart != null) tryAssemble(cart);
@@ -99,8 +100,9 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
           AxisDirection.positive,
         ).axis.directions) {
           final neighbour = localPos.relative(d);
-          if (HostBlockGetter(world!).isCollisionShapeFullBlock(neighbour))
+          if (HostBlockGetter(world!).isCollisionShapeFullBlock(neighbour)) {
             facing = d.opposite;
+          }
         }
       } else if (action == CartAssemblerAction.assembleAccelerateDirectional) {
         facing = state.flag('backwards') ? facing.opposite : facing;
@@ -289,7 +291,7 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
 
   @override
   List<ValueSettingsTarget> get valueSettingsTargets => [
-    if (_movementMode case final m?) m,
+    ?_movementMode,
   ];
 }
 

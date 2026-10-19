@@ -8,7 +8,8 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
-import '../../api/blocks.dart' show HostBlockGetter, manifestBlock, toDirection;
+import '../../api/blocks.dart'
+    show HostBlockGetter, manifestBlock, setBlockState, toDirection;
 import '../../common/common.dart';
 import '../../core/blocks.dart';
 import '../../kinetics/api.dart';
@@ -18,15 +19,22 @@ import '../blocks/actuator_runtime.dart';
 import '../core/structure_info.dart';
 import 'gantry_contraption.dart';
 import 'gantry_contraption_entity.dart';
+import 'gantry_logic.dart';
 
-const String gantryCarriageKey = 'create:gantry_carriage';
-const String gantryShaftKey = 'create:gantry_shaft';
+export 'gantry_logic.dart'
+    show
+        gantryCarriageKey,
+        gantryShaftKey,
+        toDirection2,
+        getValidGantryShaftAxis,
+        getGantryPinionModifier;
 
 /// The gantry carriage definition.
 List<CreateBlock> buildGantryBlocks() => [
   manifestBlock(
     'gantry_carriage',
     placement: const [PlacementRule.clickedFace('facing')],
+    blockEntityType: gantryCarriageKey,
     behavior: BlockBehavior(
       onUseWithoutItem: (server, e) async {
         if (e.sneaking) return BlockUseResult.pass;
@@ -35,13 +43,30 @@ List<CreateBlock> buildGantryBlocks() => [
         if (be is GantryCarriageBlockEntity) be.checkValidGantryShaft();
         return BlockUseResult.success;
       },
+      onPlaced: (server, e) async {
+        // `GantryCarriageBlock.getStateForPlacement`: cycle `axis_along_first` so the shaft
+        // behind the carriage becomes the valid shaft axis.
+        if (e.moved) return;
+        final pos = (e.pos.x, e.pos.y, e.pos.z);
+        final state = HostBlockGetter.stateOfId(e.stateIndex);
+        final facing = state.dir('facing') ?? Direction.north;
+        final behind = HostBlockGetter(e.targetWorld)
+            .stateAt(pos.relative(facing.opposite));
+        final next = cycleGantryAxisIfNecessary(
+          state,
+          facing.opposite,
+          behind,
+        );
+        if (next != state) await setBlockState(e.targetWorld, pos, next);
+      },
       onNeighborUpdate: (server, e) async {
-        // The carriage cannot survive without a shaft behind it.
+        // `GantryCarriageBlock.neighborChanged`: `canSurvive` needs a shaft behind the
+        // carriage, on another axis.
         final state = HostBlockGetter.stateOfId(e.stateIndex);
         final facing = state.dir('facing') ?? Direction.north;
         final shaft = HostBlockGetter(e.targetWorld)
             .stateAt((e.pos.x, e.pos.y, e.pos.z).relative(facing.opposite));
-        if (shaft.key != gantryShaftKey) {
+        if (!gantryCarriageCanSurvive(state, shaft)) {
           await e.targetWorld.breakBlock(e.pos, drop: true);
         }
       },
@@ -52,52 +77,17 @@ List<CreateBlock> buildGantryBlocks() => [
         if (facing == null || facing.opposite != toDirection(e.direction))
           return null;
         final other = HostBlockGetter.stateOfId(e.neighborStateId);
-        if (other.key != gantryShaftKey) return null;
-        final shaftAxis = other.axisOf('facing') ?? Axis.y;
-        if (shaftAxis == toDirection(e.direction).axis) return null;
-        final valid = getValidGantryShaftAxis(state);
-        if (valid == shaftAxis) return null;
-        return BlockRegistry.resolveState(state.key, {
-          ...state.props,
-          'axis_along_first': '${!state.flag('axis_along_first')}',
-        });
+        final next = cycleGantryAxisIfNecessary(
+          state,
+          toDirection(e.direction),
+          other,
+        );
+        if (next == state) return null;
+        return BlockRegistry.resolveState(state.key, next.props);
       },
     ),
   ),
 ];
-
-/// `GantryCarriageBlock.getValidGantryShaftAxis`: the axis the carriage can ride.
-Axis getValidGantryShaftAxis(BState state) {
-  final facingAxis = state.dir('facing')?.axis ?? Axis.y;
-  final rotationAxis = const DirectionalAxisBlockDef().rotationAxis(
-    KState(state.key, state.props),
-  );
-  for (final axis in Axis.values) {
-    if (axis.name != rotationAxis.name && axis != facingAxis) return axis;
-  }
-  return Axis.y;
-}
-
-/// `GantryCarriageBlock.getGantryPinionModifier`.
-double getGantryPinionModifier(Direction shaft, Direction pinionDirection) {
-  final shaftAxis = shaft.axis;
-  final directionModifier = shaft.axisDirection.step;
-  if (shaftAxis == Axis.y &&
-      (pinionDirection == Direction.north ||
-          pinionDirection == Direction.east)) {
-    return -directionModifier.toDouble();
-  }
-  if (shaftAxis == Axis.x &&
-      (pinionDirection == Direction.down ||
-          pinionDirection == Direction.south)) {
-    return -directionModifier.toDouble();
-  }
-  if (shaftAxis == Axis.z &&
-      (pinionDirection == Direction.up || pinionDirection == Direction.west)) {
-    return -directionModifier.toDouble();
-  }
-  return directionModifier.toDouble();
-}
 
 /// `GantryCarriageBlockEntity`.
 class GantryCarriageBlockEntity extends KineticBlockEntity
@@ -119,6 +109,22 @@ class GantryCarriageBlockEntity extends KineticBlockEntity
 
   /// `queueAssembly`.
   void queueAssembly() => assembleNextTick = true;
+
+  @override
+  void initialize() {
+    super.initialize();
+    // `GantryCarriageBlockEntity.initialize`: a carriage without a shaft behind it cannot stay.
+    final world = this.world;
+    if (world == null) return;
+    final state = stateNow;
+    if (state.key != gantryCarriageKey) return;
+    final facing = state.dir('facing') ?? Direction.north;
+    final behind = HostBlockGetter(world)
+        .stateAt(localPos.relative(facing.opposite));
+    if (!gantryCarriageCanSurvive(state, behind)) {
+      unawaited(world.breakBlock(this.pos, drop: true));
+    }
+  }
 
   @override
   void tick() {
@@ -145,9 +151,10 @@ class GantryCarriageBlockEntity extends KineticBlockEntity
     final shaftState = shaft.shaftState;
     final speed = shaft.pinionMovementSpeed;
     final shaftOrientation = shaftState.dir('facing') ?? Direction.north;
-    final movementDirection = speed < 0
-        ? shaftOrientation.opposite
-        : shaftOrientation;
+    final movementDirection = gantryPinionMovementDirection(
+      shaftOrientation,
+      speed,
+    );
 
     final contraption = GantryContraption(direction);
     try {
@@ -236,6 +243,3 @@ class GantryCarriageBlockEntity extends KineticBlockEntity
   @override
   AssemblyException? get lastAssemblyException => lastException;
 }
-
-/// Converts a kinetic direction to a vanilla direction.
-Direction toDirection2(Dir d) => Direction.values[d.index];

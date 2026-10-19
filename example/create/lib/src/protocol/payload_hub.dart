@@ -123,6 +123,17 @@ final class PayloadHub<P extends Object> {
     (_handlers[id] ??= []).add(handler);
   }
 
+  /// Adds a handler for the clientbound payload [id], for a client that runs this plugin and
+  /// receives Create's packets from a server (`create:mounted_storage_sync`). Several handlers
+  /// per id run in registration order; each is isolated from the others' exceptions.
+  void onClientbound(String id, void Function(P player, Map<String, Object?> fields) handler) {
+    final schema = schemas.byId[id] ?? (throw ArgumentError.value(id, 'id', 'is not a Create payload'));
+    if (schema.direction != NetDirection.clientbound) {
+      throw ArgumentError.value(id, 'id', 'is a serverbound payload');
+    }
+    (_handlers[id] ??= []).add(handler);
+  }
+
   /// Decode used by the channel codec: never throws, returns a [BadPayload] instead
   /// (oversized, malformed, trailing bytes) and logs it rate-limited.
   Object decodeIncoming(String id, List<int> data) {

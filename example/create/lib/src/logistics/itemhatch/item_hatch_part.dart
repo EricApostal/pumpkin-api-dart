@@ -5,6 +5,9 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart' hide pos;
+import '../../conveyance/transport/hatch/item_hatch_logic.dart';
+import '../model/package.dart';
+import '../port/conveyance_items.dart';
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
@@ -97,7 +100,11 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
       Direction.north;
   final world = e.targetWorld;
   final targetPos = e.pos.toPos().relative(facing);
-  final targetInv = hostInvAt(world, targetPos.toBlockPos(), Lg.i.io);
+  final targetInv = inventoryAt(
+    e.targetWorld.getId(),
+    targetPos,
+    Lg.i.io,
+  );
   if (targetInv == null) return BlockUseResult.pass;
 
   final inventory = playerInventory(e.player);
@@ -114,14 +121,24 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   var anyInserted = false;
 
   for (var slot = 0; slot < inventory.getSize(); slot++) {
-    final isHotbar = slot < 9;
-    if (depositInHand != isHotbar) continue;
-    if (depositInHand && slot != selected) continue;
+    if (!hatchConsidersSlot(
+      slot,
+      depositItemInHand: depositInHand,
+      selectedSlot: selected,
+    )) {
+      continue;
+    }
 
     final hostStack = inventory.getItem(slot: slot);
     if (hostStack == null) continue;
     final stack = await Lg.i.read(hostStack);
     if (stack.isEmpty) continue;
+
+    // `Item.canFitInsideContainerItems()`: shulker boxes stay in the inventory.
+    // `PackageItem` overrides the rule, so a box always fits.
+    if (!PackageItem.isPackage(stack) && !canFitInsideContainerItems(toItemValue(stack, Lg.i.wire))) {
+      continue;
+    }
 
     if (be.filtering.filterItem.isNotEmpty && !be.filtering.test(stack))
       continue;

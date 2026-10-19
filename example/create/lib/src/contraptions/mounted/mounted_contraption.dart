@@ -10,6 +10,7 @@ import '../core/contraption.dart';
 import '../core/level.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_info.dart';
+import '../storage/stacks.dart';
 
 /// `CartAssemblerBlockEntity.CartMovementMode`.
 enum CartMovementMode {
@@ -32,6 +33,15 @@ enum CartMovementMode {
 /// `CartAssemblerBlock.RAIL_SHAPE` / the anchor's axis.
 const String cartAssemblerKey = 'create:cart_assembler';
 const String minecartAnchorKey = 'create:minecart_anchor';
+
+/// Hooks the host installs for a mounted contraption. Java asks the cart entity for its
+/// `Container` (`cart instanceof Container`); the host only exposes entities by id and has no
+/// entity container access, so [externalInventory] is `null` until it grows one.
+abstract final class MountedContraptionHooks {
+  /// The item handler of a cart entity (`ContainerItemHandler(container)`), `null` when the
+  /// entity has no container.
+  static ItemSlots? Function(Object cart)? externalInventory;
+}
 
 class MountedContraption extends Contraption {
   CartMovementMode rotationMode;
@@ -74,7 +84,7 @@ class MountedContraption extends Contraption {
   bool addToInitialFrontier(
     ContraptionLevel level,
     Pos pos,
-    Direction? direction,
+    Direction? forcedDirection,
     Queue<Pos> frontier,
   ) {
     frontier.clear();
@@ -112,6 +122,28 @@ class MountedContraption extends Contraption {
   }
 
   @override
+  bool movementAllowed(BState state, ContraptionLevel level, Pos pos) {
+    if (pos != anchor && state.key == cartAssemblerKey) {
+      return _testSecondaryCartAssembler(level, pos);
+    }
+    return super.movementAllowed(state, level, pos);
+  }
+
+  /// `testSecondaryCartAssembler`: another assembler only joins the structure when a cart that
+  /// can be assembled sits on it, on the anchor's axis.
+  bool _testSecondaryCartAssembler(ContraptionLevel level, Pos pos) {
+    for (final axis in Axis.values) {
+      if (axis.isVertical) continue;
+      if (!VecHelper.onSameAxis(anchor, pos, axis)) continue;
+      for (final cart in level.minecartsAt(pos)) {
+        if (!cart.canAssemble) break;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
   bool customBlockPlacement(ContraptionLevel level, Pos pos, BState state) =>
       state.key == minecartAnchorKey;
 
@@ -121,6 +153,15 @@ class MountedContraption extends Contraption {
 
   @override
   bool canBeStabilized(Direction facing, Pos localPos) => true;
+
+  /// `addExtraInventories(cart)`: the items of the container the riding cart carries (a chest or
+  /// hopper minecart) join the contraption inventory. The host resolves the container
+  /// ([MountedContraptionHooks.externalInventory]); without one nothing is attached.
+  void addExtraInventories(Object? cart) {
+    if (cart == null) return;
+    final external = MountedContraptionHooks.externalInventory?.call(cart);
+    if (external != null) storage.attachExternal(external);
+  }
 
   @override
   NbtMap writeNbt({bool spawnPacket = false}) {

@@ -130,7 +130,8 @@ class FluidNetwork {
       if (!shouldContinue) break;
     }
 
-    source = sourceSupplier(world);
+    // `if (source == null) source = sourceSupplier.get()`: the handler is kept once found.
+    source ??= sourceSupplier(world);
     if (source == null) return;
 
     _keepPortableFluidInterfaceEngaged();

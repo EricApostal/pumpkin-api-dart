@@ -86,13 +86,14 @@ final class EncasingRegistry {
   }
 
   /// `EncasableBlock.playEncaseSound`: the place sound of the new block, a bit lower.
+  /// `(soundType.getVolume() + 1) / 2` is 1.0 for the sound types of every casing.
   void playEncaseSound(World world, BlockPos pos) {
     final key = HostBlockGetter(world).stateAt(pos.toPos()).key;
     world.playCustomSound(
       soundName: '${blockSoundPrefix(key)}.place',
       category: SoundCategory.blocks,
       pos: (pos.x + .5, pos.y + .5, pos.z + .5),
-      volume: 0.75,
+      volume: 1,
       pitch: 0.8,
     );
   }

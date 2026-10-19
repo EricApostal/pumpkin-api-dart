@@ -106,11 +106,20 @@ final class DecorationRuntime {
     );
   }
 
-  /// `SoundType.getPlaceSound()` of the block [blockKey], approximated from its name.
-  String placeSoundOf(String blockKey) => '${blockSoundPrefix(blockKey)}.place';
+  /// `SoundType.getPlaceSound()` of the block [blockKey]: the sound type the block was registered
+  /// with when the module registered it (the manifest's `SoundType`), else one approximated from
+  /// the name (the material of a copycat is usually a block this module does not own).
+  String placeSoundOf(String blockKey) => '${soundPrefixOf(blockKey)}.place';
 
   /// `SoundType.getHitSound()`.
-  String hitSoundOf(String blockKey) => '${blockSoundPrefix(blockKey)}.hit';
+  String hitSoundOf(String blockKey) => '${soundPrefixOf(blockKey)}.hit';
+
+  /// The sound event prefix of the block's sound type (`minecraft:block.stone`).
+  String soundPrefixOf(String blockKey) {
+    final registered = blocks[blockKey]?.definition.soundType;
+    if (registered == null || registered.isEmpty) return blockSoundPrefix(blockKey);
+    return 'minecraft:block.$registered';
+  }
 
   /// Plays a Create sound by name (`confirm`, `deny`, `wrench_rotate`, ...) when the sound service is there.
   void playCreateSound(World world, Pos pos, String name, {double volume = 1, double pitch = 1}) {

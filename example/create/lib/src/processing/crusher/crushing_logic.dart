@@ -4,6 +4,9 @@
 import 'dart:math' as math;
 
 import '../../kinetics/geometry.dart';
+import '../common/stack.dart';
+import '../recipe/recipe_book.dart';
+import '../recipe/recipe_type.dart';
 
 /// `Math.round(Math.signum(be.getSpeed())) * side.getAxisDirection().getStep()`: which way the
 /// two wheels turn relative to [side].
@@ -104,3 +107,12 @@ double itemProcessingSpeed(double speed, int count, bool appliedRecipe) {
 /// taken into the inventory (`intakeItem`): past the centre minus a quarter block.
 bool intakesItem(Dir facing, double entityCoord, double centerCoord) =>
     entityCoord * -facing.step < (centerCoord - .25) * -facing.step;
+
+/// `CrushingWheelControllerBlockEntity.findRecipe`: a `create:crushing` recipe first, then a
+/// `create:milling` one (the wheels also grind everything the millstone accepts). Pure, so the
+/// selection can be tested without a server.
+RecipeMatch? crushingRecipeFor(RecipeBook book, PStack stack) {
+  if (stack.isEmpty) return null;
+  return book.findForInput(CreateRecipeType.crushing, stack) ??
+      book.findForInput(CreateRecipeType.milling, stack);
+}

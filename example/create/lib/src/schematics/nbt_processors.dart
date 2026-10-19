@@ -110,22 +110,56 @@ bool _processLectern(Map<String, NbtValue> root) {
   return true;
 }
 
+/// The item components that cannot run code or carry hidden data
+/// (`ComponentProcessors.isUnsafeItemComponent`: everything except enchantments, potion contents,
+/// damage and the custom name).
+const Set<String> safeItemComponents = {
+  'minecraft:enchantments',
+  'minecraft:potion_contents',
+  'minecraft:damage',
+  'minecraft:custom_name',
+};
+
+/// `ComponentProcessors.withUnsafeComponentsDiscarded` on a saved item stack (`{id, count,
+/// components}`): removes every unsafe component, in place.
+void sanitizeItemComponents(Map<String, NbtValue> stack) {
+  final components = stack['components'];
+  if (components == null || components.kind != NbtKind.compound) return;
+  final map = components.asCompound;
+  map.removeWhere((key, _) => !safeItemComponents.contains(key));
+  if (map.isEmpty) stack.remove('components');
+}
+
+/// `SchematicLevel.addFreshEntity`: item frames and armor stands are spawned with their displayed
+/// item / equipment stripped of unsafe components.
+void sanitizeEntityItems(Map<String, NbtValue> entity) {
+  final id = entity['id'];
+  if (id == null || id.kind != NbtKind.string) return;
+  switch (id.value as String) {
+    case 'minecraft:item_frame':
+    case 'minecraft:glow_item_frame':
+      final item = entity['Item'];
+      if (item != null && item.kind == NbtKind.compound) {
+        sanitizeItemComponents(item.asCompound);
+      }
+    case 'minecraft:armor_stand':
+      final equipment = entity['equipment'];
+      if (equipment != null && equipment.kind == NbtKind.compound) {
+        for (final stack in equipment.asCompound.values) {
+          if (stack.kind == NbtKind.compound) {
+            sanitizeItemComponents(stack.asCompound);
+          }
+        }
+      }
+  }
+}
+
 /// `NBTProcessors.itemProcessor("Filter")`: the creative crate keeps only item components that
 /// cannot execute anything (enchantments, potion contents, damage and the custom name).
 bool _processCreativeCrate(Map<String, NbtValue> root) {
   final filter = root['Filter'];
   if (filter == null || filter.kind != NbtKind.compound) return true;
-  final components = filter.asCompound['components'];
-  if (components == null || components.kind != NbtKind.compound) return true;
-  const safe = {
-    'minecraft:enchantments',
-    'minecraft:potion_contents',
-    'minecraft:damage',
-    'minecraft:custom_name',
-  };
-  final map = components.asCompound;
-  map.removeWhere((key, _) => !safe.contains(key));
-  if (map.isEmpty) filter.asCompound.remove('components');
+  sanitizeItemComponents(filter.asCompound);
   return true;
 }
 

@@ -7,6 +7,8 @@ import '../api/payloads.dart';
 import '../common/common.dart';
 import '../common/host_bridge.dart';
 import '../contraptions/core/movement_checks.dart';
+import '../contraptions/core/nbt_map.dart';
+import '../contraptions/core/structure_transform.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
 import '../core/block_entity.dart';
@@ -17,6 +19,7 @@ import 'host/template_loader.dart';
 import 'schematic_hooks.dart';
 import 'schematic_printer.dart';
 import 'schematic_state_filters.dart';
+import 'schematic_world.dart';
 import 'item_requirement.dart';
 import 'upload_receiver.dart';
 
@@ -224,6 +227,14 @@ final class SchematicsModule extends CreateModule {
           ? ItemRequirement.none
           : ItemRequirement(required);
     };
+    // `SchematicPrinter.loadSchematic` applies a `StructureTransform` to the block entities of
+    // the loaded schematic (mechanical arms, crafters, tracks, ... rotate their saved data with
+    // the schematic).
+    SchematicWorld.blockEntityTransform = (typeKey, data, rotation, mirror) {
+      if (MovedBlockTransformers.blockEntities[typeKey] == null) return;
+      StructureTransform(posZero, Axis.y, rotation, mirror)
+          .applyBlockEntity(typeKey, NbtMap(data));
+    };
     SchematicPrinter.entityTypeResolver = (nbt) {
       try {
         final parsed = BinaryNbt.read(nbt);
@@ -295,11 +306,14 @@ final class SchematicsModule extends CreateModule {
       _items.putIfAbsent(blockKey, () {
         final b = BlockRegistry.of(blockKey);
         if (b == null) return null;
-        if (b.itemId == 0 && blockKey != 'minecraft:air') {
-          // Create's own blocks have their item under the same key.
-          return blockKey.startsWith('create:') ? blockKey : null;
+        if (b.itemId != 0) return ItemRegistries.host.keyOf(b.itemId);
+        // Create's own blocks have their item under the same key; only take it when the item
+        // exists (a block without an item must stay INVALID, like `Block.asItem()` returning air).
+        if (blockKey.startsWith('create:') &&
+            ItemRegistries.host.idOf(blockKey) != null) {
+          return blockKey;
         }
-        return ItemRegistries.host.keyOf(b.itemId);
+        return null;
       });
 
   @override

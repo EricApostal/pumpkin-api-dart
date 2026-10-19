@@ -655,6 +655,8 @@ abstract final class Events {
   static final customBlockComparatorOutput = EventKind<CustomBlockComparatorOutputEventData>(EventType.customBlockComparatorOutputEvent, (event) => (event as EventCustomBlockComparatorOutputEvent).value, EventCustomBlockComparatorOutputEvent.new);
   /// `custom-block-shape-event`.
   static final customBlockShape = EventKind<CustomBlockShapeEventData>(EventType.customBlockShapeEvent, (event) => (event as EventCustomBlockShapeEvent).value, EventCustomBlockShapeEvent.new);
+  /// `custom-block-collision-shape-event`.
+  static final customBlockCollisionShape = EventKind<CustomBlockCollisionShapeEventData>(EventType.customBlockCollisionShapeEvent, (event) => (event as EventCustomBlockCollisionShapeEvent).value, EventCustomBlockCollisionShapeEvent.new);
   /// `custom-block-use-event`.
   static final customBlockUse = EventKind<CustomBlockUseEventData>(EventType.customBlockUseEvent, (event) => (event as EventCustomBlockUseEvent).value, EventCustomBlockUseEvent.new);
   /// `custom-block-attack-event`.

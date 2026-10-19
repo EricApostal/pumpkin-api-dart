@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import 'perf.dart';
 import 'pos.dart';
 import 'worlds.dart';
 
@@ -268,7 +269,10 @@ final class BlockEntityStore {
 
   /// Creates the entity of a block that was just placed (idempotent): puts it in
   /// the store, calls `onLoad` and publishes its data so the host has the entity.
-  CreateBlockEntity? createAt(World world, BlockPos pos, String typeKey) {
+  CreateBlockEntity? createAt(World world, BlockPos pos, String typeKey) =>
+      Perf.measure('place.createBlockEntity', () => _createAt(world, pos, typeKey));
+
+  CreateBlockEntity? _createAt(World world, BlockPos pos, String typeKey) {
     final worldId = worlds.touch(world);
     final existing = at(worldId, pos);
     if (existing != null && existing.typeKey == typeKey) return existing;
@@ -291,6 +295,20 @@ final class BlockEntityStore {
   /// Writes the entity to the host. A save-only write re-sends the cached
   /// client tag (the host replaces client data on every write).
   void _publish(CreateBlockEntity be, World world, {bool refreshClient = true}) {
+    if (!Perf.enabled) return _publishUnmeasured(be, world, refreshClient: refreshClient);
+    final watch = Stopwatch()..start();
+    try {
+      _publishUnmeasured(be, world, refreshClient: refreshClient);
+    } finally {
+      Perf.record('host.setPluginBlockEntity', watch.elapsedMicroseconds);
+    }
+  }
+
+  void _publishUnmeasured(
+    CreateBlockEntity be,
+    World world, {
+    required bool refreshClient,
+  }) {
     final save = NbtCompound();
     be.write(save, clientPacket: false);
     NbtCompound? client;
@@ -304,14 +322,37 @@ final class BlockEntityStore {
     }
     try {
       world.setPluginBlockEntity(be.pos, be.typeKey, save, client: client);
+      _unpublished.remove(be);
     } on PluginRegistryException catch (e) {
-      log.warn('Could not write $be: ${e.message}');
+      // The chunk is not loaded (yet), or the host refused the write. Keep the
+      // entity pending: without a host entity it never appears in a block entity
+      // tick batch, so nothing would ever tick it and a kinetic block would stay
+      // at speed 0 until its network was re-propagated by hand. It is published
+      // as soon as the world ticks and the chunk is there.
+      _unpublished.add(be);
+      log.debug('Deferred writing $be: ${e.message}');
+    }
+  }
+
+  /// Entities whose first write failed because their chunk was not loaded.
+  final Set<CreateBlockEntity> _unpublished = {};
+
+  /// Retries the deferred writes of [world]. Called on every world tick.
+  void _publishDeferred(World world) {
+    if (_unpublished.isEmpty) return;
+    final id = world.getId();
+    for (final be in _unpublished.toList()) {
+      if (be.worldId != id || be.removed) continue;
+      _publish(be, world);
     }
   }
 
   /// Writes the pending sync and (every [saveIntervalTicks]) dirty entities of
   /// [world].
-  void flushWorld(World world, int tick, {bool force = false}) {
+  void flushWorld(World world, int tick, {bool force = false}) =>
+      Perf.measure('tick.flushWorld', () => _flushWorld(world, tick, force: force));
+
+  void _flushWorld(World world, int tick, {bool force = false}) {
     if (_dirty.isEmpty) return;
     final id = world.getId();
     final saveNow = force || tick % saveIntervalTicks == 0;
@@ -367,6 +408,7 @@ final class BlockEntityStore {
     });
     context.listen(Events.worldTick, (server, e) {
       worlds.touch(e.targetWorld);
+      _publishDeferred(e.targetWorld);
       flushWorld(e.targetWorld, e.tick);
     });
   }
@@ -390,6 +432,23 @@ final class TickDispatcher {
   void dispatch(String worldId, List<BlockPos> positions) {
     final map = store._byWorld[worldId];
     if (map == null) return;
+    if (Perf.enabled) {
+      final watch = Stopwatch()..start();
+      try {
+        _dispatch(worldId, map, positions);
+      } finally {
+        Perf.record('tick.blockEntities(${positions.length})', watch.elapsedMicroseconds);
+      }
+      return;
+    }
+    _dispatch(worldId, map, positions);
+  }
+
+  void _dispatch(
+    String worldId,
+    Map<int, CreateBlockEntity> map,
+    List<BlockPos> positions,
+  ) {
     for (final pos in positions) {
       final be = map[packPos(pos.x, pos.y, pos.z)];
       if (be == null || be._removed) continue;

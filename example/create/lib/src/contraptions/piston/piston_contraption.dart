@@ -12,21 +12,10 @@ import '../core/movement_checks.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_info.dart';
 import '../entity/translating_contraption.dart';
+import 'linear_actuator_logic.dart';
 
-/// `MechanicalPistonBlock.isPiston`.
-bool isPistonStateKey(String key) =>
-    key == 'create:mechanical_piston' ||
-    key == 'create:sticky_mechanical_piston';
-
-/// `MechanicalPistonBlock.isExtensionPole`.
-bool isPistonPole(BState state) => state.key == 'create:piston_extension_pole';
-
-/// `MechanicalPistonBlock.isPistonHead`.
-bool isPistonHead(BState state) => state.key == 'create:mechanical_piston_head';
-
-/// `PistonExtensionPoleBlock.PlacementHelper.matchesAxis`.
-bool pistonPoleMatchesAxis(BState state, Axis axis) =>
-    isPistonPole(state) && (state.axisOf('facing') ?? Axis.y) == axis;
+export 'linear_actuator_logic.dart'
+    show isPistonStateKey, isPistonPole, isPistonHead, pistonPoleMatchesAxis;
 
 class PistonContraption extends TranslatingContraption {
   int extensionLength = 0;

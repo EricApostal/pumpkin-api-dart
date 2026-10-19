@@ -309,9 +309,13 @@ Future<PlacementContext?> placementContextFor(
   final p = c.server.getPlayerByUuid(id: player);
   if (p == null) return null;
   final record = c.rt.useRecords.matching(player.asString, pos);
+  // `CustomBlockCanPlaceEventData.face` is the host's `final_face`, the direction
+  // from the placed block toward the clicked one, so the player's clicked face is
+  // its opposite (`BlockPlaceContext.getClickedFace`). `record.face` already is it.
   final clicked =
       record?.face ??
-      (face == null ? Dir.up : Dir.fromName(face.name) ?? Dir.up);
+      (face == null ? null : Dir.fromName(face.name)?.opposite) ??
+      clickedFaceForPlacedState(c.state);
   return PlacementContext(
     pos: KPos(pos.x, pos.y, pos.z),
     clickedFace: clicked,

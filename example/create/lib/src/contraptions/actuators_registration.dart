@@ -11,6 +11,8 @@ import '../api/infra.dart' show AssemblyExceptionHooks, AssemblyExceptionInfo;
 import '../api/payloads.dart' show PayloadBus;
 import '../api/wrenchable.dart';
 import '../common/common.dart';
+import '../common/host_bridge.dart' show PosToHost;
+import '../conveyance/belt/belt_geometry.dart' show nextSegmentPosition;
 import '../core/block_entity.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
@@ -19,6 +21,8 @@ import '../kinetics/api.dart'
     show
         KineticNetworkService,
         FacingBlockDef,
+        DirectionalAxisBlockDef,
+        AxisBlockDef,
         KineticBlockDef,
         KState,
         KAxis,
@@ -26,13 +30,14 @@ import '../kinetics/api.dart'
 import 'bearing/bearing_block_entities.dart';
 import 'bearing/bearing_blocks.dart';
 import 'bearing/bearing_contraptions.dart';
-import 'bearing/sail_block.dart';
+import 'bearing/sail.dart';
 import 'blocks/actuator_contract.dart';
 import 'blocks/actuator_runtime.dart';
 import 'chassis/chassis_block_entity.dart';
 import 'chassis/chassis_blocks.dart';
 import 'chassis/sticker_block_entity.dart';
 import 'core/movement_checks.dart';
+import 'core/contraption.dart' show ContraptionMovementHooks;
 import 'core/structure_info.dart';
 import 'core/contraption_type.dart';
 import 'elevator/elevator_blocks.dart';
@@ -42,6 +47,7 @@ import 'elevator/elevator_contraption.dart';
 import 'elevator/elevator_packets.dart';
 import 'elevator/elevator_pulley_block_entity.dart';
 import 'entity/contraption_entity.dart';
+import 'entity/host_contraption_entities.dart' show ContraptionHostHooks;
 import 'entity/oriented_contraption_entity.dart' show OrientedContraptionHooks;
 import 'gantry/gantry_carriage.dart';
 import 'gantry/gantry_contraption.dart';
@@ -188,6 +194,29 @@ void loadActuatorContent(CreateContext ctx) {
   OrientedContraptionHooks.stabilizedFacing = (c) =>
       c is StabilizedContraption ? c.facing : null;
   OrientedContraptionHooks.coupledPositions = _coupledCartPositions;
+  OrientedContraptionHooks.addExtraInventories = (c, riding) {
+    if (c is MountedContraption) c.addExtraInventories(riding);
+  };
+
+  // `Contraption.moveBlock`: a windmill bearing inside a moved structure lets go first.
+  ContraptionHostHooks.disassembleWindmillBearing = (worldId, pos) {
+    final be = ctx.blockEntities.at(worldId, pos.toBlockPos());
+    if (be is WindmillBearingBlockEntity) be.disassembleForMovement();
+  };
+
+  // `Contraption.moveChassis`: the chassis block entity's connected group and its range.
+  ContraptionMovementHooks.addAttachedChasses = (level, pos, frontier, visited) {
+    final be = ctx.blockEntities.at(level.worldId, pos.toBlockPos());
+    if (be is ChassisBlockEntity) be.addAttachedChasses(frontier, visited);
+  };
+  ContraptionMovementHooks.chassisIncludedPositions = (level, pos, direction) {
+    final be = ctx.blockEntities.at(level.worldId, pos.toBlockPos());
+    return be is ChassisBlockEntity
+        ? be.getIncludedBlockPositions(direction)
+        : null;
+  };
+  // `Contraption.moveBelt`: slopes and vertical belts; the core fallback is straight only.
+  ContraptionMovementHooks.beltNextSegment = nextSegmentPosition;
 
   // Kinetic connection rules of the actuators.
   final kinetics = ctx.services.find<KineticNetworkService>();
@@ -198,21 +227,27 @@ void loadActuatorContent(CreateContext ctx) {
         const FacingBlockDef(shaftAtFront: false),
       );
     }
+    // `MechanicalPistonBlock extends DirectionalAxisKineticBlock`: the shaft socket is on the
+    // sides (`getRotationAxis`), not behind the piston.
     kinetics.registerKineticBlock(
       'create:mechanical_piston',
-      const FacingBlockDef(shaftAtFront: false),
+      const DirectionalAxisBlockDef(),
     );
     kinetics.registerKineticBlock(
       'create:sticky_mechanical_piston',
-      const FacingBlockDef(shaftAtFront: false),
+      const DirectionalAxisBlockDef(),
     );
+    // `PulleyBlock extends HorizontalAxisKineticBlock`: the shaft runs along the `axis`
+    // property, through both sides.
     kinetics.registerKineticBlock(
       'create:rope_pulley',
-      const FacingBlockDef(shaftAtFront: true),
+      const AxisBlockDef(),
     );
+    // `GantryCarriageBlock extends DirectionalAxisKineticBlock`: the pinion's shaft runs on the
+    // axis perpendicular to the facing.
     kinetics.registerKineticBlock(
       'create:gantry_carriage',
-      const FacingBlockDef(shaftAtFront: false),
+      const DirectionalAxisBlockDef(),
     );
     // `ElevatorPulleyBlock.getRotationAxis`: the facing turned a quarter, shaft on both sides.
     kinetics.registerKineticBlock(
@@ -243,6 +278,14 @@ void loadActuatorContent(CreateContext ctx) {
     // `MechanicalPistonBlock.onWrenched`: rotate only while retracted.
     wrench.register('create:mechanical_piston', pistonWrenchable());
     wrench.register('create:sticky_mechanical_piston', pistonWrenchable());
+    // `KineticBlock`/`WrenchableDirectionalBlock` keep the `IWrenchable` default (rotate,
+    // sneak-dismantle): the pulley, the carriage, the piston head and the extension pole.
+    wrench.registerDefault([
+      'create:rope_pulley',
+      'create:gantry_carriage',
+      'create:mechanical_piston_head',
+      'create:piston_extension_pole',
+    ]);
   }
 
   // The white sail item places every dyed sail block (`BlankSailBlockItem.registerBlocks`).
@@ -357,6 +400,11 @@ void unloadActuatorContent() {
   OrientedContraptionHooks.pauseWhileRotating = null;
   OrientedContraptionHooks.stabilizedFacing = null;
   OrientedContraptionHooks.coupledPositions = null;
+  OrientedContraptionHooks.addExtraInventories = null;
+  ContraptionHostHooks.disassembleWindmillBearing = null;
+  ContraptionMovementHooks.addAttachedChasses = null;
+  ContraptionMovementHooks.chassisIncludedPositions = null;
+  ContraptionMovementHooks.beltNextSegment = null;
   CouplingChain.next = null;
   ContraptionDisassembly.disassemble = null;
   ElevatorColumn.clear();

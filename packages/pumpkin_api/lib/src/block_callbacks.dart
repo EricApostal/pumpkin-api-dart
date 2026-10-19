@@ -83,6 +83,17 @@ final class BlockBehavior {
   /// position: call `World.invalidateShape` when it changes.
   final FutureOr<List<core.BlockBox>?> Function(Server server, CustomBlockShapeEventData event)? onShape;
 
+  /// The collision shape for one entity, when it differs from the block's own
+  /// shape (a minecart assembler a minecart passes through but a player stands
+  /// on). Asked for every move of an entity inside the block; return the boxes,
+  /// or `null` to keep `event.shapes` (the shapes the block would use). Not
+  /// cached: the answer depends on the entity.
+  final FutureOr<List<core.BlockBox>?> Function(
+    Server server,
+    CustomBlockCollisionShapeEventData event,
+  )?
+  onEntityCollisionShape;
+
   /// A player right clicks the block, with or without an item
   /// (`event.withItem`). Return the result; `BlockUseResult.pass` lets the item
   /// act. Sets both use hooks unless [onUseWithItem] or [onUseWithoutItem]
@@ -162,6 +173,7 @@ final class BlockBehavior {
     this.onStrongPower,
     this.onComparatorOutput,
     this.onShape,
+    this.onEntityCollisionShape,
     this.onUse,
     this.onUseWithItem,
     this.onUseWithoutItem,
@@ -203,6 +215,8 @@ final class BlockBehavior {
     if (comparatorOutput || onComparatorOutput != null)
       BlockCallbackFlagsFlag.comparatorOutput,
     if (onShape != null) BlockCallbackFlagsFlag.dynamicShape,
+    if (onEntityCollisionShape != null)
+      BlockCallbackFlagsFlag.entityCollisionShape,
     if (onUse != null || onUseWithoutItem != null)
       BlockCallbackFlagsFlag.useWithoutItem,
     if (onUse != null || onUseWithItem != null)
@@ -330,6 +344,21 @@ extension BlockBehaviorRegistration on Context {
           if (!mine(data.block)) return data;
           return thenOr(
             shape(server, data),
+            (boxes) => boxes == null
+                ? data
+                : data.copyWith(shapes: [for (final b in boxes) _toWireBox(b)]),
+          );
+        }, priority: p),
+      );
+    }
+
+    final entityShape = behavior.onEntityCollisionShape;
+    if (entityShape != null) {
+      subscriptions.add(
+        intercept(Events.customBlockCollisionShape, (server, data) {
+          if (!mine(data.block)) return data;
+          return thenOr(
+            entityShape(server, data),
             (boxes) => boxes == null
                 ? data
                 : data.copyWith(shapes: [for (final b in boxes) _toWireBox(b)]),

@@ -658,7 +658,16 @@ LaunchedItem? _launchedFromNbt(NbtCompound c) {
   final entity = c.getCompound('Entity');
   if (entity != null) {
     final data = BinaryNbt.write(valueOfCompound(entity));
-    final position = (target.$1 + 0.5, target.$2.toDouble(), target.$3 + 0.5);
+    // `LaunchedItem.ForEntity` saves the entity with its `Pos`; the client and the reloaded
+    // server both spawn it there.
+    final posList = entity.getList('Pos') ?? const <Object>[];
+    final position = posList.length == 3 && posList.every((v) => v is num)
+        ? (
+            (posList[0] as num).toDouble(),
+            (posList[1] as num).toDouble(),
+            (posList[2] as num).toDouble(),
+          )
+        : (target.$1 + 0.5, target.$2.toDouble(), target.$3 + 0.5);
     return LaunchedEntity(
       target,
       stack,
@@ -877,7 +886,10 @@ final class _CannonEnvImpl implements CannonEnv {
         await _placeBelt(w, item);
       case LaunchedEntity():
         final p = item.position;
-        await w.spawnFromNbt(item.entity.withPosition(p), p);
+        await w.spawnFromNbt(
+          item.entity.withPosition(p, blockPos: item.target),
+          p,
+        );
     }
   }
 
@@ -1137,7 +1149,12 @@ Future<void> _onPlace(
         e.relativePos.$2 + data.anchor!.$2,
         e.relativePos.$3 + data.anchor!.$3,
       );
-      await world.spawnFromNbt(e.withPosition(p), p);
+      final blockPos = (
+        e.relativeBlockPos.$1 + data.anchor!.$1,
+        e.relativeBlockPos.$2 + data.anchor!.$2,
+        e.relativeBlockPos.$3 + data.anchor!.$3,
+      );
+      await world.spawnFromNbt(e.withPosition(p, blockPos: blockPos), p);
     }
   }
 }

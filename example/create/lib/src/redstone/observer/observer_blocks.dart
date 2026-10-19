@@ -14,13 +14,13 @@ import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../display/display_core.dart' show ObservedFluid, ObservedItem, ObserverView;
 import '../display/display_link_block.dart';
-import '../display/display_sources.dart' show javaInt;
 import '../support/level.dart';
 import '../support/manifest_block.dart';
 import '../support/placement.dart';
 import '../support/placer.dart';
 import '../support/rs_runtime.dart';
 import 'filter_behaviour.dart';
+import 'threshold_logic.dart';
 
 const String observerKey = 'create:content_observer';
 const String thresholdKey = 'create:stockpile_switch';
@@ -272,7 +272,8 @@ final class SmartObserverBlock {
         onWeakPower: (server, e) {
           final p = block.stateOf(e.stateIndex);
           if (p['powered'] != 'true') return 0;
-          return e.face.toDirection() != targetDirectionOf(p) ? 15 : 0;
+          // `getSignal`: nothing towards the side opposite the observed block; 15 everywhere else.
+          return e.face.toDirection() != targetDirectionOf(p).opposite ? 15 : 0;
         },
         canConnectRedstone: (server, e) {
           final side = e.direction?.toDirection();
@@ -376,7 +377,11 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
     sendData();
   }
 
-  void _scheduleBlockTick(Lvl lvl) => lvl.scheduleTick(_pos, 2);
+  /// `scheduleBlockTick`: a tick that is already due this tick is not scheduled again.
+  void _scheduleBlockTick(Lvl lvl) {
+    if (lvl.world.hasScheduledTick(pos: _pos.toBlockPos())) return;
+    lvl.scheduleTick(_pos, 2);
+  }
 
   @override
   void lazyTick() {
@@ -410,8 +415,10 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
       if (observed != null) break;
     }
 
-    final handler = ItemHandlers.at(w, tbp);
-    final tank = w.fluidHandlerAt(tbp);
+    final targetKey = lvl.blockKey(target);
+    final supported = thresholdTargetSupported(targetKey);
+    final handler = supported ? ItemHandlers.at(w, tbp) : null;
+    final tank = supported ? w.fluidHandlerAt(tbp) : null;
 
     if (observed != null) {
       currentMinLevel = observed.min;
@@ -464,21 +471,24 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
       return;
     }
 
-    currentLevel = currentLevel.clamp(currentMinLevel, math.max(currentMinLevel, currentMaxLevel));
+    currentLevel = thresholdClamp(currentLevel, currentMinLevel, currentMaxLevel);
     final changed = currentLevel != prevLevel;
 
-    final previouslyPowered = redstoneState;
-    if (redstoneState && currentLevel <= offWhenBelow) {
-      redstoneState = false;
-    } else if (!redstoneState && currentLevel >= onWhenAbove) {
-      redstoneState = true;
-    }
-    final update = previouslyPowered != redstoneState;
+    final next = thresholdRedstoneState(
+      state: redstoneState,
+      current: currentLevel,
+      onWhenAbove: onWhenAbove,
+      offWhenBelow: offWhenBelow,
+    );
+    redstoneState = next.state;
+    final update = next.changed;
 
-    var displayLevel = 0;
-    final normedLevel = (currentLevel - currentMinLevel) / (currentMaxLevel - currentMinLevel);
-    if (currentLevel > 0) displayLevel = javaInt(1 + normedLevel * 4);
-    await lvl.setProps(_pos, {'level': '${displayLevel.clamp(0, 5)}'}, neighbors: update);
+    final displayLevel = thresholdDisplayLevel(
+      current: currentLevel,
+      min: currentMinLevel,
+      max: currentMaxLevel,
+    );
+    await lvl.setProps(_pos, {'level': '$displayLevel'}, neighbors: update);
 
     if (update) _scheduleBlockTick(lvl);
 
@@ -511,12 +521,15 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
   /// `getTypeOfCurrentTarget`: item, fluid, custom (a probe observation) or unsupported.
   ThresholdType get typeOfCurrentTarget {
     final w = world;
-    final props = w == null ? null : Lvl(w).info(_pos)?.properties;
-    if (w == null || props == null) return ThresholdType.unsupported;
+    if (w == null) return ThresholdType.unsupported;
+    final lvl = Lvl(w);
+    final props = lvl.info(_pos)?.properties;
+    if (props == null) return ThresholdType.unsupported;
     final target = _pos.relative(targetDirectionOf(props));
     final targetPos = target.toBlockPos();
-    if (ItemHandlers.at(w, targetPos) != null) return ThresholdType.item;
-    if (w.fluidHandlerAt(targetPos) != null) return ThresholdType.fluid;
+    final supported = thresholdTargetSupported(lvl.blockKey(target));
+    if (supported && ItemHandlers.at(w, targetPos) != null) return ThresholdType.item;
+    if (supported && w.fluidHandlerAt(targetPos) != null) return ThresholdType.fluid;
     for (final probe in _probes) {
       if (probe.observation(worldId, target) != null) return ThresholdType.custom;
     }
@@ -571,8 +584,8 @@ final class ThresholdSwitchBlock {
             Rs.i.be<ThresholdSwitchBlockEntity>(e.targetWorld, e.pos)?.updatePowerAfterDelay(),
         onWeakPower: (server, e) {
           final p = block.stateOf(e.stateIndex);
-          // getSignal: nothing towards the observed block.
-          if (e.face.toDirection() == targetDirectionOf(p)) return 0;
+          // `getSignal`: nothing towards the side opposite the observed block.
+          if (e.face.toDirection() == targetDirectionOf(p).opposite) return 0;
           return Rs.i.be<ThresholdSwitchBlockEntity>(e.targetWorld, e.pos)?.isPowered == true ? 15 : 0;
         },
         canConnectRedstone: (server, e) {

@@ -32,8 +32,52 @@ final class StackRequirement {
     return componentsMatch(strictComponents, otherComponents);
   }
 
-  static bool componentsMatch(Object? a, Object? b) =>
-      a == b || (a is Map && b is Map && a.toString() == b.toString());
+  static bool componentsMatch(Object? a, Object? b) {
+    if (identical(a, b) || a == b) return true;
+    if (a == null || b == null) return false;
+    return _nbtEquals(a, b);
+  }
+
+  /// Structural equality of two component values (NBT values or plain data).
+  static bool _nbtEquals(Object? a, Object? b) {
+    if (identical(a, b) || a == b) return true;
+    if (a is NbtValue && b is NbtValue) {
+      if (a.kind != b.kind) return false;
+      final av = a.value, bv = b.value;
+      if (av is List && bv is List) {
+        if (av.length != bv.length) return false;
+        for (var i = 0; i < av.length; i++) {
+          if (!_nbtEquals(av[i], bv[i])) return false;
+        }
+        return true;
+      }
+      if (av is Map && bv is Map) {
+        if (av.length != bv.length) return false;
+        for (final e in av.entries) {
+          if (!bv.containsKey(e.key)) return false;
+          if (!_nbtEquals(e.value, bv[e.key])) return false;
+        }
+        return true;
+      }
+      return av == bv;
+    }
+    if (a is Map && b is Map) {
+      if (a.length != b.length) return false;
+      for (final e in a.entries) {
+        if (!b.containsKey(e.key)) return false;
+        if (!_nbtEquals(e.value, b[e.key])) return false;
+      }
+      return true;
+    }
+    if (a is List && b is List) {
+      if (a.length != b.length) return false;
+      for (var i = 0; i < a.length; i++) {
+        if (!_nbtEquals(a[i], b[i])) return false;
+      }
+      return true;
+    }
+    return false;
+  }
 
   @override
   String toString() =>
@@ -113,7 +157,7 @@ final class SchematicRequirements {
   /// `ItemRequirement.of(state, be)`.
   ItemRequirement ofBlock(BState state, List<int>? nbt) {
     final custom = blocks[state.key];
-    var requirement = custom != null ? custom(state, nbt) : defaultOf(state);
+    var requirement = custom != null ? custom(state, nbt) : defaultOf(state, nbt);
     final typeKey = blockEntityTypeOf(state.key);
     if (typeKey != null) {
       final extra = blockEntities[typeKey];
@@ -123,7 +167,7 @@ final class SchematicRequirements {
   }
 
   /// `ItemRequirement.defaultOf`.
-  ItemRequirement defaultOf(BState state) {
+  ItemRequirement defaultOf(BState state, [List<int>? nbt]) {
     final key = state.key;
     if (key == 'minecraft:air' ||
         key == 'minecraft:cave_air' ||
@@ -141,6 +185,23 @@ final class SchematicRequirements {
       return ItemRequirement.of1(ItemUseType.consume, 'minecraft:fern', 2);
     if (key == 'minecraft:farmland' || key == 'minecraft:dirt_path') {
       return ItemRequirement.of1(ItemUseType.consume, 'minecraft:dirt');
+    }
+    // `AbstractBannerBlock` + `BannerBlockEntity.getItem()`: the banner keeps its patterns, so a
+    // banner with patterns needs a matching banner item. A wall banner has no item in vanilla,
+    // which gives the empty requirement Java builds from the empty stack.
+    if (key.endsWith('_banner')) {
+      final item = itemOfBlock(key) ?? 'minecraft:air';
+      final patterns = _readCompound(nbt)?['patterns'];
+      return ItemRequirement([
+        StackRequirement(
+          item,
+          item == 'minecraft:air' ? 0 : 1,
+          ItemUseType.consume,
+          strictComponents: patterns == null
+              ? null
+              : {'minecraft:banner_patterns': patterns},
+        ),
+      ]);
     }
     final item = itemOfBlock(key);
     if (item == null || item == 'minecraft:air') return ItemRequirement.invalid;
@@ -219,14 +280,18 @@ final class SchematicRequirements {
   }
 }
 
-Map<String, NbtValue>? _readEntity(List<int> nbt) {
+Map<String, NbtValue>? _readEntity(List<int> nbt) => _readCompound(nbt);
+
+/// The root compound of [nbt], or null when it cannot be read.
+Map<String, NbtValue>? _readCompound(List<int>? nbt) {
+  if (nbt == null) return null;
   try {
     final parsed = BinaryNbt.read(nbt);
     return parsed != null && parsed.root.kind == NbtKind.compound
         ? parsed.root.asCompound
         : null;
   } on Object {
-    // A malformed entity tag has no extra requirement.
+    // A malformed tag has no extra requirement.
     return null;
   }
 }

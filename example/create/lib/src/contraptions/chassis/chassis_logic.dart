@@ -3,9 +3,13 @@
 // the placement rule that keeps the axis of a placed-on chassis.
 //
 // Java: `content/contraptions/chassis/{AbstractChassisBlock,LinearChassisBlock,RadialChassisBlock}`.
+import 'dart:collection';
+
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../schematics/state_transform.dart' as vanilla;
+import '../core/level.dart';
+import '../core/movement_checks.dart';
 import '../core/structure_transform.dart';
 
 const String linearChassis = 'create:linear_chassis';
@@ -176,4 +180,133 @@ BState? chassisGlueClick(
   if (state.flag(affected) == isGlueItem) return null;
   if (!glueAllowedOnSide(clickedFace)) return null;
   return state.setValue(affected, isGlueItem ? 'true' : 'false');
+}
+
+// -- The blocks a contraption takes along ---------------------------------------------------------
+
+/// `ChassisBlockEntity.getIncludedBlockPositions`: the blocks a contraption anchored at [anchor]
+/// would take along. Pure so assembly, the block entity and the tests share it.
+List<Pos> includedChassisPositions(
+  ContraptionLevel level,
+  Pos anchor,
+  BState state,
+  int range,
+  Direction? forcedMovement,
+) => isRadialChassis(state)
+    ? _includedRadial(level, anchor, state, range)
+    : _includedLinear(level, anchor, state, range, forcedMovement);
+
+List<Pos> _includedLinear(
+  ContraptionLevel level,
+  Pos anchor,
+  BState state,
+  int range,
+  Direction? forcedMovement,
+) {
+  final positions = <Pos>[];
+  final axis = state.axisOf('axis') ?? Axis.y;
+  var facing = Direction.fromAxisAndDirection(axis, AxisDirection.positive);
+  for (final offset in [1, -1]) {
+    if (offset == -1) facing = facing.opposite;
+    final side = linearGlueableSide(state, facing);
+    final sticky = side != null && state.flag(side);
+    for (var i = 1; i <= range; i++) {
+      final current = anchor.relative(facing, i);
+      final currentState = level.stateAt(current);
+      if (forcedMovement != facing && !sticky) break;
+      if (!BlockMovementChecks.isMovementNecessary(
+        currentState,
+        level,
+        current,
+      )) {
+        break;
+      }
+      if (BlockMovementChecks.isBrittle(currentState, level)) break;
+      positions.add(current);
+      if (BlockMovementChecks.isNotSupportive(currentState, facing, level)) {
+        break;
+      }
+    }
+  }
+  return positions;
+}
+
+List<Pos> _includedRadial(
+  ContraptionLevel level,
+  Pos anchor,
+  BState state,
+  int range,
+) {
+  final positions = <Pos>[];
+  final axis = state.axisOf('axis') ?? Axis.y;
+  for (final facing in Direction.values) {
+    if (facing.axis == axis) continue;
+    final side = radialGlueableSide(state, facing);
+    if (side == null || !state.flag(side)) continue;
+    final start = anchor.relative(facing);
+    final frontier = <Pos>[start];
+    final visited = <Pos>{};
+    while (frontier.isNotEmpty) {
+      final search = frontier.removeAt(0);
+      final searched = level.stateAt(search);
+      if (visited.contains(search)) continue;
+      if (!search.closerThan(anchor, range + .5)) continue;
+      if (!BlockMovementChecks.isMovementNecessary(searched, level, search)) {
+        continue;
+      }
+      if (BlockMovementChecks.isBrittle(searched, level)) continue;
+      visited.add(search);
+      if (search != anchor) positions.add(search);
+      for (final offset in Direction.values) {
+        if (offset.axis == axis) continue;
+        if (search == anchor && offset != facing) continue;
+        if (BlockMovementChecks.isNotSupportive(searched, offset, level)) {
+          continue;
+        }
+        frontier.add(search.relative(offset));
+      }
+    }
+  }
+  return positions;
+}
+
+/// `ChassisBlockEntity.addAttachedChasses`: adds the neighbours that belong to the chassis group
+/// of [anchor] to [frontier]. Pure so assembly, the block entity and the tests share it.
+bool addAttachedChassesTo(
+  ContraptionLevel level,
+  Pos anchor,
+  BState state,
+  Queue<Pos> frontier,
+  Set<Pos> visited,
+) {
+  if (!isChassis(state)) return false;
+  final axis = state.axisOf('axis') ?? Axis.y;
+  if (isRadialChassis(state)) {
+    // A chain of radial chassis along the axis.
+    for (final offset in [-1, 1]) {
+      final direction = Direction.fromAxisAndDirection(
+        axis,
+        AxisDirection.positive,
+      );
+      final current = anchor.relative(direction, offset);
+      if (!level.isLoaded(current)) return false;
+      final neighbour = level.stateAt(current);
+      if (!isRadialChassis(neighbour)) continue;
+      if (neighbour['axis'] != axis.serializedName) continue;
+      if (!visited.contains(current)) frontier.add(current);
+    }
+    return true;
+  }
+  // The group of connected linear chassis.
+  for (final offset in Direction.values) {
+    final current = anchor.relative(offset);
+    if (visited.contains(current)) continue;
+    if (!level.isLoaded(current)) return false;
+    final neighbour = level.stateAt(current);
+    if (!isLinearChassis(neighbour)) continue;
+    if (!sameChassisKind(state, neighbour)) continue;
+    if (neighbour['axis'] != state['axis']) continue;
+    frontier.add(current);
+  }
+  return true;
 }

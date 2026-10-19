@@ -5,6 +5,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/config.dart';
 import '../core/module.dart';
+import '../core/perf.dart';
 import '../core/registry.dart';
 import '../core/registry_apply.dart';
 import '../manifest/canonical_order.dart';
@@ -61,33 +62,43 @@ final class CreatePlugin extends Plugin {
   @override
   Future<void> onLoad(Context context) async {
     final log = Logger('create');
+    Perf.log = log.info;
+    try {
+      Perf.enabled = context.files.exists('perf');
+    } on FileException {
+      Perf.enabled = false;
+    }
+    final total = Stopwatch()..start();
     final config = _loadConfig(context);
     final core = _core = CreateCore(config, log);
+    if (Perf.enabled) log.info('[perf] timings on (delete the `perf` file to stop)');
 
     // Phase 1: declare.
-    final seen = <String>{};
-    for (final module in _all) {
-      if (!seen.add(module.name))
-        throw StateError('Two modules are called ${module.name}');
-      if (!module.isEnabled(config)) {
-        log.info('Module ${module.name} is disabled');
-        continue;
+    Perf.measure('onLoad.register', () {
+      final seen = <String>{};
+      for (final module in _all) {
+        if (!seen.add(module.name))
+          throw StateError('Two modules are called ${module.name}');
+        if (!module.isEnabled(config)) {
+          log.info('Module ${module.name} is disabled');
+          continue;
+        }
+        try {
+          module.register(core.registry);
+          _active.add(module);
+        } catch (e, s) {
+          log.error(
+            'Module ${module.name} failed to register, skipped',
+            error: e,
+            stackTrace: s,
+          );
+          rethrow; // A half registered module would shift the ids of everything after it.
+        }
       }
-      try {
-        module.register(core.registry);
-        _active.add(module);
-      } catch (e, s) {
-        log.error(
-          'Module ${module.name} failed to register, skipped',
-          error: e,
-          stackTrace: s,
-        );
-        rethrow; // A half registered module would shift the ids of everything after it.
-      }
-    }
+    });
     // The host ids must match the Java mod's registration order for a Create
     // client to understand them.
-    applyCanonicalOrder(core.registry);
+    Perf.measure('onLoad.canonicalOrder', () => applyCanonicalOrder(core.registry));
 
     for (final kind in RegistryKind.values) {
       final report = core.registry.reportOf(kind);
@@ -99,47 +110,56 @@ final class CreatePlugin extends Plugin {
     }
 
     // Phase 2: apply to the host, then the framework and the modules.
-    core.ids = await applyRegistry(
-      core.registry,
-      context,
-      core.blockEntities,
-      log,
-      logIds: config.core.logRegistryIds,
+    core.ids = await Perf.measureAsync(
+      'onLoad.applyRegistry',
+      () => applyRegistry(
+        core.registry,
+        context,
+        core.blockEntities,
+        log,
+        logIds: config.core.logRegistryIds,
+      ),
     );
-    core.worlds.install(context);
-    core.blockEntities.install(context);
-    core.savedData.install(
-      context,
-      saveIntervalTicks: config.core.saveIntervalTicks,
-    );
-    core.network.install(context);
+    Perf.measure('onLoad.framework', () {
+      core.worlds.install(context);
+      core.blockEntities.install(context);
+      core.savedData.install(
+        context,
+        saveIntervalTicks: config.core.saveIntervalTicks,
+      );
+      core.network.install(context);
+    });
 
     for (final module in _active) {
-      try {
-        module.onLoad(CreateContext(core, () => this.context, module.name));
-      } catch (e, s) {
-        log.error(
-          'Module ${module.name} failed in onLoad',
-          error: e,
-          stackTrace: s,
-        );
-      }
+      Perf.measure('onLoad.module.${module.name}', () {
+        try {
+          module.onLoad(CreateContext(core, () => this.context, module.name));
+        } catch (e, s) {
+          log.error(
+            'Module ${module.name} failed in onLoad',
+            error: e,
+            stackTrace: s,
+          );
+        }
+      });
     }
 
     if (config.core.neoforge) {
-      try {
-        context.declareNeoForge(
-          createNeoForgeDeclaration(
-            core.registry,
-            modVersion: config.core.modVersion,
-          ),
-        );
-      } on HostException catch (e) {
-        log.error(
-          'Could not declare Create to the NeoForge handshake: ${e.message}',
-        );
-        rethrow;
-      }
+      Perf.measure('onLoad.neoforge', () {
+        try {
+          context.declareNeoForge(
+            createNeoForgeDeclaration(
+              core.registry,
+              modVersion: config.core.modVersion,
+            ),
+          );
+        } on HostException catch (e) {
+          log.error(
+            'Could not declare Create to the NeoForge handshake: ${e.message}',
+          );
+          rethrow;
+        }
+      });
     }
 
     // Phase 3. The listener is async and awaits every module: `server` is
@@ -177,6 +197,11 @@ final class CreatePlugin extends Plugin {
       'Create loaded: ${_active.length} modules, ${core.ids.all(RegistryKind.blocks).length} blocks, '
       '${core.registry.items.length} items, ${core.registry.payloads.ids.length} channels.',
     );
+    if (Perf.enabled) {
+      log.info('[perf] onLoad total: ${total.elapsedMilliseconds}ms');
+      Perf.report('onLoad');
+      Perf.reset();
+    }
   }
 
   @override

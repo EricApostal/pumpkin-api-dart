@@ -143,10 +143,11 @@ final class DecorationModule extends CreateModule {
     if (suitable == null) return;
     final bracket = behaviour.bracket;
     if (bracket == suitable) return;
+    // `newBracket.getSoundType().getPlaceSound()`: scaffolding for wooden, netherite for metal.
     _rt.playSound(
       world,
       pos,
-      'minecraft:block.scaffolding.place',
+      _rt.placeSoundOf(suitable.key),
       volume: 0.75,
     );
     await behaviour.applyBracket(suitable);

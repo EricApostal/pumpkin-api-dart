@@ -29,16 +29,19 @@ List<CreateBlock> buildBearingBlocks() => [
     'mechanical_bearing',
     placement: const [PlacementRule.clickedFace('facing')],
     behavior: bearingEmptyHandBehavior(mechanicalBearing),
+    blockEntityType: mechanicalBearing,
   ),
   manifestBlock(
     'windmill_bearing',
     placement: const [PlacementRule.clickedFace('facing')],
     behavior: bearingEmptyHandBehavior(windmillBearing),
+    blockEntityType: windmillBearing,
   ),
   manifestBlock(
     'clockwork_bearing',
     placement: const [PlacementRule.clickedFace('facing')],
     behavior: bearingEmptyHandBehavior(clockworkBearing),
+    blockEntityType: clockworkBearing,
   ),
 ];
 
@@ -46,6 +49,11 @@ List<CreateBlock> buildBearingBlocks() => [
 /// clicks fail, a running bearing disassembles, an idle one assembles on the next tick.
 BlockBehavior bearingEmptyHandBehavior(String blockKey) => BlockBehavior(
   onUseWithoutItem: (server, e) async {
+    // `player.mayBuild()`: adventure and spectator players cannot use a bearing.
+    final mode = e.player.getGamemode();
+    if (mode == GameMode.adventure || mode == GameMode.spectator) {
+      return BlockUseResult.fail;
+    }
     if (e.sneaking) return BlockUseResult.fail;
     final runtime = ActuatorRuntime.maybe;
     if (runtime == null) return BlockUseResult.pass;

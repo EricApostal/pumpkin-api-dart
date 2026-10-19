@@ -83,4 +83,37 @@ void main() {
     expect(inv.filters[0].key, 'a');
     expect(inv.comparatorSignal(), 0);
   });
+
+  test('a number-key swap replaces the slot and returns the displaced stack', () {
+    final inv = ToolboxInv();
+    inv.insertItem(0, s('a', 10));
+    final refused = inv.swapIn(0, s('b', 5));
+    // the compartment is filtered to 'a', so the swap is refused (`mayPlace` is false)
+    expect(refused, isNull);
+    expect(inv.slots[0].key, 'a');
+    expect(inv.slots[0].count, 10);
+
+    // an unfiltered compartment takes the hotbar stack and filters itself to it
+    final swapped = inv.swapIn(4, s('b', 5));
+    expect(swapped, isNotNull);
+    expect(swapped!.isEmpty, isTrue); // the slot was empty
+    expect(inv.slots[4].key, 'b');
+    expect(inv.slots[4].count, 5);
+    expect(inv.filters[1].key, 'b');
+
+    // a different item is refused once the compartment is filtered
+    expect(inv.swapIn(4, s('c', 1)), isNull);
+
+    // swapping a matching stack replaces the slot's contents and returns them
+    final out = inv.swapIn(4, s('b', 2));
+    expect(out, isNotNull);
+    expect(out!.key, 'b');
+    expect(out.count, 5);
+    expect(inv.slots[4].count, 2);
+
+    // swapping an empty hotbar slot out of a filled slot takes the items
+    final out2 = inv.swapIn(4, TStack.empty);
+    expect(out2!.count, 2);
+    expect(inv.slots[4].isEmpty, isTrue);
+  });
 }

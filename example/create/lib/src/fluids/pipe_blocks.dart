@@ -76,6 +76,10 @@ abstract final class PipeBlocks {
     throw StateError('Impossible axis.');
   }
 
+  /// `FluidValveBlockEntity.ValvePipeBehaviour.canPullFluidFrom`: a valve only lets fluid
+  /// through while it is open (`ENABLED`).
+  static bool valveAllowsPull(BState state) => state.flag('enabled');
+
   /// `SmartFluidPipeBlock.getPipeAxis`.
   static Axis smartPipeAxis(BState state) =>
       state['face'] == 'wall' ? Axis.y : (state.dir('facing') ?? Direction.north).axis;

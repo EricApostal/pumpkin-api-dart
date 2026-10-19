@@ -99,7 +99,7 @@ UUID (`maxRetainedClients`); call `forget(uuid)` when a player leaves.
 | `queryTimeout` | 5 s | full: wait for the client's `minecraft:register` that comes with its query answer |
 | `preBrandGrace` | 1 s | full: how long after the client's pong to still wait for its query answer (a vanilla client answers the ping only, so this is how fast it is recognised) |
 | `preBrandHoldTimeout` | 30 s | full: the hold before the brand |
-| `neoForgeConfigFiles` | `['neoforge-server.toml']` | full: names of NeoForge's own synced config, sent empty in the finish hold (a later NeoForge commit renamed it to `neoforge-synced.toml`; `[]` sends none) |
+| `neoForgeConfigFiles` | `['neoforge-synced.toml']` | full: names of NeoForge's own synced config, sent empty in the finish hold (a later NeoForge commit renamed it to `neoforge-synced.toml`; `[]` sends none) |
 | `syncTimeout` | 20 s | the client applies the registries and acknowledges |
 | `taskTimeout` | 10 s | each step of the finish hold |
 | `holdTimeout`, `finishHoldTimeout` | 45 s | |
@@ -127,7 +127,7 @@ with the pre-brand hold and `set-connection-flavour` (Pumpkin's
    `allow` releases it; its connection stays `vanilla`, so it never receives
    bytes it cannot read;
 4. the start hold does the registry sync, the finish hold the rest (plus an empty
-   `neoforge-server.toml`, which a client classified before the brand expects).
+   `neoforge-synced.toml`, which a client classified before the brand expects).
 
 Turn it on:
 

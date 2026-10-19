@@ -23,6 +23,7 @@
 //     S->C neoforge:config_file*, known data maps, enums, feature flags
 //          (each with its reply)
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 // ignore: implementation_imports
@@ -549,7 +550,8 @@ final class NeoForgeHandshake {
     if (announced.contains(NeoForgeChannels.configFile)) {
       final files = {
         if (client.flavour == ConnectionFlavour.neoforge)
-          for (final name in options.neoForgeConfigFiles) name: Uint8List(0),
+          for (final name in options.neoForgeConfigFiles)
+            name: Uint8List.fromList(utf8.encode(neoForgeServerConfigBody)),
         ...spec.configFiles,
       };
       for (final entry in files.entries) {

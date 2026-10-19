@@ -203,9 +203,25 @@ const int configurationPingPacketId = 5;
 const int configurationPongPacketId = 5;
 const List<int> configurationPingBody = [0, 0, 0, 0];
 
-/// The name of the server config file a NeoForge server syncs
-/// (`neoforge:config_file`).
-const String neoForgeServerConfigFile = 'neoforge-server.toml';
+/// The name of the synced config file a NeoForge server sends
+/// (`neoforge:config_file`): `ConfigTracker.defaultConfigName` is
+/// `<modid>-<type>.toml` and the type is `SYNCED` (`SERVER` became `SYNCED`).
+///
+/// The client looks the name up in its own config map and silently ignores one it
+/// does not know; its config then stays unloaded, and the first read of a value
+/// throws ("Cannot get config value before config is loaded" — in
+/// `Level.guardEntityTick` that turns a logged entity error into a crash).
+const String neoForgeServerConfigFile = 'neoforge-synced.toml';
+
+/// The body of [neoForgeServerConfigFile]: the defaults of `NeoForgeSyncedConfig`.
+/// An empty body does not load the client's config.
+const String neoForgeServerConfigBody = '''
+removeErroringBlockEntities = false
+removeErroringEntities = false
+fullBoundingBoxLadders = false
+permissionHandler = "neoforge:default_handler"
+advertiseDedicatedServerToLan = false
+''';
 
 /// The attributes NeoForge adds to `minecraft:attribute`, in registration order
 /// (`NeoForgeMod` at `6dc5dfc`, lines 202, 213, 221: `ATTRIBUTES.register`).

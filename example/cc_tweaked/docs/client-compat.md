@@ -209,7 +209,7 @@ matter only through the registry ids above.
   file name, byte array contents). The default file name is
   `<modid>-<type>.toml`, i.e. **`computercraft-synced.toml`** in the FML source
   read (`ConfigTracker.defaultConfigName`, suffix "-synced"); the older
-  `neoforge-server.toml` in the NeoForge protocol page predates the rename
+  `neoforge-synced.toml` in the NeoForge protocol page predates the rename
   (uncertain for the 26.3.0 tag). The client falls back to the defaults baked
   into `Config`/`ConfigSpec` when no file arrives (uncertain how a never loaded
   synced config behaves; sending an empty file is the safe candidate).

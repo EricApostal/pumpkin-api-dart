@@ -157,7 +157,7 @@ final class NeoForgeServerSpec {
   /// Modded feature flags (usually none).
   final List<String> featureFlags;
 
-  /// Server config files to sync, by file name (`neoforge-server.toml`).
+  /// Server config files to sync, by file name (`neoforge-synced.toml`).
   final Map<String, Uint8List> configFiles;
 
   NeoForgeServerSpec({

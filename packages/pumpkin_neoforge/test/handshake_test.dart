@@ -494,15 +494,20 @@ void main() {
       expect(result.outcome, NeoForgeOutcome.accepted);
     });
 
-    test('the finish hold sends the empty server config', () async {
+    test('the finish hold sends the synced config with its defaults', () async {
       final rig = fullRig();
       ScriptedClient(rig);
       await runBoth(rig);
       rig.transport.sent.clear();
       await rig.runFinish();
       final file = ConfigFile.decode(rig.transport.last('neoforge:config_file'));
-      expect(file.fileName, 'neoforge-server.toml');
-      expect(file.contents, isEmpty);
+      // The client ignores a file name it does not know and then reads an
+      // unloaded config (`Cannot get config value before config is loaded`).
+      expect(file.fileName, 'neoforge-synced.toml');
+      expect(file.contents, isNotEmpty);
+      final body = String.fromCharCodes(file.contents);
+      expect(body, contains('removeErroringEntities = false'));
+      expect(body, contains('permissionHandler = "neoforge:default_handler"'));
     });
 
     test('the server config file names can be chosen', () async {

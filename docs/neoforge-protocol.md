@@ -151,7 +151,7 @@ above), with the pre-brand hold:
 | start | S->C | `neoforge:frozen_registry_sync_start`, `neoforge:frozen_registry` per registry, `..._sync_completed` |
 | start | C->S | `..._sync_completed` (acknowledgement) |
 | start | | release |
-| finish | S<->C | `c:version`, `c:register`; `neoforge:config_file` with an **empty** `neoforge-server.toml` (a client classified before the brand expects the synced config; an empty file gives the defaults; the name is an option, `neoForgeConfigFiles`: a later NeoForge commit renamed the type, so the file may be `neoforge-synced.toml`; not verified for 26.3.0.7-beta), then as above |
+| finish | S<->C | `c:version`, `c:register`; `neoforge:config_file` with `neoforge-synced.toml` and the defaults of `NeoForgeSyncedConfig` (a client classified before the brand expects the synced config; the name is `ConfigTracker.defaultConfigName` = `<modid>-<type>.toml` with type `SYNCED`; the file name is an option, `neoForgeConfigFiles`), then as above |
 
 The rest of the exchange (rows 9 onwards) is the same.
 
@@ -327,7 +327,7 @@ client applies the entries in that order, so the order matters. Example
 
 ### `neoforge:config_file` (S->C, `ConfigFilePayload.java`)
 
-`string` file name (`neoforge-server.toml`), `byte[]` (VarInt length + bytes) file
+`string` file name (`neoforge-synced.toml`), `byte[]` (VarInt length + bytes) file
 contents. Not acknowledged.
 
 ## Channel announcement and classification
@@ -381,7 +381,7 @@ are two modes, and the table says what each means for a plugin:
 | classification | other (empty setup, ad hoc channels) | NeoForge (negotiated setup) |
 | registry sync | works: the three sync payloads are optional registrations (readable ad hoc); the ack needs the server's `minecraft:register` | works |
 | `neoforge:network` | ignored | applied |
-| server configs | the client loads the *defaults* of the synced configs (`loadDefaultServerConfigs`) | the server must send `neoforge:config_file` for `neoforge-server.toml`, else the client's synced config stays unloaded |
+| server configs | the client loads the *defaults* of the synced configs (`loadDefaultServerConfigs`) | the server must send `neoforge:config_file` for `neoforge-synced.toml` with a parsable body, else the client's synced config stays unloaded and reading one of its values throws |
 | play encodings | vanilla (if the plugin did not send `neoforge:register`) | NeoForge ([Play phase](#play-phase)) |
 
 `NeoForgeNegotiation.adhoc` (the default) is the brand-first mode: no query is
@@ -502,7 +502,7 @@ own menus need entries there and `neoforge:advanced_open_screen` in play.
 * **Feature flags**: the client compares the *modded* flags as sets
   (`CheckFeatureFlags.handleClientboundPayload` 53-78); mismatch `neoforge.network.feature_flags.entry_mismatch`.
 * **Config sync**: `neoforge:config_file` per `SERVER` config. NeoForge's own is
-  `neoforge-server.toml`. Only needed when the client was classified NeoForge
+  `neoforge-synced.toml`. Only needed when the client was classified NeoForge
   before the brand ([ordering](#the-ordering-problem)): the full mode sends an
   empty one in the finish hold.
 

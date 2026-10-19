@@ -128,7 +128,7 @@ final class NeoForgeServerOptions {
   /// Full mode: the file names of NeoForge's own synced server config, sent
   /// empty (so the client uses the defaults) in the finish hold, as a NeoForge
   /// server does and a client classified before the brand expects. The name is
-  /// `neoforge-server.toml` at NeoForge 26.3.0; a later commit renamed the config
+  /// `neoforge-synced.toml` at NeoForge 26.3.0; a later commit renamed the config
   /// types (`SERVER` became `SYNCED`: `neoforge-synced.toml`). Which one a
   /// `26.3.0.x` client has is not verified: set this to match your client, or
   /// to an empty list to send none. A file named in

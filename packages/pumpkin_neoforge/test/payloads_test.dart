@@ -200,7 +200,7 @@ void main() {
 
     test('config file', () {
       expect(
-        hex(ConfigFile('neoforge-server.toml', 'a=1'.codeUnits).encode()),
+        hex(ConfigFile('neoforge-synced.toml', 'a=1'.codeUnits).encode()),
         golden['config_file'],
       );
     });

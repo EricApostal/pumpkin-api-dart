@@ -2,6 +2,7 @@
 // synced, and the combined views actors use.
 import '../../api/block_state.dart';
 import '../../common/common.dart';
+import '../../core/nbt.dart';
 import '../core/level.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_info.dart';
@@ -70,7 +71,8 @@ class MountedStorageManager {
   }
 
   void _assertInitialized() {
-    if (!isInitialized) throw StateError('MountedStorageManager is uninitialized');
+    if (!isInitialized)
+      throw StateError('MountedStorageManager is uninitialized');
   }
 
   /// `getAllItems`: the contraption inventory: all exposed storages plus external ones (minecart).
@@ -116,7 +118,12 @@ class MountedStorageManager {
   }
 
   /// `addBlock`: mounts the storages of a block that joins the contraption.
-  void addBlock(ContraptionLevel level, BState state, Pos localPos, CapturedBlockEntity? be) {
+  void addBlock(
+    ContraptionLevel level,
+    BState state,
+    Pos localPos,
+    CapturedBlockEntity? be,
+  ) {
     final itemType = MountedStorages.itemTypeOf(state, level);
     if (itemType != null) {
       final storage = itemType.mount(level, state, localPos, be);
@@ -124,7 +131,13 @@ class MountedStorageManager {
     }
     final fluidType = MountedStorages.fluidTypeOf(state);
     if (fluidType != null) {
-      final storage = fluidType.mount(level, state, localPos, be, level.settings);
+      final storage = fluidType.mount(
+        level,
+        state,
+        localPos,
+        be,
+        level.settings,
+      );
       if (storage != null) addFluidStorage(storage, localPos);
     }
   }
@@ -134,7 +147,8 @@ class MountedStorageManager {
   }
 
   void addFluidStorage(MountedFluidStorage storage, Pos pos) {
-    (_fluidsBuilder ?? (throw StateError('already initialized')))[pos] = storage;
+    (_fluidsBuilder ?? (throw StateError('already initialized')))[pos] =
+        storage;
   }
 
   /// `unmount`: the data of the block entity that is placed with [info], with the stored items
@@ -144,14 +158,16 @@ class MountedStorageManager {
     final itemStorage = allItemStorages[info.pos];
     if (itemStorage != null) {
       final expected = MountedStorages.itemTypeOf(info.state, level);
-      if (identical(itemStorage.type, expected) || itemStorage.type.id == expected?.id) {
+      if (identical(itemStorage.type, expected) ||
+          itemStorage.type.id == expected?.id) {
         nbt = itemStorage.unmount(info, nbt);
       }
     }
     final fluidStorage = fluidStorages[info.pos];
     if (fluidStorage != null) {
       final expected = MountedStorages.fluidTypeOf(info.state);
-      if (fluidStorage.type.id == expected?.id) nbt = fluidStorage.unmount(info, nbt);
+      if (fluidStorage.type.id == expected?.id)
+        nbt = fluidStorage.unmount(info, nbt);
     }
     return nbt;
   }
@@ -201,7 +217,11 @@ class MountedStorageManager {
       if (nbt.contains('interactable_positions')) {
         interactablePositions = {
           for (final v in nbt.getList('interactable_positions'))
-            (NbtMap.of(v).getInt('X'), NbtMap.of(v).getInt('Y'), NbtMap.of(v).getInt('Z')),
+            (
+              NbtMap.of(v).getInt('X'),
+              NbtMap.of(v).getInt('Y'),
+              NbtMap.of(v).getInt('Z'),
+            ),
         };
       }
     } on Object {
@@ -212,23 +232,27 @@ class MountedStorageManager {
 
   /// `write`: for the spawn packet only the synced storages, plus the positions of all of them.
   void write(NbtMap nbt, {required bool clientPacket}) {
-    final items = <NbtValueOf>[];
+    final items = <NbtValue>[];
     for (final e in allItemStorages.entries) {
       if (clientPacket && e.value is! SyncedMountedStorage) continue;
-      items.add((NbtMap()
-            ..putBlockPos('pos', e.key)
-            ..putCompound('storage', e.value.encode()))
-          .toValue());
+      items.add(
+        (NbtMap()
+              ..putBlockPos('pos', e.key)
+              ..putCompound('storage', e.value.encode()))
+            .toValue(),
+      );
     }
     if (items.isNotEmpty) nbt.putList('items', items);
 
-    final fluidList = <NbtValueOf>[];
+    final fluidList = <NbtValue>[];
     for (final e in fluidStorages.entries) {
       if (clientPacket && e.value is! SyncedMountedStorage) continue;
-      fluidList.add((NbtMap()
-            ..putBlockPos('pos', e.key)
-            ..putCompound('storage', e.value.encode()))
-          .toValue());
+      fluidList.add(
+        (NbtMap()
+              ..putBlockPos('pos', e.key)
+              ..putCompound('storage', e.value.encode()))
+            .toValue(),
+      );
     }
     if (fluidList.isNotEmpty) nbt.putList('fluids', fluidList);
 

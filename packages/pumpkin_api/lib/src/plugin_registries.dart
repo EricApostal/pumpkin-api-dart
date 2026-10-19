@@ -23,6 +23,16 @@ import 'plugin_registry_core.dart';
 abstract final class BlockEntityRegistries {
   /// The server's block entity type registry.
   static final BlockEntityTypeBackend host = const HostBlockEntityTypes();
+
+  /// Opts the block entity type [typeKey] into batched ticking
+  /// (`set-block-entity-ticking`): every [interval] ticks (1 = every tick, 0 =
+  /// off) the host fires one `Events.blockEntityTick` per world with the
+  /// positions of the entities that are due. Can be called at any time. Throws
+  /// a [PluginRegistryException] if the type is unknown.
+  static void setTicking(String typeKey, int interval) => _unwrap<void>(
+    generated.pluginBlockEntity.setBlockEntityTicking(typeKey: typeKey, interval: interval),
+    'Setting the ticking of the block entity type $typeKey',
+  );
 }
 
 /// See [BlockEntityRegistries].

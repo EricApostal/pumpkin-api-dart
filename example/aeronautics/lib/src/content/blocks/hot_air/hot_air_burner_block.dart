@@ -13,8 +13,10 @@ import 'package:create/create.dart';
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:create/src/kinetics/behaviours.dart' show ScrollValueBehaviour;
 import 'package:pumpkin_api/pumpkin_api.dart';
+import 'package:sable/sable.dart' show Vector3d;
 import '../../../config/aero_config.dart';
 import '../../../host/world_balloon_world.dart';
+import '../../../propeller/geometry.dart' show segmentBlocked;
 import '../../../hot_air/balloon.dart';
 import '../../../hot_air/balloon_world.dart';
 import '../../../hot_air/lifting_gas.dart';
@@ -117,21 +119,40 @@ final class HotAirBurnerBlockEntity extends CreateBlockEntity with BlockEntityLi
   }
 
   /// `doRaycast`: the burner looks straight up for the inside of a balloon.
+  ///
+  /// `BlockEntityLiftingGasProvider.getRaycastedPosition` clips up to the
+  /// configured range and accepts the hit only when the block it hit is
+  /// airtight; the cast position is then the block on the near side of that
+  /// hit, which is the air inside the envelope.
+  ///
+  /// HOST GAP: the API has no shape raycast, so the clip is the shared voxel
+  /// walk (`segmentBlocked` in `propeller/geometry.dart`) over the vertical
+  /// segment — the same walk the propeller uses, switched to the host raycast
+  /// when one exists.
   @override
   void doRaycast() {
     final range = AeroConfig.server.blocks.hotAirBurnerMaxRange;
     final worldView = balloonWorld;
 
-    // The first airtight block above the burner closes the balloon; the cast
-    // position is the air block just below it.
-    for (var dy = 1; dy <= range; dy++) {
-      final above = (blockPos.$1, blockPos.$2 + dy, blockPos.$3);
-      if (worldView.isAirtight(worldView.stateAtPos(above))) {
-        _castPosition = (above.$1, above.$2 - 1, above.$3);
-        return;
-      }
+    final start = Vector3d(blockPos.$1 + 0.5, blockPos.$2 + 1.0, blockPos.$3 + 0.5);
+    final end = Vector3d(start.x, start.y + range, start.z);
+
+    (int, int, int)? hit;
+    segmentBlocked(start, end, (x, y, z) {
+      if (worldView.stateAt(x, y, z).isAir) return false;
+      hit = (x, y, z);
+      return true;
+    });
+
+    final hitPos = hit;
+    if (hitPos == null || !worldView.isAirtight(worldView.stateAtPos(hitPos))) {
+      _castPosition = null;
+      return;
     }
-    _castPosition = null;
+
+    // `clip.getDirection()` for an upward ray is the hit's bottom face, so the
+    // position on the near side is one block below.
+    _castPosition = (hitPos.$1, hitPos.$2 - 1, hitPos.$3);
   }
 
   @override

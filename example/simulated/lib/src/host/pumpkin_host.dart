@@ -26,6 +26,7 @@ import 'package:sable/sable.dart' show SableLevel, SubLevel, SubLevelContainer;
 
 import '../config/sim_config_service.dart';
 import '../service/sim_services.dart';
+import '../content/entities/honey_glue/honey_glue_entity.dart';
 import '../util/assembly/sim_assembly_contraption.dart';
 import '../util/sim_assembly_helper.dart';
 import 'simulated_host.dart';
@@ -145,37 +146,87 @@ final class PumpkinSimAssemblyEntities implements SimAssemblyEntities {
   /// HOST GAP: the plugin API has no "entities in a box" query, only
   /// `World.getEntities()`, so this filters that list. It is called once per
   /// disassembly, not per tick.
+  ///
+  /// The filter and the ref both use the entity's real bounding box, not its
+  /// position: a boat or a horse can straddle the edge of the assembly without
+  /// its centre being inside it, and `moveOtherStuff` reads the box to decide
+  /// whether the entity stands on a moved block. Aeronautics'
+  /// `HostPropellerPushWorld` is the same filter with a different payload; both
+  /// switch to the box query together when the host grows one.
+  /// The entities the last [entitiesIn] returned, by id.
+  final Map<int, Entity> _found = {};
+
   @override
   List<SimAssemblyEntityRef> entitiesIn(Aabb area) {
+    _found.clear();
     final out = <SimAssemblyEntityRef>[];
     for (final entity in world.getEntities()) {
+      final bounds = entity.getBoundingBox();
+      final box = Aabb(
+        bounds.min.$1,
+        bounds.min.$2,
+        bounds.min.$3,
+        bounds.max.$1,
+        bounds.max.$2,
+        bounds.max.$3,
+      );
+      if (!box.intersects(area)) continue;
+      _found[entity.getId()] = entity;
       final pos = entity.getPosition();
-      final x = pos.$1, y = pos.$2, z = pos.$3;
-      if (x < area.minX || x > area.maxX || y < area.minY || y > area.maxY || z < area.minZ || z > area.maxZ) {
-        continue;
-      }
       out.add(
         SimAssemblyEntityRef(
           entity.getId(),
-          Aabb(x - 0.5, y, z - 0.5, x + 0.5, y + 1, z + 0.5),
-          (x, y, z),
+          box,
+          (pos.$1, pos.$2, pos.$3),
+          yRot: entity.getYaw(),
         ),
       );
     }
     return out;
   }
 
+  /// `entity.remove(KILLED)`: a glue volume is replaced by a fresh one at the
+  /// moved position, so the old one goes away.
   @override
-  void remove(SimAssemblyEntityRef entity) {}
+  void remove(SimAssemblyEntityRef entity) {
+    _found.remove(entity.id)?.remove();
+  }
 
+  /// `entity.setPos(...)` plus the y rotation of the structure transform.
+  ///
+  /// The velocity is carried through unchanged: a disassembly moves the entity
+  /// without stopping it.
   @override
-  void move(SimAssemblyEntityRef entity, (double, double, double) position, double yRot) {}
+  void move(SimAssemblyEntityRef entity, (double, double, double) position, double yRot) {
+    final handle = _found[entity.id];
+    if (handle == null) return;
+    handle.setPositionRotationDelta(
+      pos: position,
+      yaw: yRot,
+      pitch: handle.getPitch(),
+      velocity: handle.getVelocity(),
+    );
+  }
 
+  /// `level.addFreshEntity(new SuperGlueEntity(level, box))`.
+  ///
+  /// HOST GAP: a plugin can spawn an entity of a *plugin* type, but
+  /// `minecraft:glow_item_frame`-style vanilla glue boxes are Create's entity
+  /// and the plugin API cannot summon a vanilla type with its own NBT. The
+  /// assembly moves the glue's blocks; the box is dropped with it.
   @override
   void spawnSuperGlue(Aabb box) {}
 
+  /// `level.addFreshEntity(new HoneyGlueEntity(level, box))`, then
+  /// `setBoundsAndSync`.
   @override
-  void spawnHoneyGlue(Aabb box) {}
+  void spawnHoneyGlue(Aabb box) {
+    final tracker = honeyGlueTrackerOf(world.getId());
+    // The host assigns the id; the tracker keeps the volume under a temporary
+    // negative id until the spawn event reports the real one.
+    final tempId = -(tracker.volumes.length + 1);
+    tracker.put(HoneyGlue(tempId, box));
+  }
 }
 
 /// The installed host of Simulated.

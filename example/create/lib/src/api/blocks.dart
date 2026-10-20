@@ -17,6 +17,7 @@ import '../common/direction.dart' as dir;
 import '../common/host_bridge.dart';
 import '../common/pos.dart';
 import '../core/blocks.dart';
+import '../core/perf.dart';
 import '../manifest/manifest.dart';
 import 'block_state.dart';
 
@@ -187,9 +188,22 @@ final class HostBlockGetter extends BlockGetter {
   }
 
   @override
-  bool hasTag(Pos p, String tag) {
-    final id = idAt(p);
-    return _tags.putIfAbsent((id, tag), () => BlockStates.isTag(id, tag));
+  bool hasTag(Pos p, String tag) => stateHasTag(idAt(p), tag);
+
+  /// `BlockState.is(TagKey)` for the state [id], cached: the tags of a state do not change while
+  /// the server runs (they are registered before the first world tick), and the contraption logic
+  /// asks for the same few tags on every block it captures or moves.
+  static bool stateHasTag(int id, String tag) {
+    final key = (id, tag);
+    final cached = _tags[key];
+    if (cached != null) return cached;
+    final watch = Perf.enabled ? (Stopwatch()..start()) : null;
+    final result = BlockStates.isTag(id, tag);
+    if (watch != null) {
+      Perf.record('host.blockStateTag', watch.elapsedMicroseconds);
+    }
+    _tags[key] = result;
+    return result;
   }
 
   @override

@@ -20,6 +20,7 @@ import 'package:sable/sable.dart';
 import '../../../config/sim_config_service.dart';
 import '../../../host/simulated_host.dart';
 import '../../../util/assembly/sim_assembly_exception.dart';
+import '../../../util/physics_constraints.dart';
 import '../../../util/sim_assembly_events.dart';
 import '../../../util/sim_assembly_helper.dart';
 import '../../../util/sim_level_util.dart';
@@ -46,6 +47,9 @@ final class PhysicsAssembler {
 
   /// The sub-level this assembler assembled, if it is the primary one.
   String? assembledSubLevelId;
+
+  /// The alignment joint, while a disassembly is running.
+  PhysicsConstraintHandle? alignmentConstraint;
 
   /// The sticky face of the block: the direction the structure is on.
   Direction get stickyFacing {
@@ -112,6 +116,18 @@ final class PhysicsAssembler {
 
     final angle = Quaterniond.copy(pose.orientation()).div(orientation, Quaterniond()).angle();
 
+    // Pull the rotation point onto the snapped goal while the angle closes.
+    final handle = alignmentConstraint;
+    if (handle != null && handle.isValid) {
+      // The goal is in the joint's frame: undo the snapped orientation.
+      final localGoal = Vector3d.copy(goal);
+      Quaterniond.copy(orientation).conjugate().transform(localGoal, localGoal);
+      AssemblyAlignmentMotors.apply(
+        handle,
+        AssemblyAlignmentMotors.motors(localGoal: localGoal, tightenLinear: true),
+      );
+    }
+
     if (logic.tickDisassemblingWith(angleError: angle, distanceToGoal: current.distance(goal))) {
       placeIntoWorld(level, subLevel);
     }
@@ -148,7 +164,38 @@ final class PhysicsAssembler {
       entities: host.entitiesOf(worldId),
       playSound: true,
     );
+    // The blocks are back in the world: mods that track the structure (a
+    // balloon's airtight volume, for example) re-check it.
+    SimAssemblyEvents.notifyDisassembled(worldId, pos, subLevel);
+    _removeAlignmentConstraint();
     logic.stopDisassembling();
+  }
+
+  /// `startDisassembling`'s joint: a spherical joint at the sub-level's centre of
+  /// mass, oriented to the snapped quarter turn.
+  void _attachAlignmentConstraint(SableLevel level, ServerSubLevel subLevel) {
+    final pipeline = constraintPipelineOf(level);
+    final orientation = logic.disassemblyOrientation;
+    if (pipeline == null || orientation == null) return;
+
+    final centerOfMass = subLevel.massTracker?.getCenterOfMass() ?? Vector3d();
+    final anchor = Vector3d(
+      centerOfMass.x.floorToDouble() + 0.5,
+      centerOfMass.y.floorToDouble() + 0.5,
+      centerOfMass.z.floorToDouble() + 0.5,
+    );
+
+    alignmentConstraint = pipeline.addConstraint(
+      null,
+      subLevel,
+      FreeConstraintConfiguration(Vector3d(), anchor, Quaterniond.copy(orientation)),
+    );
+  }
+
+  void _removeAlignmentConstraint() {
+    final handle = alignmentConstraint;
+    if (handle != null && handle.isValid) handle.remove();
+    alignmentConstraint = null;
   }
 
   /// `throwDisassemblyExceptions(subLevel)`.
@@ -192,6 +239,8 @@ final class PhysicsAssembler {
       );
       throwDisassemblyExceptions(subLevel);
       logic.startDisassembling(subLevel.logicalPose.orientation());
+      final level = host.levelOf(worldId);
+      if (level != null) _attachAlignmentConstraint(level, subLevel);
       return;
     }
 
@@ -241,6 +290,7 @@ final class PhysicsAssembler {
 
   /// `remove()`: a primary assembler forgets that it was one.
   void removed() {
+    _removeAlignmentConstraint();
     if (logic.primaryAssembler) {
       final id = assembledSubLevelId;
       if (id != null) DisassemblyPrevention.setPrimary(id, null);

@@ -30,6 +30,7 @@ export 'src/service/sim_services.dart';
 export 'src/util/assembly/sim_assembly_contraption.dart';
 export 'src/util/assembly/sim_assembly_exception.dart';
 export 'src/util/host_calls.dart';
+export 'src/util/physics_constraints.dart';
 export 'src/util/sim_assembly_events.dart';
 export 'src/util/sim_assembly_helper.dart';
 export 'src/util/sim_level_util.dart';

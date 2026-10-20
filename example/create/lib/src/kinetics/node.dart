@@ -68,6 +68,15 @@ abstract class KineticLevel {
 
   /// Forgets all networks (world unload).
   void clearNetworks() => networks.clear();
+
+  /// Starts a batch of reads: until [endBatch] the level may serve repeated reads of the same
+  /// position from a cache. The rotation propagator reads every neighbour of every node it visits,
+  /// so one pass asks for the same position many times and each read is a host call. The default
+  /// keeps no cache.
+  void beginBatch() {}
+
+  /// Ends the batch started by [beginBatch]; drops whatever it cached.
+  void endBatch() {}
 }
 
 /// The speed controller side of the propagation (`SpeedControllerBlockEntity`).

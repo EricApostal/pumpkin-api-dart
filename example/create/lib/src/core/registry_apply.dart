@@ -90,9 +90,12 @@ Future<AppliedIds> applyRegistry(
     }
   });
   Perf.measure('applyRegistry.blockLinks', () {
-    final registered = {
-      for (final b in BlockRegistries.host.registeredBlocks) b.key: b,
-    };
+    // One host call that returns every registered block (vanilla included); measured on its own
+    // because it dominates the label when the per-block loop is cheap.
+    final registered = Perf.measure(
+      'applyRegistry.blockLinks.registeredBlocks',
+      () => {for (final b in BlockRegistries.host.registeredBlocks) b.key: b},
+    );
     for (final e in blocks) {
       final block = e.value;
       final entry = registered[block.key];

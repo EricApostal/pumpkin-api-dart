@@ -268,7 +268,14 @@ abstract final class RotationPropagator {
   /// Inserts the added position into the kinetic network.
   static void handleAdded(KineticLevel level, KPos pos, KineticNode addedTE) {
     if (!level.isLoaded(pos)) return;
-    _propagateNewSource(addedTE);
+    // The pass reads the neighbours of every node it reaches, several times each: one batch turns
+    // those repeated reads into one host call per position.
+    level.beginBatch();
+    try {
+      _propagateNewSource(addedTE);
+    } finally {
+      level.endBatch();
+    }
   }
 
   /// Searches for sourceless networks attached to [currentTE] and updates them.
@@ -362,15 +369,20 @@ abstract final class RotationPropagator {
     if (removedBE == null) return;
     if (removedBE.theoreticalSpeed == 0) return;
 
-    for (final neighbourPos in _getPotentialNeighbourLocations(removedBE)) {
-      final neighbourState = level.stateAt(neighbourPos);
-      if (level.blocks.defFor(neighbourState) == null) continue;
-      final neighbourBE = level.nodeAt(neighbourPos);
-      if (neighbourBE == null) continue;
+    level.beginBatch();
+    try {
+      for (final neighbourPos in _getPotentialNeighbourLocations(removedBE)) {
+        final neighbourState = level.stateAt(neighbourPos);
+        if (level.blocks.defFor(neighbourState) == null) continue;
+        final neighbourBE = level.nodeAt(neighbourPos);
+        if (neighbourBE == null) continue;
 
-      if (!neighbourBE.hasSource || neighbourBE.source != pos) continue;
+        if (!neighbourBE.hasSource || neighbourBE.source != pos) continue;
 
-      _propagateMissingSource(neighbourBE);
+        _propagateMissingSource(neighbourBE);
+      }
+    } finally {
+      level.endBatch();
     }
   }
 

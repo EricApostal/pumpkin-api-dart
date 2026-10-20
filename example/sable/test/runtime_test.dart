@@ -215,6 +215,15 @@ final class FakeMassTracker implements MassData, MutableMassTracker {
   double getInverseMass() => 1.0;
 
   @override
+  double getMass() => 1.0;
+
+  @override
+  Matrix3d getInertiaTensor() => Matrix3d.identity();
+
+  @override
+  Matrix3d getInverseInertiaTensor() => Matrix3d.identity();
+
+  @override
   bool isInvalid() => invalid;
 
   @override

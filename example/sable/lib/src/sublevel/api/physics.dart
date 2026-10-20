@@ -11,6 +11,7 @@
 //
 // Pure: no host imports.
 import '../math/bounding_box.dart';
+import '../math/matrix3.dart';
 import '../math/pose.dart';
 import '../math/vector.dart';
 
@@ -37,10 +38,23 @@ abstract interface class RigidBodyHandle {
 /// `dev.ryanhcode.sable.api.physics.mass.MassData`: the mass properties the
 /// model reads.
 abstract interface class MassData {
+  /// `getMass()`: total mass [kg].
+  double getMass();
+
   /// `getCenterOfMass()`.
+  ///
+  /// Java returns `null` for a tracker whose blocks are gone; Dart's trackers
+  /// throw a [StateError] with a precise message instead, and callers guard
+  /// with [isInvalid].
   Vector3d getCenterOfMass();
 
   double getInverseMass();
+
+  /// `getInertiaTensor()`: the inertia tensor in local space [kg·m²].
+  Matrix3d getInertiaTensor();
+
+  /// `getInverseInertiaTensor()`: `getInertiaTensor().invert()`.
+  Matrix3d getInverseInertiaTensor();
 
   /// Whether the tracker is no longer usable (the sub-level's blocks are gone).
   bool isInvalid();

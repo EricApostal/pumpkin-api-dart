@@ -30,6 +30,8 @@ CreateBlock redstoneRequesterBlock() => CreateBlock(
   soundType: 'netherite_block',
   canOcclude: false,
   blockEntityType: RedstoneRequesterBlockEntity.type,
+  // `getStateForPlacement`: `pContext.getHorizontalDirection().getAxis()`.
+  placement: const [PlacementRule.horizontalAxis('axis')],
   behavior: BlockBehavior(
     onNeighborUpdate: _onNeighborUpdate,
     onPlaced: _onPlaced,
@@ -63,23 +65,15 @@ Future<void> _onNeighborUpdate(
 }
 
 Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
-  final uuid = e.player?.asString;
-  if (uuid == null) return;
-  final player = Lg.i.player(uuid);
-  if (player == null) return;
-  final yaw = player.getYaw();
-  final horizontal = ((yaw % 360) + 360) % 360;
-  final axis =
-      (horizontal >= 45 && horizontal < 135) ||
-          (horizontal >= 225 && horizontal < 315)
-      ? 'z'
-      : 'x';
-  final world = e.targetWorld;
-  await world.setBlockState(
+  // `RedstoneRequesterBlock.getStateForPlacement`: `POWERED` is the neighbour signal at the
+  // placement position (the axis comes from the `horizontalAxis` placement rule).
+  if (!await e.targetWorld.hasNeighborSignal(pos: e.pos)) return;
+  final stateId = e.targetWorld.getBlockStateId(pos: e.pos);
+  final info = BlockStates.info(stateId);
+  if (info?.properties['powered'] == 'true') return;
+  await e.targetWorld.setBlockState(
     pos: e.pos,
-    state: BlockStates.setValues(world.getBlockStateId(pos: e.pos), {
-      'axis': axis,
-    }),
+    state: BlockStates.setValues(stateId, {'powered': 'true'}),
     updateFlags: BlockUpdateFlags.clientsOnly,
   );
 }

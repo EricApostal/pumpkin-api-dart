@@ -19,6 +19,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart';
 
 import '../../../config/aero_config.dart';
+import '../../../host/host_propeller_push_world.dart';
 import '../../../host/world_balloon_world.dart';
 import '../../../propeller/propeller_actor_behaviour.dart';
 import '../../../propeller/small_propeller.dart';
@@ -48,7 +49,7 @@ abstract class BasePropellerBlockEntity extends KineticBlockEntity
 
   late final PropellerActorBehaviour prop = _createProp();
 
-  late final PropellerPushWorld _pushWorld = _HostPushWorld(this);
+  late final PropellerPushWorld _pushWorld = HostPropellerPushWorld(world!, blockPos);
 
   /// The thrust scalar of this propeller, from the config.
   double get configThrust;
@@ -259,33 +260,6 @@ final class SmartPropellerBlockEntity extends BasePropellerBlockEntity {
     if (!logic.isActive) return;
     applyForces(subLevel, thrustDirection, timeStep);
   }
-}
-
-/// The push world of one propeller block entity.
-final class _HostPushWorld implements PropellerPushWorld {
-  final BasePropellerBlockEntity owner;
-
-  _HostPushWorld(this.owner);
-
-  @override
-  Pose3dc? get propellerSubLevelPose {
-    final w = owner.world;
-    if (w == null) return null;
-    final level = balloonWorldOf(w).level;
-    final subLevel = SubLevelHelper.getContaining(level, owner.blockPos);
-    return subLevel?.logicalPose;
-  }
-
-  @override
-  Iterable<PropellerPushTarget> entitiesIn(BoundingBox3d box) {
-    // HOST GAP: the host's entity query by bounding box is not exposed through
-    // the plugin API yet (pumpkin_api has no `getEntities(AABB)`), so the push
-    // has no candidates. The force model itself is complete and tested.
-    return const [];
-  }
-
-  @override
-  bool segmentBlocked(Vector3d from, Vector3d to) => false;
 }
 
 /// The block definitions of the three small propellers.

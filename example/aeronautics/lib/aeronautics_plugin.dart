@@ -12,4 +12,5 @@ export 'src/content/blocks/propeller/gyroscopic_propeller_bearing_block.dart';
 export 'src/content/blocks/propeller/propeller_bearing_block.dart';
 export 'src/content/blocks/propeller/propeller_bearing_contraption_entity.dart';
 export 'src/content/blocks/propeller/small_propeller_blocks.dart';
+export 'src/host/host_propeller_push_world.dart';
 export 'src/host/world_balloon_world.dart';

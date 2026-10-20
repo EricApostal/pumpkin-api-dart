@@ -51,6 +51,21 @@ final class PackagePortTarget {
     flipped: value,
   );
 
+  /// A copy with another target position, chain position, connection or direction. The
+  /// reversed-motion jump of `ChainConveyorFrogportTarget.register` rewrites all four at once.
+  PackagePortTarget copyWith({
+    Pos? relativePos,
+    double? chainPos,
+    Pos? connection,
+    bool? flipped,
+  }) => PackagePortTarget(
+    type,
+    relativePos ?? this.relativePos,
+    chainPos: chainPos ?? this.chainPos,
+    connection: connection ?? this.connection,
+    flipped: flipped ?? this.flipped,
+  );
+
   /// The private JSON form, using the field names of the Java codec (`type`, `relative_pos` and,
   /// for a chain conveyor, `chain_pos`, `connection`, `flipped`).
   Map<String, dynamic> toMap() {

@@ -111,8 +111,9 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
     e.pos,
   );
   if (be == null) return BlockUseResult.pass;
-  if (e.sneaking) return BlockUseResult.tryEmptyHand;
-  // The address configuration screen is client side.
+  // `FrogportBlock.useItemOn` / `PostboxBlock.useItemOn`: `be.use(player)` handles the clipboard
+  // and opens the address screen.
+  if (!await be.use(e.player)) return BlockUseResult.tryEmptyHand;
   return BlockUseResult.success;
 }
 

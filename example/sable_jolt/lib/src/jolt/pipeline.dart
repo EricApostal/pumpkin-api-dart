@@ -14,17 +14,28 @@
 // against the real module (see `test/support/node_jolt.dart`).
 //
 // Pure: no host imports, so this file is loadable by `package:test`.
+import 'dart:math' as math;
+
 import 'package:sable/sable.dart'
     show
         BoxHandle,
         BoxPhysicsObject,
+        ConstraintJointAxis,
+        ConstraintPipeline,
+        FixedConstraintConfiguration,
+        FreeConstraintConfiguration,
+        GenericConstraintConfiguration,
+        GenericConstraintHandle,
         KinematicContraption,
-        MassData,
+        Matrix3d,
+        PhysicsConstraintConfiguration,
+        PhysicsConstraintHandle,
         PhysicsPipeline,
         Pose3d,
         Pose3dc,
         Quaterniond,
         RigidBodyHandle,
+        RotaryConstraintConfiguration,
         RopeHandle,
         RopePhysicsObject,
         ServerSubLevel,
@@ -34,22 +45,8 @@ import '../physics/buoyancy.dart';
 import 'abi.dart';
 import 'voxel.dart';
 
-/// A [MassData] that also reports its inertia tensor.
-///
-/// Java's `MassData` exposes `getMass()` and `getInertiaTensor()`
-/// (`sable/common/.../api/physics/mass/MassData.java:12-26`) and
-/// `Rapier3D.setMassPropertiesFrom` uploads all three
-/// (`Rapier3D.java:675-690`). The Dart seam in `api/physics.dart` only carries
-/// the inverse mass, so the pipeline reads the tensor through this interface
-/// when the tracker provides one.
-abstract interface class InertiaMassData implements MassData {
-  /// The inertia tensor in local space, column-major:
-  /// `m00, m10, m20, m01, m11, m21, m02, m12, m22`.
-  List<double> getInertiaTensor();
-}
-
 /// The Jolt-backed physics pipeline.
-final class JoltPhysicsPipeline implements PhysicsPipeline {
+final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
   /// The module's exported functions.
   final JoltAbi abi;
 
@@ -78,6 +75,7 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
   int _posePtr = 0;
   int _vecPtr = 0;
   int _inertiaPtr = 0;
+  int _impulsePtr = 0;
   int _chunkPtr = 0;
 
   final Map<ServerSubLevel, _SubLevelBody> _subLevels = {};
@@ -293,7 +291,7 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
     if (handle == 0) {
       throw StateError('jolt_box_create failed.');
     }
-    return JoltBoxBody(this, handle, runtimeId);
+    return JoltBoxBody(this, handle, runtimeId, box.mass, box.halfExtents);
   }
 
   @override
@@ -406,23 +404,26 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
     if (inverseMass <= 0.0) {
       return;
     }
-    final mass = 1.0 / inverseMass;
+    final mass = tracker.getMass();
 
     body.centerOfMass.setFrom(centerOfMass);
+    body.mass = mass;
     abi.bodySetCom(_world, body.handle, centerOfMass.x, centerOfMass.y, centerOfMass.z);
 
-    final inertia = tracker is InertiaMassData
-        ? tracker.getInertiaTensor()
-        : _isotropicInertia(mass);
-    if (inertia.length != 9) {
-      throw StateError(
-        'InertiaMassData.getInertiaTensor must return 9 values '
-        '(column-major), got ${inertia.length}.',
-      );
-    }
-    for (var i = 0; i < 9; i++) {
-      memory.storeFloat32(_inertiaPtr + i * 4, inertia[i]);
-    }
+    // Jolt stores the inertia tensor column-major
+    // (`massPropertiesOf`, `native/jolt/src/jolt_abi.cpp:369-388`).
+    final inertia = tracker.getInertiaTensor();
+    body.inertiaTensor.setFrom(inertia);
+    memory
+      ..storeFloat32(_inertiaPtr, inertia.m00)
+      ..storeFloat32(_inertiaPtr + 4, inertia.m10)
+      ..storeFloat32(_inertiaPtr + 8, inertia.m20)
+      ..storeFloat32(_inertiaPtr + 12, inertia.m01)
+      ..storeFloat32(_inertiaPtr + 16, inertia.m11)
+      ..storeFloat32(_inertiaPtr + 20, inertia.m21)
+      ..storeFloat32(_inertiaPtr + 24, inertia.m02)
+      ..storeFloat32(_inertiaPtr + 28, inertia.m12)
+      ..storeFloat32(_inertiaPtr + 32, inertia.m22);
     abi.bodySetMass(_world, body.handle, mass, _inertiaPtr);
   }
 
@@ -614,7 +615,7 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
       axisB.y,
       axisB.z,
     );
-    return _joint(handle, 'hinge');
+    return _joint(handle, 'hinge', bodyA, bodyB);
   }
 
   /// `addFixedConstraint` (`joints.rs:390-475`).
@@ -642,7 +643,7 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
       rotation.z,
       rotation.w,
     );
-    final joint = _joint(handle, 'fixed');
+    final joint = _joint(handle, 'fixed', bodyA, bodyB);
     joint.setContactsEnabled(contactsEnabled);
     return joint;
   }
@@ -680,14 +681,98 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
       rotationB.w,
       lockedAxesMask,
     );
-    return _joint(handle, 'six-DOF');
+    return _joint(handle, 'six-DOF', bodyA, bodyB, generic: true);
   }
 
-  JoltJointHandle _joint(int handle, String kind) {
+  JoltJointHandle _joint(
+    int handle,
+    String kind,
+    RigidBodyHandle? bodyA,
+    RigidBodyHandle? bodyB, {
+    bool generic = false,
+  }) {
     if (handle == 0) {
       throw StateError('jolt_joint_create_$kind failed.');
     }
-    return JoltJointHandle(this, handle);
+    return generic
+        ? JoltGenericJointHandle(this, handle, bodyA, bodyB)
+        : JoltJointHandle(this, handle, bodyA, bodyB);
+  }
+
+  /// `addConstraint(bodyA, bodyB, configuration)`
+  /// (`RapierPhysicsPipeline.java:523-554`).
+  ///
+  /// A `null` body attaches that side to the static world. Java also validates
+  /// the anchors against the sub-level containers; the pipeline has no
+  /// container reference, so that check belongs to the caller
+  /// (`PhysicsConstraintConfiguration.validate`).
+  @override
+  PhysicsConstraintHandle addConstraint(
+    Object? a,
+    Object? b,
+    PhysicsConstraintConfiguration configuration,
+  ) {
+    _requireWorld();
+    if (a == null && b == null) {
+      throw ArgumentError(
+        'Cannot add a constraint between the static world and static world.',
+      );
+    }
+    if (a != null && identical(a, b)) {
+      throw ArgumentError('Cannot add a constraint between a body and itself.');
+    }
+
+    final bodyA = _constraintBody(a);
+    final bodyB = _constraintBody(b);
+
+    return switch (configuration) {
+      RotaryConstraintConfiguration config => addHinge(
+        bodyA,
+        bodyB,
+        config.pos1,
+        config.pos2,
+        config.axis1,
+        config.axis2,
+      ),
+      FixedConstraintConfiguration config => addFixed(
+        bodyA,
+        bodyB,
+        config.pos1,
+        config.pos2,
+        config.quatB,
+      ),
+      // Rapier's free joint is a six-DOF joint with no locked axis
+      // (`RapierFreeConstraintHandle.java:18-33`).
+      FreeConstraintConfiguration config => addSixDof(
+        bodyA,
+        bodyB,
+        config.pos1,
+        Quaterniond(),
+        config.pos2,
+        config.quatB,
+      ),
+      GenericConstraintConfiguration config => addSixDof(
+        bodyA,
+        bodyB,
+        config.pos1,
+        config.quatA,
+        config.pos2,
+        config.quatB,
+        lockedAxesMask: config.lockedAxesMask,
+      ),
+    };
+  }
+
+  RigidBodyHandle? _constraintBody(Object? body) {
+    if (body == null) return null;
+    if (body is! RigidBodyHandle) {
+      throw ArgumentError.value(
+        body,
+        'body',
+        'not a rigid body of this JoltPhysicsPipeline',
+      );
+    }
+    return body;
   }
 
   /// Sets the world gravity.
@@ -726,9 +811,10 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
     const poseBytes = 7 * 4;
     const vecBytes = 3 * 4;
     const inertiaBytes = 9 * 4;
+    const impulseBytes = 6 * 4;
     const chunkBytes = 4096 * 4;
     _scratch = abi.alloc(
-      poseBytes + vecBytes + inertiaBytes + chunkBytes,
+      poseBytes + vecBytes + inertiaBytes + impulseBytes + chunkBytes,
     );
     if (_scratch == 0) {
       throw StateError('jolt_alloc failed for the scratch buffer.');
@@ -736,7 +822,8 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
     _posePtr = _scratch;
     _vecPtr = _posePtr + poseBytes;
     _inertiaPtr = _vecPtr + vecBytes;
-    _chunkPtr = _inertiaPtr + inertiaBytes;
+    _impulsePtr = _inertiaPtr + inertiaBytes;
+    _chunkPtr = _impulsePtr + impulseBytes;
   }
 
   _SubLevelBody _subLevelBody(ServerSubLevel subLevel) {
@@ -782,6 +869,64 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
     );
   }
 
+  /// The mass of [body] [kg], or 0 for the static world.
+  double _massOfBody(RigidBodyHandle? body) {
+    if (body is _SubLevelBody) return body.mass;
+    if (body is JoltBoxBody) return body.mass;
+    return 0.0;
+  }
+
+  /// The inertia tensor of [body] in its local frame, or `null` when unknown.
+  Matrix3d? _inertiaOfBody(RigidBodyHandle? body) {
+    if (body is _SubLevelBody) return body.inertiaTensor;
+    if (body is JoltBoxBody) return body.inertiaTensor;
+    return null;
+  }
+
+  /// The reduced mass of a linear axis: the static world is infinitely massive,
+  /// so a joint to it uses the other body's mass.
+  double reducedMass(RigidBodyHandle? a, RigidBodyHandle? b) {
+    final massA = _massOfBody(a);
+    final massB = _massOfBody(b);
+    if (massA <= 0.0) return massB;
+    if (massB <= 0.0) return massA;
+    return massA * massB / (massA + massB);
+  }
+
+  /// The reduced inertia about world axis [axisIndex] (0 = x, 1 = y, 2 = z).
+  ///
+  /// `nᵀ·I·n` with the local tensor rotated by the body's orientation, then the
+  /// two bodies' inverse inertias add like the reduced mass does.
+  double reducedInertia(RigidBodyHandle? a, RigidBodyHandle? b, int axisIndex) {
+    final inertiaA = _effectiveInertia(a, axisIndex);
+    final inertiaB = _effectiveInertia(b, axisIndex);
+    if (inertiaA <= 0.0) return inertiaB;
+    if (inertiaB <= 0.0) return inertiaA;
+    return inertiaA * inertiaB / (inertiaA + inertiaB);
+  }
+
+  double _effectiveInertia(RigidBodyHandle? body, int axisIndex) {
+    final local = _inertiaOfBody(body);
+    if (body == null || local == null) return 0.0;
+
+    // The axis in the body's local frame: `q⁻¹ · e`.
+    abi.bodyGetPose(_world, _handleOf(body), _posePtr);
+    final orientation = Quaterniond(
+      memory.loadFloat32(_posePtr + 12),
+      memory.loadFloat32(_posePtr + 16),
+      memory.loadFloat32(_posePtr + 20),
+      memory.loadFloat32(_posePtr + 24),
+    ).conjugate();
+    final worldAxis = switch (axisIndex) {
+      0 => Vector3d(1.0, 0.0, 0.0),
+      1 => Vector3d(0.0, 1.0, 0.0),
+      _ => Vector3d(0.0, 0.0, 1.0),
+    };
+    final localAxis = orientation.transform(worldAxis, Vector3d());
+    final inertia = Matrix3d.copy(local).transform(localAxis, Vector3d());
+    return localAxis.x * inertia.x + localAxis.y * inertia.y + localAxis.z * inertia.z;
+  }
+
   Vector3d _centerOfMassOf(RigidBodyHandle body) {
     if (body is _SubLevelBody) {
       return body.centerOfMass;
@@ -821,28 +966,30 @@ final class JoltPhysicsPipeline implements PhysicsPipeline {
       },
     );
   }
-
-  /// The fallback inertia of a body whose tracker does not report a tensor: a
-  /// solid sphere of the same mass, `I = 0.4 m r^2` with `r = 1`
-  /// (`massPropertiesOf` in `native/jolt/src/joltabi.cpp`).
-  static List<double> _isotropicInertia(double mass) {
-    final i = 0.4 * mass;
-    return [i, 0.0, 0.0, 0.0, i, 0.0, 0.0, 0.0, i];
-  }
 }
 
 /// A constraint handle (`PhysicsConstraintHandle` in Java,
 /// `sable_rapier/.../Rapier3D.java:152-672`).
-final class JoltJointHandle {
+///
+/// The Jolt ABI has one joint type per shape (`jolt_joint_create_hinge`,
+/// `_fixed`, `_sixdof`) but one set of mutators for all of them, so this single
+/// class carries the whole Java interface; [JoltGenericJointHandle] adds the
+/// `GenericConstraintHandle` view for six-DOF joints.
+class JoltJointHandle implements PhysicsConstraintHandle {
   final JoltPhysicsPipeline _pipeline;
   final int handle;
 
-  JoltJointHandle(this._pipeline, this.handle);
+  /// The bodies the joint connects; `null` is the static world.
+  final RigidBodyHandle? bodyA;
+  final RigidBodyHandle? bodyB;
+
+  JoltJointHandle(this._pipeline, this.handle, [this.bodyA, this.bodyB]);
 
   /// The native joint handle.
   int get nativeHandle => handle;
 
-  /// Whether the engine still holds the joint.
+  /// `isValid()`: whether the engine still holds the joint.
+  @override
   bool get isValid {
     if (_pipeline._world == 0) {
       return false;
@@ -867,6 +1014,14 @@ final class JoltJointHandle {
     );
   }
 
+  /// `setFrame1(localPosition, localOrientation)` (`GenericConstraintHandle`).
+  void setFrame1(Vector3d localPosition, Quaterniond localOrientation) =>
+      setFrame(0, localPosition, localOrientation);
+
+  /// `setFrame2(localPosition, localOrientation)` (`GenericConstraintHandle`).
+  void setFrame2(Vector3d localPosition, Quaterniond localOrientation) =>
+      setFrame(1, localPosition, localOrientation);
+
   /// The hinge axis of one side.
   void setAxis(int side, Vector3d axis) {
     _pipeline._requireWorld();
@@ -880,64 +1035,116 @@ final class JoltJointHandle {
     );
   }
 
-  /// `setConstraintMotor` (`joints.rs:114-160`): axis 0-2 linear, 3-5 angular.
+  /// `setMotor(axis, target, stiffness, damping, hasMaxForce, maxForce)`
+  /// (`RapierConstraintHandle.java:30-33`): a PD motor on [axis], where 0-2 are
+  /// linear and 3-5 angular ([ConstraintJointAxis]).
+  ///
+  /// Rapier takes a spring constant `k` [N/m | Nm/rad] and a damping
+  /// coefficient `c` [N·s/m | Nm·s/rad]; Jolt's spring settings take a
+  /// frequency [Hz] and a damping *ratio* (`ESpringMode::FrequencyAndDamping`,
+  /// `jolt_abi.cpp:569-575`). The gains are converted through the joint's
+  /// effective mass for the axis, `ω = √(k/m)`, `f = ω/2π`,
+  /// `ζ = c / (2√(km))`, so a Java gain behaves the same here.
+  @override
   void setMotor(
     int axis,
     double target,
     double stiffness,
-    double damping, {
-    double? maxForce,
-  }) {
+    double damping,
+    bool hasMaxForce,
+    double maxForce,
+  ) {
     _pipeline._requireWorld();
+    final (frequency, ratio) = _springTerms(axis, stiffness, damping);
     _pipeline.abi.jointSetMotor(
       _pipeline._world,
       handle,
       axis,
       target,
-      stiffness,
-      damping,
-      maxForce != null,
-      maxForce ?? 0.0,
+      frequency,
+      ratio,
+      hasMaxForce,
+      maxForce,
     );
   }
 
-  /// `setConstraintLimit` (`joints.rs:163-205`).
+  /// Converts Rapier's `(stiffness, damping)` into Jolt's
+  /// `(frequency, damping ratio)`.
+  (double, double) _springTerms(int axis, double stiffness, double damping) {
+    if (stiffness <= 0.0) {
+      // No spring: the ABI substitutes its 550 Hz default for a non-positive
+      // frequency (`springOf`, `jolt_abi.cpp:569-575`), so a zero gain has to
+      // stay tiny rather than zero.
+      return (1.0e-4, 0.0);
+    }
+
+    final effective = axis < 3
+        ? _pipeline.reducedMass(bodyA, bodyB)
+        : _pipeline.reducedInertia(bodyA, bodyB, axis - 3);
+    if (!(effective > 0.0) || !effective.isFinite) {
+      // A static/static joint or a body without mass data: the ABI's own units
+      // are the best available answer.
+      return (stiffness, damping);
+    }
+
+    final frequency = math.sqrt(stiffness / effective) / (2 * math.pi);
+    final ratio = damping / (2 * math.sqrt(stiffness * effective));
+    return (frequency, ratio);
+  }
+
+  /// `setLimit(axis, min, max)` (`joints.rs:163-205`).
   void setLimit(int axis, double min, double max) {
     _pipeline._requireWorld();
     _pipeline.abi.jointSetLimit(_pipeline._world, handle, axis, min, max);
   }
 
-  /// `lockConstraintAxes` (`joints.rs:208-240`).
+  /// `lockAxes(axes)` (`joints.rs:208-240`): a mask of [ConstraintJointAxis]
+  /// bits.
   void lockAxes(int mask) {
     _pipeline._requireWorld();
     _pipeline.abi.jointLockAxes(_pipeline._world, handle, mask);
   }
 
-  /// `setConstraintContactsEnabled` (`joints.rs:274-300`).
+  /// `setContactsEnabled(enabled)` (`joints.rs:274-300`).
+  @override
   void setContactsEnabled(bool enabled) {
     _pipeline._requireWorld();
     _pipeline.abi.jointSetContactsEnabled(_pipeline._world, handle, enabled);
   }
 
-  /// `getConstraintImpulses` (`joints.rs:238-272`): six values, linear then
-  /// angular.
-  List<double> impulses() {
+  /// `getJointImpulses(linearImpulseDest, angularImpulseDest)`
+  /// (`joints.rs:238-272`): the solver's total lambda, linear then angular.
+  @override
+  void getJointImpulses(Vector3d linearImpulseDest, Vector3d angularImpulseDest) {
     _pipeline._requireWorld();
-    final pointer = _pipeline._vecPtr;
+    final pointer = _pipeline._impulsePtr;
     _pipeline.abi.jointGetImpulses(_pipeline._world, handle, pointer);
-    return [
-      for (var i = 0; i < 6; i++)
-        _pipeline.memory.loadFloat32(pointer + i * 4),
-    ];
+    final memory = _pipeline.memory;
+    linearImpulseDest.set(
+      memory.loadFloat32(pointer),
+      memory.loadFloat32(pointer + 4),
+      memory.loadFloat32(pointer + 8),
+    );
+    angularImpulseDest.set(
+      memory.loadFloat32(pointer + 12),
+      memory.loadFloat32(pointer + 16),
+      memory.loadFloat32(pointer + 20),
+    );
   }
 
-  /// `removeConstraint` (`joints.rs:302-320`).
-  void destroy() {
+  /// `remove()` (`joints.rs:302-320`).
+  @override
+  void remove() {
     if (_pipeline._world == 0) {
       return;
     }
     _pipeline.abi.jointDestroy(_pipeline._world, handle);
   }
+}
+
+/// `GenericConstraintHandle`: the six-DOF view of a [JoltJointHandle].
+final class JoltGenericJointHandle extends JoltJointHandle implements GenericConstraintHandle {
+  JoltGenericJointHandle(super.pipeline, super.handle, [super.bodyA, super.bodyB]);
 }
 
 /// A sub-level's body.
@@ -948,6 +1155,13 @@ final class _SubLevelBody implements RigidBodyHandle {
 
   /// The tracked center of mass, in plot coordinates.
   final Vector3d centerOfMass = Vector3d();
+
+  /// The mass uploaded by [JoltPhysicsPipeline.onStatsChanged] [kg].
+  double mass = 0.0;
+
+  /// The inertia tensor uploaded by [JoltPhysicsPipeline.onStatsChanged], in
+  /// the body's local frame [kg·m²].
+  final Matrix3d inertiaTensor = Matrix3d.identity();
 
   /// The blocks of this sub-level's plot sections.
   final BlockSectionStore blocks = BlockSectionStore();
@@ -1024,9 +1238,27 @@ final class JoltBoxBody implements BoxHandle, RigidBodyHandle {
   final int handle;
   final int runtimeId;
 
+  /// The box's mass [kg] (`BoxPhysicsObject.getMass()`).
+  final double mass;
+
+  /// The inertia tensor of a solid cuboid about its centre
+  /// `m/3·(hᵢ² + hⱼ²)` on the diagonal [kg·m²].
+  final Matrix3d inertiaTensor;
+
   bool removed = false;
 
-  JoltBoxBody(this._pipeline, this.handle, this.runtimeId);
+  JoltBoxBody(this._pipeline, this.handle, this.runtimeId, this.mass, Vector3d halfExtents)
+    : inertiaTensor = Matrix3d(
+        mass / 3.0 * (halfExtents.y * halfExtents.y + halfExtents.z * halfExtents.z),
+        0.0,
+        0.0,
+        0.0,
+        mass / 3.0 * (halfExtents.x * halfExtents.x + halfExtents.z * halfExtents.z),
+        0.0,
+        0.0,
+        0.0,
+        mass / 3.0 * (halfExtents.x * halfExtents.x + halfExtents.y * halfExtents.y),
+      );
 
   void markRemoved() => removed = true;
 

@@ -5,7 +5,9 @@ import 'dart:math' as math;
 import 'package:aeronautics/aeronautics.dart';
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Axis, Direction;
-import 'package:sable/sable.dart' show AssemblyTransform, Rotation, SableLevel, Vector3d;
+import 'package:sable/sable.dart'
+    show AssemblyTransform, BoundingBox3d, Pose3dc, Rotation, SableLevel, Vector3d;
+import 'package:simulated/simulated.dart' show SimAssemblyEvents;
 import 'package:test/test.dart';
 
 /// A world made of a map of block keys.
@@ -118,6 +120,75 @@ final class TestHeater with BlockEntityLiftingGasProvider {
 
   @override
   void doRaycast() {}
+}
+
+/// A propeller with fixed numbers.
+final class FakePropeller implements PropellerActorView {
+  FakePropeller({required this.thrust, required this.airflow, required this.airPressure});
+
+  @override
+  final double thrust;
+
+  @override
+  final double airflow;
+
+  @override
+  final double airPressure;
+
+  @override
+  Direction get blockDirection => Direction.up;
+
+  @override
+  (int, int, int) get blockPos => (0, 0, 0);
+
+  @override
+  final Vector3d thrustDirection = Vector3d(0, 1, 0);
+}
+
+/// An entity the push may move.
+final class FakeTarget implements PropellerPushTarget {
+  FakeTarget(this.center);
+
+  @override
+  Vector3d center;
+
+  Vector3d motion = Vector3d();
+
+  bool sneaking = false;
+  bool ignored = false;
+  bool fell = false;
+
+  @override
+  Vector3d get deltaMovement => motion;
+
+  @override
+  bool get isIgnored => ignored;
+
+  @override
+  bool get isShiftKeyDown => sneaking;
+
+  @override
+  void setDeltaMovement(Vector3d value) => motion = value;
+
+  @override
+  void resetFallDistance() => fell = true;
+}
+
+/// A push world holding one target.
+final class FakePushWorld implements PropellerPushWorld {
+  FakePushWorld(this.target, {this.blocked = false});
+
+  final FakeTarget target;
+  final bool blocked;
+
+  @override
+  Pose3dc? get propellerSubLevelPose => null;
+
+  @override
+  Iterable<PropellerPushTarget> entitiesIn(BoundingBox3d box) => [target];
+
+  @override
+  bool segmentBlocked(Vector3d from, Vector3d to) => blocked;
 }
 
 /// The envelope keys the tests dye with.
@@ -444,12 +515,68 @@ void main() {
       expect(balloon.heaters, isEmpty);
     });
 
-    test('the bridge is idempotent and forgets its worlds on reset', () {
+    test('install registers a world once and reset forgets it', () {
       final world = TestBalloonWorld();
+      addTearDown(SimulatedBridge.reset);
+
       SimulatedBridge.install(world);
       SimulatedBridge.install(world);
+
+      expect(SimulatedBridge.worldById(world.id), same(world));
+      expect(SimulatedBridge.worldById('minecraft:the_nether'), isNull);
+
       SimulatedBridge.reset();
+      expect(SimulatedBridge.worldById(world.id), isNull);
+
+      // A second reset is a no-op, and a later install works again.
       SimulatedBridge.reset();
+      SimulatedBridge.install(world);
+      expect(SimulatedBridge.worldById(world.id), same(world));
+    });
+
+    test('a disassembly notification re-checks the enclosure of the balloons', () {
+      // The balloon map is keyed by world id, so this test uses the same map the
+      // bridge resolves through `BalloonMap.of`.
+      final world = TestBalloonWorld();
+      addTearDown(() {
+        SimulatedBridge.reset();
+        BalloonMap.clear();
+      });
+
+      world.shell((0, 0, 0), (4, 4, 4), 'aeronautics:white_envelope');
+      final heater = TestHeater(world, (2, 1, 2), (2, 2, 2));
+      final balloon = BalloonMap.attemptBuildBalloon(heater, (2, 2, 2))! as ServerBalloon;
+      BalloonMap.of(world).addBalloon(balloon);
+      SimulatedBridge.install(world);
+
+      expect(balloon.isLeaking, isFalse);
+
+      // The envelope is broken in the world without telling the balloon: it
+      // still believes it is sealed.
+      world.blocks.remove((2, 4, 2));
+      expect(balloon.isLeaking, isFalse);
+
+      // The sub-level is placed back: the balloon rebuilds and finds the hole.
+      SimAssemblyEvents.notifyDisassembled(world.id, (2, 2, 2), Object());
+
+      expect(balloon.isLeaking, isTrue);
+    });
+
+    test('an assembled balloon moves by the anchor-to-plot offset', () {
+      final world = TestBalloonWorld();
+      world.shell((0, 0, 0), (4, 4, 4), 'aeronautics:white_envelope');
+
+      final heater = TestHeater(world, (2, 1, 2), (2, 2, 2));
+      final balloon = BalloonMap.attemptBuildBalloon(heater, (2, 2, 2))!;
+      BalloonMap(world).addBalloon(balloon);
+
+      // `AssemblyTransform.applyBlock` works on block centres, so a controller at
+      // (2, 2, 2) moved by the transform of anchor (2, 2, 2) -> plot (10, 2, 2)
+      // lands on (10, 2, 2).
+      balloon.setAssembling(
+        AssemblyTransform((2, 2, 2), (10, 2, 2), 0, Rotation.none, world.level),
+      );
+      expect(balloon.controllerPos, (10, 2, 2));
     });
   });
 
@@ -574,6 +701,153 @@ void main() {
 
       expect(logic.thrustDir.y, closeTo(math.cos(math.pi / 4), 1e-9));
       expect(logic.thrustDir.length, closeTo(1, 1e-9));
+    });
+  });
+
+  group('propeller push', () {
+    test('an entity in front of an active propeller is pushed along it', () {
+      final propeller = FakePropeller(thrust: 10, airflow: 20, airPressure: 1);
+      final behaviour = PropellerActorBehaviour(propeller)
+        ..addSimpleLayer(0, 1)
+        ..updatedParticleAmount = 0;
+
+      final target = FakeTarget(Vector3d(0.5, 3.5, 0.5));
+      final world = FakePushWorld(target);
+
+      behaviour.pushEntities(world);
+
+      // The push is along the propeller's thrust direction (+Y here), and it
+      // accelerates the entity away from the propeller.
+      expect(target.motion.y, greaterThan(0));
+      expect(target.motion.x, closeTo(0, 1e-9));
+      expect(target.motion.z, closeTo(0, 1e-9));
+      expect(target.fell, isTrue);
+    });
+
+    test('an entity behind the propeller is not pushed', () {
+      final propeller = FakePropeller(thrust: 10, airflow: 20, airPressure: 1);
+      final behaviour = PropellerActorBehaviour(propeller)..addSimpleLayer(0, 1);
+
+      final target = FakeTarget(Vector3d(0.5, -2.5, 0.5));
+      behaviour.pushEntities(FakePushWorld(target));
+
+      expect(target.motion.y, 0);
+      expect(target.fell, isFalse);
+    });
+
+    test('an entity outside the disc radius is not pushed', () {
+      final propeller = FakePropeller(thrust: 10, airflow: 20, airPressure: 1);
+      final behaviour = PropellerActorBehaviour(propeller)..addSimpleLayer(0, 1);
+
+      final target = FakeTarget(Vector3d(9.5, 3.5, 0.5));
+      behaviour.pushEntities(FakePushWorld(target));
+
+      expect(target.motion.y, 0);
+    });
+
+    test('an occluded entity is not pushed', () {
+      final propeller = FakePropeller(thrust: 10, airflow: 20, airPressure: 1);
+      final behaviour = PropellerActorBehaviour(propeller)..addSimpleLayer(0, 1);
+
+      final target = FakeTarget(Vector3d(0.5, 3.5, 0.5));
+      behaviour.pushEntities(FakePushWorld(target, blocked: true));
+
+      expect(target.motion.y, 0);
+      expect(target.fell, isFalse);
+    });
+
+    test('sneaking cuts the push to an eighth', () {
+      final propeller = FakePropeller(thrust: 10, airflow: 20, airPressure: 1);
+
+      final standing = FakeTarget(Vector3d(0.5, 3.5, 0.5));
+      PropellerActorBehaviour(propeller)
+        ..addSimpleLayer(0, 1)
+        ..pushEntities(FakePushWorld(standing));
+
+      final sneaking = FakeTarget(Vector3d(0.5, 3.5, 0.5))..sneaking = true;
+      PropellerActorBehaviour(propeller)
+        ..addSimpleLayer(0, 1)
+        ..pushEntities(FakePushWorld(sneaking));
+
+      expect(sneaking.motion.y, closeTo(standing.motion.y / 8, 1e-9));
+    });
+
+    test('an inactive propeller builds no discs and pushes nothing', () {
+      final propeller = FakePropeller(thrust: 0, airflow: 0, airPressure: 1);
+      final behaviour = PropellerActorBehaviour(propeller);
+
+      final target = FakeTarget(Vector3d(0.5, 3.5, 0.5));
+      behaviour.pushEntities(FakePushWorld(target));
+
+      expect(target.motion.y, 0);
+    });
+
+    test('a contraption or creative-flying entity is ignored', () {
+      final propeller = FakePropeller(thrust: 10, airflow: 20, airPressure: 1);
+      final behaviour = PropellerActorBehaviour(propeller)..addSimpleLayer(0, 1);
+
+      final target = FakeTarget(Vector3d(0.5, 3.5, 0.5))..ignored = true;
+      behaviour.pushEntities(FakePushWorld(target));
+
+      expect(target.motion.y, 0);
+    });
+
+    test('the discs sort by offset and the radius follows the widest', () {
+      final behaviour = PropellerActorBehaviour(
+        FakePropeller(thrust: 0, airflow: 0, airPressure: 1),
+      )
+        ..addSimpleLayer(0.5, 1)
+        ..addSimpleLayer(0, 2)
+        ..addLayer(const PropellerLayer(0.25, 0.5, 3));
+
+      expect(behaviour.layers.map((l) => l.offset), [0, 0.25, 0.5]);
+      expect(behaviour.radius, 3);
+    });
+  });
+
+  group('occlusion walk', () {
+    test('an empty segment reaches its end', () {
+      final hit = segmentBlocked(
+        Vector3d(0.5, 0.5, 0.5),
+        Vector3d(0.5, 0.5, 9.5),
+        (x, y, z) => false,
+      );
+      expect(hit, isFalse);
+    });
+
+    test('a block between the two points blocks the segment', () {
+      final walls = <(int, int, int)>{(0, 0, 5)};
+      final hit = segmentBlocked(
+        Vector3d(0.5, 0.5, 0.5),
+        Vector3d(0.5, 0.5, 9.5),
+        (x, y, z) => walls.contains((x, y, z)),
+      );
+      expect(hit, isTrue);
+    });
+
+    test('a block behind the target does not block it', () {
+      final walls = <(int, int, int)>{(0, 0, 12)};
+      final hit = segmentBlocked(
+        Vector3d(0.5, 0.5, 0.5),
+        Vector3d(0.5, 0.5, 9.5),
+        (x, y, z) => walls.contains((x, y, z)),
+      );
+      expect(hit, isFalse);
+    });
+
+    test('the walk follows a diagonal segment through its voxels', () {
+      final visited = <(int, int, int)>[];
+      segmentBlocked(
+        Vector3d(0.5, 0.5, 0.5),
+        Vector3d(4.5, 0.5, 0.5),
+        (x, y, z) {
+          visited.add((x, y, z));
+          return false;
+        },
+      );
+      expect(visited, containsAll(const [(1, 0, 0), (2, 0, 0), (3, 0, 0), (4, 0, 0)]));
+      // The voxel the ray starts in is not tested.
+      expect(visited, isNot(contains((0, 0, 0))));
     });
   });
 

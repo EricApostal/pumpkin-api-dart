@@ -223,6 +223,15 @@ final class ContraptionMassTracker implements MassData {
   double getInverseMass() => _inverseMass;
 
   @override
+  double getMass() => mass;
+
+  @override
+  Matrix3d getInertiaTensor() => inertiaTensor;
+
+  @override
+  Matrix3d getInverseInertiaTensor() => inverseInertiaTensor;
+
+  @override
   bool isInvalid() => _centerOfMass == null;
 
   @override

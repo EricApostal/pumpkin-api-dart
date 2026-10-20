@@ -72,16 +72,47 @@ final class HostKineticLevel extends KineticLevel {
     return be is KineticNode ? be as KineticNode : null;
   }
 
+  // A propagation pass reads each position of a network several times: every node asks for its
+  // six neighbours, which are the other nodes' own positions, and `_propagateNewSource` walks the
+  // whole connected tree from each side. Each read is a wasm call, so a pass (`beginBatch`) serves
+  // them from these caches instead. Nothing changes a block state inside a pass: `destroyBlock` is
+  // async and the pass returns right after it.
+  int _batchDepth = 0;
+  final Map<int, int> _batchStateIds = {};
+  final Map<int, bool> _batchLoaded = {};
+
+  @override
+  void beginBatch() => _batchDepth++;
+
+  @override
+  void endBatch() {
+    if (_batchDepth == 0) return;
+    if (--_batchDepth == 0) {
+      _batchStateIds.clear();
+      _batchLoaded.clear();
+    }
+  }
+
   @override
   KState stateAt(KPos pos) {
     final w = world;
     if (w == null) return KState.air;
-    if (!Perf.enabled) {
-      return runtime.states.decode(w.getBlockStateId(pos: toBlockPos(pos)));
+    if (_batchDepth == 0) {
+      return runtime.states.decode(_readStateId(w, pos));
     }
+    final key = pos.packed;
+    final cached = _batchStateIds[key];
+    if (cached != null) return runtime.states.decode(cached);
+    final id = _readStateId(w, pos);
+    _batchStateIds[key] = id;
+    return runtime.states.decode(id);
+  }
+
+  int _readStateId(World w, KPos pos) {
+    if (!Perf.enabled) return w.getBlockStateId(pos: toBlockPos(pos));
     final watch = Stopwatch()..start();
     try {
-      return runtime.states.decode(w.getBlockStateId(pos: toBlockPos(pos)));
+      return w.getBlockStateId(pos: toBlockPos(pos));
     } finally {
       Perf.record('host.getBlockStateId', watch.elapsedMicroseconds);
     }
@@ -91,6 +122,16 @@ final class HostKineticLevel extends KineticLevel {
   bool isLoaded(KPos pos) {
     final w = world;
     if (w == null) return false;
+    if (_batchDepth == 0) return _readLoaded(w, pos);
+    final key = pos.packed;
+    final cached = _batchLoaded[key];
+    if (cached != null) return cached;
+    final loaded = _readLoaded(w, pos);
+    _batchLoaded[key] = loaded;
+    return loaded;
+  }
+
+  bool _readLoaded(World w, KPos pos) {
     if (!Perf.enabled) return w.isLoaded(pos: toBlockPos(pos));
     final watch = Stopwatch()..start();
     try {

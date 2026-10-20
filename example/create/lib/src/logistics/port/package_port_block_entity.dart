@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/equipment.dart' show addClipboardAddress;
 import '../../api/util.dart' hide pos;
 import '../../conveyance/chain/chain_conveyor_block_entity.dart';
 import '../../conveyance/chain/chain_conveyor_logic.dart';
@@ -210,6 +211,33 @@ abstract class PackagePortBlockEntity extends LgBlockEntity
   /// false when the click is passed on to the held item.
   Future<bool> use(Player player) async {
     if (player.asEntity().isSneaking()) return false;
+
+    // `PackagePortBlockEntity.use` (`PackagePortBlockEntity.java:148-176`): a clipboard in the main
+    // hand gets the port's address as a `#address` entry instead of opening the screen.
+    final inventory = player.getInventory();
+    try {
+      final held = inventory.getItemInHand(hand: Hand.right);
+      if (held != null) {
+        final stack = await Lg.i.read(held);
+        if (stack.key == 'create:clipboard') {
+          final address = addressFilter;
+          if (address.trim().isNotEmpty &&
+              addClipboardAddress(held, address)) {
+            await inventory.setItemInHand(hand: Hand.right, item: held);
+            player.showActionbar(
+              text: TextComponent.translate(
+                key: 'create.clipboard.address_added',
+                with_: [TextComponent.text(plain: address)],
+              ),
+            );
+          }
+          return true;
+        }
+      }
+    } finally {
+      inventory.dispose();
+    }
+
     if (!await PackagePortMenus.open(player, this)) return false;
     onOpenedManually();
     return true;
@@ -319,17 +347,43 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   /// `PackagePortTarget.ChainConveyorFrogportTarget.register`.
   @override
   void registerTarget() {
-    final t = target;
+    var t = target;
     if (t == null || t.type != PackagePortTargetType.chainConveyor) return;
-    final chain = _chainConveyor;
+    var chain = _chainConveyor;
     if (chain == null) return;
-    final filter = filterString;
-    final offset = -t.relativePos;
-    if (filter == null) {
-      chain.removePort(offset);
+
+    // Jump to opposite chain if motion reversed (`PackagePortTarget.java:132-149`). The target
+    // moves to the conveyor on the other end of the connection, mirrored along the chain.
+    final connection = t.connection;
+    if (connection != null && (chain.speed < 0) != t.flipped) {
+      deregisterTarget();
+      final otherPos = pos.toPos() + t.relativePos + connection;
+      final other = store.typed<ChainConveyorBlockEntity>(
+        worldId,
+        otherPos.toBlockPos(),
+      );
+      if (other == null) return;
+      chain.prepareStats();
+      final stats = chain.connectionStats?[connection];
+      t = t.copyWith(
+        relativePos: otherPos - pos.toPos(),
+        chainPos: stats == null ? t.chainPos : stats.chainLength - t.chainPos,
+        connection: -connection,
+        flipped: !t.flipped,
+      );
+      target = t;
+      chain = other;
+      sendData();
+    }
+
+    final flippedConnection = t.connection;
+    if (flippedConnection != null &&
+        !chain.connections.contains(flippedConnection)) {
       return;
     }
-    chain.receivePortInfo(offset, t.chainPos, t.connection, filter);
+    final filter = filterString;
+    if (filter == null) return;
+    chain.receivePortInfo(-t.relativePos, t.chainPos, flippedConnection, filter);
   }
 
   @override

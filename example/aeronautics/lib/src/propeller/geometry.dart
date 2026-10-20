@@ -74,3 +74,71 @@ Direction hingeDirection(Axis horizontalAxis) => switch (horizontalAxis) {
   Axis.z => Direction.west,
   Axis.y => Direction.north,
 };
+
+/// Whether a block along the segment [from]–[to] satisfies [blockedAt].
+///
+/// `Level.clip` in Java; the walk is Amanatides–Woo, so it visits exactly the
+/// voxels the segment crosses and stops at the first one [blockedAt] accepts.
+/// The starting voxel is not tested (the ray starts at the entity, which is
+/// inside its own block).
+bool segmentBlocked(
+  Vector3d from,
+  Vector3d to,
+  bool Function(int x, int y, int z) blockedAt,
+) {
+  final dx = to.x - from.x;
+  final dy = to.y - from.y;
+  final dz = to.z - from.z;
+  if (dx == 0 && dy == 0 && dz == 0) return false;
+
+  var x = from.x.floor();
+  var y = from.y.floor();
+  var z = from.z.floor();
+
+  final stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
+  final stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
+  final stepZ = dz > 0 ? 1 : (dz < 0 ? -1 : 0);
+
+  double tMaxX, tMaxY, tMaxZ, tDeltaX, tDeltaY, tDeltaZ;
+  if (stepX == 0) {
+    tMaxX = double.infinity;
+    tDeltaX = double.infinity;
+  } else {
+    tMaxX = ((x + (stepX > 0 ? 1 : 0)) - from.x) / dx;
+    tDeltaX = (1 / dx).abs();
+  }
+  if (stepY == 0) {
+    tMaxY = double.infinity;
+    tDeltaY = double.infinity;
+  } else {
+    tMaxY = ((y + (stepY > 0 ? 1 : 0)) - from.y) / dy;
+    tDeltaY = (1 / dy).abs();
+  }
+  if (stepZ == 0) {
+    tMaxZ = double.infinity;
+    tDeltaZ = double.infinity;
+  } else {
+    tMaxZ = ((z + (stepZ > 0 ? 1 : 0)) - from.z) / dz;
+    tDeltaZ = (1 / dz).abs();
+  }
+
+  while (true) {
+    final t = tMaxX < tMaxY
+        ? (tMaxX < tMaxZ ? tMaxX : tMaxZ)
+        : (tMaxY < tMaxZ ? tMaxY : tMaxZ);
+    if (t > 1) return false;
+
+    if (tMaxX <= tMaxY && tMaxX <= tMaxZ) {
+      x += stepX;
+      tMaxX += tDeltaX;
+    } else if (tMaxY <= tMaxZ) {
+      y += stepY;
+      tMaxY += tDeltaY;
+    } else {
+      z += stepZ;
+      tMaxZ += tDeltaZ;
+    }
+
+    if (blockedAt(x, y, z)) return true;
+  }
+}

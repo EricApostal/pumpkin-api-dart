@@ -69,10 +69,10 @@ void registerFunnels(CreateRegistry registry) {
     BlockEntityTypeSpec(
       key: 'create:funnel',
       validBlocks: const [
-        'andesite_funnel',
-        'brass_funnel',
-        'andesite_belt_funnel',
-        'brass_belt_funnel',
+        'create:andesite_funnel',
+        'create:brass_funnel',
+        'create:andesite_belt_funnel',
+        'create:brass_belt_funnel',
       ],
       create: FunnelBlockEntity.new,
       tickInterval: 1,

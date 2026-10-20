@@ -478,6 +478,12 @@ class Contraption {
       frontier.add(posDown);
 
     // Slime blocks and super glue drag adjacent blocks if possible.
+    //
+    // The glue boxes that can hold this block to a neighbour are exactly those that contain the
+    // block's centre, so one query for the block covers all six faces: `_isGlued` used to ask the
+    // host for the entities of every face separately (six `getEntitiesInBox` calls per captured
+    // block, each a wasm call that scans the world's entities).
+    final glues = level.gluesIn(Aabb.ofBlock(pos).inflate(0.01));
     for (final offset in Direction.values) {
       final offsetPos = pos.relative(offset);
       final blockState = level.stateAt(offsetPos);
@@ -489,7 +495,7 @@ class Contraption {
       }
 
       final wasVisited = visited.contains(offsetPos);
-      final faceHasGlue = _isGlued(level, pos, offset);
+      final faceHasGlue = _glueBetween(glues, pos, offsetPos);
       final blockAttachedTowardsFace =
           BlockMovementChecks.isBlockAttachedTowards(
             blockState,
@@ -903,11 +909,10 @@ class Contraption {
     capturedMultiblocks.putIfAbsent(controllerPos, () => []).add(info);
   }
 
-  bool _isGlued(ContraptionLevel level, Pos pos, Direction offset) {
-    final target = pos.relative(offset);
-    final area = Aabb.ofBlock(pos).minmax(Aabb.ofBlock(target)).inflate(0.01);
-    for (final glue in level.gluesIn(area)) {
-      // `SuperGlueEntity.isGlued`: both the block and its neighbour have to be inside the box.
+  /// `SuperGlueEntity.isGlued`: whether one of [glues] (the boxes that intersect the block at
+  /// [pos]) holds both [pos] and [target] inside it. The box is remembered for removal.
+  bool _glueBetween(List<GlueRef> glues, Pos pos, Pos target) {
+    for (final glue in glues) {
       if (!glue.contains(pos) || !glue.contains(target)) continue;
       _glueToRemove.add(glue);
       return true;

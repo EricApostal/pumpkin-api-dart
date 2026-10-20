@@ -1,5 +1,6 @@
 // `FactoryPanelBlockEntity`: the four gauges of a factory panel block.
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
@@ -69,7 +70,11 @@ class FactoryPanelBlockEntity extends LgBlockEntity {
     if (tag.containsKey('Restocker')) {
       restocker = tag.getBool('Restocker') ?? false;
     }
-    if (clientPacket && tag.containsKey('Redraw')) redraw = true;
+    if (clientPacket && tag.containsKey('Redraw')) {
+      redraw = true;
+      lastShape = null;
+      world?.invalidateShape(pos);
+    }
   }
 
   Lvl? get _lvl => world == null ? null : Lvl(world!);
@@ -141,6 +146,9 @@ class FactoryPanelBlockEntity extends LgBlockEntity {
     behaviour.enable();
     if (frequency != null) behaviour.setNetwork(frequency);
     redraw = true;
+    lastShape = null;
+    world?.invalidateShape(pos);
+    if (activePanels() > 1) _playSound(place: true);
     sendData();
     return true;
   }
@@ -151,8 +159,129 @@ class FactoryPanelBlockEntity extends LgBlockEntity {
     if (behaviour == null || !behaviour.isActive) return false;
     behaviour.disable();
     redraw = true;
+    lastShape = null;
+    world?.invalidateShape(pos);
+    if (activePanels() > 0) _playSound(place: false);
     sendData();
     return true;
+  }
+
+  /// `getBlockState().getSoundType()` of the gauge: the place or break sound of copper.
+  void _playSound({required bool place}) {
+    final w = world;
+    if (w == null) return;
+    w.playSound(
+      sound: place ? Sound.blockCopperPlace : Sound.blockCopperBreak,
+      category: SoundCategory.blocks,
+      pos: pos.toPos().center,
+      // `(getVolume() + 1) / 2` and `getPitch() * 0.8` of the sound type.
+      volume: 1,
+      pitch: 0.8,
+    );
+  }
+
+  /// `FactoryPanelBlockEntity.getShape()`: the union of the boxes of the active gauges.
+  ///
+  /// Each gauge is a `1/16` box around its slot position, inflated by `1/16` and by `3/16` along
+  /// the plane of the block's connected direction. The result is cached in [lastShape] until a
+  /// gauge is added or removed, like Java.
+  List<BlockBox> getShape() {
+    final cached = lastShape;
+    if (cached != null) return cached;
+
+    final props = _lvl?.info(_pos)?.properties ?? const <String, String>{};
+    final xRot = _radToDeg(_xRot(props)) + 90;
+    final yRot = _radToDeg(_yRot(props));
+    final plane = _axisAlignedPlaneOf(connectedDirection);
+
+    final boxes = <BlockBox>[];
+    for (final behaviour in panels.values) {
+      if (!behaviour.isActive) continue;
+      var vec = (
+        0.25 + behaviour.slot.xOffset * 0.5,
+        1 / 16,
+        0.25 + behaviour.slot.yOffset * 0.5,
+      );
+      vec = _rotateCenteredDeg(vec, 180, Axis.y);
+      vec = _rotateCenteredDeg(vec, xRot, Axis.x);
+      vec = _rotateCenteredDeg(vec, yRot, Axis.y);
+      final inflate = 1 / 16;
+      final dx = inflate + plane.$1 * 3 / 16;
+      final dy = inflate + plane.$2 * 3 / 16;
+      final dz = inflate + plane.$3 * 3 / 16;
+      boxes.add(
+        BlockBox(
+          vec.$1 - dx,
+          vec.$2 - dy,
+          vec.$3 - dz,
+          vec.$1 + dx,
+          vec.$2 + dy,
+          vec.$3 + dz,
+        ),
+      );
+    }
+    return lastShape = boxes;
+  }
+
+  /// The cached shape (`lastShape`), `null` until [getShape] runs or a gauge changes.
+  List<BlockBox>? lastShape;
+
+  /// `FactoryPanelBlock.getXRot(state)`.
+  static double _xRot(Map<String, String> props) {
+    final face = props['face'] ?? 'floor';
+    return face == 'ceiling'
+        ? math.pi / 2
+        : (face == 'floor' ? -math.pi / 2 : 0.0);
+  }
+
+  /// `FactoryPanelBlock.getYRot(state)`.
+  static double _yRot(Map<String, String> props) {
+    final face = props['face'] ?? 'floor';
+    final facing =
+        Direction.byName(props['facing'] ?? 'north') ?? Direction.north;
+    return (face == 'ceiling' ? math.pi : 0.0) + _rad(
+      _horizontalAngle(facing),
+    );
+  }
+
+  static double _rad(double degrees) => degrees == 0 ? 0 : degrees / 180 * math.pi;
+
+  static double _radToDeg(double radians) => radians == 0 ? 0 : radians * 180 / math.pi;
+
+  /// `AngleHelper.horizontalAngle`.
+  static double _horizontalAngle(Direction facing) {
+    if (facing.axis.isVertical) return 0;
+    var angle = facing.toYRot;
+    if (facing.axis == Axis.x) angle = -angle;
+    return angle;
+  }
+
+  /// `VecHelper.axisAlingedPlaneOf(Direction)`.
+  static (double, double, double) _axisAlignedPlaneOf(Direction face) {
+    final normal = face.normal;
+    return (
+      1 - normal.$1.abs().toDouble(),
+      1 - normal.$2.abs().toDouble(),
+      1 - normal.$3.abs().toDouble(),
+    );
+  }
+
+  /// `VecHelper.rotateCentered(vec, deg, axis)`.
+  static (double, double, double) _rotateCenteredDeg(
+    (double, double, double) vec,
+    double deg,
+    Axis axis,
+  ) {
+    if (deg == 0) return vec;
+    final angle = deg / 180 * math.pi;
+    final sin = math.sin(angle), cos = math.cos(angle);
+    final x = vec.$1 - 0.5, y = vec.$2 - 0.5, z = vec.$3 - 0.5;
+    final (double, double, double) r = switch (axis) {
+      Axis.x => (x, y * cos - z * sin, z * cos + y * sin),
+      Axis.y => (x * cos + z * sin, y, z * cos - x * sin),
+      Axis.z => (x * cos - y * sin, y * cos + x * sin, z),
+    };
+    return (r.$1 + 0.5, r.$2 + 0.5, r.$3 + 0.5);
   }
 
   void notifyUpdate() => sendData();

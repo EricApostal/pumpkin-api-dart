@@ -30,6 +30,7 @@ import '../config/sable_config.dart';
 import '../math/bounding_box.dart';
 import '../math/pose.dart';
 import '../math/vector.dart';
+import '../model/mass_tracker.dart';
 import '../model/server_sub_level.dart';
 import '../model/server_sub_level_container.dart';
 import '../model/sub_level.dart';
@@ -221,7 +222,15 @@ final class SubLevelPhysicsSystem with SubLevelObserver {
 
       for (final subLevel in subLevels) {
         if (subLevel.isRemoved()) continue;
-        subLevel.updateMergedMassData(getPartialPhysicsTick());
+        final changed = subLevel.updateMergedMassData(getPartialPhysicsTick());
+        if (!changed) continue;
+        final tracker = subLevel.massTracker;
+        if (tracker != null && !tracker.isInvalid()) {
+          // Java's `MergedMassTracker.uploadData` moves the rotation point and
+          // pushes the new properties to the pipeline (`MergedMassTracker.java:105-126`).
+          (subLevel.logicalPose as Pose3d).rotationPoint().setFrom(tracker.getCenterOfMass());
+          pipeline.onStatsChanged(subLevel);
+        }
       }
 
       for (final subLevel in subLevels) {
@@ -489,11 +498,19 @@ final class SubLevelPhysicsSystem with SubLevelObserver {
     final changed = mass != oldMass || (newState != oldState && (oldMass != 0.0 || mass != 0.0)) || oldInertia != inertia;
     if (!changed) return;
 
-    final tracker = subLevel.massTracker;
-    if (tracker is MutableMassTracker) {
-      final mutable = tracker as MutableMassTracker;
-      if (mass != 0.0) mutable.addBlockMass(newState, (x, y, z), mass, inertia);
-      if (oldMass != 0.0) mutable.addBlockMass(oldState, (x, y, z), -oldMass, oldInertia);
+    final MassData? tracker = subLevel.massTracker;
+    // Java applies block deltas to the self tracker, never the merged one
+    // (`SubLevelPhysicsSystem.java:527-530`).
+    MutableMassTracker? self;
+    if (tracker is MergedMassTracker) {
+      self = tracker.selfTracker;
+    } else {
+      final Object? candidate = tracker;
+      if (candidate is MutableMassTracker) self = candidate;
+    }
+    if (self != null) {
+      if (mass != 0.0) self.addBlockMass(newState, (x, y, z), mass, inertia);
+      if (oldMass != 0.0) self.addBlockMass(oldState, (x, y, z), -oldMass, oldInertia);
     }
 
     if (!subLevel.isRemoved() && (tracker?.isInvalid() ?? false)) {
@@ -509,12 +526,21 @@ final class SubLevelPhysicsSystem with SubLevelObserver {
   }
 
   /// `PhysicsBlockPropertyHelper.getMass`; overridable so the plugin can plug in
-  /// the block-property table.
-  static double Function(ServerSubLevel subLevel, String state) blockMass = (subLevel, state) => 1.0;
+  /// the block-property table. Forwarded to [MassTracker.blockMass], the one
+  /// hook the tracker and the system share.
+  static double Function(ServerSubLevel subLevel, String state) get blockMass =>
+      MassTracker.blockMass;
+
+  static set blockMass(double Function(ServerSubLevel subLevel, String state) value) =>
+      MassTracker.blockMass = value;
 
   /// `PhysicsBlockPropertyHelper.getInertia`.
-  static (double, double, double)? Function(ServerSubLevel subLevel, String state) blockInertia =
-      (subLevel, state) => null;
+  static (double, double, double)? Function(ServerSubLevel subLevel, String state)
+  get blockInertia => MassTracker.blockInertia;
+
+  static set blockInertia(
+    (double, double, double)? Function(ServerSubLevel subLevel, String state) value,
+  ) => MassTracker.blockInertia = value;
 
   static double _massOf(ServerSubLevel subLevel, String state) => blockMass(subLevel, state);
 
@@ -562,14 +588,6 @@ final class SubLevelPhysicsSystem with SubLevelObserver {
 
   @override
   String toString() => 'SubLevelPhysicsSystem[${container.level.dimensionId}, substeps=${physicsConfig.substepsPerTick}]';
-}
-
-/// A mass tracker that can take block deltas (the physics workstream's
-/// `MassTracker`). Declared here so the system can update masses without
-/// importing the pipeline package.
-abstract interface class MutableMassTracker {
-  /// `addBlockMass(level, state, pos, mass, inertia)`.
-  void addBlockMass(String state, (int, int, int) pos, double mass, (double, double, double)? inertia);
 }
 
 /// Identity adapter: arbitrary objects see an opaque system marker.

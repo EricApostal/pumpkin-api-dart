@@ -23,6 +23,15 @@ final class FakeMassData implements MassData {
   double getInverseMass() => inverseMass;
 
   @override
+  double getMass() => inverseMass == 0.0 ? 0.0 : 1.0 / inverseMass;
+
+  @override
+  Matrix3d getInertiaTensor() => Matrix3d.identity();
+
+  @override
+  Matrix3d getInverseInertiaTensor() => Matrix3d.identity();
+
+  @override
   bool isInvalid() => false;
 
   @override

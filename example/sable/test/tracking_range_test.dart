@@ -53,6 +53,7 @@ final class RecordingSink implements SablePayloadSink, SableChunkViewSender {
 }
 
 final class TestHost implements SubLevelHost {
+  @override
   final FakeChunkHost chunks;
 
   TestHost(this.chunks);
@@ -91,6 +92,15 @@ final class NullMassTracker implements MassData {
 
   @override
   double getInverseMass() => 1.0;
+
+  @override
+  double getMass() => 1.0;
+
+  @override
+  Matrix3d getInertiaTensor() => Matrix3d.identity();
+
+  @override
+  Matrix3d getInverseInertiaTensor() => Matrix3d.identity();
 
   @override
   bool isInvalid() => false;

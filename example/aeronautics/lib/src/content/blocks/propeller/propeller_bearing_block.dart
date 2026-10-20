@@ -21,6 +21,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart';
 
 import '../../../config/aero_config.dart';
+import '../../../host/host_propeller_push_world.dart';
 import '../../../host/world_balloon_world.dart';
 import '../../../propeller/propeller_actor_behaviour.dart';
 import '../../../propeller/propeller_bearing.dart';
@@ -45,7 +46,7 @@ class PropellerBearingBlockEntity extends MechanicalBearingBlockEntity
   /// The push behaviour of the sails.
   late final PropellerActorBehaviour prop = _createProp();
 
-  late final PropellerPushWorld _pushWorld = _HostPushWorld(this);
+  late final PropellerPushWorld _pushWorld = HostPropellerPushWorld(world!, blockPos);
 
   /// The contraption the discs were scanned from; the scan is redone when the
   /// bearing picks up a different one.
@@ -265,26 +266,6 @@ class PropellerBearingBlockEntity extends MechanicalBearingBlockEntity
     }
     super.disassemble();
   }
-}
-
-/// The push world of one propeller bearing.
-final class _HostPushWorld implements PropellerPushWorld {
-  final PropellerBearingBlockEntity owner;
-
-  _HostPushWorld(this.owner);
-
-  @override
-  Pose3dc? get propellerSubLevelPose {
-    final w = owner.world;
-    if (w == null) return null;
-    return SubLevelHelper.getContaining(balloonWorldOf(w).level, owner.blockPos)?.logicalPose;
-  }
-
-  @override
-  Iterable<PropellerPushTarget> entitiesIn(BoundingBox3d box) => const [];
-
-  @override
-  bool segmentBlocked(Vector3d from, Vector3d to) => false;
 }
 
 /// `PropellerBearingBlock`.

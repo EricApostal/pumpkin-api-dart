@@ -20,11 +20,13 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' as sable
     show
         BlockEntitySubLevelActor,
+        PhysicsConstraintHandle,
         Quaterniond,
         RigidBodyHandle,
         Rotation,
         ServerSubLevel,
-        SubLevel;
+        SubLevel,
+        Vector3d;
 
 import '../../../config/sim_config_service.dart';
 import '../../../host/simulated_host.dart';
@@ -32,6 +34,7 @@ import '../../../util/assembly/sim_assembly_exception.dart';
 import '../../../util/sim_assembly_events.dart';
 import '../../../util/sim_assembly_helper.dart';
 import '../../../util/host_calls.dart' show ignoredCall;
+import '../../../util/physics_constraints.dart';
 import '../../../util/sim_level_util.dart';
 import 'swivel_bearing_logic.dart';
 
@@ -66,8 +69,11 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
   /// Whether the bearing is being destroyed as part of an assembly.
   bool assembling = false;
 
-  /// Whether a hinge handle exists (the motor itself is a HOST GAP).
-  bool hasHandle = false;
+  /// The hinge between the bearing's sub-level and its plate's.
+  sable.PhysicsConstraintHandle? hinge;
+
+  /// Whether a hinge handle exists.
+  bool get hasHandle => hinge?.isValid ?? false;
 
   @override
   void tick() {
@@ -107,6 +113,9 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
       sequenced: logic.sequencedAngleLimit >= 0,
       maxSwivelRpm: config.blocks.maxSwivelBearingSpeed,
     );
+
+    // Hold the hinge at the target angle while the bearing is assembled.
+    _driveServo();
 
     super.tick();
   }
@@ -154,6 +163,8 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
     final plate = host.blockEntityAt<SwivelBearingPlateBlockEntity>(worldId, platePosition);
     plate?.setParent(this);
 
+    _attachHinge();
+
     host.playSound(worldId, pos.toPos(), 'simulated:block.physics_assembler.assemble');
     SimAssemblyEvents.notifyAssembled(worldId, pos.toPos(), result);
   }
@@ -161,6 +172,7 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
   /// `disassemble()`.
   void disassemble() {
     if (removed) return;
+    _removeHinge();
 
     final host = simulatedHost;
     final level = host.levelOf(worldId);
@@ -184,6 +196,7 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
           entities: host.entitiesOf(worldId),
           playSound: true,
         );
+        SimAssemblyEvents.notifyDisassembled(worldId, pos.toPos(), subLevel);
       }
     }
 
@@ -213,6 +226,100 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
     );
   }
 
+  /// `attachConstraints`: the hinge to the plate's sub-level.
+  ///
+  /// HOST GAP when `constraintPipelineOf` is `null`: the level has no
+  /// joint-capable physics, so the bearing assembles and tracks its angle but
+  /// cannot hold the sub-level physically.
+  void _attachHinge() {
+    final plate = platePos;
+    final level = simulatedHost.levelOf(worldId);
+    if (plate == null || level == null) return;
+
+    final pipeline = constraintPipelineOf(level);
+    if (pipeline == null) return;
+
+    final plateSubLevel = simulatedHost.containingSubLevel(worldId, plate);
+    if (plateSubLevel == null || identical(plateSubLevel, simulatedHost.containingSubLevel(worldId, pos.toPos()))) {
+      // Java refuses to hinge a sub-level to itself (`sameSubLevel`).
+      return;
+    }
+
+    _removeHinge();
+
+    final facing = state.dir('facing')?.name ?? 'up';
+    // The plate sits inside the plot, whose blocks the host cannot read back;
+    // it is placed with the bearing's facing (see `assemble`), so that is the
+    // hinge direction on both sides.
+    final plateFacing = facing;
+
+    hinge = SwivelHinge.attach(
+      pipeline,
+      containingSubLevel: simulatedHost.containingSubLevel(worldId, pos.toPos()),
+      plateSubLevel: plateSubLevel,
+      anchor: _centerOf(_relative(pos.toPos(), facing)),
+      attachPos: _centerOf(plate),
+      axis: _unit(facing),
+      plateAxis: _unit(plateFacing),
+    );
+  }
+
+  /// Attaches the hinge if the bearing is assembled and has none (a reload, or
+  /// a plate that arrived after the bearing).
+  void _attachHingeIfMissing() {
+    if (!logic.assembled || hinge != null) return;
+    _attachHinge();
+  }
+
+  /// `updateServoCoefficients()`: the motor for this tick.
+  void _driveServo() {
+    final handle = hinge;
+    if (handle == null) return;
+    if (!handle.isValid) {
+      hinge = null;
+      return;
+    }
+
+    final config = SimConfigService.instance.server.physics;
+    final plate = platePos;
+    final plateSubLevel = plate == null ? null : simulatedHost.containingSubLevel(worldId, plate);
+    final containing = simulatedHost.containingSubLevel(worldId, pos.toPos());
+
+    SwivelHinge.drive(
+      handle,
+      logic: logic,
+      partialTick: 1,
+      containingMass: containing is sable.ServerSubLevel ? containing.massTracker : null,
+      plateMass: plateSubLevel is sable.ServerSubLevel ? plateSubLevel.massTracker : null,
+      axis: _unit(facingOf(state)),
+      stiffness: config.swivelBearingStiffness,
+      damping: config.swivelBearingDamping,
+      friction: config.swivelBearingFriction,
+    );
+  }
+
+  void _removeHinge() {
+    final handle = hinge;
+    if (handle != null && handle.isValid) handle.remove();
+    hinge = null;
+  }
+
+  /// The facing of a bearing state, as the direction name.
+  static String facingOf(BState state) => state.dir('facing')?.name ?? 'up';
+
+  static sable.Vector3d _centerOf((int, int, int) pos) =>
+      sable.Vector3d(pos.$1 + 0.5, pos.$2 + 0.5, pos.$3 + 0.5);
+
+  static sable.Vector3d _unit(String facing) => switch (facing) {
+    'down' => sable.Vector3d(0, -1, 0),
+    'up' => sable.Vector3d(0, 1, 0),
+    'north' => sable.Vector3d(0, 0, -1),
+    'south' => sable.Vector3d(0, 0, 1),
+    'west' => sable.Vector3d(-1, 0, 0),
+    'east' => sable.Vector3d(1, 0, 0),
+    _ => sable.Vector3d(0, 1, 0),
+  };
+
   /// `checkPersistence()`: reattach the plate after a reload.
   void checkPersistence() {
     final id = subLevelId;
@@ -224,7 +331,7 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
         return;
       }
     }
-    hasHandle = simulatedHost.subLevelById(worldId, id) != null;
+    if (!hasHandle) _attachHinge();
   }
 
   /// `setPlatePos(pos)`.
@@ -277,6 +384,7 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
 
   @override
   void onRemoved() {
+    _removeHinge();
     if (!assembling) destroyPlate();
     super.onRemoved();
   }
@@ -401,7 +509,8 @@ final class SwivelBearingPlateBlockEntity extends CreateBlockEntity
   void sable$physicsTick(sable.ServerSubLevel subLevel, sable.RigidBodyHandle handle, double timeStep) {
     final parentPos = parent;
     if (parentPos == null) return;
-    simulatedHost.blockEntityAt<SwivelBearingBlockEntity>(worldId, parentPos)?.hasHandle = true;
+    // The plate's physics tick is what tells the bearing its hinge is live.
+    simulatedHost.blockEntityAt<SwivelBearingBlockEntity>(worldId, parentPos)?._attachHingeIfMissing();
   }
 
   @override

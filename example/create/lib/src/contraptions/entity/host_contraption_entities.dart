@@ -17,6 +17,7 @@ import '../../common/host_bridge.dart';
 import '../../common/nbt_convert.dart';
 import '../../core/block_entity.dart';
 import '../../core/nbt.dart';
+import '../../core/perf.dart';
 import '../../core/worlds.dart';
 import '../core/contraption.dart';
 import '../core/entity_type_keys.dart';
@@ -170,7 +171,9 @@ final class HostContraptionLevel extends ContraptionLevel {
   @override
   bool stateHasTag(BState state, String tag) {
     final id = stateIdOf(state);
-    return id != null && BlockStates.isTag(id, tag);
+    // Cached like `HostBlockGetter.hasTag`: the movement and behaviour registries ask the same
+    // few tags for every captured block, and each uncached query is a host call.
+    return id != null && HostBlockGetter.stateHasTag(id, tag);
   }
 
   @override
@@ -201,7 +204,7 @@ final class HostContraptionLevel extends ContraptionLevel {
 
   BlockState? _stateOf(BState state) {
     final id = stateIdOf(state);
-    return id == null ? null : BlockRegistry.stateFromId(id);
+    return id == null ? null : BlockStates.stateOfId(id);
   }
 
   // -- Glue, seats and minecarts ---------------------------------------------------------------
@@ -411,11 +414,24 @@ final class HostContraptionLevel extends ContraptionLevel {
     return hook(world.getId(), seatPos, handle);
   }
 
-  List<EntitySnapshot> _snapshots(Aabb area) => world.getEntitiesInBox(
-    min: (area.minX, area.minY, area.minZ),
-    max: (area.maxX, area.maxY, area.maxZ),
-    filter: const EntityFilterAll(),
-  );
+  List<EntitySnapshot> _snapshots(Aabb area) {
+    if (!Perf.enabled) {
+      return _snapshotsUnmeasured(area);
+    }
+    final watch = Stopwatch()..start();
+    try {
+      return _snapshotsUnmeasured(area);
+    } finally {
+      Perf.record('host.getEntitiesInBox', watch.elapsedMicroseconds);
+    }
+  }
+
+  List<EntitySnapshot> _snapshotsUnmeasured(Aabb area) =>
+      world.getEntitiesInBox(
+        min: (area.minX, area.minY, area.minZ),
+        max: (area.maxX, area.maxY, area.maxZ),
+        filter: const EntityFilterAll(),
+      );
 
   static String _entityTypeName(Entity entity) => hostEntityTypeKey(entity);
 

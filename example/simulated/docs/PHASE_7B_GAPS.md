@@ -47,10 +47,27 @@ Not started, in the order of the ticket:
 
 Each is marked in the code where it happens.
 
-1. **Constraint motors** — `PhysicsConstraintHandle` (sable) has `setContactsEnabled` only. The assembler's disassembly alignment and the swivel bearing's hinge need `setMotor(axis, goal, stiffness, damping, ...)`. `SwivelBearingLogic.motorFor` computes the gains and is tested; nothing applies them. The disassembly still converges because `SimAssemblyHelper` places the blocks when the pose is close enough, but the assembler cannot *pull* a tilted sub-level straight.
+1. **Constraint motors — assembler done, bearing pending.** sable's
+   `PhysicsConstraintHandle` now has `setMotor`. The assembler's disassembly
+   alignment uses it: `PhysicsAssembler._attachAlignmentConstraint` builds the
+   spherical joint and `AssemblyAlignmentMotors` (`util/physics_constraints.dart`)
+   drives the six axes each tick, so a tilted sub-level is pulled onto the grid
+   instead of only being placed when it happens to be close. The swivel bearing
+   still computes gains without applying them
+   (`SwivelBearingLogic.motorFor` is tested): attaching its hinge needs the
+   rotary joint plus the plate's sub-level, which is the same shape but has no
+   caller yet.
 2. **Sub-level actors inside plots** — `ServerLevelPlot.actorAt` is `null` in sable, so the spring, the swivel plate and the propeller never receive `sable$physicsTick`. The block entities implement `BlockEntitySubLevelActor`; the plot needs the plugin's store behind that hook.
 3. **Honey glue as an assembly input** — `PumpkinSimAssemblyWorld.honeyGluesIn` returns nothing: the volumes are plugin entities and the tracker exists (`honeyGlueTrackerOf`), but no entity spawn/remove listener fills it yet.
 4. **Sound playback** — `SimSoundIds` is filled by nobody; `playSound` is a no-op. The sound keys and their ids are registered.
 5. **Neighbour redstone** — `bestNeighbourSignal` returns a cached value refreshed by nothing; the swivel bearing's lock state therefore stays at its default. `World.getBestNeighborSignal` is async and cannot be awaited from `tick()`.
-6. **Entities in a box** — `SimAssemblyEntities.entitiesIn` filters `World.getEntities()` by position; entity *movement* after a disassembly is a stub.
+6. **Entities in a box** — no box query in the plugin API, so
+   `PumpkinSimAssemblyEntities.entitiesIn` filters `World.getEntities()` by the
+   entity's real bounding box (shared shape with Aeronautics'
+   `HostPropellerPushWorld`; both switch to a box query together when the host
+   grows one). Movement and removal now work
+   (`setPositionRotationDelta` carrying velocity, `Entity.remove`); only
+   *spawning* a moved super glue box is a stub, because the plugin API cannot
+   summon a vanilla entity type. Honey glue volumes are re-created in the
+   plugin's tracker instead.
 7. **Chunk serialization for plots** — sable's `PlotChunkHost` gaps (documented in sable) still apply, so a sub-level's plot chunks cannot be saved or loaded by the host.

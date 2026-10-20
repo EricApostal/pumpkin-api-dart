@@ -22,6 +22,7 @@ import '../math/pose.dart';
 import '../math/vector.dart';
 import '../storage/holding/saved_pointer.dart';
 import 'level_plot.dart';
+import 'mass_tracker.dart';
 import 'server_level_plot.dart';
 import 'sub_level.dart';
 import 'sub_level_container.dart';
@@ -159,10 +160,17 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
   /// A sub-level without a tracker is a no-op, as in Java
   /// (`ServerSubLevel.updateMergedMassData` guards on `massTracker != null`);
   /// the system builds one in `onSubLevelAdded` before the first tick.
-  void updateMergedMassData(double partialPhysicsTick) {
-    // The merged tracker is a pipeline service; without one there is nothing
-    // to merge, and the tick continues.
-    if (massTracker == null) return;
+  ///
+  /// Returns whether the merged mass properties changed, which is when the
+  /// caller uploads them with `PhysicsPipeline.onStatsChanged`
+  /// (`MergedMassTracker.uploadData` does that upload itself in Java; the Dart
+  /// model has no pipeline reference).
+  bool updateMergedMassData(double partialPhysicsTick) {
+    final tracker = massTracker;
+    if (tracker is MergedMassTracker) {
+      return tracker.update(partialPhysicsTick);
+    }
+    return false;
   }
 
   /// Called before the physics tick begins: resets the queued force groups.
@@ -253,14 +261,11 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
 
   /// Builds the mass tracker from the plot bounds.
   ///
-  /// DEPENDS ON W3: `MassTracker.build(LevelAccelerator, BoundingBox3ic)` is a
-  /// physics-pipeline service.
-  /// Installs the mass tracker of a sub-level, or `null` while the physics
-  /// workstream has not installed one.
-  ///
-  /// `MassTracker.build(plot bounds)` is a pipeline service, so the factory is
-  /// injected rather than implemented here; the plugin sets it once at load.
-  static MassData Function(ServerSubLevel subLevel)? massTrackerFactory;
+  /// `MassTracker.build(plot bounds)` is the default factory, so a sub-level
+  /// assembled without further wiring gets a working tracker; the plugin can
+  /// replace it (for example with the block-property table installed on
+  /// [MassTracker.blockMass]).
+  static MassData Function(ServerSubLevel subLevel)? massTrackerFactory = MassTracker.build;
 
   void buildMassTracker() {
     final factory = massTrackerFactory;
@@ -271,11 +276,23 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
         'tracker from the plot bounds).',
       );
     }
-    massTracker = factory(this);
+    final self = factory(this);
+    // Java always wraps the built tracker in a MergedMassTracker
+    // (`ServerSubLevel.java:494-497`). A factory that already returns a
+    // different MassData implementation (the test fakes) is installed as-is.
+    massTracker = self is MassTracker ? MergedMassTracker(this, self) : self;
   }
 
   /// The mass tracker for just this sub-level, not including merged masses.
-  MassData getSelfMassTracker() => getMassTracker();
+  MassTracker getSelfMassTracker() {
+    final tracker = getMassTracker();
+    if (tracker is MergedMassTracker) return tracker.selfTracker;
+    if (tracker is MassTracker) return tracker;
+    throw StateError(
+      'ServerSubLevel.getSelfMassTracker: the installed tracker '
+      '(${tracker.runtimeType}) is not a MassTracker.',
+    );
+  }
 
   /// The last place this sub-level was saved.
   GlobalSavedSubLevelPointer? getLastSerializationPointer() => lastSerializationPointer;

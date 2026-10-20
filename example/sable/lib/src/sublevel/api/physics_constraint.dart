@@ -83,17 +83,65 @@ abstract final class ConstraintJointAxis {
 }
 
 /// `PhysicsConstraintHandle`.
+///
+/// Java's interface is `sable/common/.../api/physics/constraint/
+/// PhysicsConstraintHandle.java:9-46`: impulses, contacts, motors, removal and
+/// validity. `ConstraintJointAxis`'s constants above are the axis numbers
+/// `setMotor`/`setLimit` take (Java passes `ConstraintJointAxis.ordinal()`,
+/// `RapierConstraintHandle.java:30`).
 abstract interface class PhysicsConstraintHandle {
+  /// `getJointImpulses(linearImpulseDest, angularImpulseDest)`: the latest
+  /// global linear and angular joint impulses from the solver.
+  void getJointImpulses(Vector3d linearImpulseDest, Vector3d angularImpulseDest);
+
   /// `setContactsEnabled(enabled)`.
   void setContactsEnabled(bool enabled);
+
+  /// `setMotor(axis, target, stiffness, damping, hasMaxForce, maxForce)`: adds
+  /// or sets a PD motor on [axis] (`RapierConstraintHandle.java:30-33`).
+  ///
+  /// [axis] is one of the [ConstraintJointAxis] bits; [target] is a position
+  /// [m] or angle [rad] depending on the axis.
+  void setMotor(
+    int axis,
+    double target,
+    double stiffness,
+    double damping,
+    bool hasMaxForce,
+    double maxForce,
+  );
+
+  /// `remove()`: removes the constraint from the engine.
+  void remove();
+
+  /// `isValid()`: whether the engine still holds the constraint.
+  bool get isValid;
+}
+
+/// `GenericConstraintHandle`: the six-axis joint with re-anchorable frames.
+abstract interface class GenericConstraintHandle implements PhysicsConstraintHandle {
+  /// `setFrame1(localPosition, localOrientation)`.
+  void setFrame1(Vector3d localPosition, Quaterniond localOrientation);
+
+  /// `setFrame2(localPosition, localOrientation)`.
+  void setFrame2(Vector3d localPosition, Quaterniond localOrientation);
+
+  /// `setLimit(axis, min, max)`.
+  void setLimit(int axis, double min, double max);
+
+  /// `lockAxes(axes)`: a mask of [ConstraintJointAxis] bits.
+  void lockAxes(int axes);
 }
 
 /// The constraint half of a physics pipeline, for engines that support joints.
 abstract interface class ConstraintPipeline {
   /// `addConstraint(a, b, configuration)`.
+  ///
+  /// A `null` body attaches that side to the static world, as Java's `-1`
+  /// body id does (`RapierRotaryConstraintHandle.java:20-23`).
   PhysicsConstraintHandle addConstraint(
-    Object a,
-    Object b,
+    Object? a,
+    Object? b,
     PhysicsConstraintConfiguration configuration,
   );
 }

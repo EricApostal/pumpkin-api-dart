@@ -9,6 +9,7 @@ import 'package:pumpkin_api/pumpkin_api.dart' show BlockDirection, BlockPos, Blo
 import 'direction.dart';
 import 'vec_helper.dart' show Vec3;
 import 'pos.dart';
+import '../core/perf.dart';
 
 extension PosToHost on (int, int, int) {
   /// The host's `BlockPos`.
@@ -64,6 +65,27 @@ extension HostMirrorToPure on host.Mirror {
 
 /// Block state helpers by state id (the host numbers block states).
 abstract final class BlockStates {
+  /// The host `BlockState` of [stateId], `null` when unknown.
+  ///
+  /// Cached: a state id always names the same state, and every lookup is a host call. The
+  /// contraption logic asks for the state of a position's id several times per block
+  /// (`pushReaction`, `stateReplaceable`, `stateCollisionEmpty`, `isUnbreakable`), so the
+  /// uncached version cost one wasm call each time. Only known ids are kept: an id the host
+  /// did not know yet may exist after a datapack adds blocks.
+  static final Map<int, host.BlockState> _byId = {};
+
+  static host.BlockState? stateOfId(int stateId) {
+    final cached = _byId[stateId];
+    if (cached != null) return cached;
+    final watch = Perf.enabled ? (Stopwatch()..start()) : null;
+    final state = BlockRegistry.stateFromId(stateId);
+    if (watch != null) {
+      Perf.record('host.blockStateById', watch.elapsedMicroseconds);
+    }
+    if (state != null) _byId[stateId] = state;
+    return state;
+  }
+
   /// The block key and properties of [stateId] (`null` when unknown).
   static ({String key, Map<String, String> properties})? info(int stateId) {
     final i = BlockRegistry.stateInfo(stateId);

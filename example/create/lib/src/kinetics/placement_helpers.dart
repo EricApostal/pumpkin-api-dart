@@ -99,7 +99,10 @@ PlacementOffset shaftPoleOffset(
     // attachedPoles
     var count = 0;
     var check = pos.relative(dir);
-    while (_isPoleBlock(w.stateAt(check)) && w.stateAt(check).axisOf('axis') == dir.axis) {
+    while (true) {
+      // One read per step: the old loop asked the host for the same position twice.
+      final state = w.stateAt(check);
+      if (!_isPoleBlock(state) || state.axisOf('axis') != dir.axis) break;
       count++;
       check = check.relative(dir);
     }

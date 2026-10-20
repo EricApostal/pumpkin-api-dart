@@ -163,6 +163,12 @@ Future<void> tickPendingRides() async {
   for (final (entity, worldId, cartId) in List.of(_pendingRides)) {
     final host = entity.host;
     if (host is! HostContraptionEntity) continue;
+    // `Entity.startRiding(vehicle)`: `set-vehicle` removes the entity from its current vehicle
+    // and adds it to the cart's passenger list, so it is the only call needed. It takes
+    // ownership of the vehicle handle and the host's `add-passenger` takes ownership of the
+    // passenger handle, so neither the contraption's own kept handle nor the cart handle may be
+    // reused afterwards: the contraption's handle is looked up nowhere and kept alive by the
+    // entity, the cart is looked up fresh for this call.
     final handle = host.handle;
     if (handle == null) continue;
     // `world.getEntity(id)`: the cart may have been removed in the meantime.
@@ -174,7 +180,6 @@ Future<void> tickPendingRides() async {
       continue;
     }
     try {
-      await cart.addPassenger(passenger: handle);
       await handle.setVehicle(vehicle: cart);
     } on Object {
       // the cart or the contraption was removed in the meantime

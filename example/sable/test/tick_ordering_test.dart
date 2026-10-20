@@ -206,6 +206,15 @@ final class LoggingMassTracker implements MassData {
   double getInverseMass() => 1.0;
 
   @override
+  double getMass() => 1.0;
+
+  @override
+  Matrix3d getInertiaTensor() => Matrix3d.identity();
+
+  @override
+  Matrix3d getInverseInertiaTensor() => Matrix3d.identity();
+
+  @override
   bool isInvalid() => false;
 
   @override
@@ -408,6 +417,7 @@ final class _ZeroPacker implements PlotSectionPacker {
 /// A host with no players, so the ticket manager never sees one inside a
 /// sub-level's bounds.
 final class _NoPlayersHost implements SubLevelHost {
+  @override
   final FakeChunkHost chunks;
 
   _NoPlayersHost(this.chunks);

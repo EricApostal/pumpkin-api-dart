@@ -52,6 +52,7 @@ export 'math/matrix3.dart';
 export 'math/pose.dart';
 export 'math/vector.dart';
 export 'model/level_plot.dart';
+export 'model/mass_tracker.dart';
 export 'model/plot_chunk_holder.dart';
 export 'model/server_level_plot.dart' hide LiftProviderContext;
 export 'model/server_sub_level.dart';

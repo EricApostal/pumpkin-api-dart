@@ -1,7 +1,14 @@
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/bounds.dart' show Aabb;
 import 'package:create/src/common/direction.dart' show Direction;
-import 'package:sable/sable.dart' show BoundingBox3d, Quaterniond, SubLevel, Vector3d;
+import 'package:sable/sable.dart'
+    show
+        BoundingBox3d,
+        ConstraintJointAxis,
+        PhysicsConstraintHandle,
+        Quaterniond,
+        SubLevel,
+        Vector3d;
 import 'package:simulated/simulated.dart';
 import 'package:test/test.dart';
 
@@ -328,6 +335,86 @@ void main() {
       expect(disassembled, 1);
       expect(assembled, 0);
     });
+
+    test('the disassembly carries the world, the anchor and the sub-level', () {
+      final heard = <(String, (int, int, int), Object)>[];
+      SimAssemblyEvents.onDisassembled((worldId, anchor, subLevel) {
+        heard.add((worldId, anchor, subLevel));
+      });
+
+      final subLevel = _StubSubLevel();
+      SimAssemblyEvents.notifyDisassembled('minecraft:the_nether', (4, 70, -9), subLevel);
+
+      expect(heard, hasLength(1));
+      expect(heard.single.$1, 'minecraft:the_nether');
+      expect(heard.single.$2, (4, 70, -9));
+      expect(heard.single.$3, same(subLevel));
+    });
+  });
+
+  group('AssemblyAlignmentMotors', () {
+    test('the gains are the Java constants', () {
+      expect(AssemblyAlignmentMotors.linearStiffness, 1000);
+      expect(AssemblyAlignmentMotors.linearDamping, 50);
+      expect(AssemblyAlignmentMotors.angularStiffness, 13000);
+      expect(AssemblyAlignmentMotors.angularDamping, 1000);
+    });
+
+    test('every joint axis gets a motor', () {
+      final motors = AssemblyAlignmentMotors.motors(
+        localGoal: Vector3d(1, 2, 3),
+        tightenLinear: true,
+      );
+      expect(motors, hasLength(6));
+      expect(
+        motors.map((m) => m.$1).toSet(),
+        {
+          ConstraintJointAxis.linearX,
+          ConstraintJointAxis.linearY,
+          ConstraintJointAxis.linearZ,
+          ConstraintJointAxis.angularX,
+          ConstraintJointAxis.angularY,
+          ConstraintJointAxis.angularZ,
+        },
+      );
+    });
+
+    test('the angular axes are held at zero rotation', () {
+      final motors = AssemblyAlignmentMotors.motors(localGoal: Vector3d());
+      for (final axis in AssemblyAlignmentMotors.angularAxes) {
+        final motor = motors.firstWhere((m) => m.$1 == axis);
+        expect(motor.$2, 0);
+        expect(motor.$3, AssemblyAlignmentMotors.angularStiffness);
+        expect(motor.$4, AssemblyAlignmentMotors.angularDamping);
+      }
+    });
+
+    test('the linear axes target the local goal and tighten on request', () {
+      final soft = AssemblyAlignmentMotors.motors(localGoal: Vector3d(4, 5, 6));
+      expect(soft.firstWhere((m) => m.$1 == ConstraintJointAxis.linearX).$2, 4);
+      expect(soft.firstWhere((m) => m.$1 == ConstraintJointAxis.linearY).$2, 5);
+      expect(soft.firstWhere((m) => m.$1 == ConstraintJointAxis.linearZ).$2, 6);
+      expect(soft.firstWhere((m) => m.$1 == ConstraintJointAxis.linearX).$3, 0.000001);
+
+      final tight = AssemblyAlignmentMotors.motors(
+        localGoal: Vector3d(4, 5, 6),
+        tightenLinear: true,
+      );
+      expect(
+        tight.firstWhere((m) => m.$1 == ConstraintJointAxis.linearX).$3,
+        AssemblyAlignmentMotors.linearStiffness,
+      );
+    });
+
+    test('apply writes every motor to the handle', () {
+      final handle = _RecordingConstraintHandle();
+      AssemblyAlignmentMotors.apply(
+        handle,
+        AssemblyAlignmentMotors.motors(localGoal: Vector3d(1, 1, 1)),
+      );
+      expect(handle.motors, hasLength(6));
+      expect(handle.contactsEnabled, isTrue);
+    });
   });
 
   group('Glue geometry', () {
@@ -345,6 +432,30 @@ void main() {
       expect(glue.contains((2, 0, 0)), isFalse);
     });
   });
+}
+
+/// A constraint handle that records what was set on it.
+final class _RecordingConstraintHandle implements PhysicsConstraintHandle {
+  final List<(int, double, double, double)> motors = [];
+  bool contactsEnabled = true;
+  bool removed = false;
+
+  @override
+  void setMotor(int axis, double target, double stiffness, double damping, bool hasMaxForce, double maxForce) {
+    motors.add((axis, target, stiffness, damping));
+  }
+
+  @override
+  void setContactsEnabled(bool enabled) => contactsEnabled = enabled;
+
+  @override
+  void getJointImpulses(Vector3d linearImpulseDest, Vector3d angularImpulseDest) {}
+
+  @override
+  void remove() => removed = true;
+
+  @override
+  bool get isValid => !removed;
 }
 
 /// A sub-level that does nothing: the event tests never touch it.

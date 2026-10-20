@@ -356,10 +356,17 @@ final class BlockEntityStore {
     if (_dirty.isEmpty) return;
     final id = world.getId();
     final saveNow = force || tick % saveIntervalTicks == 0;
-    for (final be in _dirty.toList()) {
+    // Collect what this world has to write before touching the sets (removing while iterating
+    // throws). The old code copied the whole set — every world's entities — on every world tick;
+    // this copies only the entities that are actually published now.
+    final due = <(CreateBlockEntity, bool)>[];
+    for (final be in _dirty) {
       if (be.worldId != id) continue;
       final sync = _sync.contains(be);
       if (!sync && !saveNow) continue;
+      due.add((be, sync));
+    }
+    for (final (be, sync) in due) {
       _dirty.remove(be);
       _sync.remove(be);
       if (!be.removed) _publish(be, world, refreshClient: sync);

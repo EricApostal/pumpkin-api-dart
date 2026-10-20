@@ -650,4 +650,244 @@ void main() {
       expect(SableBufferUtils.unpackChunkX(packed), isNot(0xFFFFFFFF));
     });
   });
+
+  group('every registered payload round-trips', () {
+    // One sample per payload, in registration order. A payload added to
+    // `SablePackets` without a sample fails the completeness test below, so
+    // this cannot silently drift from the Java set.
+    final samples = <String, SablePacket>{
+      'sable:snapshot_packet': ClientboundSableSnapshotDualPacket(3, [
+        SnapshotEntry(
+          plotCoordinate: packChunk(-2, 5),
+          pose: canonicalPose(),
+          linearVelocity: Vector3d(1, 2, 3),
+          angularVelocity: Vector3d(4, 5, 6),
+        ),
+      ]),
+      'sable:snapshot_info_packet': const ClientboundSableSnapshotInfoDualPacket(
+        msSinceLast: 50,
+        gameTick: 7,
+        stopped: false,
+      ),
+      'sable:stop_moving_sub_level': ClientboundStopMovingSubLevelPacket(packChunk(1, -1)),
+      'sable:change_sub_level_name': const ClientboundChangeSubLevelNamePacket(testUuid, 'Boat'),
+      'sable:start_tracking_sub_level': ClientboundStartTrackingSubLevelPacket(
+        plotCoordinate: packChunk(3, 7),
+        subLevelId: testUuid,
+        lastPose: canonicalPose(),
+        pose: canonicalPose(),
+        bounds: BoundingBox3i.values(0, 0, 0, 16, 16, 16),
+        name: 'Airship',
+        gameTick: 42,
+      ),
+      'sable:finalize_sub_level': ClientboundFinalizeSubLevelPacket(packChunk(3, 7)),
+      'sable:stop_tracking_sub_level': ClientboundStopTrackingSubLevelPacket(packChunk(3, 7)),
+      'sable:change_bounds_sublevel': ClientboundChangeBoundsSubLevelPacket(
+        packChunk(3, 7),
+        BoundingBox3i.values(-1, 0, -2, 15, 20, 16),
+      ),
+      'sable:freeze_player': ClientboundFreezePlayerPacket(testUuid, Vector3d(1, 2, 3)),
+      'sable:physics_property': ClientboundPhysicsPropertyPacket(
+        PhysicsBlockPropertiesDefinition(
+          selector: const TagOrElementLocation('minecraft:stone'),
+          properties: const {'sable:mass': 2.5},
+        ),
+      ),
+      'sable:floating_material': const ClientboundFloatingBlockMaterialPacket(
+        'sable:air',
+        FloatingBlockMaterial(liftStrength: 1.5),
+      ),
+      'sable:dimension_physics': ClientboundDimensionPhysicsPacket([
+        const DimensionPhysics(dimension: 'minecraft:overworld'),
+      ]),
+      'sable:recently_split_sub_level': ClientboundRecentlySplitSubLevelPacket(
+        splitSubLevelId: testUuid,
+        splitFromId: otherUuid,
+        pose: canonicalPose(),
+      ),
+      'sable:udp_activation': const ClientboundSableUdpActivationPacket(testUuid),
+      'sable:enter_gizmo_mode': const ClientboundEnterGizmoPacket(),
+      'sable:punch_sub_level': ServerboundPunchSubLevelPacket(
+        (-10, 64, 10),
+        Vector3d(0.5, 0.5, 0.5),
+        Vector3d(0, -1, 0),
+      ),
+      'sable:gizmo_move_sub_level': ServerboundGizmoMoveSubLevelPacket(
+        testUuid,
+        Vector3d(4, 5, 6),
+      ),
+    };
+
+    test('the sample table covers every registered payload exactly once', () {
+      expect(
+        samples.keys.where(SablePackets.clientbound.containsKey).toSet(),
+        SablePackets.clientbound.keys.toSet(),
+      );
+      expect(
+        samples.keys.where(SablePackets.serverbound.containsKey).toSet(),
+        SablePackets.serverbound.keys.toSet(),
+      );
+      expect(samples.length, SablePackets.allClientbound.length + SablePackets.allServerbound.length);
+    });
+
+    for (final entry in samples.entries) {
+      test(entry.key, () {
+        final serverbound = SablePackets.serverbound.containsKey(entry.key);
+        final body = SablePackets.encode(entry.value);
+        final decoded = serverbound
+            ? SablePackets.decodeServerbound(entry.key, body)
+            : SablePackets.decodeClientbound(entry.key, body);
+        expect(decoded.runtimeType, entry.value.runtimeType);
+        // Re-encoding the decoded value must reproduce the body: that is the
+        // property the client relies on for a stable field order.
+        expect(SablePackets.encode(decoded), body);
+      });
+    }
+  });
+
+  group('udp payloads round-trip', () {
+    setUpAll(SablePackets.registerUdpCodecs);
+
+    final samples = <SableUdpPacket>[
+      const SableUdpEchoPacket('ping'),
+      ClientboundSableSnapshotDualPacket(5, const []),
+      const ClientboundSableSnapshotInfoDualPacket(msSinceLast: 1, gameTick: 2, stopped: true),
+      const SableUdpAuthenticationPacket(testUuid),
+      const SableUdpClientboundKeepAlivePacket(),
+      const SableUdpServerboundAlivePacket(),
+    ];
+
+    test('all six types encode and decode', () {
+      for (final packet in samples) {
+        final datagram = SableUdpPackets.encode(packet);
+        final decoded = SableUdpPackets.decode(datagram);
+        expect(decoded, isNotNull, reason: packet.runtimeType.toString());
+        expect(decoded.runtimeType, packet.runtimeType);
+        expect(SableUdpPackets.encode(decoded!), datagram);
+      }
+    });
+
+    test('a datagram with trailing bytes is dropped', () {
+      final datagram = SableUdpPackets.encode(const SableUdpClientboundKeepAlivePacket());
+      expect(SableUdpPackets.decode([...datagram, 0]), isNull);
+    });
+
+    test('an unknown type byte is dropped', () {
+      expect(SableUdpPackets.decode([1, 6]), isNull);
+    });
+  });
+
+  group('codec primitives, sign and width', () {
+    List<int> bytesOf(void Function(PacketWriter w) write) {
+      final writer = PacketWriter();
+      write(writer);
+      return writer.toBytes();
+    }
+
+    test('BlockPos packs x:26, z:26, y:12 and reads them signed', () {
+      // FriendlyByteBuf.writeBlockPos / BlockPos.asLong / getX / getY / getZ.
+      for (final (x, y, z) in [
+        (0, 0, 0),
+        (1, 1, 1),
+        (-1, -1, -1),
+        (-33554432, -2048, 33554431), // the extreme corners
+        (33554431, 2047, -33554432),
+      ]) {
+        final bytes = bytesOf((w) => w.writeBlockPos((x, y, z)));
+        final expected = JavaBuf()..blockPos(x, y, z);
+        expect(bytes, expected.bytes, reason: 'BlockPos($x, $y, $z)');
+
+        final read = PacketReader(bytes).readBlockPos();
+        expect(read, (x, y, z), reason: 'round trip of BlockPos($x, $y, $z)');
+      }
+    });
+
+    test('a UUID with the high bit set round-trips', () {
+      // UUIDUtil.STREAM_CODEC: two longs; f0e1... has the sign bit set.
+      final bytes = bytesOf((w) => w.writeUuid(otherUuid));
+      expect(bytes, (JavaBuf()..uuid(otherUuid)).bytes);
+      expect(PacketReader(bytes).readUuid(), otherUuid);
+    });
+
+    test('a UUID is accepted with or without dashes', () {
+      final dashed = bytesOf((w) => w.writeUuid(testUuid));
+      final plain = bytesOf((w) => w.writeUuid(testUuid.replaceAll('-', '')));
+      expect(dashed, plain);
+    });
+
+    test('VarInt matches the Java encoding at the boundaries', () {
+      // FriendlyByteBuf.writeVarInt: 7 bits per byte, negatives take 5.
+      final cases = <int, List<int>>{
+        0: [0x00],
+        1: [0x01],
+        127: [0x7F],
+        128: [0x80, 0x01],
+        255: [0xFF, 0x01],
+        300: [0xAC, 0x02],
+        2097151: [0xFF, 0xFF, 0x7F],
+        2147483647: [0xFF, 0xFF, 0xFF, 0xFF, 0x07],
+        -1: [0xFF, 0xFF, 0xFF, 0xFF, 0x0F],
+        -2147483648: [0x80, 0x80, 0x80, 0x80, 0x08],
+      };
+      for (final entry in cases.entries) {
+        final bytes = bytesOf((w) => w.writeVarInt(entry.key));
+        expect(bytes, entry.value, reason: 'VarInt ${entry.key}');
+        expect(PacketReader(bytes).readVarInt(), entry.key, reason: 'round trip ${entry.key}');
+      }
+    });
+
+    test('VarLong matches the Java encoding at the boundaries', () {
+      final cases = <int, List<int>>{
+        0: [0x00],
+        127: [0x7F],
+        128: [0x80, 0x01],
+        -1: [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
+      };
+      for (final entry in cases.entries) {
+        final bytes = bytesOf((w) => w.writeVarLong(entry.key));
+        expect(bytes, entry.value, reason: 'VarLong ${entry.key}');
+        expect(PacketReader(bytes).readVarLong(), entry.key, reason: 'round trip ${entry.key}');
+      }
+    });
+
+    test('a UTF string is prefixed with its byte length, not its character count', () {
+      // FriendlyByteBuf.writeUtf: VarInt byte length + UTF-8 bytes.
+      for (final text in ['', 'a', 'ü', '日本語', 'aü日']) {
+        final bytes = bytesOf((w) => w.writeString(text));
+        final expected = JavaBuf()..utf(text);
+        expect(bytes, expected.bytes, reason: '"$text"');
+        expect(PacketReader(bytes).readString(), text);
+      }
+    });
+
+    test('an optional is a boolean then the value', () {
+      expect(bytesOf((w) => w.writeOptional<int>(null, (w, v) => w.writeInt(v))), [0]);
+      expect(
+        bytesOf((w) => w.writeOptional<int>(7, (w, v) => w.writeInt(v))),
+        [1, 0, 0, 0, 7],
+      );
+      expect(PacketReader([0]).readOptional((r) => r.readInt()), isNull);
+      expect(PacketReader([1, 0, 0, 0, 7]).readOptional((r) => r.readInt()), 7);
+    });
+
+    test('a list is a VarInt count then the elements', () {
+      final bytes = bytesOf((w) => w.writeList<int>([1, 2, 3], (w, v) => w.writeVarInt(v)));
+      expect(bytes, [3, 1, 2, 3]);
+      expect(PacketReader(bytes).readList((r) => r.readVarInt()), [1, 2, 3]);
+    });
+
+    test('a byte array is a VarInt length then the bytes', () {
+      final bytes = bytesOf((w) => w.writeByteArray([9, 8, 7]));
+      expect(bytes, [3, 9, 8, 7]);
+      expect(PacketReader(bytes).readByteArray(), [9, 8, 7]);
+    });
+
+    test('floats are four bytes and doubles eight, big endian', () {
+      expect(bytesOf((w) => w.writeFloat(1.0)), [0x3F, 0x80, 0x00, 0x00]);
+      expect(
+        bytesOf((w) => w.writeDouble(1.0)),
+        [0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+      );
+    });
+  });
 }

@@ -13,6 +13,7 @@ library;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../core/nbt.dart';
 import '../equipment/data/equipment_components.dart';
 
 export '../equipment/potato/potato_model.dart'
@@ -143,4 +144,52 @@ Future<String?> clipboardFirstEntryText(ItemStack stack) async {
     return null;
   }
   return null;
+}
+
+/// `PackagePortBlockEntity.addAddressToClipboard`: appends `#<address>` to the clipboard item
+/// [stack] unless one of its entries already is `#<address>` or `# <address>`. The entry goes into
+/// the first page that has at most eleven entries (a new page otherwise), and the clipboard
+/// becomes `written`. Returns true when the item changed.
+///
+/// Java mutates the main hand stack in place; the caller must write the stack back to the hand
+/// when this returns true.
+bool addClipboardAddress(ItemStack stack, String address) {
+  if (address.trim().isEmpty) return false;
+
+  var content = ClipboardContentData.empty;
+  final raw = stack.customComponent(EquipmentComponents.clipboardContent);
+  if (raw != null) {
+    try {
+      content = EquipmentWire.readClipboardContent(raw);
+    } on Object {
+      content = ClipboardContentData.empty;
+    }
+  }
+
+  for (final page in content.pages) {
+    for (final entry in page) {
+      final text = entry.plainText;
+      if (text == '#$address' || text == '# $address') return false;
+    }
+  }
+
+  final pages = [for (final page in content.pages) List<ClipboardEntryData>.of(page)];
+  List<ClipboardEntryData>? page;
+  for (final free in pages) {
+    if (free.length > 11) continue;
+    page = free;
+    break;
+  }
+  if (page == null) {
+    page = <ClipboardEntryData>[];
+    pages.add(page);
+  }
+  page.add(ClipboardEntryData(checked: false, text: NbtValue.string('#$address')));
+
+  final next = content.setPages(pages).setType(ClipboardType.written);
+  stack.setCustomComponent(
+    EquipmentComponents.clipboardContent,
+    EquipmentWire.clipboardContent(next),
+  );
+  return true;
 }

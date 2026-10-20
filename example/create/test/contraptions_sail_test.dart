@@ -10,6 +10,7 @@ import 'package:create/src/api/placement.dart';
 import 'package:create/src/common/direction.dart';
 import 'package:create/src/common/pos.dart';
 import 'package:create/src/contraptions/bearing/sail.dart';
+import 'package:create/src/conveyance/shapes.dart' show VoxelShaper, box16;
 
 const white = 'create:white_sail';
 const frame = 'create:sail_frame';
@@ -45,6 +46,11 @@ void expectBoxes(List<BlockBox> actual, List<BlockBox> expected, {String? reason
     );
   }
 }
+
+/// The boxes as a set of coordinate strings, for shapes whose box order is not significant.
+Set<String> boxSet(List<BlockBox> boxes) => {
+  for (final b in boxes) '${b.minX},${b.minY},${b.minZ},${b.maxX},${b.maxY},${b.maxZ}',
+};
 
 /// The `facing` the host gives a sail a player looking along [look] places
 /// (`state_for_placement`: the registered `looking-direction` rule with `opposite`).
@@ -423,7 +429,9 @@ void main() {
     // `AllShapes.SAIL = shape(0, 5, 0, 16, 10, 16).forDirectional()` and
     // `SAIL_FRAME = shape(0, 5, 0, 16, 9, 16).forDirectional()`: the authored box faces up and
     // `VoxelShaper` rotates it about the block centre. The plate is not symmetric about the
-    // centre, so the two sides of an axis differ by one pixel (`up` 5..10 vs `down` 6..11).
+    // centre, so the two sides of an axis differ: the positive side is the authored 5..10 (5..9
+    // for the frame) and the negative side is its 180° turn, 6..11 (7..11), i.e. `up` 5..10 vs
+    // `down` 6..11 and `south` 5..10 vs `north` 6..11.
     test('the canvas is a five-pixel plate perpendicular to the facing', () {
       expectBoxes(sailCanvasBoxes(Direction.up), [
         const BlockBox(0, 5 / 16, 0, 1, 10 / 16, 1),
@@ -432,7 +440,7 @@ void main() {
         const BlockBox(0, 6 / 16, 0, 1, 11 / 16, 1),
       ]);
       expectBoxes(sailCanvasBoxes(Direction.north), [
-        const BlockBox(0, 0, 5 / 16, 1, 1, 10 / 16),
+        const BlockBox(0, 0, 6 / 16, 1, 1, 11 / 16),
       ]);
       expectBoxes(sailCanvasBoxes(Direction.south), [
         const BlockBox(0, 0, 5 / 16, 1, 1, 10 / 16),
@@ -453,7 +461,7 @@ void main() {
         const BlockBox(0, 7 / 16, 0, 1, 11 / 16, 1),
       ]);
       expectBoxes(sailFrameBoxes(Direction.north), [
-        const BlockBox(0, 0, 5 / 16, 1, 1, 9 / 16),
+        const BlockBox(0, 0, 7 / 16, 1, 1, 11 / 16),
       ]);
       expectBoxes(sailFrameBoxes(Direction.south), [
         const BlockBox(0, 0, 5 / 16, 1, 1, 9 / 16),
@@ -476,10 +484,10 @@ void main() {
         const BlockBox(14 / 16, 5 / 16, 2 / 16, 1, 9 / 16, 14 / 16),
       ]);
       expectBoxes(sailFrameCollisionBoxes(Direction.north), [
-        const BlockBox(0, 14 / 16, 5 / 16, 1, 1, 9 / 16),
-        const BlockBox(0, 0, 5 / 16, 1, 2 / 16, 9 / 16),
-        const BlockBox(14 / 16, 2 / 16, 5 / 16, 1, 14 / 16, 9 / 16),
-        const BlockBox(0, 2 / 16, 5 / 16, 2 / 16, 14 / 16, 9 / 16),
+        const BlockBox(0, 14 / 16, 7 / 16, 1, 1, 11 / 16),
+        const BlockBox(0, 0, 7 / 16, 1, 2 / 16, 11 / 16),
+        const BlockBox(14 / 16, 2 / 16, 7 / 16, 1, 14 / 16, 11 / 16),
+        const BlockBox(0, 2 / 16, 7 / 16, 2 / 16, 14 / 16, 11 / 16),
       ]);
       expectBoxes(sailFrameCollisionBoxes(Direction.east), [
         const BlockBox(5 / 16, 14 / 16, 0, 9 / 16, 1, 1),
@@ -490,6 +498,42 @@ void main() {
       // Every canvas state is solid in the plane of its facing, so a canvas can be walked on.
       for (final facing in Direction.values) {
         expect(sailCanvasBoxes(facing), hasLength(1));
+      }
+    });
+
+    test('the shapes are the shaper rotations of the up-facing boxes', () {
+      // `AllShapes.SAIL = shape(0, 5, 0, 16, 10, 16).forDirectional()` and
+      // `SAIL_FRAME_COLLISION = shape(0, 5, 0, 16, 9, 16).erase(2, 0, 2, 14, 16, 14)
+      // .forDirectional()`: catnip's `VoxelShaper` authors the shape facing `up` and rotates it
+      // about the block centre (`VoxelShaper.DefaultRotationValues`: 90° about x for a horizontal
+      // facing, then the yaw, 180° about x for `down`). The `conveyance/shapes.dart` port is the
+      // same shaper, so the hand-written boxes must equal its output for all six facings. A
+      // `forgotten` 180° turn is what made `north` a copy of `south`.
+      final canvas = VoxelShaper.forDirectional([box16(0, 5, 0, 16, 10, 16)]);
+      final frame = VoxelShaper.forDirectional([box16(0, 5, 0, 16, 9, 16)]);
+      final frameCollision = VoxelShaper.forDirectional([
+        box16(0, 5, 0, 16, 9, 2),
+        box16(0, 5, 14, 16, 9, 16),
+        box16(0, 5, 2, 2, 9, 14),
+        box16(14, 5, 2, 16, 9, 14),
+      ]);
+      for (final facing in Direction.values) {
+        expectBoxes(
+          sailCanvasBoxes(facing),
+          canvas.get(facing),
+          reason: 'canvas $facing',
+        );
+        expectBoxes(
+          sailFrameBoxes(facing),
+          frame.get(facing),
+          reason: 'frame $facing',
+        );
+        // The collision shape is a union, so only the set of bars matters.
+        expect(
+          boxSet(sailFrameCollisionBoxes(facing)),
+          boxSet(frameCollision.get(facing)),
+          reason: 'frame collision $facing',
+        );
       }
     });
 

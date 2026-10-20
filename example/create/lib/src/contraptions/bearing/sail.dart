@@ -68,6 +68,11 @@ String? dyeColorOfItem(String itemKey) {
 /// looking direction (`Direction.orderedByNearest(player)[0]`) and the sail turns it around. The
 /// canvas therefore faces the player who placed it: head-on against a wall it faces out of the
 /// wall, and placed on the floor while looking down it faces up.
+///
+/// Host limitation: `looking-direction` is the host's dominant look direction, whose tie-break
+/// differs from `Direction.orderedByNearest` at pitch exactly ±45° with yaw exactly ±90° (vanilla
+/// picks the horizontal axis, the host `north`). No rule can express that; it needs the host's
+/// `Entity::get_facing` to break ties like vanilla.
 const List<PlacementRule> sailPlacement = [
   PlacementRule.lookingDirection('facing', opposite: true),
 ];
@@ -145,23 +150,26 @@ PlacementOffset sailRowPlacement({
 /// to `facing`.
 ///
 /// The shapes are the ones `VoxelShaper.forDirectional()` produces from the up-facing box
-/// `(0, 5, 0, 16, 10, 16)` rotated about the block centre. The plate is not symmetric about the
-/// centre, so the two sides of an axis differ by one pixel: `up` 5..10 vs `down` 6..11, and
-/// `north`/`south` are `z` 5..10, `east` is `x` 5..10, `west` is `x` 6..11.
+/// `(0, 5, 0, 16, 10, 16)` rotated about the block centre. The plate is not centred on the block
+/// (its middle is at 7.5/16, the block's at 8/16), so a 180° turn moves it: `up` is `y` 5..10,
+/// `down` `y` 6..11, `south` `z` 5..10, `north` `z` 6..11, `east` `x` 5..10, `west` `x` 6..11.
 List<BlockBox> sailCanvasBoxes(Direction facing) => switch (facing) {
   Direction.up => [BlockBox(0, 5 / 16, 0, 1, 10 / 16, 1)],
   Direction.down => [BlockBox(0, 6 / 16, 0, 1, 11 / 16, 1)],
-  Direction.north || Direction.south => [BlockBox(0, 0, 5 / 16, 1, 1, 10 / 16)],
+  Direction.north => [BlockBox(0, 0, 6 / 16, 1, 1, 11 / 16)],
+  Direction.south => [BlockBox(0, 0, 5 / 16, 1, 1, 10 / 16)],
   Direction.east => [BlockBox(5 / 16, 0, 0, 10 / 16, 1, 1)],
   Direction.west => [BlockBox(6 / 16, 0, 0, 11 / 16, 1, 1)],
 };
 
 /// `AllShapes.SAIL_FRAME`: the wooden frame's plate, four pixels thick (the canvas is five), with
-/// the same rotations as [sailCanvasBoxes].
+/// the same rotations as [sailCanvasBoxes]: `up` `y` 5..9, `down` `y` 7..11, `south` `z` 5..9,
+/// `north` `z` 7..11, `east` `x` 5..9, `west` `x` 7..11.
 List<BlockBox> sailFrameBoxes(Direction facing) => switch (facing) {
   Direction.up => [BlockBox(0, 5 / 16, 0, 1, 9 / 16, 1)],
   Direction.down => [BlockBox(0, 7 / 16, 0, 1, 11 / 16, 1)],
-  Direction.north || Direction.south => [BlockBox(0, 0, 5 / 16, 1, 1, 9 / 16)],
+  Direction.north => [BlockBox(0, 0, 7 / 16, 1, 1, 11 / 16)],
+  Direction.south => [BlockBox(0, 0, 5 / 16, 1, 1, 9 / 16)],
   Direction.east => [BlockBox(5 / 16, 0, 0, 9 / 16, 1, 1)],
   Direction.west => [BlockBox(7 / 16, 0, 0, 11 / 16, 1, 1)],
 };
@@ -184,7 +192,13 @@ List<BlockBox> sailFrameCollisionBoxes(Direction facing) {
       BlockBox(0, 7 / 16, e, e, 11 / 16, 1 - e),
       BlockBox(1 - e, 7 / 16, e, 1, 11 / 16, 1 - e),
     ],
-    Direction.north || Direction.south => [
+    Direction.north => [
+      BlockBox(0, 1 - e, 7 / 16, 1, 1, 11 / 16),
+      BlockBox(0, 0, 7 / 16, 1, e, 11 / 16),
+      BlockBox(1 - e, e, 7 / 16, 1, 1 - e, 11 / 16),
+      BlockBox(0, e, 7 / 16, e, 1 - e, 11 / 16),
+    ],
+    Direction.south => [
       BlockBox(0, 1 - e, 5 / 16, 1, 1, 9 / 16),
       BlockBox(0, 0, 5 / 16, 1, e, 9 / 16),
       BlockBox(1 - e, e, 5 / 16, 1, 1 - e, 9 / 16),

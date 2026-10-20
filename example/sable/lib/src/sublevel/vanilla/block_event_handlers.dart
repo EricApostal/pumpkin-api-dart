@@ -42,7 +42,12 @@ abstract interface class VanillaActionPort {
   void destroy(int entityId);
 
   /// Plays a block sound at a world position.
-  void playSound(Vector3d worldPosition, String sound, double volume, double pitch);
+  void playSound(
+    Vector3d worldPosition,
+    String sound,
+    double volume,
+    double pitch,
+  );
 
   /// `Level#getBlockState(pos).isAir()` for a plot block.
   bool isAir((int, int, int) worldBlock);
@@ -169,8 +174,7 @@ abstract final class OvergrowthGuard {
   static bool shouldCancel({
     required SubLevel? containingTarget,
     required String newBlock,
-  }) =>
-      containingTarget != null && newBlock.startsWith('minecraft:vine');
+  }) => containingTarget != null && newBlock.startsWith('minecraft:vine');
 }
 
 /// Weather.
@@ -181,6 +185,8 @@ abstract final class LightningGuard {
   ///
   /// [inPlotYard] is `SubLevelContainer.inBounds(chunkX, chunkZ)` for the strike
   /// position's chunk.
-  static bool shouldCancel({required bool inPlotYard, required SubLevel? containing}) =>
-      inPlotYard || containing != null;
+  static bool shouldCancel({
+    required bool inPlotYard,
+    required SubLevel? containing,
+  }) => inPlotYard || containing != null;
 }

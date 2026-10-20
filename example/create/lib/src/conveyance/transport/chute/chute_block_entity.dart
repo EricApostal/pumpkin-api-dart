@@ -491,7 +491,9 @@ class ChuteBlockEntity extends CreateBlockEntity
     } else if (speed >= 32) {
       maxPullDistance = 1;
     } else {
-      maxPullDistance = (speed / 32).clamp(0.0, 1.0);
+      // `Mth.lerp(speed / 32, 0, 1)`: unclamped, so a negative (pushing) fan gives a negative
+      // pull distance and pulls nothing.
+      maxPullDistance = _lerp(speed / 32, 0, 1);
     }
     if (isChuteState(stateAt(this.pos.toPos().below))) maxPullDistance = 0;
 
@@ -500,29 +502,38 @@ class ChuteBlockEntity extends CreateBlockEntity
     final flowLimit = maxPullDistance;
 
     _beltBelow = null;
-    for (var i = 1; i <= flowLimit + 1; i++) {
-      final be = rt.beAt(worldId, this.pos.toPos().belowBy(i));
-      if (be is TransportedItemStackHandler) {
-        _beltBelow = be as TransportedItemStackHandler;
-        beltBelowOffset = i - 1.0;
-        break;
+    // `if (flowLimit > 0)`: a chute that does not pull does not look for a belt either.
+    if (flowLimit > 0) {
+      for (var i = 1; i <= flowLimit + 1; i++) {
+        final be = rt.beAt(worldId, this.pos.toPos().belowBy(i));
+        if (be is TransportedItemStackHandler) {
+          _beltBelow = be as TransportedItemStackHandler;
+          beltBelowOffset = i - 1.0;
+          break;
+        }
       }
     }
     bottomPullDistance = math.max(0, flowLimit);
     sendData();
   }
 
+  /// `Mth.lerp(delta, start, end)`.
+  static double _lerp(double delta, double start, double end) =>
+      start + (end - start) * delta;
+
   Future<void> _findEntities(double itemSpeed) async {
     if (bottomPullDistance <= 0 && item.isNotEmpty) return;
     if (itemSpeed <= 0 || world == null || !canActivate()) return;
 
     final center = this.pos.toPos().center;
+    // `new AABB(center.add(0, -bottomPullDistance - .5, 0), center.add(0, -.5, 0)).inflate(.45f)`:
+    // the inflation widens the box by .45 on all three axes, the vertical one included.
     final min = (
       center.$1 - .45,
-      center.$2 - bottomPullDistance - .5,
+      center.$2 - bottomPullDistance - .5 - .45,
       center.$3 - .45,
     );
-    final max = (center.$1 + .45, center.$2 - .5, center.$3 + .45);
+    final max = (center.$1 + .45, center.$2 - .5 + .45, center.$3 + .45);
     for (final entity in itemEntitiesIn(world!, min, max)) {
       final value = await ItemCodec.read(entity.getStack());
       if (!canAcceptItem(value)) continue;

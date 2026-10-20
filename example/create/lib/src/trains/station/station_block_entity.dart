@@ -641,13 +641,25 @@ final class StationBlockEntity extends CreateBlockEntity {
                   : bogeyPosOffset)
               .relative(assembly.assemblyDirection!, offset);
 
-      final contraption = assembler.assemble(worldId, trainLevel, anchor);
-      if (contraption == null) {
-        _exception(
-          TrainAssemblyException('train_assembly.nothing_attached', [
-            bogeyIndex + 1,
-          ]),
+      final CarriageContraption contraption;
+      try {
+        final assembled = assembler.assemble(
+          worldId,
+          trainLevel,
+          anchor,
+          assembly.assemblyDirection!,
         );
+        if (assembled == null) {
+          _exception(
+            TrainAssemblyException('train_assembly.nothing_attached', [
+              bogeyIndex + 1,
+            ]),
+          );
+          return;
+        }
+        contraption = assembled;
+      } on TrainAssemblyException catch (e) {
+        _exception(e, contraptions.length + 1);
         return;
       }
       atLeastOneForwardControls |= contraption.hasForwardControls();

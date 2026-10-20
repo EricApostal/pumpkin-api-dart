@@ -128,7 +128,7 @@ abstract final class SimMathUtils {
   }
 
   /// `GridQuats`: the eleven axis-aligned quaternions, as bit masks.
-  static const List<Quaterniond> _allQuats = [
+  static final List<Quaterniond> _allQuats = [
     Quaterniond(0, 0, 0, 1),
     Quaterniond(1, 0, 0, 0),
     Quaterniond(0, 1, 0, 0),

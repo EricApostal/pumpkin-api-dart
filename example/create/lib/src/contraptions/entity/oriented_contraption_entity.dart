@@ -7,6 +7,7 @@ import '../../common/common.dart';
 import '../core/contraption.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_transform.dart';
+import '../minecart/capability/minecart_controller.dart' show OrientedCouplingId;
 import 'contraption_entity.dart';
 
 /// Hooks the mounted (minecart) and bearing modules install for the oriented entity.
@@ -41,10 +42,30 @@ abstract final class OrientedContraptionHooks {
     ContraptionPassengerRef vehicle,
   )?
   powerFurnace;
+
+  /// `riding.getData(AllAttachmentTypes.MINECART_CONTROLLER)`: the controller of the cart, when
+  /// the cart has one. Its stall state is driven by the contraption instead of the cart motion.
+  static MinecartStallSink? Function(ContraptionPassengerRef vehicle)?
+  minecartControllerOf;
+
+  /// `MinecartSim2020.getRailVec(railDirection)` of the rail under the cart, projected onto
+  /// [motion]: a minecart contraption turns along the curve of its rail.
+  static Vec3? Function(ContraptionPassengerRef vehicle, Vec3 motion)?
+  projectOnRail;
+}
+
+/// The stall part of `MinecartController` the oriented entity drives.
+abstract interface class MinecartStallSink {
+  /// `MinecartController.isPresent`.
+  bool get isPresent;
+
+  /// `MinecartController.setStalledExternally(stall)`.
+  void setStalledExternally(bool stall);
 }
 
 /// `OrientedContraptionEntity`.
-class OrientedContraptionEntity extends AbstractContraptionEntity {
+class OrientedContraptionEntity extends AbstractContraptionEntity
+    implements OrientedCouplingId {
   Vec3 motionBeforeStall = vec3Zero;
   bool forceAngle = false;
   bool _attachedExtraInventories = false;
@@ -227,13 +248,20 @@ class OrientedContraptionEntity extends AbstractContraptionEntity {
     if (!rotating || !pauseWhileRotating) await tickActors();
     final stalled = isStalled;
 
-    if (stalled) {
-      if (!wasStalled) motionBeforeStall = host.vehicleDeltaMovement;
-      host.setVehicleDeltaMovement(vec3Zero);
-    }
-    if (wasStalled && !stalled) {
-      host.setVehicleDeltaMovement(motionBeforeStall);
-      motionBeforeStall = vec3Zero;
+    // `riding.getData(MINECART_CONTROLLER)`: a cart with a controller takes the stall from the
+    // contraption, so the two do not fight over its motion. A cart without one is stopped here.
+    final controller = OrientedContraptionHooks.minecartControllerOf?.call(riding);
+    if (controller != null && controller.isPresent) {
+      controller.setStalledExternally(stalled);
+    } else {
+      if (stalled) {
+        if (!wasStalled) motionBeforeStall = host.vehicleDeltaMovement;
+        host.setVehicleDeltaMovement(vec3Zero);
+      }
+      if (wasStalled && !stalled) {
+        host.setVehicleDeltaMovement(motionBeforeStall);
+        motionBeforeStall = vec3Zero;
+      }
     }
 
     if (stalled) return;
@@ -302,9 +330,19 @@ class OrientedContraptionEntity extends AbstractContraptionEntity {
     var movementVector = host.vehicleDeltaMovement;
     final locationDiff = host.vehiclePosition - host.vehiclePrevPosition;
     if (!host.vehicleIsMinecart) movementVector = locationDiff;
-    final motion = movementVector.normalized;
+    var motion = movementVector.normalized;
 
     if (!rotationLock) {
+      // A minecart follows the direction of its rail, not its raw motion, so the contraption
+      // turns into the curve instead of pointing along the straight line it travelled.
+      if (host.vehicleIsMinecart) {
+        final projected = OrientedContraptionHooks.projectOnRail?.call(
+          riding,
+          motion,
+        );
+        if (projected != null) motion = projected;
+      }
+
       if (motion.length > 0) {
         targetYaw = AbstractContraptionEntity.yawFromVector(motion);
         if (targetYaw < 0) targetYaw += 360;

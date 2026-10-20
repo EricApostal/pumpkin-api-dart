@@ -30,6 +30,8 @@ final class PackagePortTarget {
   /// Chain conveyor: where on the chain and which connection (`null`: the loop).
   final double chainPos;
   final Pos? connection;
+
+  /// `flipped`: the direction of the chain conveyor (`getSpeed() < 0`), set by `setup`.
   final bool flipped;
 
   const PackagePortTarget(
@@ -39,6 +41,15 @@ final class PackagePortTarget {
     this.connection,
     this.flipped = false,
   });
+
+  /// `setup`: a copy with [flipped] set from the chain conveyor's direction.
+  PackagePortTarget withFlipped(bool value) => PackagePortTarget(
+    type,
+    relativePos,
+    chainPos: chainPos,
+    connection: connection,
+    flipped: value,
+  );
 
   /// The private JSON form, using the field names of the Java codec (`type`, `relative_pos` and,
   /// for a chain conveyor, `chain_pos`, `connection`, `flipped`).

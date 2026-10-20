@@ -25,6 +25,41 @@ abstract interface class ItemInv {
   Future<LStack> insert(int slot, LStack stack, {bool simulate = false});
 }
 
+/// `VersionedInventoryWrapper`: an inventory that counts its changes, so a reader can tell that
+/// nothing moved since it last looked. Inventories that do not count changes do not implement it.
+abstract interface class VersionedInv {
+  /// `getId()` and `getVersion()` of the wrapped inventory.
+  (int, int)? get inventoryVersion;
+}
+
+/// `VersionedInventoryTrackerBehaviour`: remembers the version of an inventory at which nothing
+/// changed, to wait for a change instead of re-reading it.
+class VersionTracker {
+  int _ignoredId = -1;
+  int _ignoredVersion = -1;
+
+  /// `stillWaiting(handler)`: [version] is `(id, version)`, `null` for an inventory that does not
+  /// count changes (which never counts as waiting).
+  bool stillWaiting((int, int)? version) =>
+      version != null &&
+      version.$1 == _ignoredId &&
+      version.$2 == _ignoredVersion;
+
+  /// `awaitNewVersion(handler)`.
+  void awaitNewVersion((int, int)? version) {
+    if (version != null) {
+      _ignoredId = version.$1;
+      _ignoredVersion = version.$2;
+    }
+  }
+
+  /// `reset()`.
+  void reset() {
+    _ignoredVersion = -1;
+    _ignoredId = -1;
+  }
+}
+
 /// An inventory that can do the stacked insert in one operation (the host's `insert` with no
 /// slot). [insertStacked] uses it when present.
 abstract interface class StackedInserter {

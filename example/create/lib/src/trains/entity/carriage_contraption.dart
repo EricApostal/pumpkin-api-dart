@@ -128,6 +128,10 @@ class CarriageContraption {
       }
     }
 
+    // The contraption hides the blocks and colliders outside the portal cut while a carriage is
+    // entering or leaving a portal (`CarriageContraption.isHiddenInPortal`).
+    data.setPortalHiding(isHiddenInPortal, () => !notInPortal());
+
     return true;
   }
 
@@ -159,7 +163,8 @@ class CarriageContraption {
 
   /// The train part of `writeNBT(registries, spawnPacket)`.
   void writeNBT(CTag tag) {
-    tag.putString('AssemblyDirection', assemblyDirection.name.toUpperCase());
+    // `Direction.name()`, lower case: `readEnum` matches the constant name.
+    tag.putString('AssemblyDirection', assemblyDirection.name);
     tag.putBoolean('FrontControls', forwardControls);
     tag.putBoolean('BackControls', backwardControls);
     tag.putBoolean('FrontBlazeConductor', blockConductors.getFirst());

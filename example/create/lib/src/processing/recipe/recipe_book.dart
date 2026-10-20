@@ -25,6 +25,15 @@ final class RecipeMatch {
   );
 }
 
+/// `AllRecipeTypes.CAN_BE_AUTOMATED` / `shouldIgnoreInAutomation`: a recipe whose path ends in
+/// `_manual_only` is played by hand only, so no machine uses it.
+bool ignoredInAutomation(String recipeId) {
+  final path = recipeId.contains(':')
+      ? recipeId.substring(recipeId.indexOf(':') + 1)
+      : recipeId;
+  return path.endsWith('_manual_only');
+}
+
 /// All loaded Create recipes.
 final class RecipeBook {
   final TagLookup tags;
@@ -119,14 +128,23 @@ final class RecipeBook {
   }
 
   /// `RecipeFinder`-style lookup for the single-input machines: a sequenced assembly step of
-  /// the right type first (when [allowSequenced]), otherwise the first plain recipe.
-  RecipeMatch? findForInput(CreateRecipeType type, PStack stack, {bool allowSequenced = true}) {
+  /// the right type first (when [allowSequenced]), otherwise the first plain recipe. [accept]
+  /// filters the plain recipes (the deployer rejects `_manual_only` ones, `CAN_BE_AUTOMATED`).
+  RecipeMatch? findForInput(
+    CreateRecipeType type,
+    PStack stack, {
+    bool allowSequenced = true,
+    bool Function(ProcessingRecipe recipe)? accept,
+  }) {
     if (allowSequenced) {
       final s = firstSequenced(type, stack, filter: (r) => r.matchesSingle(stack, tags));
       if (s != null) return s;
     }
-    final plain = forInput(type, stack);
-    return plain.isEmpty ? null : RecipeMatch(plain.first);
+    final plain = firstWhere(
+      type,
+      (r) => r.matchesSingle(stack, tags) && (accept?.call(r) ?? true),
+    );
+    return plain == null ? null : RecipeMatch(plain);
   }
 
   /// The first recipe of [type] satisfying [test] (basin / application lookups).
@@ -145,19 +163,24 @@ final class RecipeBook {
 
   /// `DeployerApplicationRecipe` lookup (`DeployerBlockEntity.getRecipe`):
   /// sequenced assembly steps of type deploying first, then plain `deploying`, then
-  /// `item_application`... callers pass the [types] they want in order.
+  /// `item_application`... callers pass the [types] they want in order. [accept] filters the
+  /// plain recipes (`AllRecipeTypes.CAN_BE_AUTOMATED` for the deployer).
   RecipeMatch? findApplication(
     List<CreateRecipeType> types,
     PStack processed,
     PStack held, {
     bool allowSequenced = true,
+    bool Function(ProcessingRecipe recipe)? accept,
   }) {
     for (final type in types) {
       if (allowSequenced) {
         final s = firstSequenced(type, processed, filter: (r) => r.matchesApplication(processed, held, tags));
         if (s != null) return s;
       }
-      final plain = firstWhere(type, (r) => r.matchesApplication(processed, held, tags));
+      final plain = firstWhere(
+        type,
+        (r) => r.matchesApplication(processed, held, tags) && (accept?.call(r) ?? true),
+      );
       if (plain != null) return RecipeMatch(plain);
     }
     return null;

@@ -159,7 +159,7 @@ class OpenEndedPipe extends FlowSource {
 
     if (!world.config.pipesPlaceFluidSourceBlocks) return true;
 
-    if (world.waterEvaporates && FluidHelper.isWater(fluid.fluid)) {
+    if (world.waterEvaporates && FluidHelper.isWaterTag(world, fluid.fluid)) {
       final r = world.nextDouble() - world.nextDouble();
       world.playSound(
         outputPos,
@@ -186,7 +186,7 @@ class OpenEndedPipe extends FlowSource {
     if (world == null) return false;
     if (fluid.isEmpty || !FluidHelper.hasBlockState(fluid.fluid)) return false;
     if (!world.config.pipesPlaceFluidSourceBlocks) return false;
-    return !(world.waterEvaporates && FluidHelper.isWater(fluid.fluid));
+    return !(world.waterEvaporates && FluidHelper.isWaterTag(world, fluid.fluid));
   }
 }
 

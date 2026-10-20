@@ -125,18 +125,12 @@ final class DisplayBoardTarget extends DisplayTarget implements FlapTarget {
         controller.clearLine(i + line);
         continue;
       }
-      controller.setLine(i + line, [for (final t in text[i]) t.plain], layoutKey: _layoutKey(source, context));
+      // `source.loadFlapDisplayLayout(context, controller, layout, i)`: `i` is the row within the
+      // source's text (Boiler's line 0 rule), not the board line.
+      final layout = source.loadFlapDisplayLayout(context, controller, i);
+      controller.setLine(i + line, [for (final t in text[i]) t.plain], layout: layout);
     }
     controller.sendData();
-  }
-
-  /// The name of the layout a source wants on the board (`getFlapDisplayLayoutName`).
-  String _layoutKey(DisplaySource source, DisplayLinkContext context) {
-    if (source is NumericSingleLineDisplaySource) return 'Number';
-    if (source is TimeOfDayDisplaySource || source is StopWatchDisplaySource) return 'Instant';
-    if (source is NixieTubeDisplaySource && context.flapDisplayContext == true) return 'Number';
-    if (source is ValueListDisplaySource) return 'ValueList';
-    return 'Default';
   }
 
   @override

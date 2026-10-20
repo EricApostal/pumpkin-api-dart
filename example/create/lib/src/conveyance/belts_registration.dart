@@ -4,9 +4,12 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/kinetics.dart' show KineticNetworkService, KState;
 import '../api/payloads.dart' show PayloadBus;
+import '../api/schematics.dart'
+    show SchematicBeltHooks, SchematicHooks, safeBlockEntityData;
 import '../api/wrenchable.dart'
     show CallbackWrenchable, WrenchRegistry, WrenchResult;
 import '../common/host_bridge.dart';
+import '../common/pos.dart';
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
 import '../core/module.dart';
@@ -14,6 +17,7 @@ import '../core/registry.dart';
 import 'belt/belt_block.dart';
 import 'belt/belt_block_entity.dart';
 import 'belt/belt_connector_item.dart';
+import 'belt/belt_connector_item.dart' as belt_connector;
 import 'belt/belt_geometry.dart';
 import 'chain/chain_conveyor_block.dart';
 import 'chain/chain_conveyor_block_entity.dart';
@@ -24,6 +28,9 @@ import 'runtime.dart';
 
 CreateBlock? _beltBlock;
 CreateBlock? _chainConveyorBlock;
+
+/// The schematic hooks this module installed, cleared on unload.
+SchematicHooks? _schematicHooks;
 
 /// Phase 1: blocks, block entity types, items.
 void registerBelts(CreateRegistry registry) {
@@ -86,6 +93,10 @@ void loadBelts(CreateContext ctx) {
     );
   }
 
+  // `ChainConveyorBlockEntity.transform`: connections follow a contraption that moves the
+  // conveyor.
+  registerChainConveyorTransform();
+
   // The belt connector places a belt between two shafts (`BeltConnectorItem.useOn`).
   ctx.host.intercept(Events.itemUseFirst, (server, e) async {
     if (e.useResult != ItemUseFirstResult.pass) return e;
@@ -102,6 +113,26 @@ void loadBelts(CreateContext ctx) {
 
 /// Phase 3: the server finished loading.
 void serverBeltsLoaded(CreateRuntime runtime) {
+  // `ChainConveyorBlockEntity.writeSafe`: a printed conveyor keeps its chains.
+  final hooks = runtime.services.find<SchematicHooks>();
+  if (hooks != null) {
+    hooks.safeNbtWriters['create:chain_conveyor'] = (state, nbt) =>
+        safeBlockEntityData(state, nbt, extraKeys: const ['Connections']);
+  } else {
+    runtime.log.warn(
+      'No schematic hooks: printed chain conveyors lose their connections.',
+    );
+  }
+
+  // `LaunchedBelt`: a schematic cannon places the shaft and asks for the belt run between it and
+  // the far pulley (`BeltConnectorItem.createBelts` / `BeltBlockEntity.setCasingType`).
+  if (hooks != null) {
+    _schematicHooks = hooks;
+    hooks.beltHooks = _BeltSchematicHooks(
+      ConveyanceRuntime.loaded ? ConveyanceRuntime.i : null,
+    );
+  }
+
   final wrench = runtime.services.find<WrenchRegistry>();
   if (wrench == null) {
     runtime.log.warn(
@@ -186,6 +217,33 @@ void serverBeltsLoaded(CreateRuntime runtime) {
 
 /// Plugin unload.
 void unloadBelts() {
+  _schematicHooks?.beltHooks = null;
+  _schematicHooks = null;
   ServerChainConveyorHandler.hangingPlayers.clear();
   if (ConveyanceRuntime.loaded) ConveyanceRuntime.i.dispose();
+}
+
+/// `SchematicBeltHooks` over the belts of this module.
+final class _BeltSchematicHooks implements SchematicBeltHooks {
+  _BeltSchematicHooks(this.rt);
+
+  final ConveyanceRuntime? rt;
+
+  @override
+  Future<void> createBelts(String worldId, Pos start, Pos end) async {
+    final rt = this.rt;
+    if (rt == null) return;
+    final world = rt.ctx.worlds.byId(worldId);
+    if (world == null) return;
+    await belt_connector.createBelts(rt, world, worldId, start, end);
+  }
+
+  /// `BeltBlockEntity.setCasingType`: 1 is andesite, 2 brass.
+  @override
+  Future<void> setCasing(String worldId, Pos pos, int casing) async {
+    final be = rt?.typedAt<BeltBlockEntity>(worldId, pos);
+    be?.setCasingType(
+      casing == 2 ? BeltCasing.brass : BeltCasing.andesite,
+    );
+  }
 }

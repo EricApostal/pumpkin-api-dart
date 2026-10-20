@@ -5,6 +5,9 @@
 // Pure: no host imports.
 //
 // Java: dev.simulated_team.simulated.util.SimLevelUtil
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:sable/sable.dart';
 

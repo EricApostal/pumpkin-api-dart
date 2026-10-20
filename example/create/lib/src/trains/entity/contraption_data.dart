@@ -50,6 +50,14 @@ abstract interface class ContraptionData {
   /// `MountedStorageManager` instead (`swapStorageAfterAssembly`).
   CarriageStorage? takeStorage();
 
+  /// `contraption.isHiddenInPortal(localPos)` / `contraption.getSimplifiedEntityColliders()`:
+  /// the train part decides which blocks and colliders are hidden while the carriage is in a
+  /// portal (`CarriageContraption` overrides both in Java).
+  void setPortalHiding(
+    bool Function(Pos localPos) hiddenInPortal,
+    bool Function() collidersHidden,
+  );
+
   /// `contraption.storage = storage` (`returnStorageForDisassembly`).
   void returnStorage(CarriageStorage storage);
 }

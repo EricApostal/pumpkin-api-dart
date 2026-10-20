@@ -8,6 +8,7 @@
 // blocks of the plane.
 //
 // Pure: no host imports.
+// ignore_for_file: implementation_imports
 import 'package:create/src/common/pos.dart' show Pos;
 
 /// `BalloonLayerData`.

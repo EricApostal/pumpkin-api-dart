@@ -57,11 +57,42 @@ abstract class SingleLineDisplaySource extends DisplaySource {
     }
     return super.provideFlapDisplayText(context, stats);
   }
+
+  @override
+  FlapLayoutSpec loadFlapDisplayLayout(DisplayLinkContext context, FlapControllerView flap, int lineIndex) {
+    final layoutKey = getFlapDisplayLayoutName(context);
+    final label = allowsLabeling(context) ? context.sourceConfig.getStringOr('Label', '') : '';
+    final maxCharCount = flap.maxCharCount;
+
+    if (label.isEmpty) {
+      return FlapLayoutSpec(layoutKey, [createSectionForValue(context, maxCharCount)]);
+    }
+
+    final layoutName = '${label.length}_Labeled_$layoutKey';
+    final labelSection = FlapSectionSpec(
+      math.min(maxCharCount, label.length + 1) * FlapSectionSpec.monospace,
+      'alphabet',
+    );
+    if (label.length + 1 < maxCharCount) {
+      return FlapLayoutSpec(layoutName, [
+        labelSection,
+        createSectionForValue(context, maxCharCount - label.length - 1),
+      ]);
+    }
+    return FlapLayoutSpec(layoutName, [labelSection]);
+  }
 }
 
 /// `NumericSingleLineDisplaySource`.
 abstract class NumericSingleLineDisplaySource extends SingleLineDisplaySource {
   static Txt zero() => Txt.literal('0');
+
+  @override
+  String getFlapDisplayLayoutName(DisplayLinkContext context) => 'Number';
+
+  @override
+  FlapSectionSpec createSectionForValue(DisplayLinkContext context, int size) =>
+      FlapSectionSpec(size * FlapSectionSpec.monospace, 'numeric');
 }
 
 /// A box for `flapDisplayContext` (`MutableInt`).
@@ -127,6 +158,41 @@ abstract class ValueListDisplaySource extends DisplaySource {
     return result;
   }
 
+  /// `loadFlapDisplayLayout`: the value format comes from the highest number of the list
+  /// (`context.flapDisplayContext`), not from the texts of a single row.
+  @override
+  FlapLayoutSpec loadFlapDisplayLayout(DisplayLinkContext context, FlapControllerView flap, int lineIndex) {
+    final valueFirst = this.valueFirst;
+    final shorten = shortenNumbers(context);
+    final valueFormat = shorten ? 0 : math.max(4, 1 + _log10Int((context.flapDisplayContext as MutableInt?)?.value ?? 0));
+
+    final layoutKey = 'ValueList_${valueFirst}_$valueFormat';
+    final maxCharCount = flap.maxCharCountFor(1);
+    final numberLength = math.min(maxCharCount, math.max(3, valueFormat));
+    final nameLength = math.max(maxCharCount - numberLength - (shorten ? 1 : 0), 0);
+
+    const mono = FlapSectionSpec.monospace;
+    final name = FlapSectionSpec(mono * nameLength, 'alphabet', hasGap: !valueFirst);
+    final value = FlapSectionSpec(
+      mono * numberLength,
+      'number',
+      hasGap: !shorten && valueFirst,
+      rightAligned: true,
+    );
+
+    if (shorten) {
+      final suffix = FlapSectionSpec(mono, 'shortened_numbers', hasGap: valueFirst);
+      return FlapLayoutSpec(layoutKey, valueFirst ? [value, suffix, name] : [name, value, suffix]);
+    }
+    return FlapLayoutSpec(layoutKey, valueFirst ? [value, name] : [name, value]);
+  }
+
+  /// `(int) Math.log10(value)`; 0 and negatives are `Integer.MIN_VALUE` like the Java cast.
+  static int _log10Int(int value) {
+    if (value <= 0) return -0x80000000;
+    return (math.log(value) / math.ln10).floor();
+  }
+
   List<Txt> createComponentsFromEntry(DisplayLinkContext context, IntAttached<Txt> entry) {
     final number = entry.first;
     final name = entry.second.append(DisplaySource.whitespace);
@@ -161,6 +227,15 @@ abstract class ValueListDisplaySource extends DisplaySource {
 
 /// `PercentOrProgressBarDisplaySource`.
 abstract class PercentOrProgressBarDisplaySource extends NumericSingleLineDisplaySource {
+  @override
+  String getFlapDisplayLayoutName(DisplayLinkContext context) =>
+      !progressBarActive(context) ? super.getFlapDisplayLayoutName(context) : 'Progress';
+
+  @override
+  FlapSectionSpec createSectionForValue(DisplayLinkContext context, int size) => !progressBarActive(context)
+      ? super.createSectionForValue(context, size)
+      : FlapSectionSpec(size * FlapSectionSpec.monospace, 'pixel', wideFlaps: true);
+
   @override
   Future<Txt> provideLine(DisplayLinkContext context, DisplayTargetStats stats) async {
     final rawProgress = await getProgress(context);
@@ -343,6 +418,16 @@ final class NixieTubeDisplaySource extends SingleLineDisplaySource {
 
   @override
   bool allowsLabeling(DisplayLinkContext context) => context.activeTarget?.id != 'create:nixie_tube';
+
+  @override
+  String getFlapDisplayLayoutName(DisplayLinkContext context) =>
+      context.flapDisplayContext == true ? 'Number' : super.getFlapDisplayLayoutName(context);
+
+  @override
+  FlapSectionSpec createSectionForValue(DisplayLinkContext context, int size) =>
+      context.flapDisplayContext == true
+      ? FlapSectionSpec(size * FlapSectionSpec.monospace, 'numeric')
+      : super.createSectionForValue(context, size);
 }
 
 // -- Items --------------------------------------------------------------------------------------------------
@@ -372,6 +457,9 @@ final class ItemNameDisplaySource extends SingleLineDisplaySource {
 
   @override
   bool allowsLabeling(DisplayLinkContext context) => true;
+
+  @override
+  String getFlapDisplayLayoutName(DisplayLinkContext context) => 'Number';
 }
 
 /// `AccumulatedItemCountDisplaySource` (`accumulate_items`).
@@ -607,6 +695,26 @@ final class FluidListDisplaySource extends ValueListDisplaySource {
     final (a, b) = fluidComponents(amount, shortenNumbers(context));
     return [a, b, name];
   }
+
+  /// `loadFlapDisplayLayout`: the number section is sized from the longest formatted amount.
+  @override
+  FlapLayoutSpec loadFlapDisplayLayout(DisplayLinkContext context, FlapControllerView flap, int lineIndex) {
+    final max = (context.flapDisplayContext as MutableInt?)?.value ?? 0;
+    final shorten = shortenNumbers(context);
+    final length = fluidString(max, shorten).length;
+    final layoutKey = 'FluidList_$length';
+
+    final maxCharCount = flap.maxCharCountFor(1);
+    final numberLength = math.min(maxCharCount, math.max(3, length - 2));
+    final nameLength = math.max(maxCharCount - numberLength - 2, 0);
+
+    const mono = FlapSectionSpec.monospace;
+    return FlapLayoutSpec(layoutKey, [
+      FlapSectionSpec(mono * numberLength, 'number', rightAligned: true),
+      const FlapSectionSpec(mono * 2, 'fluid_units', singleFlap: true, hasGap: true),
+      FlapSectionSpec(mono * nameLength, 'alphabet'),
+    ]);
+  }
 }
 
 /// `PackageAddressDisplaySource` (`read_package_address`).
@@ -646,8 +754,6 @@ final class FillLevelDisplaySource extends PercentOrProgressBarDisplaySource {
   @override
   bool allowsLabeling(DisplayLinkContext context) => true;
 }
-
-// -- Kinetics ------------------------------------------------------------------------------------------------
 
 /// `KineticSpeedDisplaySource` (`kinetic_speed`).
 final class KineticSpeedDisplaySource extends NumericSingleLineDisplaySource {
@@ -741,6 +847,13 @@ final class TimeOfDayDisplaySource extends SingleLineDisplaySource {
 
   @override
   bool allowsLabeling(DisplayLinkContext context) => true;
+
+  @override
+  String getFlapDisplayLayoutName(DisplayLinkContext context) => 'Instant';
+
+  @override
+  FlapSectionSpec createSectionForValue(DisplayLinkContext context, int size) =>
+      FlapSectionSpec(size * FlapSectionSpec.monospace, 'instant');
 }
 
 /// `StopWatchDisplaySource` (`stopwatch`).
@@ -777,6 +890,13 @@ final class StopWatchDisplaySource extends SingleLineDisplaySource {
 
   @override
   bool allowsLabeling(DisplayLinkContext context) => true;
+
+  @override
+  String getFlapDisplayLayoutName(DisplayLinkContext context) => 'Instant';
+
+  @override
+  FlapSectionSpec createSectionForValue(DisplayLinkContext context, int size) =>
+      FlapSectionSpec(size * FlapSectionSpec.monospace, 'instant');
 }
 
 // -- Fluids, trains, elevators ----------------------------------------------------------------------------
@@ -839,6 +959,22 @@ final class BoilerDisplaySource extends DisplaySource {
   int _labelWidthOf(String label) => Txt.translate('create.boiler.$label').plain.length;
 
   int get _labelWidth => math.max(_labelWidthOf('water'), math.max(_labelWidthOf('size'), _labelWidthOf('heat')));
+
+  /// `loadFlapDisplayLayout`: the status line keeps the default layout, the three value lines
+  /// get the label and the pixel gauge (`lineIndex == 0` or a board that is too small).
+  @override
+  FlapLayoutSpec loadFlapDisplayLayout(DisplayLinkContext context, FlapControllerView flap, int lineIndex) {
+    final flapContext = context.flapDisplayContext;
+    if (lineIndex == 0 || (flapContext is bool && !flapContext)) {
+      return const FlapLayoutSpec.defaultLayout();
+    }
+
+    final labelLength = (_labelWidth * FlapSectionSpec.monospace).toInt();
+    final maxSpace = flap.maxCharCountFor(1) * FlapSectionSpec.monospace;
+    final label = FlapSectionSpec(labelLength.toDouble(), 'alphabet', hasGap: true);
+    final symbols = FlapSectionSpec(maxSpace - labelLength, 'pixel', wideFlaps: true);
+    return FlapLayoutSpec('Boiler', [label, symbols]);
+  }
 
   List<List<Txt>> _components(DisplayLinkContext context, bool forFlapDisplay) {
     final texts = context.env.boilerTexts(context.sourcePos, forFlapDisplay: forFlapDisplay);
@@ -973,6 +1109,51 @@ final class StationSummaryDisplaySource extends DisplaySource {
       list.add(hasPlatform ? _emptyEntry5() : _emptyEntry4());
     }
     return list;
+  }
+
+  @override
+  FlapLayoutSpec loadFlapDisplayLayout(DisplayLinkContext context, FlapControllerView flap, int lineIndex) {
+    final conf = context.sourceConfig;
+    final columnWidth = conf.getIntOr('NameColumn', 0);
+    final columnWidth2 = conf.getIntOr('PlatformColumn', 0);
+    final hasPlatform = conf.getStringOr('Filter', '').contains('*');
+
+    final layoutName = 'StationSummary$columnWidth$hasPlatform$columnWidth2';
+
+    const mono = FlapSectionSpec.monospace;
+    const timeWidth = 20.0;
+    const gapSize = 8.0;
+    var platformWidth = columnWidth2 * mono;
+
+    const minutes = FlapSectionSpec(mono, 'numeric');
+    const time = FlapSectionSpec(timeWidth, 'arrival_time', singleFlap: true, hasGap: true);
+
+    var totalSize = flap.xSize * 32.0 - 4.0 - gapSize * 2;
+    totalSize = totalSize - timeWidth - mono;
+    platformWidth = math.min(platformWidth, totalSize - gapSize);
+    platformWidth = (platformWidth / mono).toInt() * mono;
+
+    if (hasPlatform) totalSize = totalSize - gapSize - platformWidth;
+    if (platformWidth == 0 && hasPlatform) totalSize += gapSize;
+
+    final trainNameWidth = (columnWidth / 100.0 * totalSize / mono).toInt();
+    final destinationWidth = ((1 - columnWidth / 100.0) * totalSize / mono).round();
+
+    final trainName = FlapSectionSpec(mono * trainNameWidth, 'alphabet', hasGap: trainNameWidth > 0);
+    final destination = FlapSectionSpec(
+      mono * destinationWidth,
+      'alphabet',
+      hasGap: hasPlatform && destinationWidth > 0 && platformWidth > 0,
+    );
+    final platform = FlapSectionSpec(platformWidth, 'numeric', rightAligned: true);
+
+    return FlapLayoutSpec(layoutName, [
+      minutes,
+      time,
+      trainName,
+      destination,
+      if (hasPlatform) platform,
+    ]);
   }
 
   @override

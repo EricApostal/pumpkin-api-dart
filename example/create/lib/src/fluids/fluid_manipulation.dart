@@ -320,7 +320,7 @@ class FluidFilling extends FluidManipulation {
     final maxRangeSq = maxRange * maxRange;
     final maxBlocks = this.maxBlocks();
 
-    final evaporate = world.waterEvaporates && FluidHelper.isWater(fluid);
+    final evaporate = world.waterEvaporates && FluidHelper.isWaterTag(world, fluid);
     final canPlaceSources = world.config.fluidFillPlaceFluidSourceBlocks;
 
     if ((!fillInfinite() && infinite) || evaporate || !canPlaceSources) {

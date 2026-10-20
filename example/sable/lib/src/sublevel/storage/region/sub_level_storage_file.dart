@@ -83,8 +83,14 @@ final class SubLevelStorageFile {
   }
 
   void _loadExternalPayloads() {
-    if (!store.exists(externalDirectory)) return;
-    for (final name in store.list(externalDirectory)) {
+    final List<String> names;
+    try {
+      names = store.list(externalDirectory);
+    } on Object {
+      // No external directory yet: every payload is inline.
+      return;
+    }
+    for (final name in names) {
       if (!name.endsWith(singleFileExtension)) continue;
       final index = int.tryParse(name.substring(0, name.length - singleFileExtension.length));
       if (index == null) continue;
@@ -130,10 +136,16 @@ final class SubLevelStorageFile {
   String get filePath => path;
 
   void _persistExternal(int index) {
+    final externalPath = '$externalDirectory/$index$singleFileExtension';
     final payload = _image.externalPayloads[index];
-    if (payload == null) return;
+    if (payload == null) {
+      // The payload fits inline now; a file from an earlier oversized write
+      // must not be left behind (Java `SubLevelStorageFile.write` deletes it).
+      if (store.exists(externalPath)) store.delete(externalPath);
+      return;
+    }
     store.createDirectory(externalDirectory);
-    store.writeBytes('$externalDirectory/$index$singleFileExtension', payload);
+    store.writeBytes(externalPath, payload);
   }
 
   /// Writes the file to the store.

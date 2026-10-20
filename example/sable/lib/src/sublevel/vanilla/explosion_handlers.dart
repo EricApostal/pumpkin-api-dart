@@ -23,11 +23,18 @@ import '../model/sub_level.dart';
 
 /// Asks how much a block resists the blast (`null` when the block has no
 /// resistance of its own, like vanilla's `Optional.empty`).
-typedef SubLevelBlockResistance = double? Function(SubLevel subLevel, (int, int, int) localPos);
+typedef SubLevelBlockResistance = double? Function(
+  SubLevel subLevel,
+  (int, int, int) localPos,
+);
 
 /// Asks whether a block should be destroyed (`ExplosionDamageCalculator
 /// #shouldBlockExplode`).
-typedef SubLevelBlockExplodeTest = bool Function(SubLevel subLevel, (int, int, int) localPos, double power);
+typedef SubLevelBlockExplodeTest = bool Function(
+  SubLevel subLevel,
+  (int, int, int) localPos,
+  double power,
+);
 
 /// One impulse handed to a sub-level body.
 final class ExplosionImpulse {
@@ -42,7 +49,8 @@ final class ExplosionImpulse {
   const ExplosionImpulse(this.subLevel, this.position, this.force);
 
   @override
-  String toString() => 'ExplosionImpulse(${subLevel.uniqueIdOrNull}, $position, $force)';
+  String toString() =>
+      'ExplosionImpulse(${subLevel.uniqueIdOrNull}, $position, $force)';
 }
 
 /// The outcome of one blast-ray point against the sub-levels there.
@@ -58,7 +66,11 @@ final class SubLevelExplosionResult {
 
   const SubLevelExplosionResult(this.power, this.destroyed, this.impulses);
 
-  static const SubLevelExplosionResult none = SubLevelExplosionResult(0, [], []);
+  static const SubLevelExplosionResult none = SubLevelExplosionResult(
+    0,
+    [],
+    [],
+  );
 }
 
 /// Explosion helpers.
@@ -80,8 +92,8 @@ abstract final class SubLevelExplosions {
   /// point; [wind] is true for wind charges, which destroy the block the ray
   /// dies on regardless of the remaining power.
   ///
-  /// [exploded] is the caller's set of already-hit blocks (plot coordinates, per
-  /// sub-level), shared across the whole walk so a block is only pushed once.
+  /// [exploded] is the caller's set of already-hit blocks (the sub-level and the
+  /// plot block), shared across the whole walk so a block is only pushed once.
   static SubLevelExplosionResult walk({
     required Vector3d rayPoint,
     required Vector3d centre,
@@ -91,11 +103,11 @@ abstract final class SubLevelExplosions {
     required SubLevelBlockExplodeTest shouldBlockExplode,
     bool wind = false,
     double impulseStrength = 5.0,
-    Set<(String, int, int, int)>? exploded,
+    Set<(SubLevel, int, int, int)>? exploded,
   }) {
     final destroyed = <(int, int, int)>[];
     final impulses = <ExplosionImpulse>[];
-    final hit = exploded ?? <(String, int, int, int)>{};
+    final hit = exploded ?? <(SubLevel, int, int, int)>{};
     var remaining = power;
 
     for (final subLevel in subLevels) {
@@ -103,7 +115,11 @@ abstract final class SubLevelExplosions {
       final localRay = pose.transformPositionInverse(Vector3d.copy(rayPoint));
       final localCentre = pose.transformPositionInverse(Vector3d.copy(centre));
 
-      final blockPos = (localRay.x.floor(), localRay.y.floor(), localRay.z.floor());
+      final blockPos = (
+        localRay.x.floor(),
+        localRay.y.floor(),
+        localRay.z.floor(),
+      );
       final canExplodeBefore = remaining > 0.0;
 
       final blockResistance = resistance(subLevel, blockPos);
@@ -111,13 +127,18 @@ abstract final class SubLevelExplosions {
         remaining -= (blockResistance + 0.3) * 0.3;
       }
 
-      if (remaining > 0.0 && shouldBlockExplode(subLevel, blockPos, remaining)) {
+      if (remaining > 0.0 &&
+          shouldBlockExplode(subLevel, blockPos, remaining)) {
         destroyed.add(blockPos);
       }
 
-      final addKey = (subLevel.uniqueIdOrNull ?? '', blockPos.$1, blockPos.$2, blockPos.$3);
+      final addKey = (subLevel, blockPos.$1, blockPos.$2, blockPos.$3);
       if (canExplodeBefore && (remaining < 0.0 || wind) && hit.add(addKey)) {
-        final blockCentre = Vector3d(blockPos.$1 + 0.5, blockPos.$2 + 0.5, blockPos.$3 + 0.5);
+        final blockCentre = Vector3d(
+          blockPos.$1 + 0.5,
+          blockPos.$2 + 0.5,
+          blockPos.$3 + 0.5,
+        );
         final direction = Vector3d(
           blockCentre.x - localCentre.x,
           blockCentre.y - localCentre.y,

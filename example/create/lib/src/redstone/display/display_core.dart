@@ -137,6 +137,9 @@ abstract interface class FlapControllerView {
   /// `getMaxCharCount()`.
   int get maxCharCount;
 
+  /// `getMaxCharCount(gaps)`.
+  int maxCharCountFor(int gaps);
+
   /// `isSpeedRequirementFulfilled()`.
   bool get speedRequirementFulfilled;
 
@@ -147,14 +150,51 @@ abstract interface class FlapControllerView {
   bool isManualLine(int line);
 
   /// Sets the sections of line [line] to [texts] (`layout.getSections().get(i).setText(...)`);
-  /// [layoutKey] names the layout the source wants (`Default`, `Number`, `ValueList_...`).
-  void setLine(int line, List<String> texts, {required String layoutKey});
+  /// [layout] is the layout the source configured (`loadFlapDisplayLayout`).
+  void setLine(int line, List<String> texts, {required FlapLayoutSpec layout});
 
   /// `applyTextManually(line, null)`: clears the line.
   void clearLine(int line);
 
   /// `sendData()`.
   void sendData();
+}
+
+/// A `FlapDisplaySection` as a source configures it (`createSectionForValue`).
+final class FlapSectionSpec {
+  /// `FlapDisplaySection.MONOSPACE`.
+  static const double monospace = 7;
+
+  /// Width in pixels (`FlapDisplaySection.size`).
+  final double width;
+  final String cycle;
+  final bool singleFlap;
+  final bool hasGap;
+  final bool rightAligned;
+  final bool wideFlaps;
+
+  const FlapSectionSpec(
+    this.width,
+    this.cycle, {
+    this.singleFlap = false,
+    this.hasGap = false,
+    this.rightAligned = false,
+    this.wideFlaps = false,
+  });
+}
+
+/// What a source wants on one line of a flap display (`loadFlapDisplayLayout`).
+final class FlapLayoutSpec {
+  /// `FlapDisplayLayout.layoutKey`.
+  final String key;
+
+  /// The sections, `null` to keep/load the default layout (`loadDefault`).
+  final List<FlapSectionSpec>? sections;
+
+  const FlapLayoutSpec(this.key, this.sections);
+
+  /// `layout.loadDefault(flapDisplay.getMaxCharCount())`.
+  const FlapLayoutSpec.defaultLayout() : key = 'Default', sections = null;
 }
 
 /// A smart observer's view of its target (`SmartObserverBlockEntity` + filter).
@@ -287,6 +327,18 @@ abstract class DisplaySource {
   /// `provideFlapDisplayText`: one list of section texts per row.
   Future<List<List<Txt>>> provideFlapDisplayText(DisplayLinkContext context, DisplayTargetStats stats) async =>
       [for (final t in await provideText(context, stats)) [t]];
+
+  /// `getFlapDisplayLayoutName(context)`.
+  String getFlapDisplayLayoutName(DisplayLinkContext context) => 'Default';
+
+  /// `createSectionForValue(context, size)`: the section the value of a single line source gets.
+  FlapSectionSpec createSectionForValue(DisplayLinkContext context, int size) =>
+      FlapSectionSpec(size * FlapSectionSpec.monospace, 'alphabet');
+
+  /// `loadFlapDisplayLayout(context, flapDisplay, layout, lineIndex)`: the layout of one line.
+  /// [lineIndex] is the index of the row within the source's text (`0` for the first row).
+  FlapLayoutSpec loadFlapDisplayLayout(DisplayLinkContext context, FlapControllerView flap, int lineIndex) =>
+      FlapLayoutSpec(getFlapDisplayLayoutName(context), [createSectionForValue(context, flap.maxCharCount)]);
 
   /// `transferData`: pushes the text into [activeTarget] starting at [line].
   Future<void> transferData(DisplayLinkContext context, DisplayTarget activeTarget, int line) async {

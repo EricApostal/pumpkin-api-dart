@@ -12,6 +12,10 @@ import '../../core/blocks.dart';
 import '../items/item_codec.dart';
 import '../items/item_data.dart';
 
+/// `AbstractFunnelBlock.isFunnel` / `BeltFunnelBlock` / `getFunnelFacing` live in the pure
+/// [block_predicates] library so the funnel decisions can be tested without the host.
+export 'block_predicates.dart';
+
 /// The [CreateBlock]s registered by `transport_registration.dart`, by key. Block behaviours need
 /// them to turn an event's state index back into property values.
 final Map<String, CreateBlock> transportBlocks = {};
@@ -54,22 +58,6 @@ bool isOpenChute(BState s) {
   if (s.key == 'create:smart_chute') return true;
   return (s.dir('facing') ?? Direction.down) == Direction.down ||
       s['shape'] == 'intersection';
-}
-
-/// `AbstractFunnelBlock.isFunnel`.
-bool isFunnelState(BState s) =>
-    s.key == 'create:andesite_funnel' || s.key == 'create:brass_funnel';
-
-/// `BeltFunnelBlock`.
-bool isBeltFunnelState(BState s) =>
-    s.key == 'create:andesite_belt_funnel' ||
-    s.key == 'create:brass_belt_funnel';
-
-/// `AbstractFunnelBlock.getFunnelFacing`.
-Direction? funnelFacing(BState s) {
-  if (isFunnelState(s)) return s.dir('facing');
-  if (isBeltFunnelState(s)) return s.dir('facing');
-  return null;
 }
 
 /// `BeltTunnelBlock`.

@@ -68,19 +68,46 @@ class FragileBlockCallback implements BlockSubLevelCollisionCallback {
   /// Whether [state] has a dedicated hit behaviour instead of simply breaking.
   bool shouldTriggerFor(BState state) => false;
 
+  /// The raw callback entry point (`[x, y, z, remove ? 1 : 0]`).
+  ///
+  /// `BlockSubLevelCollisionCallback` declares this method with a body, but
+  /// `implements` does not inherit bodies, so the conversion is repeated here.
+  @override
+  List<double> onCollision(
+    int x,
+    int y,
+    int z,
+    int otherX,
+    int otherY,
+    int otherZ,
+    double x1,
+    double y1,
+    double z1,
+    double impactVelocity,
+    bool hasOtherBlock,
+  ) {
+    final result = sable$onCollision(
+      (x, y, z),
+      hasOtherBlock ? (otherX, otherY, otherZ) : null,
+      Vector3d(x1, y1, z1),
+      impactVelocity,
+    );
+    final motion = result.tangentMotion;
+    return [motion.x, motion.y, motion.z, result.removeCollision ? 1.0 : 0.0];
+  }
+
   @override
   CollisionResult sable$onCollision(
     Pos hitBlockPos,
     Pos? otherHitBlockPos,
     Vector3d impactPosition,
     double impactVelocity,
-  ) =>
-      handle(
-        hitBlockPos: hitBlockPos,
-        impactPosition: impactPosition,
-        impactVelocity: impactVelocity,
-        fragileFlag: true,
-      );
+  ) => handle(
+    hitBlockPos: hitBlockPos,
+    impactPosition: impactPosition,
+    impactVelocity: impactVelocity,
+    fragileFlag: true,
+  );
 
   /// The collision, with the fragile flag made explicit.
   ///
@@ -126,7 +153,11 @@ class FragileBlockCallback implements BlockSubLevelCollisionCallback {
   }
 
   /// What happens when [state] is hit: break it, by default.
-  CollisionResult onHit(Pos hitBlockPos, BState state, Vector3d impactPosition) {
+  CollisionResult onHit(
+    Pos hitBlockPos,
+    BState state,
+    Vector3d impactPosition,
+  ) {
     host.destroyBlock(hitBlockPos, dropLoot: true);
     return CollisionResult(Vector3d(), true);
   }
@@ -144,7 +175,11 @@ class BeehiveBlockCallback extends FragileBlockCallback {
       state.key == 'minecraft:beehive' || state.key == 'minecraft:bee_nest';
 
   @override
-  CollisionResult onHit(Pos hitBlockPos, BState state, Vector3d impactPosition) {
+  CollisionResult onHit(
+    Pos hitBlockPos,
+    BState state,
+    Vector3d impactPosition,
+  ) {
     host.emptyBeehive(hitBlockPos);
     return CollisionResult(Vector3d(), false);
   }
@@ -158,15 +193,26 @@ class BellBlockCallback extends FragileBlockCallback {
   bool shouldTriggerFor(BState state) => state.key == 'minecraft:bell';
 
   @override
-  CollisionResult onHit(Pos hitBlockPos, BState state, Vector3d impactPosition) {
-    host.ringBell(hitBlockPos, bellRingDirection(hitBlockPos, state, impactPosition));
+  CollisionResult onHit(
+    Pos hitBlockPos,
+    BState state,
+    Vector3d impactPosition,
+  ) {
+    host.ringBell(
+      hitBlockPos,
+      bellRingDirection(hitBlockPos, state, impactPosition),
+    );
     return CollisionResult(Vector3d(), false);
   }
 
   /// `Direction.getApproximateNearest(hitDir.x * xMul, 0, hitDir.z * zMul)`
   /// opposite, where the multipliers come from the bell's facing unless it hangs
   /// from the ceiling.
-  static String bellRingDirection(Pos bellPos, BState state, Vector3d impactPosition) {
+  static String bellRingDirection(
+    Pos bellPos,
+    BState state,
+    Vector3d impactPosition,
+  ) {
     final centreX = bellPos.$1 + 0.5;
     final centreZ = bellPos.$3 + 0.5;
     var hitX = centreX - impactPosition.x;
@@ -180,8 +226,9 @@ class BellBlockCallback extends FragileBlockCallback {
     }
 
     // The nearest horizontal direction, then its opposite: the bell swings away
-    // from the hit.
-    if (hitX.abs() >= hitZ.abs()) {
+    // from the hit. Vanilla picks the larger component and prefers the z axis on
+    // a tie (its direction table lists north/south before east/west).
+    if (hitX.abs() > hitZ.abs()) {
       return hitX >= 0 ? 'west' : 'east';
     }
     return hitZ >= 0 ? 'north' : 'south';
@@ -199,7 +246,11 @@ class ExplosiveBlockCallback extends FragileBlockCallback {
   bool shouldTriggerFor(BState state) => state.key == 'minecraft:tnt';
 
   @override
-  CollisionResult onHit(Pos hitBlockPos, BState state, Vector3d impactPosition) {
+  CollisionResult onHit(
+    Pos hitBlockPos,
+    BState state,
+    Vector3d impactPosition,
+  ) {
     host.spawnPrimedTnt(hitBlockPos, 4);
     host.setBlock(hitBlockPos, BState.air);
     return CollisionResult(Vector3d(), true);
@@ -212,10 +263,23 @@ class ExplosiveBlockCallback extends FragileBlockCallback {
 /// becomes the fallback for states with the `fragile` property, which is how
 /// Java's block-state property lookup behaves.
 void registerVanillaImpactCallbacks(ImpactHostPort host) {
-  BlockWithSubLevelCollisionCallback
-    ..fragileCallback = FragileBlockCallback(host)
-    ..register('minecraft:beehive', BeehiveBlockCallback(host))
-    ..register('minecraft:bee_nest', BeehiveBlockCallback(host))
-    ..register('minecraft:bell', BellBlockCallback(host))
-    ..register('minecraft:tnt', ExplosiveBlockCallback(host));
+  BlockWithSubLevelCollisionCallback.fragileCallback = FragileBlockCallback(
+    host,
+  );
+  BlockWithSubLevelCollisionCallback.register(
+    'minecraft:beehive',
+    BeehiveBlockCallback(host),
+  );
+  BlockWithSubLevelCollisionCallback.register(
+    'minecraft:bee_nest',
+    BeehiveBlockCallback(host),
+  );
+  BlockWithSubLevelCollisionCallback.register(
+    'minecraft:bell',
+    BellBlockCallback(host),
+  );
+  BlockWithSubLevelCollisionCallback.register(
+    'minecraft:tnt',
+    ExplosiveBlockCallback(host),
+  );
 }

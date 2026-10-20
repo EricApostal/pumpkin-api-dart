@@ -8,7 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../common/direction.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart';
-import '../../conveyance/items/inventory.dart' show ItemInventory;
+import '../../conveyance/items/inventory.dart' show ItemInventory, versionOf;
 import '../../conveyance/items/item_codec.dart';
 import '../../conveyance/items/item_data.dart';
 import '../../conveyance/items/stack_bridge.dart' show fromPStack, toPStack;
@@ -72,11 +72,16 @@ final class HostInv implements ItemInv, StackedInserter {
 /// A plugin block entity's inventory (`ItemInventoryProvider`: vault, depot, creative crate,
 /// chute, belt, ...) seen as an [ItemInv]. Stacks cross the host form, so the components keep
 /// their meaning exactly as they would through a vanilla container.
-final class PluginInv implements ItemInv, StackedInserter {
+final class PluginInv implements ItemInv, StackedInserter, VersionedInv {
   final ItemInventory inv;
   final StackIo io;
 
   PluginInv(this.inv, this.io);
+
+  /// `VersionedInventoryWrapper.getId()` / `getVersion()`, `null` for an inventory that does not
+  /// count changes.
+  @override
+  (int, int)? get inventoryVersion => versionOf(inv);
 
   Future<LStack> _read(ItemValue value) async =>
       io.read(await ItemCodec.write(value));

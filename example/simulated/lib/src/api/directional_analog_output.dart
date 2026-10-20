@@ -3,6 +3,9 @@
 // torsion spring).
 //
 // Pure: no host imports.
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Direction;
 

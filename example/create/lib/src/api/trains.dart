@@ -15,6 +15,7 @@ library;
 
 import 'package:pumpkin_api/pumpkin_api.dart' show ItemStack;
 
+import '../common/direction.dart';
 import '../common/pos.dart';
 import '../core/block_entity.dart';
 import '../trains/entity/carriage_contraption.dart';
@@ -57,7 +58,14 @@ export '../trains/util/ctag.dart';
 /// only reads the train specific parts (`hasForwardControls`, `getSecondBogeyPos`, ...).
 abstract interface class CarriageContraptionAssembly {
   /// `contraption.assemble(level, anchor)`: `null` when no structure is attached at [anchor].
-  CarriageContraption? assemble(String worldId, TrainLevel level, Pos anchor);
+  /// [assemblyDirection] is the direction the station assembles the carriages in
+  /// (`new CarriageContraption(assemblyDirection)`).
+  CarriageContraption? assemble(
+    String worldId,
+    TrainLevel level,
+    Pos anchor,
+    Direction assemblyDirection,
+  );
 }
 
 /// Provided by the logistics module: the single schedule slot of a station (`DepotBehaviour` with

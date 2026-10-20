@@ -9,6 +9,7 @@ import '../../api/blocks.dart' show HostBlockGetter, manifestBlock, updateWater;
 import '../../common/common.dart';
 import '../../common/host_bridge.dart';
 import '../../core/blocks.dart';
+import 'actor_placement.dart';
 import 'actor_shapes.dart';
 
 /// `AttachedActorBlock`: `HARVESTER_BASE` as the selection shape (`Shapes.block` for the roller).
@@ -65,10 +66,7 @@ CreateBlock buildAttachedActorBlock(
   block = manifestBlock(
     key,
     blockEntityType: blockEntityType,
-    placement: const [
-      PlacementRule.horizontalFacing('facing', opposite: true),
-      PlacementRule.inWater('waterlogged'),
-    ],
+    placement: attachedActorPlacementRules,
     collisionShape: const BlockShape.boxes([BlockBox(0, 0, 0, 1, 1, 1)]),
     selectionShape: shape,
     shapeRules: rules,

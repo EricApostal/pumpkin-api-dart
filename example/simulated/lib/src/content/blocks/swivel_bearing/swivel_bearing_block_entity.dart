@@ -1,0 +1,450 @@
+// The block entities of the swivel bearing and its plate.
+//
+// The bearing assembles the structure in front of it into a sub-level and holds
+// it with a hinge; the plate is the block inside the sub-level that the hinge
+// attaches to. Each end saves the other's position and sub-level, so a reload
+// reconnects them.
+//
+// Host: this file uses `pumpkin_api`.
+//
+// Java: dev.simulated_team.simulated.content.blocks.swivel_bearing.SwivelBearingBlockEntity
+//       and link_block.SwivelBearingPlateBlockEntity
+// ignore_for_file: implementation_imports
+import 'package:create/src/api/block_state.dart' show BState;
+import 'package:create/src/api/blocks.dart' show HostBlockGetter, setBlockState;
+import 'package:create/src/common/host_bridge.dart';
+import 'package:create/src/core/block_entity.dart';
+import 'package:create/src/core/pos.dart' show packPos, unpackPos;
+import 'package:create/src/kinetics/kinetic_block_entity.dart' show KineticBlockEntity;
+import 'package:pumpkin_api/pumpkin_api.dart';
+import 'package:sable/sable.dart' as sable
+    show
+        BlockEntitySubLevelActor,
+        Quaterniond,
+        RigidBodyHandle,
+        Rotation,
+        ServerSubLevel,
+        SubLevel;
+
+import '../../../config/sim_config_service.dart';
+import '../../../host/simulated_host.dart';
+import '../../../util/assembly/sim_assembly_exception.dart';
+import '../../../util/sim_assembly_events.dart';
+import '../../../util/sim_assembly_helper.dart';
+import '../../../util/host_calls.dart' show ignoredCall;
+import '../../../util/sim_level_util.dart';
+import 'swivel_bearing_logic.dart';
+
+/// `SwivelBearingBlockEntity`.
+final class SwivelBearingBlockEntity extends KineticBlockEntity
+    implements sable.BlockEntitySubLevelActor {
+  /// The block entity type key.
+  static const String type = 'simulated:swivel_bearing';
+
+  /// The block key.
+  static const String block = 'simulated:swivel_bearing';
+
+  SwivelBearingBlockEntity(super.worldId, super.pos);
+
+  /// The bearing state.
+  final SwivelBearingLogic logic = SwivelBearingLogic();
+
+  BState state = BState(block);
+
+  /// If the bearing should assemble next tick.
+  bool assembleNextTick = false;
+
+  /// The last assembly failure.
+  SimAssemblyException? lastException;
+
+  /// The sub-level the bearing holds.
+  String? subLevelId;
+
+  /// The position of the plate inside that sub-level.
+  (int, int, int)? platePos;
+
+  /// Whether the bearing is being destroyed as part of an assembly.
+  bool assembling = false;
+
+  /// Whether a hinge handle exists (the motor itself is a HOST GAP).
+  bool hasHandle = false;
+
+  @override
+  void tick() {
+    final w = world;
+    if (w != null && !removed) {
+      state = HostBlockGetter.stateOfId(w.getBlockStateId(pos: pos));
+      logic.assembled = state.flag('assembled');
+      logic.locking = state.flag('powered');
+    }
+
+    if (assembleNextTick) {
+      if (!logic.assembled) {
+        assemble();
+      } else {
+        disassemble();
+      }
+      assembleNextTick = false;
+    }
+
+    // Lock/unlock from the redstone signal.
+    final host = simulatedHost;
+    final bestSignal = host.bestNeighbourSignal(worldId, pos.toPos());
+    final shouldLock = logic.lockingSetting.shouldLock(bestSignal);
+    if (shouldLock != logic.locking) {
+      logic.locking = shouldLock;
+      setBlockFlag('powered', shouldLock);
+    }
+
+    // Keep the sub-level after a reload.
+    if (subLevelId != null) checkPersistence();
+
+    final config = SimConfigService.instance.server;
+    logic.tick(
+      cogSpeed: speed,
+      facing: blockState.dirOf('facing')?.name ?? 'up',
+      physicsPaused: false,
+      sequenced: logic.sequencedAngleLimit >= 0,
+      maxSwivelRpm: config.blocks.maxSwivelBearingSpeed,
+    );
+
+    super.tick();
+  }
+
+  /// `assemble()`.
+  void assemble() {
+    final host = simulatedHost;
+    final level = host.levelOf(worldId);
+    final world = host.assemblyWorldOf(worldId);
+    if (level == null || world == null) return;
+
+    final facing = state.dir('facing')?.name ?? 'up';
+    final target = _relative(pos.toPos(), facing);
+
+    SimAssemblyResult? result;
+    try {
+      result = SimAssemblyHelper.assembleFromSingleBlock(
+        world,
+        level,
+        pos.toPos(),
+        target,
+        includeStart: false,
+        includeEncasingGlue: false,
+      );
+      lastException = null;
+    } on SimAssemblyException catch (e) {
+      lastException = e;
+      sendData();
+      return;
+    }
+
+    setBlockFlag('assembled', true);
+    sendData();
+
+    final subLevel = result?.subLevel;
+    if (subLevel == null) return;
+
+    subLevelId = subLevel.uniqueIdOrNull;
+
+    final offset = result!.offset;
+    final platePosition = (pos.x + offset.$1, pos.y + offset.$2, pos.z + offset.$3);
+    host.setBlock(worldId, platePosition, 'simulated:swivel_bearing_link_block');
+    platePos = platePosition;
+
+    final plate = host.blockEntityAt<SwivelBearingPlateBlockEntity>(worldId, platePosition);
+    plate?.setParent(this);
+
+    host.playSound(worldId, pos.toPos(), 'simulated:block.physics_assembler.assemble');
+    SimAssemblyEvents.notifyAssembled(worldId, pos.toPos(), result);
+  }
+
+  /// `disassemble()`.
+  void disassemble() {
+    if (removed) return;
+
+    final host = simulatedHost;
+    final level = host.levelOf(worldId);
+    final world = host.assemblyWorldOf(worldId);
+    final id = subLevelId;
+    if (level == null || world == null) return;
+
+    final subLevel = id == null ? null : host.subLevelById(worldId, id);
+    final plate = platePos;
+
+    if (plate != null) {
+      destroyPlate();
+      if (subLevel is sable.ServerSubLevel) {
+        SimAssemblyHelper.disassembleSubLevel(
+          world,
+          level,
+          subLevel,
+          plate,
+          pos.toPos(),
+          sable.Rotation.none,
+          entities: host.entitiesOf(worldId),
+          playSound: true,
+        );
+      }
+    }
+
+    setBlockFlag('assembled', false);
+    subLevelId = null;
+    platePos = null;
+    logic.targetAngleDegrees = 0;
+    logic.lastTargetAngleDegrees = 0;
+    sendData();
+  }
+
+  /// `updateServoCoefficients()`: the hinge motor.
+  ///
+  /// HOST GAP: sable's `PhysicsConstraintHandle` has no `setMotor` yet, so the
+  /// gains are computed (and testable) but cannot be applied. The bearing still
+  /// assembles, disassembles and tracks its target angle.
+  SwivelMotorSettings? servoMotor(double partialTick) {
+    final config = SimConfigService.instance.server.physics;
+    return logic.motorFor(
+      hasHandle: hasHandle,
+      partialTick: partialTick,
+      inertiaA: null,
+      inertiaB: null,
+      stiffness: config.swivelBearingStiffness,
+      damping: config.swivelBearingDamping,
+      friction: config.swivelBearingFriction,
+    );
+  }
+
+  /// `checkPersistence()`: reattach the plate after a reload.
+  void checkPersistence() {
+    final id = subLevelId;
+    final plate = platePos;
+    if (id == null) return;
+
+    if (plate != null && SimLevelUtil.isAreaActuallyLoaded(simulatedHost.levelOf(worldId)!, plate, 1)) {
+      if (simulatedHost.blockKeyAt(worldId, plate) != 'simulated:swivel_bearing_link_block') {
+        return;
+      }
+    }
+    hasHandle = simulatedHost.subLevelById(worldId, id) != null;
+  }
+
+  /// `setPlatePos(pos)`.
+  void setPlatePos((int, int, int)? pos) => platePos = pos;
+
+  /// `setSubLevelID(id)`.
+  void setSubLevelID(String? id) => subLevelId = id;
+
+  /// `destroyPlate()`: the plate goes away with the bearing.
+  void destroyPlate() {
+    final plate = platePos;
+    if (plate == null) return;
+    final host = simulatedHost;
+    if (host.blockKeyAt(worldId, plate) == 'simulated:swivel_bearing_link_block') {
+      host.blockEntityAt<SwivelBearingPlateBlockEntity>(worldId, plate)?.beforeAssembly();
+      host.setBlock(worldId, plate, 'minecraft:air');
+    }
+    platePos = null;
+  }
+
+  /// `beforeAssembly()`: the bearing is moved into a sub-level.
+  void beforeAssembly() => assembling = true;
+
+  /// `associatePlateWithParent()`: the plate learns about the bearing.
+  void associatePlateWithParent() {
+    final plate = platePos;
+    if (plate == null) return;
+    if (simulatedHost.blockKeyAt(worldId, plate) != 'simulated:swivel_bearing_link_block') return;
+    simulatedHost.blockEntityAt<SwivelBearingPlateBlockEntity>(worldId, plate)?.setParent(this);
+  }
+
+  @override
+  void sable$physicsTick(sable.ServerSubLevel subLevel, sable.RigidBodyHandle handle, double timeStep) {
+    hasHandle = true;
+  }
+
+  @override
+  void sable$tick(sable.ServerSubLevel subLevel) {}
+
+  @override
+  Iterable<sable.SubLevel>? sable$getLoadingDependencies() => sable$getConnectionDependencies();
+
+  @override
+  Iterable<sable.SubLevel>? sable$getConnectionDependencies() {
+    final id = subLevelId;
+    if (id == null) return null;
+    final subLevel = simulatedHost.subLevelById(worldId, id);
+    return subLevel == null ? null : [subLevel];
+  }
+
+  @override
+  void onRemoved() {
+    if (!assembling) destroyPlate();
+    super.onRemoved();
+  }
+
+  /// `setTargetAngleFromCurrentOrientation()`: keep the current angle on lock.
+  ///
+  /// The caller supplies the four orientations, because reading a sub-level's
+  /// pose needs the sable container.
+  void setTargetAngleFromCurrentOrientation({
+    required sable.Quaterniond orientationA,
+    required sable.Quaterniond blockOrientationA,
+    required sable.Quaterniond orientationB,
+    required sable.Quaterniond blockOrientationB,
+  }) => logic.setTargetAngleFromCurrentOrientation(
+    orientationA: orientationA,
+    blockOrientationA: blockOrientationA,
+    orientationB: orientationB,
+    blockOrientationB: blockOrientationB,
+  );
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    if (clientPacket) return;
+    logic.read(
+      targetAngle: tag.getDouble('TargetAngle') ?? 0,
+      assembled: state.flag('assembled'),
+    );
+    logic.sequencedAngleLimit = tag.getDouble('SequencedAngleLimit') ?? -1;
+    subLevelId = tag.getString('SubLevelID');
+    final plate = tag.getInt('SwivelPlate');
+    if (plate != null) platePos = unpackPos(plate);
+  }
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    tag.putDouble('TargetAngle', logic.targetAngleDegrees);
+    final id = subLevelId;
+    if (id != null) tag.putString('SubLevelID', id);
+    final plate = platePos;
+    if (plate != null) tag.putLong('SwivelPlate', packPos(plate.$1, plate.$2, plate.$3));
+    if (logic.sequencedAngleLimit >= 0) {
+      tag.putDouble('SequencedAngleLimit', logic.sequencedAngleLimit);
+    }
+  }
+
+  /// `getTargetAngleDegrees()`.
+  double get targetAngleDegrees => logic.targetAngleDegrees;
+
+  void setBlockFlag(String property, bool value) {
+    final w = world;
+    if (w == null) return;
+    final current = HostBlockGetter.stateOfId(w.getBlockStateId(pos: pos));
+    final next = current.setFlag(property, value);
+    if (next == current) return;
+    ignoredCall(setBlockState(w, pos.toPos(), next));
+  }
+
+  static (int, int, int) _relative((int, int, int) pos, String facing) => switch (facing) {
+    'down' => (pos.$1, pos.$2 - 1, pos.$3),
+    'up' => (pos.$1, pos.$2 + 1, pos.$3),
+    'north' => (pos.$1, pos.$2, pos.$3 - 1),
+    'south' => (pos.$1, pos.$2, pos.$3 + 1),
+    'west' => (pos.$1 - 1, pos.$2, pos.$3),
+    'east' => (pos.$1 + 1, pos.$2, pos.$3),
+    _ => pos,
+  };
+}
+
+/// `SwivelBearingPlateBlockEntity`: the block inside the sub-level.
+final class SwivelBearingPlateBlockEntity extends CreateBlockEntity
+    implements sable.BlockEntitySubLevelActor {
+  /// The block entity type key.
+  static const String type = 'simulated:swivel_bearing_link_block';
+
+  /// The block key.
+  static const String block = 'simulated:swivel_bearing_link_block';
+
+  SwivelBearingPlateBlockEntity(super.worldId, super.pos);
+
+  /// The bearing this plate belongs to.
+  (int, int, int)? parent;
+
+  /// The sub-level the bearing is on.
+  String? parentSubLevelId;
+
+  bool assembling = false;
+
+  /// `setParent(bearing)`.
+  void setParent(SwivelBearingBlockEntity bearing) {
+    parent = bearing.pos.toPos();
+    parentSubLevelId = simulatedHost.containingSubLevel(worldId, parent!)?.uniqueIdOrNull;
+  }
+
+  /// `beforeAssembly()`.
+  void beforeAssembly() => assembling = true;
+
+  /// `setParentAssembleNextTick()`.
+  void setParentAssembleNextTick() {
+    final parentPos = parent;
+    if (parentPos == null) return;
+    simulatedHost.blockEntityAt<SwivelBearingBlockEntity>(worldId, parentPos)?.assembleNextTick = true;
+  }
+
+  /// `fixParentLinkingWhenMoved()`.
+  void fixParentLinkingWhenMoved() {
+    final parentPos = parent;
+    if (parentPos == null) return;
+    final bearing = simulatedHost.blockEntityAt<SwivelBearingBlockEntity>(worldId, parentPos);
+    if (bearing == null) return;
+
+    bearing.setPlatePos(pos.toPos());
+    final containing = simulatedHost.containingSubLevel(worldId, pos.toPos());
+    final newId = containing?.uniqueIdOrNull;
+    if (newId != bearing.subLevelId) {
+      bearing.setSubLevelID(newId);
+    }
+  }
+
+  @override
+  void sable$physicsTick(sable.ServerSubLevel subLevel, sable.RigidBodyHandle handle, double timeStep) {
+    final parentPos = parent;
+    if (parentPos == null) return;
+    simulatedHost.blockEntityAt<SwivelBearingBlockEntity>(worldId, parentPos)?.hasHandle = true;
+  }
+
+  @override
+  void sable$tick(sable.ServerSubLevel subLevel) {}
+
+  @override
+  Iterable<sable.SubLevel>? sable$getLoadingDependencies() => sable$getConnectionDependencies();
+
+  @override
+  Iterable<sable.SubLevel>? sable$getConnectionDependencies() {
+    final id = parentSubLevelId;
+    if (id == null) return null;
+    final subLevel = simulatedHost.subLevelById(worldId, id);
+    return subLevel == null ? null : [subLevel];
+  }
+
+  @override
+  void onRemoved() {
+    if (!assembling) {
+      final parentPos = parent;
+      if (parentPos != null &&
+          simulatedHost.blockKeyAt(worldId, parentPos) == 'simulated:swivel_bearing') {
+        simulatedHost.destroyBlock(worldId, parentPos, drop: false);
+      }
+    }
+    super.onRemoved();
+  }
+
+  @override
+  void read(NbtCompound tag, {required bool clientPacket}) {
+    super.read(tag, clientPacket: clientPacket);
+    if (clientPacket) return;
+    final parentPacked = tag.getInt('ParentPos');
+    if (parentPacked != null) parent = unpackPos(parentPacked);
+    parentSubLevelId = tag.getString('ParentSubLevelId');
+  }
+
+  @override
+  void write(NbtCompound tag, {required bool clientPacket}) {
+    super.write(tag, clientPacket: clientPacket);
+    final parentPos = parent;
+    if (parentPos != null) tag.putLong('ParentPos', packPos(parentPos.$1, parentPos.$2, parentPos.$3));
+    final id = parentSubLevelId;
+    if (id != null) tag.putString('ParentSubLevelId', id);
+  }
+}

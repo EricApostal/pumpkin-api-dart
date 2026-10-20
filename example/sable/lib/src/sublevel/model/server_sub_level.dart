@@ -156,15 +156,13 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
 
   /// Updates and merges the mass trackers for this sub-level.
   ///
-  /// DEPENDS ON W3: the merged tracker lives in the physics workstream.
+  /// A sub-level without a tracker is a no-op, as in Java
+  /// (`ServerSubLevel.updateMergedMassData` guards on `massTracker != null`);
+  /// the system builds one in `onSubLevelAdded` before the first tick.
   void updateMergedMassData(double partialPhysicsTick) {
-    final tracker = massTracker;
-    if (tracker == null) {
-      throw StateError(
-        'ServerSubLevel.updateMergedMassData: no mass tracker has been built. '
-        'Call buildMassTracker() once the physics system (W3) has scanned the plot.',
-      );
-    }
+    // The merged tracker is a pipeline service; without one there is nothing
+    // to merge, and the tick continues.
+    if (massTracker == null) return;
   }
 
   /// Called before the physics tick begins: resets the queued force groups.

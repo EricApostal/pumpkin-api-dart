@@ -1,7 +1,21 @@
 // `ItemHatchBlock.useItemOn` as plain rules (pure): which inventory slots a click considers,
 // which items fit into a container, and the result message. The host side (`item_hatch_block.dart`)
 // runs the insertion against the inventory behind the hatch.
+import 'package:pumpkin_api/pumpkin_api_core.dart' show PlacementRule;
+
 import '../../items/item_data.dart';
+
+/// `ItemHatchBlock.getStateForPlacement`: the opposite of the clicked face, and **no** placement
+/// for a click on a top or bottom face (`return null`).
+///
+/// The host cannot refuse a placement from a rule and has no source for the clicked face on a
+/// four-value property, so the look direction stands in for `clickedFace.getOpposite()`: it is
+/// that value whenever the player clicks the face they look at. The vertical-click refusal is
+/// missing until the host offers one.
+const List<PlacementRule> itemHatchPlacementRules = [
+  PlacementRule.horizontalFacing('facing'),
+  PlacementRule.inWater('waterlogged'),
+];
 
 /// `Inventory.isHotbarSlot`: the nine hotbar slots.
 bool isHotbarSlot(int slot) => slot >= 0 && slot < 9;

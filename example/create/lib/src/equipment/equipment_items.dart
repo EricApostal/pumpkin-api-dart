@@ -76,12 +76,19 @@ const Map<String, String> _armorRepairTags = {
 };
 
 /// `Equippable#equipSound` of the wearables: `BaseArmorItem` copies it from the `ArmorMaterial`
-/// (`create:copper_armor_equip` for copper, leather's for cardboard, netherite's for netherite).
+/// (copper's for copper, leather's for cardboard, netherite's for netherite).
 /// `GogglesItem` sets no sound, so it keeps the codec's generic default.
+///
+/// Copper's `create:copper_armor_equip` is a *wrapped* sound event whose only
+/// entry is `minecraft:item.armor.equip_gold` (`AllSoundEvents.COPPER_ARMOR_EQUIP`,
+/// `assets/create/sounds.json`). The plugin never registers sound events with
+/// the host registry — [CreateSounds] only maps names onto vanilla events — so
+/// the component must name the vanilla event the wrapper delegates to. The
+/// audible result is identical; only the subtitle differs.
 const Map<String, String> _equipSounds = {
-  'copper_backtank': 'create:copper_armor_equip',
-  'copper_diving_helmet': 'create:copper_armor_equip',
-  'copper_diving_boots': 'create:copper_armor_equip',
+  'copper_backtank': 'minecraft:item.armor.equip_gold',
+  'copper_diving_helmet': 'minecraft:item.armor.equip_gold',
+  'copper_diving_boots': 'minecraft:item.armor.equip_gold',
   'netherite_backtank': 'minecraft:item.armor.equip_netherite',
   'netherite_diving_helmet': 'minecraft:item.armor.equip_netherite',
   'netherite_diving_boots': 'minecraft:item.armor.equip_netherite',

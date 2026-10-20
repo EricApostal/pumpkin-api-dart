@@ -12,7 +12,7 @@ import '../common/stack.dart';
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
 import '../crafter/machine_support.dart'
-    show consumeFromHand, giveToPlayerStack;
+    show consumeFromHand, giveToPlayerStack, isWrenchItem;
 
 /// The filter items (`AllItems`): their contents are matched by the redstone module's filter API.
 const Set<String> _filterItemKeys = {
@@ -56,14 +56,26 @@ class DeployerFilterBehaviour extends BlockEntityBehaviour
   /// `FilteringBehaviour.test(stack)`.
   bool test(PStack stack) => deployerFilterTest(filter, stack, owner.worldId);
 
-  /// `setFilter(stack)`.
-  void setFilter(PStack stack) {
-    filter = stack.isEmpty ? PStack.empty : stack.withCount(1);
+  /// `FilteringBehaviour.setFilter(stack)`: stores [stack] as given (the caller decides on the
+  /// count, `onShortInteract` uses one for a filter item). Returns false when
+  /// [canShortInteract] refuses the item.
+  bool setFilter(PStack stack) {
+    if (stack.isNotEmpty && !canShortInteract(stack)) return false;
+    filter = stack.isEmpty ? PStack.empty : stack;
     if (!upTo && filter.isNotEmpty && count > filter.maxStack) {
       count = filter.maxStack;
     }
     owner.markDirty();
     owner.sendData();
+    return true;
+  }
+
+  /// `FilteringBehaviour.canShortInteract`: the wrench and the mechanical arm are tools, not
+  /// filter items, so they never land in the slot.
+  bool canShortInteract(PStack stack) {
+    if (isWrenchItem(ProcessingRuntime.instance, stack.key)) return false;
+    if (stack.key == 'create:mechanical_arm') return false;
+    return true;
   }
 
   // -- Value box (`create:value_settings`) -----------------------------------------------------
@@ -101,17 +113,40 @@ class DeployerFilterBehaviour extends BlockEntityBehaviour
     final inHand = await HostStacks.read(held);
     held?.dispose();
 
+    if (!canShortInteract(inHand)) return;
+
     final previous = filter;
-    setFilter(inHand);
+    // Java refunds the old filter when it is a filter item, and only takes it back out of a
+    // creative player's inventory when that player has a spare.
+    if (_filterItemKeys.contains(previous.key)) {
+      if (!player.isCreative && world != null) {
+        await giveToPlayerStack(player, world, previous);
+      }
+    }
+
+    // `if (toApply.getItem() instanceof FilterItem) toApply.setCount(1)`.
+    final toApply = _filterItemKeys.contains(inHand.key)
+        ? inHand.withCount(1)
+        : inHand;
+    if (!setFilter(toApply)) {
+      player.showActionbar(text: TextComponent.text(plain: 'Invalid item'));
+      if (world != null) {
+        world.playSound(
+          sound: Sound.entityVillagerNo,
+          category: SoundCategory.blocks,
+          pos: (owner.pos.x + .5, owner.pos.y + .5, owner.pos.z + .5),
+          volume: 1,
+          pitch: 1,
+        );
+      }
+      return;
+    }
     if (inHand.isEmpty) {
       player.showActionbar(text: TextComponent.text(plain: 'Filter cleared'));
     }
 
-    // Give the old filter item back (filter items are not consumed by the slot itself).
-    if (_filterItemKeys.contains(previous.key)) {
-      if (world != null) await giveToPlayerStack(player, world, previous);
-    }
-    if (!player.isCreative && inHand.isNotEmpty) {
+    // Only a filter item is taken out of the hand.
+    if (!player.isCreative && _filterItemKeys.contains(inHand.key)) {
       await consumeFromHand(player, Hand.right, 1);
     }
     if (world != null) {

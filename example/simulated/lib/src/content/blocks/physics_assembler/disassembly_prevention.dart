@@ -7,6 +7,9 @@
 // Pure: no host imports.
 //
 // Java: dev.simulated_team.simulated.content.blocks.physics_assembler.assembly_preventer.DisassemblyPrevention
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'package:create/src/common/pos.dart' show Pos;
 
 import '../../../util/assembly/sim_assembly_exception.dart';

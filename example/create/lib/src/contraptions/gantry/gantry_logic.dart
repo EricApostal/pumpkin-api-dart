@@ -5,6 +5,8 @@
 //
 // Java: `content/contraptions/gantry/{GantryCarriageBlock,GantryCarriageBlockEntity,
 // GantryContraptionEntity}`.
+import 'package:pumpkin_api/pumpkin_api_core.dart' show PlacementRule;
+
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../kinetics/block_defs.dart';
@@ -12,6 +14,14 @@ import '../../kinetics/geometry.dart';
 
 const String gantryCarriageKey = 'create:gantry_carriage';
 const String gantryShaftKey = 'create:gantry_shaft';
+
+/// `GantryCarriageBlock.getStateForPlacement`: `DirectionalAxisKineticBlock.getStateForPlacement`
+/// builds the state from `getFacingForPlacement`, which the carriage overrides to
+/// `context.getClickedFace()`; the carriage then cycles `axis_along_first` from the shaft behind
+/// that facing ([gantryPlacementState]). No shaft-neighbour preference and no look fallback.
+const List<PlacementRule> gantryCarriagePlacementRules = [
+  PlacementRule.clickedFace('facing'),
+];
 
 /// Converts a kinetic direction to a vanilla direction.
 Direction toDirection2(Dir d) => Direction.values[d.index];

@@ -6,6 +6,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/equipment.dart' show ClipboardCloneable, ClipboardCloneables;
 import '../../api/panel_support.dart';
+import '../../api/blocks.dart' show HostBlockGetter;
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
@@ -177,13 +178,13 @@ final class RedstoneLinkBlock {
         // REDSTONE_BRIDGE: the tablet facing south; vertical links use the square tablet.
         ...directionalShapeRules(
           'facing',
-          [pixelBox(3, 1, 0, 13, 15, 3)],
+          [pixelBox(3, 1, -1, 13, 15, 3)],
           Direction.south,
           directions: Direction.horizontals,
         ),
         ...directionalShapeRules(
           'facing',
-          [pixelBox(2, 2, 0, 14, 14, 3)],
+          [pixelBox(2, 2, -1, 14, 14, 3)],
           Direction.south,
           directions: [Direction.up, Direction.down],
         ),
@@ -236,8 +237,11 @@ final class RedstoneLinkBlock {
 
   Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
     final lvl = Lvl(e.targetWorld);
-    // onPlace: a block that is moving (a contraption) does not update.
+    // onPlace: a block that is moving (a contraption) does not update, and neither does a
+    // state write that left the same block in place (`state.getBlock() == oldState.getBlock()`).
     if (e.moved) return;
+    final oldId = e.oldStateId;
+    if (oldId != null && HostBlockGetter.stateOfId(oldId).key == 'create:redstone_link') return;
     await updateTransmittedSignal(lvl, e.pos.toPos());
   }
 
@@ -249,12 +253,12 @@ final class RedstoneLinkBlock {
     final pos = e.pos.toPos();
     final props = lvl.info(pos)?.properties ?? block.stateOf(e.stateIndex);
     final facing = _facing(props);
-    // The block it hangs on changed: break when nothing carries the link any more.
-    if (e.sourcePos.toPos() == pos.relative(facing.opposite)) {
-      if (!canSurvive(lvl, pos, facing)) {
-        await lvl.destroyBlock(pos);
-        return;
-      }
+    // The block it hangs on changed: break when nothing carries the link any more. The 26.3
+    // port also re-checks when the update carries no orientation, and `canSurvive` is cheap
+    // and idempotent, so every neighbour update re-checks.
+    if (!canSurvive(lvl, pos, facing)) {
+      await lvl.destroyBlock(pos);
+      return;
     }
     lvl.scheduleTick(pos, 1);
   }
@@ -269,8 +273,12 @@ final class RedstoneLinkBlock {
     await updateTransmittedSignal(lvl, pos);
     final props = lvl.info(pos)?.properties;
     if (props == null || props['receiver'] == 'true') return;
-    // sendBlockUpdated for the link and the block it sits on.
+    // `tick`: `updateNeighborsAt` for the link and for the block it hangs on (26.x replaced
+    // `blockUpdated()` with those two neighbour updates).
+    final attachedPos = pos.relative(_facing(props).opposite);
     Rs.i.be<RedstoneLinkBlockEntity>(e.targetWorld, e.pos)?.sendData();
+    await lvl.updateNeighbors(pos);
+    await lvl.updateNeighbors(attachedPos);
   }
 
   /// `RedstoneLinkBlockEntity.remove()` -> `updateSelfAndAttached`: the link and the block it

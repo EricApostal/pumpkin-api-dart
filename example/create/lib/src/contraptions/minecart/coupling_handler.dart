@@ -137,7 +137,7 @@ void _status(Player? player, String key) {
   if (player == null) return;
   player.sendSystemMessage(
     text: TextComponent.translate(
-      key: 'create.minecraft_coupling.$key',
+      key: 'create.minecart_coupling.$key',
       with_: const [],
     ),
     overlay: true,

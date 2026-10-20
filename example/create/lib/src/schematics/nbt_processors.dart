@@ -5,6 +5,7 @@
 import 'dart:convert';
 
 import '../common/binary_nbt.dart';
+import '../contraptions/core/nbt_map.dart';
 import '../core/nbt.dart';
 import '../equipment/clipboard/clipboard_nbt.dart' show hasClickEvent;
 
@@ -189,4 +190,34 @@ bool _hasClickEventJson(Object? v) {
   }
   if (v is List) return v.any(_hasClickEventJson);
   return false;
+}
+
+/// The blocks whose block entity data only operators may set (`OP_ONLY_CUSTOM_DATA`). Mob
+/// spawners are exempt (catnip's `NBTProcessors` keeps them) and signs/lecterns are processed
+/// before this check.
+const Set<String> opOnlyBlockEntities = {
+  'minecraft:command_block',
+  'minecraft:chain_command_block',
+  'minecraft:repeating_command_block',
+  'minecraft:trial_spawner',
+};
+
+/// `NBTProcessors.process(state, blockEntity, tag, false)` for a contraption block that is placed
+/// back into the world: `null` when the data has to be dropped.
+///
+/// The processors of the block entity type run first (lectern, clipboard, creative crate), then
+/// the sign tag, then the blocks whose data only operators may set.
+NbtMap? processContraptionNbt(NbtMap tag, {required bool isSign}) {
+  switch (tag.getString('id')) {
+    case 'minecraft:lectern':
+      return _processLectern(tag.map) ? tag : null;
+    case 'create:clipboard':
+      return _processClipboard(tag.map) ? tag : null;
+    case 'create:creative_crate':
+      _processCreativeCrate(tag.map);
+      return tag;
+  }
+  if (isSign) return _processSign(tag.map) ? tag : null;
+  if (opOnlyBlockEntities.contains(tag.getString('id'))) return null;
+  return tag;
 }

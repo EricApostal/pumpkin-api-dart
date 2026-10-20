@@ -8,10 +8,15 @@
 // `SimFluidService`) have no server counterpart in the port and are not here.
 //
 // Pure: no host imports.
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'package:create/src/api/block_state.dart' show BState;
 
 /// What the plugin provides to the services that need the host.
-abstract interface class SimServiceHost {
+abstract class SimServiceHost {
+  const SimServiceHost();
+
   /// `SimPlatformService.isLoaded`: whether a mod is present. A plugin only
   /// knows about plugins the host loaded.
   bool isLoaded(String modId);
@@ -33,7 +38,7 @@ abstract interface class SimServiceHost {
 }
 
 /// A host that knows nothing: every mod is absent and every lookup is empty.
-final class EmptySimServiceHost implements SimServiceHost {
+final class EmptySimServiceHost extends SimServiceHost {
   const EmptySimServiceHost();
 
   @override

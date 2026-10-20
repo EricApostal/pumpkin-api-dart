@@ -96,14 +96,16 @@ List<int>? prepareBlockEntityData(
     data = nbt;
   } else {
     final writer = hooks.safeNbtWriters[state.key];
-    data = writer != null ? writer(state, nbt) : _safeBehaviourData(state, nbt);
+    data = writer != null
+        ? writer(state, nbt)
+        : safeBlockEntityData(state, nbt);
   }
   if (data == null) return null;
   final isSign = Tags.block(state.key, 'minecraft:all_signs');
   final isLectern = state.key == 'minecraft:lectern';
   // `BlockEntityType.onlyOpCanSetNbt` (`BlockEntityTypes.OP_ONLY_CUSTOM_DATA`) after the type
   // processors: signs and lecterns are filtered above instead of dropped.
-  if (!isSign && !isLectern && _opOnlyBlocks.contains(state.key)) return null;
+  if (!isSign && !isLectern && opOnlyBlockEntities.contains(state.key)) return null;
   return processSchematicNbt(
     data,
     isSign: isSign,
@@ -112,39 +114,6 @@ List<int>? prepareBlockEntityData(
     isCreativeCrate: state.key == 'create:creative_crate',
   );
 }
-
-/// The keys `SmartBlockEntity.writeSafe` keeps through the safe behaviours of Create's block
-/// entities. The port models the bracket behaviour (`BracketedBlockEntityBehaviour.isSafeNBT`);
-/// the data of every other behaviour is dropped like Java drops an unsafe one.
-const Set<String> safeBehaviourKeys = {'Bracket'};
-
-/// `PartialSafeNBT.writeSafe` for a Create block entity: `id` plus the safe behaviour data, or
-/// null when there is none (which places the block with no data, like before).
-List<int>? _safeBehaviourData(BState state, List<int>? nbt) {
-  if (!state.key.startsWith('create:')) return null;
-  if (nbt == null) return null;
-  final parsed = BinaryNbt.read(nbt);
-  if (parsed == null || parsed.root.kind != NbtKind.compound) return null;
-  final root = parsed.root.asCompound;
-  final kept = <String, NbtValue>{
-    for (final key in safeBehaviourKeys)
-      if (root[key] != null) key: root[key]!,
-  };
-  if (kept.isEmpty) return null;
-  final id = root['id'];
-  if (id != null) kept['id'] = id;
-  return BinaryNbt.write(NbtValue.compound(kept), name: parsed.name);
-}
-
-/// The blocks whose block entity data only operators may set (`OP_ONLY_CUSTOM_DATA`). Mob
-/// spawners are exempt (catnip's `NBTProcessors` keeps them) and signs/lecterns are processed
-/// above.
-const Set<String> _opOnlyBlocks = {
-  'minecraft:command_block',
-  'minecraft:chain_command_block',
-  'minecraft:repeating_command_block',
-  'minecraft:trial_spawner',
-};
 
 /// `BlockHelper.placeSchematicBlock`: places [state] at [target] with the block entity [data].
 /// Returns false when nothing was placed.

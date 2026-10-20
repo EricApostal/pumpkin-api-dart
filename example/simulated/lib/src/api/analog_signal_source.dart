@@ -7,6 +7,9 @@
 // block.
 //
 // Pure: no host imports.
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'package:create/src/common/pos.dart' show Pos;
 
 /// A block entity that reports a normalized analog value.

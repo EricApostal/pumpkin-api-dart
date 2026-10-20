@@ -1,6 +1,8 @@
 // `TrainRelocationPacket` (serverbound `create:relocate_train`): moves the train the player is
 // looking at onto the clicked track (`TrainRelocator.relocate`). On success the clients that track
 // a carriage get `create:contraption_relocation`, which resets the relocation timer of the entity.
+import 'dart:math' as math;
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/payloads.dart';
@@ -46,11 +48,15 @@ void installTrainRelocationPacket(CreateContext ctx) {
     final direction = fields['direction'] == true;
     final verifyDistance = TrainSettings.current.maxTrackPlacementLength * 2;
 
+    final playerEntity = player.asEntity();
     final (px, py, pz) = player.getPosition();
-    final dx = px - pos.center.$1,
-        dy = py - pos.center.$2,
-        dz = pz - pos.center.$3;
-    if (dx * dx + dy * dy + dz * dz > verifyDistance * verifyDistance) {
+    final eye = playerEntity.eyePosition;
+    // `Player.isWithinBlockInteractionRange(pos, 64)`: from the eye to the block's AABB, with
+    // the block interaction range (4.5 by default) added to the 64.
+    final blockRange =
+        (playerEntity.asLiving()?.getAttributeValue(attr: Attribute.blockInteractionRange) ?? 4.5) +
+        verifyDistance;
+    if (_distanceToBlockSqr(eye, pos) >= blockRange * blockRange) {
       Tr.i.log.warn(
         'Could not relocate train ${plainTrainsText(train.name)}: player too far from clicked pos',
       );
@@ -98,6 +104,14 @@ void installTrainRelocationPacket(CreateContext ctx) {
       });
     }
   });
+}
+
+/// `AABB.distanceToSqr(Vec3)` of the box of block [pos].
+double _distanceToBlockSqr(Vec3 point, Pos pos) {
+  final dx = math.max(0.0, math.max(pos.x - point.$1, point.$1 - (pos.x + 1)));
+  final dy = math.max(0.0, math.max(pos.y - point.$2, point.$2 - (pos.y + 1)));
+  final dz = math.max(0.0, math.max(pos.z - point.$3, point.$3 - (pos.z + 1)));
+  return dx * dx + dy * dy + dz * dz;
 }
 
 /// The carriage entity of [train] with [entityId], if it is present.

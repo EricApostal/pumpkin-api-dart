@@ -8,6 +8,7 @@
 // server subclass turns the gas amounts into a lift force.
 //
 // Pure: no host imports.
+// ignore_for_file: implementation_imports
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/pos.dart' show Pos;
@@ -63,26 +64,25 @@ abstract class Balloon {
     Pos? highestPos;
     final subLevel = SubLevelHelper.getContaining(world.level, controllerPos);
 
-    final iterator = heaters.iterator;
-    while (iterator.moveNext()) {
-      final heater = iterator.current;
+    heaters.removeWhere((heater) {
       final heaterPos = heater.castPosition;
-
-      if (!heater.canOutputGas() ||
-          heaterPos == null ||
-          !_sameSubLevel(SubLevelHelper.getContaining(world.level, heaterPos), subLevel)) {
+      if (!heater.canOutputGas || heaterPos == null) {
         heater.balloon = null;
-        iterator.remove();
-        continue;
+        return true;
       }
 
-      if (highestPos == null || heaterPos.$2 > highestPos.$2) {
-        highestPos = heaterPos;
+      if (!_sameSubLevel(SubLevelHelper.getContaining(world.level, heaterPos), subLevel)) {
+        heater.balloon = null;
+        return true;
       }
-    }
 
-    if (highestPos != null) {
-      moveController(highestPos);
+      if (highestPos == null || heaterPos.$2 > highestPos!.$2) highestPos = heaterPos;
+      return false;
+    });
+
+    final highest = highestPos;
+    if (highest != null) {
+      moveController(highest);
     }
 
     _splitHeaters();
@@ -93,21 +93,14 @@ abstract class Balloon {
   /// Drops heaters whose cast position is no longer part of this balloon (the
   /// region was split).
   void _splitHeaters() {
-    final iterator = heaters.iterator;
-    while (iterator.moveNext()) {
-      final heater = iterator.current;
+    heaters.removeWhere((heater) {
       final heaterPos = heater.castPosition;
-      if (heaterPos == null) {
+      if (heaterPos == null || !graph.hasBlockAt(heaterPos)) {
         heater.balloon = null;
-        iterator.remove();
-        continue;
+        return true;
       }
-
-      if (!graph.hasBlockAt(heaterPos)) {
-        heater.balloon = null;
-        iterator.remove();
-      }
-    }
+      return false;
+    });
   }
 
   /// A solid block appeared inside the volume: it takes capacity away.

@@ -50,7 +50,6 @@ BlockBehavior cartAssemblerBehavior() => BlockBehavior(
     final level = ActuatorHosts.levelOf(e.targetWorld.getId());
     if (level == null) return;
     final cart = _cartAt(level, pos, e.entityId);
-    logger.info('CA-DEBUG collision ${pos.$1},${pos.$2},${pos.$3} entity=${e.entityId} cart=${cart?.id} canAssemble=${cart?.canAssemble}');
     if (cart == null || !cart.canAssemble) return;
     final be = ActuatorRuntime.maybe?.store.at(e.targetWorld.getId(), e.pos);
     if (be is CartAssemblerBlockEntity) be.queueAssembly(cart);
@@ -61,9 +60,6 @@ BlockBehavior cartAssemblerBehavior() => BlockBehavior(
     // the same state, so read it back (see `docs/block-callbacks.md`).
     final state = _stateAt(e.targetWorld, e.pos);
     final powered = await e.targetWorld.hasNeighborSignal(pos: e.pos);
-    logger.info('CA-DEBUG neighbor ${e.pos.x},${e.pos.y},${e.pos.z} stateIndex=${e.stateIndex} '
-        'decoded=${HostBlockGetter.stateOfId(e.stateIndex).key} world=${state.key} '
-        'powered=${state.flag('powered')} signal=$powered');
     if (state.key != cartAssemblerKey) return;
     if (state.flag('powered') == powered) return;
     await setBlockState(
@@ -72,7 +68,6 @@ BlockBehavior cartAssemblerBehavior() => BlockBehavior(
       state.setFlag('powered', powered),
       flags: {BlockFlagsFlag.notifyListeners},
     );
-    logger.info('CA-DEBUG wrote powered=$powered readback=${_stateAt(e.targetWorld, e.pos).props}');
   },
   // `useItemOn`: the held rail item becomes the assembler's rail type.
   onUseWithItem: (server, e) async {

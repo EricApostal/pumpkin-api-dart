@@ -3,6 +3,7 @@
 // so every operation looks the entity up again (no host resources are stored across ticks).
 //
 // Java: `content/contraptions/minecart/{MinecartSim2020,CouplingPhysics,MinecartController}`.
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
@@ -79,7 +80,19 @@ abstract interface class MinecartAccess {
   /// `cart.getBehavior().getMaxSpeed(level)`.
   double get maxSpeed;
 
-  /// The first passenger if it is a contraption entity (`AbstractContraptionEntity`).
+  /// `cart.isInWater()`.
+  bool get isInWater;
+
+  /// `Mth.equal(furnace.push.x, 0) && Mth.equal(furnace.push.z, 0)`: a furnace cart that is
+  /// actively pushing cannot be corrected by the coupling.
+  bool get furnacePushIsZero;
+
+  /// `cart.setHurtDir(-getHurtDir()); cart.setHurtTime(10); cart.setDamage(50)`: an activator
+  /// rail destroys the cart it just released.
+  void markActivatorRailHit();
+
+  /// The first passenger if it is a contraption entity (`AbstractContraptionEntity`), `null` for
+  /// any other passenger (a player riding a plain cart).
   Object? get firstPassengerContraption;
 
   /// `cart.ejectPassengers()`.
@@ -238,7 +251,30 @@ final class HostMinecartAccess implements MinecartAccess {
   }
 
   @override
-  double get maxSpeed => 0.4;
+  bool get isInWater => _entity?.isInWater() ?? false;
+
+  /// `AbstractMinecart#getBehavior().getMaxSpeed(level)`: 0.4 (0.2 in water), and a furnace cart
+  /// takes half of that (three quarters in water).
+  @override
+  double get maxSpeed {
+    final base = isInWater ? 0.2 : 0.4;
+    if (!isFurnaceCart) return base;
+    return base * (isInWater ? 0.75 : 0.5);
+  }
+
+  /// The host does not expose `MinecartFurnace.push`; a cart that is not being pushed is the
+  /// common case and the one the coupling may correct.
+  @override
+  bool get furnacePushIsZero => true;
+
+  @override
+  void markActivatorRailHit() {
+    final living = _entity?.asLiving();
+    if (living == null) return;
+    // The host has no hurt time/damage fields on the cart, so the kill the activator rail applies
+    // (`setDamage(50)`) is dealt as damage instead.
+    unawaited(living.damageWith('minecraft:generic', 50));
+  }
 
   @override
   Object? get firstPassengerContraption {
@@ -246,10 +282,8 @@ final class HostMinecartAccess implements MinecartAccess {
     if (entity == null) return null;
     final passengers = entity.getPassengers();
     if (passengers.isEmpty) return null;
-    // The passenger is a host entity; map it back to the Dart contraption entity.
-    final id = passengers.first.getId();
-    return ActuatorHosts.entities?.entityById(level.worldId, id) ??
-        passengers.first;
+    // Only a contraption entity counts; a player riding a plain cart must not be ejected.
+    return ActuatorHosts.entities?.entityById(level.worldId, passengers.first.getId());
   }
 
   @override

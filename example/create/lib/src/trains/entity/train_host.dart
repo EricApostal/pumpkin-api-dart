@@ -184,8 +184,24 @@ final class HostTrainEffects implements TrainEffects {
         ?.noteDisassembledTrain(trainName, mapColorIndex);
   }
 
-  TextComponent _text(Txt text) =>
-      TextComponent.fromLegacyString(input: text.plain);
+  /// A [Txt] as a text component: translations are resolved with the English texts the plugin
+  /// carries and the colour is kept (`Component.literal(...).withStyle(...)` in Java).
+  TextComponent _text(Txt text) {
+    final component = TextComponent.text(plain: text.ownPlain);
+    if (text.color != -1) {
+      component.colorRgb(
+        color: RgbColor(
+          r: (text.color >> 16) & 0xFF,
+          g: (text.color >> 8) & 0xFF,
+          b: text.color & 0xFF,
+        ),
+      );
+    }
+    for (final sibling in text.siblings) {
+      component.addChild(child: _text(sibling));
+    }
+    return component;
+  }
 
   /// `AddTrainPacket`: the train with its carriages, bogeys and spacing.
   Map<String, Object?> _trainMap(Train train) => {

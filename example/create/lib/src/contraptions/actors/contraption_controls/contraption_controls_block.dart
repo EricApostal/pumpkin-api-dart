@@ -4,10 +4,13 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../api/value_settings.dart';
 import '../../../common/common.dart';
 import '../../../common/host_bridge.dart';
 import '../../../core/block_entity.dart';
 import '../../../core/blocks.dart';
+import '../../../core/nbt.dart';
+import '../../core/nbt_map.dart';
 import '../../core/movement.dart';
 import '../../storage/stacks.dart';
 import '../actor_runtime.dart';
@@ -34,10 +37,17 @@ final List<BlockBox> _contraptionControlsCollision = [
 ];
 
 /// `ContraptionControlsBlockEntity`.
-final class ContraptionControlsBlockEntity extends CreateBlockEntity {
+final class ContraptionControlsBlockEntity extends CreateBlockEntity
+    implements ValueSettingsHost {
   static const String type = 'create:contraption_controls';
 
   ContraptionControlsBlockEntity(super.worldId, super.pos);
+
+  /// `filtering`: the item filter slot on top of the block (`ControlsSlot`).
+  late final ControlsFilter filtering = addBehaviour(ControlsFilter());
+
+  @override
+  List<ValueSettingsTarget> get valueSettingsTargets => [filtering];
 
   /// `filtering.getFilter()`.
   StoredStack filterStack = StoredStack.empty;
@@ -99,10 +109,12 @@ final class ContraptionControlsBlockEntity extends CreateBlockEntity {
   ) {
     final host = player.hostPlayer;
     if (host is! Player) return;
+    // `DyeHelper.getDyeColors(enabled ? LIME : ORANGE).getFirst()`: the bright dye colour.
+    final (r, g, b) = enabled ? (0xA3, 0xDF, 0x55) : (0xEE, 0x92, 0x46);
     final state = TextComponent.translate(
       key: 'create.contraption.controls.actor_toggle.${enabled ? 'on' : 'off'}',
       with_: const [],
-    );
+    )..colorRgb(color: RgbColor(r: r, g: g, b: b));
     final TextComponent message;
     if (filter.isEmpty) {
       message = TextComponent.translate(
@@ -113,7 +125,8 @@ final class ContraptionControlsBlockEntity extends CreateBlockEntity {
       message = TextComponent.translate(
         key: 'create.contraption.controls.specific_actor_toggle',
         with_: [
-          TextComponent.text(plain: filter.item),
+          // `filter.getHoverName().getString()`: a renamed stack shows its name.
+          TextComponent.text(plain: filterHoverName(filter)),
           state,
         ],
       );
@@ -161,3 +174,93 @@ CreateBlock buildContraptionControlsBlock() => buildControlsBlock(
     },
   ),
 );
+
+/// `ItemStack.getHoverName().getString()`: the `custom_name` of the stack, else a readable
+/// name for the item key (the host resolves no item names).
+String filterHoverName(StoredStack stack) {
+  final custom = stack.components?['minecraft:custom_name'];
+  if (custom != null) {
+    final text = _plainText(custom);
+    if (text != null && text.isNotEmpty) return text;
+  }
+  final key = stack.item;
+  final path = key.substring(key.indexOf(':') + 1);
+  return path.split('_').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+}
+
+/// The plain text of a text component tag (`{"text": ...}` or `{"translate": ...}`).
+String? _plainText(NbtValue value) {
+  if (value.kind != NbtKind.compound) return null;
+  final map = NbtMap.of(value);
+  final literal = map['text'];
+  if (literal != null && literal.kind == NbtKind.string) return literal.value as String;
+  final key = map['translate'];
+  if (key != null && key.kind == NbtKind.string) return key.value as String;
+  return null;
+}
+
+/// `FilteringBehaviour` of the contraption controls: one filter item, restricted to the
+/// items in `create:contraption_controlled` (`withPredicate(AllItemTags.CONTRAPTION_CONTROLLED)`).
+final class ControlsFilter extends BlockEntityBehaviour
+    implements ValueSettingsTarget, ShortInteractTarget {
+  static const String behaviourId = 'Filtering';
+  static const String tag = 'create:contraption_controlled';
+
+  @override
+  String get id => behaviourId;
+
+  ContraptionControlsBlockEntity get controls => owner as ContraptionControlsBlockEntity;
+
+  /// `withPredicate(AllItemTags.CONTRAPTION_CONTROLLED::matches)`.
+  static bool accepts(String itemKey) =>
+      itemKey == 'minecraft:air' || Tags.item(itemKey, tag);
+
+  /// `setFilter(stack)`: false for an item the predicate refuses.
+  bool setFilter(StoredStack stack) {
+    if (stack.isNotEmpty && !accepts(stack.item)) return false;
+    controls.filterStack = stack.isEmpty ? StoredStack.empty : stack;
+    controls.sendData();
+    return true;
+  }
+
+  /// `onShortInteract(player, hand, side, hit)`: the held item becomes the filter.
+  @override
+  void onShortInteract(Player player) {
+    unawaited(_applyHeld(player, Hand.right));
+  }
+
+  Future<void> _applyHeld(Player player, Hand hand) async {
+    final held = player.getItemInHand(hand: hand);
+    if (held == null) return;
+    final key = await held.getRegistryKey();
+    if (key == 'create:wrench' || key == 'create:mechanical_arm') return;
+    final count = await held.getCount();
+    if (count <= 0) {
+      setFilter(StoredStack.empty);
+      return;
+    }
+    final applied = StoredStack(key, 1);
+    if (!setFilter(applied)) return;
+    controls.world?.playSound(
+      sound: Sound.entityItemFrameAddItem,
+      category: SoundCategory.blocks,
+      pos: (owner.pos.x + .5, owner.pos.y + .5, owner.pos.z + .5),
+      volume: .25,
+      pitch: .1,
+    );
+  }
+
+  // -- ValueSettingsTarget: the slot has no amount row (`ControlsSlot`, no `showCount`). ----
+
+  @override
+  int get netId => 1;
+
+  @override
+  bool get acceptsValueSettings => false;
+
+  @override
+  (int row, int value) get valueSettings => (0, 0);
+
+  @override
+  void setValueSettings(Player? player, int row, int value, {required bool ctrlDown}) {}
+}

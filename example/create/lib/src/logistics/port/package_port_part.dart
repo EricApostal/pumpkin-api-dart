@@ -6,7 +6,9 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/trains.dart' show StationPackagePorts;
 import '../../api/util.dart' hide pos;
+import '../../conveyance/chain/chain_conveyor_block_entity.dart';
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
@@ -16,6 +18,7 @@ import '../host/runtime.dart';
 import '../logistics_part.dart';
 import 'package_port_block_entity.dart';
 import 'package_port_target.dart';
+import 'station_ports.dart';
 
 /// The postbox colours (`AllBlocks.PACKAGE_POSTBOXES`).
 const List<String> postboxColors = [
@@ -147,6 +150,9 @@ final class PortPart extends LogisticsPart {
 
   @override
   void onLoad(CreateContext ctx, LgRuntime rt) {
+    // `StationBlockEntity.attachPackagePort`: the station keeps the postbox' offline buffer.
+    ctx.services.provide<StationPackagePorts>(PostboxStationPorts());
+
     // `PackagePortConfigurationPacket`.
     rt.bus.onServerbound('create:package_port_configuration', (player, fields) {
       final pos = fields['pos'] as Pos;
@@ -186,8 +192,21 @@ final class PortPart extends LogisticsPart {
       final limit = rt.packagePortRange + 2;
       if (distanceSq > limit * limit) return;
 
-      be.target = target;
+      // `PackagePortTarget.setup`: a chain conveyor target remembers which way the chain runs, so
+      // a reversed chain does not send packages the wrong way round.
+      var resolved = target;
+      if (target.type == PackagePortTargetType.chainConveyor) {
+        final chain = rt.store.typed<ChainConveyorBlockEntity>(
+          worldId,
+          (pos + target.relativePos).toBlockPos(),
+        );
+        if (chain != null) resolved = target.withFlipped(chain.speed < 0);
+      }
+
+      be.target = resolved;
       be.sendData();
+      // `ppbe.use(player)`: the port opens its screen right after it was pointed at a target.
+      unawaited(be.use(player));
     });
   }
 }

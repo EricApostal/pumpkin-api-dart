@@ -23,7 +23,10 @@ import '../math/vector.dart';
 import '../model/sub_level.dart';
 
 /// The collision boxes of one block of a sub-level, in plot coordinates.
-typedef SubLevelBlockShapes = Iterable<BoundingBox3dc> Function(SubLevel subLevel, (int, int, int) plotBlock);
+typedef SubLevelBlockShapes = Iterable<BoundingBox3dc> Function(
+  SubLevel subLevel,
+  (int, int, int) plotBlock,
+);
 
 /// Queries that answer "is there a ship block here?".
 abstract final class SubLevelStanding {
@@ -92,14 +95,22 @@ abstract final class SubLevelStanding {
           for (var z = minZ; z <= maxZ; z++) {
             for (final box in shapesAt(subLevel, (x, y, z))) {
               final centre = box.center();
-              final position = Vector3d(x + centre.x, y + centre.y, z + centre.z);
+              final position = Vector3d(
+                x + centre.x,
+                y + centre.y,
+                z + centre.z,
+              );
               pose.transformPosition(position, position);
               final size = box.size();
               cube
                 ..setPosition(position)
                 ..setDimensions(size);
 
-              final result = OrientedBoundingBox3d.satInto(entityBounds, cube, Vector3d());
+              final result = OrientedBoundingBox3d.satInto(
+                entityBounds,
+                cube,
+                Vector3d(),
+              );
               if (result.lengthSquared > 0.0) return result;
             }
           }
@@ -125,18 +136,25 @@ abstract final class SubLevelStanding {
     required bool flying,
     required bool stayingOnGroundSurface,
     required bool aboveGround,
-    required bool Function(double localX, double localZ, Quaterniond frame) wouldSlideOff,
+    required bool Function(double localX, double localZ, Quaterniond frame)
+    wouldSlideOff,
     double step = 0.05,
   }) {
     if (flying) return null;
     if (movement.y > 0.0) return null;
     if (!stayingOnGroundSurface || !aboveGround) return null;
 
-    final forward = pose.orientation().transform(Vector3d(0.0, 0.0, 1.0), Vector3d());
+    final forward = pose.orientation().transform(
+      Vector3d(0.0, 0.0, 1.0),
+      Vector3d(),
+    );
     final yaw = math.atan2(forward.x, forward.z);
     final frame = Quaterniond()..rotateY(yaw);
 
-    final local = frame.transformInverse(Vector3d(movement.x, 0.0, movement.z), Vector3d());
+    final local = frame.transformInverse(
+      Vector3d(movement.x, 0.0, movement.z),
+      Vector3d(),
+    );
     var xMovement = local.x;
     var zMovement = local.z;
 
@@ -159,7 +177,9 @@ abstract final class SubLevelStanding {
       zMovement -= zStep;
     }
 
-    while (xMovement != 0.0 && zMovement != 0.0 && wouldSlideOff(xMovement, zMovement, frame)) {
+    while (xMovement != 0.0 &&
+        zMovement != 0.0 &&
+        wouldSlideOff(xMovement, zMovement, frame)) {
       if (xMovement.abs() <= step) {
         xMovement = 0.0;
       } else {
@@ -173,7 +193,10 @@ abstract final class SubLevelStanding {
       }
     }
 
-    final global = frame.transform(Vector3d(xMovement, 0.0, zMovement), Vector3d());
+    final global = frame.transform(
+      Vector3d(xMovement, 0.0, zMovement),
+      Vector3d(),
+    );
     return Vector3d(global.x, movement.y, global.z);
   }
 

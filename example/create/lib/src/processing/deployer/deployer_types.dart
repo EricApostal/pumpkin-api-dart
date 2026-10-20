@@ -11,9 +11,11 @@ enum DeployerMode {
   /// The name Java writes to NBT (`Mode`).
   String get javaName => name.toUpperCase();
 
+  /// `DeployerBlockEntity.readEnum`: an unknown (or missing) name gives `constants[0]`, which
+  /// is [punch]. A saved deployer without a mode therefore punches, not uses.
   static DeployerMode fromJavaName(String? name) => switch (name) {
-    'PUNCH' => DeployerMode.punch,
-    _ => DeployerMode.use,
+    'USE' => DeployerMode.use,
+    _ => DeployerMode.punch,
   };
 }
 

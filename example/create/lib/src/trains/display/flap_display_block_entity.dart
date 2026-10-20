@@ -12,7 +12,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show HostBlockGetter;
 import '../../api/kinetics.dart' show KineticBlockEntity;
-import '../../api/redstone.dart' show FlapControllerView;
+import '../../api/redstone.dart' show FlapControllerView, FlapLayoutSpec, FlapSectionSpec;
 import '../../api/util.dart' hide pos;
 import '../../redstone/support/text.dart' show Txt;
 import '../support/ctag_host.dart';
@@ -286,6 +286,9 @@ final class FlapControllerAdapter implements FlapControllerView {
   int get maxCharCount => controller.getMaxCharCount();
 
   @override
+  int maxCharCountFor(int gaps) => controller.getMaxCharCount(gaps);
+
+  @override
   bool get speedRequirementFulfilled => controller.isSpeedRequirementFulfilled;
 
   @override
@@ -295,12 +298,12 @@ final class FlapControllerAdapter implements FlapControllerView {
   bool isManualLine(int line) => controller.manualLines.length > line && controller.manualLines[line];
 
   @override
-  void setLine(int line, List<String> texts, {required String layoutKey}) {
+  void setLine(int line, List<String> texts, {required FlapLayoutSpec layout}) {
     final lines = controller.getLines();
     if (line >= lines.length) return;
-    final layout = lines[line];
-    FlapLayoutLoader.load(layout, layoutKey, texts, controller.getMaxCharCount());
-    final sections = layout.getSections();
+    final display = lines[line];
+    FlapLayoutLoader.load(display, layout, controller.getMaxCharCount());
+    final sections = display.getSections();
     for (var sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
       if (texts.length <= sectionIndex) break;
       sections[sectionIndex].setText(Txt.literal(texts[sectionIndex]));
@@ -314,81 +317,22 @@ final class FlapControllerAdapter implements FlapControllerView {
   void sendData() => controller.sendData();
 }
 
-/// `DisplaySource.loadFlapDisplayLayout` for the layout names the display link passes
-/// (`Default`, `Number`, `Instant`, `ValueList`): configures [layout] for the texts of a line.
+/// `DisplaySource.loadFlapDisplayLayout` builds the [FlapLayoutSpec]; this turns it into the
+/// sections of [layout] (Java: the source configures the `FlapDisplayLayout` directly).
 abstract final class FlapLayoutLoader {
-  static void load(FlapDisplayLayout layout, String layoutKey, List<String> texts, int maxCharCount) {
-    switch (layoutKey) {
-      case 'Number':
-        _singleLine(layout, layoutKey, texts, maxCharCount, 'numeric');
-      case 'Instant':
-        _singleLine(layout, layoutKey, texts, maxCharCount, 'instant');
-      case 'ValueList':
-        _valueList(layout, texts, maxCharCount);
-      default:
-        _singleLine(layout, 'Default', texts, maxCharCount, 'alphabet');
-    }
-  }
-
-  /// `SingleLineDisplaySource.loadFlapDisplayLayout`: one value section, or a label section and a
-  /// value section when the source labels its line (two texts, the first being `label + " "`).
-  static void _singleLine(FlapDisplayLayout layout, String layoutKey, List<String> texts, int maxCharCount, String cycle) {
-    FlapDisplaySection value(int size) => FlapDisplaySection(size * FlapDisplaySection.MONOSPACE, cycle, false, false);
-
-    final labelled = texts.length >= 2;
-    final labelLength = labelled ? math.max(0, texts[0].length - 1) : 0;
-    if (!labelled || labelLength == 0) {
-      if (layoutKey == 'Default') {
-        if (!layout.isLayout('Default')) layout.loadDefault(maxCharCount);
-        return;
-      }
-      if (!layout.isLayout(layoutKey)) layout.configure(layoutKey, [value(maxCharCount)]);
+  static void load(FlapDisplayLayout layout, FlapLayoutSpec spec, int maxCharCount) {
+    final sections = spec.sections;
+    if (sections == null) {
+      // `layout.loadDefault(flapDisplay.getMaxCharCount())`.
+      if (!layout.isLayout(spec.key)) layout.loadDefault(maxCharCount);
       return;
     }
-
-    final layoutName = '${labelLength}_Labeled_$layoutKey';
-    if (layout.isLayout(layoutName)) return;
-
-    final labelSection = FlapDisplaySection(
-      math.min(maxCharCount, labelLength + 1) * FlapDisplaySection.MONOSPACE,
-      'alphabet',
-      false,
-      false,
-    );
-    if (labelLength + 1 < maxCharCount) {
-      layout.configure(layoutName, [labelSection, value(maxCharCount - labelLength - 1)]);
-    } else {
-      layout.configure(layoutName, [labelSection]);
-    }
-  }
-
-  /// `ValueListDisplaySource.loadFlapDisplayLayout`: name and value sections (+ the suffix of
-  /// shortened numbers). The order and the number format are read from the texts.
-  static void _valueList(FlapDisplayLayout layout, List<String> texts, int maxCharCount) {
-    final shortenNumbers = texts.length >= 3;
-    bool numberLike(String s) => RegExp(r'^\s*[\d.,]+\s*$').hasMatch(s);
-    final valueFirst = texts.isNotEmpty && numberLike(texts[0]);
-    final valueText = texts.isEmpty ? '' : (valueFirst ? texts[0] : (texts.length > 1 ? texts[1] : ''));
-    final valueFormat = shortenNumbers ? 0 : math.max(4, valueText.trim().length);
-
-    final layoutKey = 'ValueList_${valueFirst}_$valueFormat';
-    if (layout.isLayout(layoutKey)) return;
-
-    final mc = math.max(0, maxCharCount - 1);
-    final numberLength = math.min(mc, math.max(3, valueFormat));
-    final nameLength = math.max(mc - numberLength - (shortenNumbers ? 1 : 0), 0);
-
-    const mono = FlapDisplaySection.MONOSPACE;
-    final name = FlapDisplaySection(mono * nameLength, 'alphabet', false, !valueFirst);
-    final value = FlapDisplaySection(mono * numberLength, 'number', false, !shortenNumbers && valueFirst)
-      ..setRightAligned();
-
-    if (shortenNumbers) {
-      final suffix = FlapDisplaySection(mono, 'shortened_numbers', false, valueFirst);
-      layout.configure(layoutKey, valueFirst ? [value, suffix, name] : [name, value, suffix]);
-      return;
-    }
-
-    layout.configure(layoutKey, valueFirst ? [value, name] : [name, value]);
+    if (layout.isLayout(spec.key)) return;
+    layout.configure(spec.key, [
+      for (final section in sections)
+        FlapDisplaySection(section.width, section.cycle, section.singleFlap, section.hasGap)
+          ..rightAligned = section.rightAligned
+          ..wideFlaps = section.wideFlaps,
+    ]);
   }
 }

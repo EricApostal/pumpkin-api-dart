@@ -57,6 +57,9 @@ final class TrainsModule extends CreateModule {
     AllPortalTracks.registerDefaults();
     loadTrack(ctx);
     loadStation(ctx);
+    // `GlobalStation.mailHooks` stays uninstalled: the logistics module has no postbox block
+    // entity and no package inventory yet, so there is no `MailTransferHooks` provider and mail
+    // is not moved when a train arrives or a carriage is disassembled.
     loadEntity(ctx);
     loadManager(ctx);
 

@@ -66,8 +66,10 @@ final class MinecartController {
     _disassemble(c);
   }
 
-  /// `disassemble`: a contraption riding an activator rail is placed back.
+  /// `disassemble`: a contraption riding an activator rail is placed back, and the rail damages
+  /// the cart it carried.
   void _disassemble(MinecartAccess c) {
+    // `cart instanceof Minecart`: a plain rideable cart never carries a contraption.
     if (c.isPlainCart) return;
     final passenger = c.firstPassengerContraption;
     if (passenger == null) return;
@@ -75,19 +77,14 @@ final class MinecartController {
     final pos = c.position;
     var y = pos.$2.floor();
     final below = (pos.$1.floor(), y - 1, pos.$3.floor());
-    final state = level!.stateAt(
-      isRailState(level!.stateAt(below)) ? below : below.above,
-    );
-    final railPos = isRailState(level!.stateAt(below))
-        ? below
-        : (pos.$1.floor(), y, pos.$3.floor());
+    if (isRailState(level!.stateAt(below))) y--;
+    final railPos = (pos.$1.floor(), y, pos.$3.floor());
     final railState = level!.stateAt(railPos);
-    if (!isRailState(railState)) return;
-    if (railState.key != 'minecraft:activator_rail' ||
-        !railState.flag('powered'))
-      return;
-    state.hashCode; // the block above is only read for its state, as in Java
+    // `PoweredRailBlock.isActivatorRail()`: an activator rail fires whether or not it is powered.
+    if (!isRailState(railState) || railState.key != 'minecraft:activator_rail') return;
     if (c.isVehicle) c.ejectPassengers();
+    // `setHurtDir(-getHurtDir()); setHurtTime(10); setDamage(50)`: the cart is destroyed.
+    c.markActivatorRailHit();
     final contraption = passenger;
     if (contraption is ContraptionEntityHandle) {
       ContraptionDisassembly.disassemble?.call(contraption);
@@ -149,10 +146,21 @@ final class MinecartController {
         controller.couplings.forEachWithContext((coupling, leading) {
           if (coupling == null) return;
           coupling.flip();
+          // A contraption riding this cart remembers which end of the coupling it is on.
+          if (!coupling.contraption) return;
+          final contraption = controller.cart?.firstPassengerContraption;
+          if (contraption is! OrientedCouplingId) return;
+          final id = contraption.couplingId;
+          if (id == coupling.mainCartId) {
+            contraption.setCouplingId(coupling.connectedCartId);
+          } else if (id == coupling.connectedCartId) {
+            contraption.setCouplingId(coupling.mainCartId);
+          }
         });
         controller.couplings = controller.couplings.swap();
         controller.needsEntryRefresh = true;
-        if (identical(controller, this)) return;
+        // `continue` in Java: the rest of the chain is flipped too, only this cart skips the sync.
+        if (identical(controller, this)) continue;
         controller.sendData();
       }
     }
@@ -335,6 +343,14 @@ final class StallData {
 /// Hooks the coupling code uses so it does not import the entity layer.
 abstract final class ContraptionDisassembly {
   static void Function(ContraptionEntityHandle entity)? disassemble;
+}
+
+/// The part of an oriented contraption the coupling code needs: the coupling it is attached to.
+/// Implemented by `OrientedContraptionEntity`; the coupling flip of a coupled chain keeps it on
+/// the correct end.
+abstract interface class OrientedCouplingId {
+  String? get couplingId;
+  void setCouplingId(String? id);
 }
 
 /// `CouplingHandler.getNextInCouplingChain`.

@@ -24,13 +24,7 @@ final class StonecuttingRecipe {
 }
 
 /// `AllRecipeTypes.CAN_BE_AUTOMATED` / `shouldIgnoreInAutomation`: recipe ids ending in
-/// `_manual_only` are not used by machines.
-bool ignoredInAutomation(String recipeId) {
-  final path = recipeId.contains(':')
-      ? recipeId.substring(recipeId.indexOf(':') + 1)
-      : recipeId;
-  return path.endsWith('_manual_only');
-}
+/// `_manual_only` are not used by machines ([ignoredInAutomation], shared with the deployer).
 
 /// One entry of `SawBlockEntity.getRecipes()`: a Create cutting recipe (possibly the step of a
 /// sequenced assembly) or a vanilla stonecutting recipe.

@@ -158,6 +158,10 @@ abstract class ContraptionLevel extends BlockGetter {
     return controllerOf(a, x) == controllerOf(b, y);
   }
 
+  /// `Block.asItem() != Items.AIR`: whether the block of [state] has an item. Blocks like water,
+  /// the belt or a piston head have none, and `new ItemStack(block)` of one is an empty stack.
+  bool blockHasItem(BState state) => true;
+
   /// `BlockState.getCollisionShape(...).isEmpty()` for a state not in the world.
   bool stateCollisionEmpty(BState state);
 

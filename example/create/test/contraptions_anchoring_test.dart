@@ -80,6 +80,14 @@ final class _MapLevel extends ContraptionLevel {
 const _stone = BState('minecraft:stone');
 const _bearing = BState('create:mechanical_bearing', {'facing': 'south'});
 const _carriage = BState('create:gantry_carriage', {'facing': 'south'});
+const _slidingDoor = BState('create:train_door', {
+  'hinge': 'left',
+  'half': 'lower',
+  'open': 'false',
+  'facing': 'north',
+  'visible': 'true',
+});
+
 const _door = BState('minecraft:oak_door', {
   'hinge': 'left',
   'half': 'lower',
@@ -149,14 +157,21 @@ void main() {
   );
 
   test(
-    'doors do not notify their neighbours after movement, other blocks do',
+    'sliding doors do not notify their neighbours after movement, other doors do',
     () {
       final contraption = Contraption();
+      // `SlidingDoorBlock` is driven by its block entity; a vanilla door is not.
+      expect(
+        contraption.shouldUpdateAfterMovement(
+          const StructureBlockInfo(posZero, _slidingDoor),
+        ),
+        isFalse,
+      );
       expect(
         contraption.shouldUpdateAfterMovement(
           const StructureBlockInfo(posZero, _door),
         ),
-        isFalse,
+        isTrue,
       );
       expect(
         contraption.shouldUpdateAfterMovement(

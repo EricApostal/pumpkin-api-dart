@@ -13,6 +13,7 @@ import '../api/wrenchable.dart';
 import '../common/direction.dart';
 import '../common/host_bridge.dart' show BlockStates;
 import '../common/pos.dart';
+import '../contraptions/bearing/bearing_placement.dart' show bearingShaftNeighbours;
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
 import '../core/registry.dart';
@@ -68,6 +69,17 @@ Direction nearestLooking(Player player) {
   );
 }
 
+/// `BlockPlaceContext.getNearestLookingDirections()`: all six directions, nearest first.
+List<Direction> nearestLookingDirections(Player player) {
+  final yaw = player.getYaw() * math.pi / 180;
+  final pitch = player.getPitch() * math.pi / 180;
+  return Direction.orderedByNearest(
+    -math.sin(yaw) * math.cos(pitch),
+    -math.sin(pitch),
+    math.cos(yaw) * math.cos(pitch),
+  );
+}
+
 // -- Pipes -----------------------------------------------------------------------------------
 
 CreateBlock _pipeBlock(
@@ -116,10 +128,13 @@ BlockBehavior _pipeBehavior(
     World world,
     Pos p,
     BState state,
-    Direction preferred,
-  ) async {
+    Direction preferred, {
+    List<Direction> lookingDirections = const [],
+  }) async {
     final level = fluidWorldOf(world);
     if (smart) {
+      // `SmartFluidPipeBlock.getStateForPlacement`: the pipe lies along the axis of the pipes it
+      // was placed against, and its `facing`/`face` follow that axis.
       final axis = PipeStateLogic.smartPipePreferredAxis(level, p);
       var s = state;
       if (axis == Axis.y) {
@@ -128,6 +143,10 @@ BlockBehavior _pipeBehavior(
             .setDir('facing', (s.dir('facing') ?? Direction.north).opposite);
       } else if (axis != null) {
         if (s['face'] == 'wall') s = s.setValue('face', 'floor');
+        for (final d in lookingDirections) {
+          if (d.axis != axis) continue;
+          s = s.setDir('facing', d.opposite);
+        }
       }
       setFluidBlock(world, p, s);
       return s;
@@ -156,11 +175,16 @@ BlockBehavior _pipeBehavior(
       final preferred = player == null
           ? (state.dir('facing') ?? Direction.north)
           : nearestLooking(player);
-      var placed = state;
-      if (smart && player != null) {
-        placed = placed.setDir('facing', preferred.opposite);
-      }
-      final finalState = await place(world, p, placed, preferred);
+      final looking = player == null
+          ? const <Direction>[]
+          : nearestLookingDirections(player);
+      final finalState = await place(
+        world,
+        p,
+        state,
+        preferred,
+        lookingDirections: looking,
+      );
       propagate(world, p, finalState);
     },
     onNeighborUpdate: (server, e) {
@@ -170,10 +194,21 @@ BlockBehavior _pipeBehavior(
       final level = fluidWorldOf(world);
       var updated = state;
       if (!encased && !straight && !smart) {
+        // `FluidPipeBlock.neighborChanged`: only a neighbour the pipe cares about, on a side it
+        // is open to, changes the pipe; the changed side becomes the preferred direction and the
+        // opposite side is left alone.
+        final changed = FluidPropagator.validateNeighbourChange(
+          state,
+          level,
+          p,
+          posOf(e.sourcePos),
+        );
+        if (changed == null) return;
+        if (!PipeBlocks.isOpenAt(state, changed)) return;
         updated = PipeStateLogic.updateBlockState(
           state,
-          state.dir('facing') ?? Direction.north,
-          null,
+          changed,
+          changed.opposite,
           level,
           p,
         );
@@ -198,24 +233,25 @@ BlockBehavior _pipeBehavior(
             );
             if (be is! SmartFluidPipeBlockEntity) return BlockUseResult.pass;
             final pipe = be;
-            if (!e.withItem) {
-              pipe.filterFluid = null;
-              pipe.sendData();
-              return BlockUseResult.success;
-            }
+            // `FilteringBehaviour.onShortInteract` needs an item; an empty hand passes.
+            if (!e.withItem) return BlockUseResult.pass;
             final key = await e.item.getRegistryKey();
             final bucket = FluidRegistries.fromBucket(key);
             if (bucket != null) {
-              pipe.filterFluid = bucket.fluid;
+              pipe.setFilterFluid(bucket.fluid, bucket.data);
             } else {
-              // `FilteringBehaviour.forFluids`: any item with a fluid handler filters that fluid.
+              // `FilteringBehaviour.forFluids` + `FilterItemStack.test(FluidStack)`: an item with
+              // no fluid of its own is a valid filter that matches no fluid at all.
               final handler = e.item.fluidHandler;
               final drained = handler == null
                   ? null
                   : await handler.drain(maxAmount: 1000, simulate: true);
-              pipe.filterFluid = drained == null || drained.amount <= 0
-                  ? null
-                  : fromHostFluid(drained).fluid;
+              if (drained == null || drained.amount <= 0) {
+                pipe.setFilterMatchesNothing();
+              } else {
+                final filtered = fromHostFluid(drained);
+                pipe.setFilterFluid(filtered.fluid, filtered.data);
+              }
             }
             pipe.sendData();
             propagate(e.targetWorld, posOf(e.pos), stateOfEvent(e.stateIndex));
@@ -787,7 +823,16 @@ CreateBlock pumpBlock() {
     'mechanical_pump',
     blockEntityType: 'create:mechanical_pump',
     placement: [
-      PlacementRule.lookingDirection('facing', opposite: true),
+      // `DirectionalKineticBlock.getStateForPlacement`: a neighbouring shaft decides the facing,
+      // unless the player sneaks.
+      PlacementRule.neighbourShaft(
+        'facing',
+        bearingShaftNeighbours,
+        opposite: true,
+        whenSneaking: false,
+      ),
+      PlacementRule.lookingDirection('facing', opposite: true, whenSneaking: false),
+      PlacementRule.lookingDirection('facing', whenSneaking: true),
       PlacementRule.inWater('waterlogged'),
     ],
     collisionShape: shapes?.collisionShape,
@@ -805,6 +850,8 @@ CreateBlock pumpBlock() {
             : c.server.getPlayerByUuid(id: playerId);
         var state = c.state;
         if (player != null) {
+          // `PumpBlock.getStateForPlacement`: prefer the pipe next to it when that lies on
+          // another axis than the one the player looks along.
           final preferred = PipeStateLogic.pumpPreferredFacing(
             fluidWorldOf(c.world),
             kposOf(c),
@@ -848,7 +895,16 @@ CreateBlock valveBlock() {
     'fluid_valve',
     blockEntityType: 'create:fluid_valve',
     placement: [
-      PlacementRule.lookingDirection('facing', opposite: true),
+      // `DirectionalAxisKineticBlock` (via `DirectionalKineticBlock`): a neighbouring shaft
+      // decides the facing, unless the player sneaks.
+      PlacementRule.neighbourShaft(
+        'facing',
+        bearingShaftNeighbours,
+        opposite: true,
+        whenSneaking: false,
+      ),
+      PlacementRule.lookingDirection('facing', opposite: true, whenSneaking: false),
+      PlacementRule.lookingDirection('facing', whenSneaking: true),
       PlacementRule.inWater('waterlogged'),
     ],
     collisionShape: shapes?.collisionShape,
@@ -872,10 +928,15 @@ CreateBlock valveBlock() {
           final look = Direction.fromYRot(player.getYaw());
           final facing = toFluidDir(c.state.dirOf('facing') ?? Dir.north);
           final alongFirst = PipeStateLogic.valveAxisAlignmentForPlacement(
-            fluidWorldOf(c.world),
-            kposOf(c),
             facing,
             look,
+            shaftTowards: (side) {
+              final p = kposOf(c);
+              final neighbour = p.relative(side);
+              return fluidWorldOf(
+                c.world,
+              ).hasShaftTowards(neighbour, side.opposite);
+            },
           );
           if (state.flag('axis_along_first') != alongFirst) {
             state = state.setFlag('axis_along_first', alongFirst);

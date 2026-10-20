@@ -69,6 +69,13 @@ class ChainConveyorRoutingTable {
     ),
   );
 
+  /// `PackagePortTarget.ChainConveyorFrogportTarget.deregister`: forgets the routes that end at
+  /// the port with [filter], so a removed frogport does not keep receiving packages.
+  void purgePortRoutes(String filter) {
+    entriesByDistance.removeWhere((e) => e.endOfRoute && e.port == filter);
+    changed = true;
+  }
+
   /// `getExitFor(box)`: the connection to take for a package, `(0, 0, 0)` when there is no route.
   Pos getExitFor(ItemValue box) {
     for (final entry in entriesByDistance) {

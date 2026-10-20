@@ -117,7 +117,7 @@ final class _DepotInventory implements ItemInventory {
 
   @override
   int slotLimit(int slot) => slot == _mainSlot
-      ? (behaviour.maxStackSize == 0 ? 64 : behaviour.maxStackSize)
+      ? (behaviour.maxStackSize() == 0 ? 64 : behaviour.maxStackSize())
       : 64;
 
   @override

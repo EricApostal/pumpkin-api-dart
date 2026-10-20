@@ -407,4 +407,46 @@ void main() {
       expect(east.maxZ, 0.25);
     });
   });
+
+  group('analog lever shape', () {
+    // `AnalogLeverBlock.SHAPES = Shapes.rotateAttachFace(Block.boxZ(6.0, 8.0, 10.0, 16.0))`:
+    // the wall shape is x 5..11, y 8..10, z 10..16, so the floor variant covers y 0..6 and
+    // the ceiling variant y 10..16 (a quarter turn about x each, the ceiling also a half
+    // turn about y). A shorter box leaves the upper half of a floor lever unclickable.
+    BlockBox lever(String face, Direction facing) {
+      final shape = leverShapeRules()
+          .firstWhere((r) => r.when['face'] == face && r.when['facing'] == facing.serializedName)
+          .selectionShape!;
+      return (shape as BoxesShape).boxes.single;
+    }
+
+    test('a floor lever covers the lower six pixels and the full depth', () {
+      final box = lever('floor', Direction.north);
+      expect(box.minX, 5 / 16);
+      expect(box.minY, 0);
+      expect(box.minZ, 4 / 16);
+      expect(box.maxX, 11 / 16);
+      expect(box.maxY, 6 / 16);
+      expect(box.maxZ, 12 / 16);
+    });
+
+    test('a ceiling lever hangs from the top six pixels', () {
+      final box = lever('ceiling', Direction.north);
+      expect(box.minY, 10 / 16);
+      expect(box.maxY, 1);
+      expect(box.minZ, 4 / 16);
+      expect(box.maxZ, 12 / 16);
+    });
+
+    test('the floor and ceiling variants are turned for east and west too', () {
+      final floor = lever('floor', Direction.east);
+      expect(floor.minX, 4 / 16);
+      expect(floor.minZ, 5 / 16);
+      expect(floor.maxY, 6 / 16);
+      final ceiling = lever('ceiling', Direction.west);
+      expect(ceiling.minX, 4 / 16);
+      expect(ceiling.maxX, 12 / 16);
+      expect(ceiling.minY, 10 / 16);
+    });
+  });
 }

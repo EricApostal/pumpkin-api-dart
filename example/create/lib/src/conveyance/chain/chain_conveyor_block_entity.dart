@@ -8,6 +8,7 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/contraption/transformable.dart';
 import '../../api/kinetics.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart';
@@ -347,6 +348,13 @@ class ChainConveyorBlockEntity extends KineticBlockEntity {
 
   // -- Connections ----------------------------------------------------------------------------
 
+  /// `clearContent()` (`Clearable`): forgets the chains and every package riding them.
+  void clearContent() {
+    connections.clear();
+    travellingPackages.clear();
+    loopingPackages.clear();
+  }
+
   void removeInvalidConnections() {
     var changed = false;
     for (final next in List.of(connections)) {
@@ -379,7 +387,7 @@ class ChainConveyorBlockEntity extends KineticBlockEntity {
     final added = connections.add(local);
     if (added) {
       notifyUpdate();
-      prepareStats();
+      _calculateConnectionStats(local);
     }
     detachKinetics();
     updateSpeed = true;
@@ -509,14 +517,15 @@ class ChainConveyorBlockEntity extends KineticBlockEntity {
     if (connectionStats == null) {
       connectionStats = {};
       for (final c in connections) {
-        connectionStats![c] = calculateConnectionStats(
-          p,
-          c,
-          reversed: reversed,
-        );
+        _calculateConnectionStats(c);
       }
     }
   }
+
+  /// `calculateConnectionStats(BlockPos)`: (re)computes the stats of [connection] from the current
+  /// speed, like Java, which reads `getSpeed()` here instead of the cached [reversed] field.
+  void _calculateConnectionStats(Pos connection) =>
+      putConnectionStats(connectionStats ??= {}, p, connection, speed);
 
   void updateBoxWorldPositions() {
     prepareStats();
@@ -591,10 +600,14 @@ class ChainConveyorBlockEntity extends KineticBlockEntity {
     );
   }
 
-  /// The port at [portOffset] was removed.
-  void removePort(Pos portOffset) {
-    loopPorts.remove(portOffset);
-    travelPorts.remove(portOffset);
+  /// The port at [portOffset] was removed. [filter] is the port's current filter; the routes that
+  /// end at it are forgotten, so packages do not loop towards a port that is gone.
+  void removePort(Pos portOffset, {String? filter}) {
+    final fromLoop = loopPorts.remove(portOffset);
+    final fromTravel = travelPorts.remove(portOffset);
+    final portFilter = filter ?? fromLoop?.filter ?? fromTravel?.filter;
+    if (portFilter == null) return;
+    routingTable.purgePortRoutes(portFilter);
   }
 
   void notifyUpdate() {
@@ -602,6 +615,8 @@ class ChainConveyorBlockEntity extends KineticBlockEntity {
     sendData();
   }
 
+  /// `drop(box)`: Java spawns a `PackageEntity` at the package's position; the port models a
+  /// package as its item stack, so the box is dropped as an item entity instead.
   void _drop(ChainConveyorPackage box) {
     final at = box.worldPosition;
     final w = world;
@@ -695,4 +710,13 @@ class ChainConveyorBlockEntity extends KineticBlockEntity {
     connectionStats = null;
     updateBoxWorldPositions();
   }
+}
+
+/// `ChainConveyorBlockEntity.transform` (`TransformableBlockEntity`): registers the NBT transform
+/// of [transformChainConveyorNbt].
+void registerChainConveyorTransform() {
+  MovedBlockTransformerRegistries.registerBlockEntity(
+    'create:chain_conveyor',
+    transformChainConveyorNbt,
+  );
 }

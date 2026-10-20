@@ -177,6 +177,12 @@ final class HostContraptionLevel extends ContraptionLevel {
   bool stateCollisionEmpty(BState state) =>
       (_stateOf(state)?.collisionShapes ?? const []).isEmpty;
 
+  /// `Block.asItem() != Items.AIR`: the plugin's item registry, then the vanilla one.
+  @override
+  bool blockHasItem(BState state) =>
+      ItemRegistries.host.idOf(state.key) != null ||
+      VanillaIds.items.idOf(state.key) != null;
+
   @override
   bool stateReplaceable(BState state) => _stateOf(state)?.replaceable ?? false;
 
@@ -668,6 +674,18 @@ final class HostCollisionEntity implements ContraptionCollisionEntity {
     velocity: handle.velocity,
   );
 
+  /// `Entity#collide`: the host has no collision query of its own, but a colliding move returns
+  /// the distance it actually travelled. The entity is already at the resulting position, so the
+  /// caller's `setPosition(position + result)` is a no-op.
+  @override
+  Vec3 collideMovement(Vec3 movement) {
+    final moved = handle.moveBy(
+      (movement.$1, movement.$2, movement.$3),
+      collide: true,
+    );
+    return (moved.$1, moved.$2, moved.$3);
+  }
+
   @override
   void teleport(Vec3 position) => setPosition(position);
 
@@ -843,7 +861,7 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   @override
   void addPassenger(ContraptionPassengerRef passenger, {bool force = true}) {
     final handle = _handle;
-    if (handle == null || passenger is! HostPassengerRef) return;
+    if (handle == null) return;
     // `addPassenger` takes ownership of the handle (`takeHandle`), so it must not be disposed.
     final entity = world.getEntityById(id: passenger.entityId);
     if (entity == null) return;
@@ -853,7 +871,7 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   @override
   void removePassenger(ContraptionPassengerRef passenger) {
     final handle = _handle;
-    if (handle == null || passenger is! HostPassengerRef) return;
+    if (handle == null) return;
     final entity = world.getEntityById(id: passenger.entityId);
     if (entity == null) return;
     unawaited(handle.removePassenger(passenger: entity));
@@ -864,7 +882,6 @@ final class HostContraptionEntity implements ContraptionEntityHost {
 
   @override
   void setPassengerPosition(ContraptionPassengerRef passenger, Vec3 position) {
-    if (passenger is! HostPassengerRef) return;
     final entity = world.getEntityById(id: passenger.entityId);
     if (entity == null) return;
     try {
@@ -880,9 +897,8 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   }
 
   @override
-  void teleportEntity(ContraptionPassengerRef passenger, Vec3 position) {
-    if (passenger is HostPassengerRef) passenger.teleportTo(position);
-  }
+  void teleportEntity(ContraptionPassengerRef passenger, Vec3 position) =>
+      passenger.teleportTo(position);
 
   @override
   Object? get vehicle => _handle?.getVehicle();

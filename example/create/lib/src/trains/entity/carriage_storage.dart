@@ -5,11 +5,12 @@ import '../schedule/schedule_level.dart';
 import '../util/ctag.dart';
 
 abstract interface class CarriageStorage implements TrainCargo {
-  /// `storage.write(tag, registries, spawnPacket)`.
-  void write(CTag tag, bool spawnPacket);
+  /// `storage.write(tag, registries, spawnPacket)`. Named `writeCargo` because the mounted
+  /// storage of a carriage contraption already has `write`/`read` with the `NbtMap` signature.
+  void writeCargo(CTag tag, bool spawnPacket);
 
   /// `storage.read(tag, registries, spawnPacket, contraption)`.
-  void read(CTag tag, bool spawnPacket);
+  void readCargo(CTag tag, bool spawnPacket);
 
   /// `Train.burnFuel`: takes one fuel item out of the fuel inventory (the first slot whose item
   /// has a burn time), puts its crafting remainder back and returns the burn time gained in ticks
@@ -46,10 +47,10 @@ final class EmptyCarriageStorage implements CarriageStorage {
   }
 
   @override
-  void write(CTag tag, bool spawnPacket) {}
+  void writeCargo(CTag tag, bool spawnPacket) {}
 
   @override
-  void read(CTag tag, bool spawnPacket) {}
+  void readCargo(CTag tag, bool spawnPacket) {}
 
   @override
   int extractFuel() => 0;

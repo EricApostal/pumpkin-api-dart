@@ -1,6 +1,7 @@
 // `Carriage` (pure): one carriage of a train. It has one or two bogeys (the wheel points moving
 // on the track graph), the cargo, and per dimension the entity that shows it
 // ([DimensionalCarriageEntity]); a carriage crossing a portal is present in two dimensions.
+import 'dart:async';
 import 'dart:math' as math;
 
 import '../../common/data.dart';
@@ -446,7 +447,7 @@ class Carriage {
       if (prevmin != dce.minAllowedLocalCoord() ||
           prevmax != dce.maxAllowedLocalCoord()) {
         dce.updateRenderedCutoff();
-        dce.updatePassengerLoadout();
+        unawaited(dce.updatePassengerLoadout());
       }
     }
   }
@@ -637,7 +638,7 @@ class DimensionalCarriageEntity {
     if ((carriage.serialisedPassengers.isNotEmpty && entity != null) ||
         prevmin != minAllowedLocalCoord() ||
         prevmax != maxAllowedLocalCoord()) {
-      updatePassengerLoadout();
+      unawaited(updatePassengerLoadout());
       updateRenderedCutoff();
     }
   }
@@ -740,7 +741,7 @@ class DimensionalCarriageEntity {
     final tag = CTag();
     tag.putFloat('Cutoff', cutoff);
     tag.putInt('DiscardTicks', discardTicks);
-    if (carriage.hasStorage) carriage.storage.write(tag, false);
+    if (carriage.hasStorage) carriage.storage.writeCargo(tag, false);
     if (pivot != null) tag.putCompound('Pivot', pivot!.write(null));
     if (positionAnchor != null) tag.putVec3('PositionAnchor', positionAnchor!);
     if (rotationAnchors.both((v) => v != null)) {
@@ -756,7 +757,7 @@ class DimensionalCarriageEntity {
   void read(CTag tag) {
     cutoff = tag.getFloat('Cutoff');
     discardTicks = tag.getInt('DiscardTicks');
-    if (carriage.hasStorage) carriage.storage.read(tag, false);
+    if (carriage.hasStorage) carriage.storage.readCargo(tag, false);
     if (tag.contains('Pivot'))
       pivot = TrackNodeLocation.read(tag.getCompound('Pivot'), null);
     if (positionAnchor != null) return;
@@ -796,15 +797,33 @@ class DimensionalCarriageEntity {
     return (-bogeySpacing + -1 + (2 + bogeySpacing) * (cutoff + 1)).ceil();
   }
 
-  void updatePassengerLoadout() {
+  bool _loadingPassengers = false;
+
+  Future<void> updatePassengerLoadout() async {
+    if (_loadingPassengers) return;
     final cce = entity;
     if (cce == null) return;
 
-    final loadedPassengers = <int>{};
     final min = minAllowedLocalCoord();
     final max = maxAllowedLocalCoord();
     final contraption = cce.getContraption();
     if (contraption == null) return;
+
+    _loadingPassengers = true;
+    try {
+      await _loadPassengers(cce, contraption, min, max);
+    } finally {
+      _loadingPassengers = false;
+    }
+  }
+
+  Future<void> _loadPassengers(
+    CarriageContraptionEntity cce,
+    CarriageContraption contraption,
+    int min,
+    int max,
+  ) async {
+    final loadedPassengers = <int>{};
 
     for (final entry in carriage.serialisedPassengers.entries.toList()) {
       final seatId = entry.key;
@@ -821,7 +840,10 @@ class DimensionalCarriageEntity {
         final uuid = tag.getUuid('PlayerPassenger');
         passenger = uuid == null ? null : cce.host.findPlayer(uuid);
       } else {
-        passenger = cce.host.loadPassenger(tag, positionAnchor ?? cce.position);
+        passenger = await cce.host.loadPassenger(
+          tag,
+          positionAnchor ?? cce.position,
+        );
       }
 
       if (passenger != null) {
@@ -908,7 +930,7 @@ class DimensionalCarriageEntity {
     created.setCarriage(carriage);
     created.syncCarriage();
 
-    updatePassengerLoadout();
+    unawaited(updatePassengerLoadout());
   }
 
   void removeAndSaveEntity(CarriageContraptionEntity entity, bool portal) {

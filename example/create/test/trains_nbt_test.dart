@@ -884,7 +884,8 @@ void main() {
 
       final tag = CTag();
       contraption.writeNBT(tag);
-      expect(tag.getString('AssemblyDirection'), 'NORTH');
+      // Java writes `Direction.name()`, lower case.
+      expect(tag.getString('AssemblyDirection'), 'north');
       expect(tag.getBoolean('FrontControls'), isTrue);
       expect(tag.getBoolean('BackControls'), isFalse);
       expect(tag.getBoolean('FrontBlazeConductor'), isTrue);

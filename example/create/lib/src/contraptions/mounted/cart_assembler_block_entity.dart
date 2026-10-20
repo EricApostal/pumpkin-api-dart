@@ -81,7 +81,6 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
       state,
       hasPassengers: access?.isVehicle ?? false,
     );
-    logger.info('CA-DEBUG tryAssemble cart=${cart.id} state=${state.props} action=$action');
 
     if (action.shouldAssemble) await assemble(cart);
     if (action.shouldDisassemble) await disassemble(cart);
@@ -146,10 +145,8 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
     if (cartAccess == null || cartAccess.isVehicle) return;
 
     final contraption = MountedContraption(movementMode);
-    logger.info('CA-DEBUG assemble start pos=$localPos');
     try {
       if (!await contraption.assemble(level, localPos)) {
-        logger.info('CA-DEBUG assemble: contraption.assemble returned false');
         return;
       }
       lastException = null;
@@ -157,7 +154,6 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
     } on AssemblyException catch (e) {
       lastException = e;
       sendData();
-      logger.info('CA-DEBUG assemble: AssemblyException $e');
       return;
     }
 
@@ -206,7 +202,6 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
     }
     entity.setPos((localPos.$1 + .5, localPos.$2.toDouble(), localPos.$3 + .5));
     factory.spawn(worldId, entity);
-    logger.info('CA-DEBUG assemble spawned contraption for cart=${cartRef.id}');
 
     // `entity.startRiding(cart)`: the factory spawns asynchronously, so the passenger is attached
     // on the next world tick.

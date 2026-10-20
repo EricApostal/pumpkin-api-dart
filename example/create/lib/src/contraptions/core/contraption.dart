@@ -13,6 +13,8 @@ import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../core/nbt.dart' show NbtKind, NbtValue;
 import '../../core/perf.dart';
+import '../../decoration/door.dart' show slidingDoorKeys;
+import '../../schematics/nbt_processors.dart' show processContraptionNbt;
 import '../storage/storage_manager.dart';
 import '../storage/stacks.dart';
 import 'collision.dart';
@@ -72,19 +74,133 @@ final class CapturedBlock {
   const CapturedBlock(this.info, this.blockEntity);
 }
 
-/// The block entity types whose data is a multiblock (`IMultiBlockEntityContainer`). The
-/// multiblock modules add their types in `onLoad`; the fallback recognises the vanilla-like
-/// markers in the saved data.
+/// The block entity types whose data is a multiblock (`IMultiBlockEntityContainer`), with the
+/// keys their saved data uses for `getHeight()` and `getWidth()`. The multiblock modules add
+/// their types in `onLoad`.
 abstract final class MultiBlockContainers {
-  static final Set<String> _types = {
-    'create:fluid_tank',
-    'create:creative_fluid_tank',
-    'create:item_vault',
+  /// Type key -> (height key, width key). A tank saves `Height`/`Size`, a vault `Length`/`Size`.
+  static final Map<String, (String, String)> _types = {
+    'create:fluid_tank': ('Height', 'Size'),
+    'create:creative_fluid_tank': ('Height', 'Size'),
+    'create:item_vault': ('Length', 'Size'),
   };
 
-  static void register(String typeKey) => _types.add(typeKey);
+  static void register(
+    String typeKey, {
+    String heightKey = 'Height',
+    String widthKey = 'Size',
+  }) => _types[typeKey] = (heightKey, widthKey);
 
-  static bool isContainer(String typeKey) => _types.contains(typeKey);
+  static bool isContainer(String typeKey) => _types.containsKey(typeKey);
+
+  /// `IMultiBlockEntityContainer.getHeight()`: the saved height, `1` when the part does not save
+  /// it (only the controller does).
+  static int heightOf(String typeKey, NbtMap nbt) =>
+      nbt.getInt(_types[typeKey]?.$1 ?? 'Height', 1);
+
+  /// `IMultiBlockEntityContainer.getWidth()`.
+  static int widthOf(String typeKey, NbtMap nbt) =>
+      nbt.getInt(_types[typeKey]?.$2 ?? 'Size', 1);
+}
+
+/// `UniqueLinkedList`: the frontier of the structure search. A position that is already waiting
+/// is not added again, so two neighbours that both drag in the same block capture it once
+/// (Java deduplicates on add; the block is only marked visited when it is taken out).
+final class UniquePosQueue extends IterableBase<Pos> implements Queue<Pos> {
+  // `ListQueue` is `final` in this SDK, so the queue is composed rather than extended.
+  final ListQueue<Pos> _queue = ListQueue<Pos>();
+  final Set<Pos> _queued = {};
+
+  @override
+  Iterator<Pos> get iterator => _queue.iterator;
+
+  @override
+  int get length => _queue.length;
+
+  @override
+  bool get isEmpty => _queue.isEmpty;
+
+  @override
+  bool get isNotEmpty => _queue.isNotEmpty;
+
+  @override
+  Pos get first => _queue.first;
+
+  @override
+  Pos get last => _queue.last;
+
+  @override
+  Pos get single => _queue.single;
+
+  @override
+  Pos elementAt(int index) => _queue.elementAt(index);
+
+  @override
+  Queue<R> cast<R>() => _queue.cast<R>();
+
+  @override
+  void add(Pos value) => addLast(value);
+
+  @override
+  void addAll(Iterable<Pos> values) {
+    for (final value in values) {
+      addLast(value);
+    }
+  }
+
+  @override
+  void addFirst(Pos value) {
+    if (_queued.add(value)) _queue.addFirst(value);
+  }
+
+  @override
+  void addLast(Pos value) {
+    if (_queued.add(value)) _queue.addLast(value);
+  }
+
+  @override
+  Pos removeFirst() {
+    final value = _queue.removeFirst();
+    _queued.remove(value);
+    return value;
+  }
+
+  @override
+  Pos removeLast() {
+    final value = _queue.removeLast();
+    _queued.remove(value);
+    return value;
+  }
+
+  @override
+  bool remove(Object? value) {
+    _queued.remove(value);
+    return _queue.remove(value);
+  }
+
+  @override
+  void removeWhere(bool Function(Pos element) test) {
+    _queue.removeWhere((element) {
+      if (!test(element)) return false;
+      _queued.remove(element);
+      return true;
+    });
+  }
+
+  @override
+  void retainWhere(bool Function(Pos element) test) {
+    _queue.retainWhere((element) {
+      if (test(element)) return true;
+      _queued.remove(element);
+      return false;
+    });
+  }
+
+  @override
+  void clear() {
+    _queued.clear();
+    _queue.clear();
+  }
 }
 
 /// Hooks the actuator modules install for block kinds the core cannot know about. Everything
@@ -233,7 +349,7 @@ class Contraption {
     Direction? forcedDirection,
   ) {
     _initialPassengers.clear();
-    final frontier = ListQueue<Pos>();
+    final frontier = UniquePosQueue();
     final visited = <Pos>{};
     anchor = pos;
     levelForColliders = level;
@@ -276,10 +392,9 @@ class Contraption {
   ) {
     final pos = frontier.isEmpty ? null : frontier.removeFirst();
     if (pos == null) return false;
-    // A position is queued once per face that reaches it, so a compact structure queues most of
-    // its blocks several times. Every visit does the same work (the capture overwrites the same
-    // entry, the glue and the actuator notifications are idempotent), so a second visit only
-    // costs the six neighbour reads of a host world. Skip it.
+    // `visited.add(pos)` of Java: a block is captured once, however many neighbours drag it in.
+    // [UniquePosQueue] already keeps a waiting position from being queued twice; this covers a
+    // position that is queued again after it was taken out.
     if (!visited.add(pos)) return true;
 
     if (level.isOutsideBuildHeight(pos)) return true;
@@ -335,7 +450,10 @@ class Contraption {
       if (!visited.contains(pos.relative(d))) frontier.add(pos.relative(d));
     }
 
-    if (isBearingState(state)) _moveBearing(pos, frontier, visited, state);
+    // Bearings potentially create stabilized sub-contraptions. Only the mechanical bearing: a
+    // windmill or clockwork bearing attaches its structure like any other block.
+    if (state.key == 'create:mechanical_bearing')
+      _moveBearing(pos, frontier, visited, state);
     if (state.key == 'create:windmill_bearing')
       _moveWindmillBearing(pos, frontier, visited, state);
 
@@ -483,7 +601,14 @@ class Contraption {
     final facing = state.dir('facing') ?? Direction.north;
     final offset = pos.relative(facing);
     if (!visited.contains(offset)) frontier.add(offset);
-    final rotationAxis = state.axisOf('axis') ?? facing.axis;
+    // `GantryCarriageBlock.getRotationAxis` (`DirectionalAxisKineticBlock`): perpendicular to the
+    // facing and to the `axis_along_first` coordinate, not the (absent) `axis` property.
+    final alongFirst = state.flag('axis_along_first');
+    final rotationAxis = switch (facing.axis) {
+      Axis.x => alongFirst ? Axis.y : Axis.z,
+      Axis.y => alongFirst ? Axis.x : Axis.z,
+      Axis.z => alongFirst ? Axis.x : Axis.y,
+    };
     for (final d in Iterate.directionsInAxis(rotationAxis)) {
       final o = pos.relative(d);
       final offsetState = level.stateAt(o);
@@ -655,13 +780,14 @@ class Contraption {
       blockstate = blockstate.setFlag('powered', true);
     }
     if (blockstate.key == 'create:powered_shaft') {
-      // The captured shaft is a plain shaft with the same axis.
-      final axis = blockstate['axis'];
-      blockstate = axis == null
-          ? const BState('create:shaft')
-          : BState('create:shaft', {'axis': axis});
+      // `BlockHelper.copyProperties(state, SHAFT.getDefaultState())`: the captured block is a
+      // plain shaft that keeps every property the two blocks share (`axis` and `waterlogged`).
+      blockstate = BState('create:shaft', {
+        for (final property in const ['axis', 'waterlogged'])
+          if (blockstate.has(property)) property: blockstate[property]!,
+      });
     }
-    if (blockstate.key == 'create:controls' && _opensControls()) {
+    if (blockstate.key == 'create:controls' && _opensControls) {
       blockstate = blockstate.setFlag('open', true);
     }
     if (blockstate.has('visible'))
@@ -670,17 +796,30 @@ class Contraption {
       blockstate = blockstate.setFlag('powered', false);
       level.scheduleBlockTick(pos, blockstate.key);
     }
-    final be = level.blockEntityAt(pos);
-    final nbt = be == null ? null : be.saved.copy();
+    final source = level.blockEntityAt(pos);
+    final nbt = source == null ? null : source.saved.copy();
     if (nbt != null) {
       nbt.remove('x');
       nbt.remove('y');
       nbt.remove('z');
     }
+    var be = source;
+    if (be != null && be.typeKey == 'create:powered_shaft') {
+      // `AllBlockEntityTypes.BRACKETED_KINETIC.create(pos, blockstate)`: the block entity of the
+      // captured block is a fresh shaft one, so the contraption does not carry the kinetic data
+      // of the powered shaft it used to be. The saved data above is still the original's.
+      final fresh = NbtMap()
+        ..putString('id', 'create:simple_kinetic')
+        ..putFloat('Speed', 0);
+      be = CapturedBlockEntity('create:simple_kinetic', fresh, fresh.copy());
+    }
     return CapturedBlock(StructureBlockInfo(pos, blockstate, nbt), be);
   }
 
-  bool _opensControls() => true;
+  /// `AllContraptionTypeTags.OPENS_CONTROLS`: only a train carriage captures its controls open.
+  static const Set<String> _opensControlsTypes = {'create:carriage'};
+
+  bool get _opensControls => _opensControlsTypes.contains(typeId);
 
   static bool _isButtonOrPlate(BState state) {
     final path = state.key.substring(state.key.indexOf(':') + 1);
@@ -710,7 +849,21 @@ class Contraption {
     final interaction = MovingInteractions.of(state, level);
     if (interaction != null) interactors[localPos] = interaction;
 
-    if (state.key == 'create:creative_crate') hasUniversalCreativeCrate = true;
+    // `CreativeCrateBlockEntity.getBehaviour(FilteringBehaviour.TYPE).getFilter().isEmpty()`: a
+    // crate that supplies one specific item is not a bottomless source for the whole contraption.
+    if (be != null &&
+        state.key == 'create:creative_crate' &&
+        _isFilterEmpty(be.saved)) {
+      hasUniversalCreativeCrate = true;
+    }
+  }
+
+  /// Whether the filter of a creative crate (`Filter`, a saved item stack) is empty.
+  static bool _isFilterEmpty(NbtMap saved) {
+    final filter = saved.getCompoundOrNull('Filter');
+    if (filter == null) return true;
+    final item = filter.getString('id', 'minecraft:air');
+    return item == 'minecraft:air' || filter.getInt('count', 0) <= 0;
   }
 
   /// `removeBlock`: drops a block from the captured structure.
@@ -737,9 +890,11 @@ class Contraption {
     nbt.putBlockPos('Controller', controllerPos);
     updateTags[localPos]?.putBlockPos('Controller', controllerPos);
 
-    if (_isMultiblockController(nbt) &&
-        _multiBlockHeight(nbt) <= 1 &&
-        _multiBlockWidth(nbt) <= 1) {
+    // `IMultiBlockEntityContainer.isController()`: the part whose controller is itself. Only the
+    // controller saves `Size`/`Height` (tank) or `Size`/`Length` (vault).
+    if (controllerPos == localPos &&
+        MultiBlockContainers.heightOf(be.typeKey, nbt) <= 1 &&
+        MultiBlockContainers.widthOf(be.typeKey, nbt) <= 1) {
       nbt.putBlockPos('LastKnownPos', (0, _intMin + 1, 0));
       return;
     }
@@ -748,21 +903,14 @@ class Contraption {
     capturedMultiblocks.putIfAbsent(controllerPos, () => []).add(info);
   }
 
-  static bool _isMultiblockController(NbtMap nbt) {
-    if (!nbt.contains('Controller')) return true;
-    final c = nbt.getBlockPos('Controller');
-    return c == posZero;
-  }
-
-  static int _multiBlockHeight(NbtMap nbt) => nbt.getInt('Height', 1);
-  static int _multiBlockWidth(NbtMap nbt) => nbt.getInt('Width', 1);
-
   bool _isGlued(ContraptionLevel level, Pos pos, Direction offset) {
-    for (final glue in level.gluesIn(Aabb.ofBlock(pos).inflate(0.01))) {
-      if (glue.contains(pos.relative(offset))) {
-        _glueToRemove.add(glue);
-        return true;
-      }
+    final target = pos.relative(offset);
+    final area = Aabb.ofBlock(pos).minmax(Aabb.ofBlock(target)).inflate(0.01);
+    for (final glue in level.gluesIn(area)) {
+      // `SuperGlueEntity.isGlued`: both the block and its neighbour have to be inside the box.
+      if (!glue.contains(pos) || !glue.contains(target)) continue;
+      _glueToRemove.add(glue);
+      return true;
     }
     return false;
   }
@@ -808,9 +956,11 @@ class Contraption {
   bool isAnchoringBlockAt(Pos pos) => pos == anchor;
 
   /// `shouldUpdateAfterMovement`: whether the placed block notifies its neighbours on disassembly.
-  /// Java also skips blocks that own a POI; the host owns those and does not expose the check.
+  /// False for the sliding doors only (their state is driven by the block entity), not for every
+  /// door. Java also skips blocks that own a POI; the host owns those and does not expose the
+  /// check.
   bool shouldUpdateAfterMovement(StructureBlockInfo info) =>
-      !_isDoor(info.state);
+      !slidingDoorKeys.contains(info.state.key);
 
   // -- Entity integration ---------------------------------------------------------------------
 
@@ -1320,6 +1470,8 @@ class Contraption {
 
         await level.destroyBlockAt(targetPos, drop: shouldDropBlocks);
 
+        if (state.key == 'create:shaft')
+          state = _pickCorrectShaftType(level, targetPos, state);
         if (state.has('visible')) {
           state = state
               .setFlag('visible', !state.flag('open'))
@@ -1346,6 +1498,14 @@ class Contraption {
         if (state.key == 'minecraft:sculk_sensor' ||
             state.key == 'minecraft:sculk_shrieker')
           tag = null;
+        // `NBTProcessors.process(state, blockEntity, tag, false)`: drops the data of a block
+        // entity that would carry executable content (a sign or clipboard with a click event, a
+        // lectern with such a book, a command block) and filters the creative crate's filter.
+        if (tag != null)
+          tag = processContraptionNbt(
+            tag,
+            isSign: level.stateHasTag(state, 'minecraft:all_signs'),
+          );
 
         if (tag != null) {
           tag
@@ -1389,6 +1549,59 @@ class Contraption {
     for (final box in superglue) {
       level.addGlue(transform.applyAabb(box));
     }
+  }
+
+  /// `ShaftBlock.pickCorrectShaftType(state, level, pos)`: a shaft that is placed back next to a
+  /// steam engine becomes a powered shaft again.
+  static BState _pickCorrectShaftType(
+    ContraptionLevel level,
+    Pos pos,
+    BState state,
+  ) {
+    if (!_poweredShaftStillValid(level, pos, state)) return state;
+    // `PoweredShaftBlock.getEquivalent`: the same axis and waterlogged flag.
+    return BState('create:powered_shaft', {
+      for (final property in const ['axis', 'waterlogged'])
+        if (state.has(property)) property: state[property]!,
+    });
+  }
+
+  /// `PoweredShaftBlock.stillValid`: a steam engine two blocks out, perpendicular to the shaft,
+  /// whose own shaft is this block.
+  static bool _poweredShaftStillValid(
+    ContraptionLevel level,
+    Pos pos,
+    BState state,
+  ) {
+    final axis = state.axisOf('axis') ?? Axis.y;
+    for (final d in Direction.values) {
+      if (d.axis == axis) continue;
+      final enginePos = pos.relative(d, 2);
+      final engine = level.stateAt(enginePos);
+      if (engine.key != 'create:steam_engine') continue;
+      if (_steamEngineShaftPos(engine, enginePos) != pos) continue;
+      if (_steamEngineShaftValid(engine, state)) return true;
+    }
+    return false;
+  }
+
+  /// `SteamEngineBlock.getConnectedDirection`.
+  static Direction _steamEngineConnectedDirection(BState engine) =>
+      switch (engine['face']) {
+        'ceiling' => Direction.down,
+        'floor' => Direction.up,
+        _ => engine.dir('facing') ?? Direction.north,
+      };
+
+  /// `SteamEngineBlock.getShaftPos`: two blocks out along the connected direction.
+  static Pos _steamEngineShaftPos(BState engine, Pos pos) =>
+      pos.relative(_steamEngineConnectedDirection(engine), 2);
+
+  /// `SteamEngineBlock.isShaftValid`: a shaft perpendicular to the engine's connection.
+  static bool _steamEngineShaftValid(BState engine, BState shaft) {
+    if (shaft.key != 'create:shaft' && shaft.key != 'create:powered_shaft')
+      return false;
+    return shaft.axisOf('axis') != _steamEngineConnectedDirection(engine).axis;
   }
 
   /// `translateMultiblockControllers(transform)`.
@@ -1633,11 +1846,19 @@ class Contraption {
   /// `getStorage()`.
   MountedStorageManager getStorage() => storage;
 
-  /// `isHiddenInPortal(localPos)`; the train carriage overrides this.
-  bool isHiddenInPortal(Pos localPos) => false;
+  /// `isHiddenInPortal(localPos)`; the train carriage overrides this through the train part.
+  bool Function(Pos localPos)? hiddenInPortalTest;
 
-  /// `getSimplifiedEntityColliders()`.
-  CollisionList getSimplifiedEntityColliders() => simplifiedEntityColliders;
+  /// Whether the simplified colliders are hidden (`CarriageContraption` returns `null` while a
+  /// carriage is inside a portal).
+  bool Function()? simplifiedCollidersHidden;
+
+  /// `isHiddenInPortal(localPos)`.
+  bool isHiddenInPortal(Pos localPos) => hiddenInPortalTest?.call(localPos) ?? false;
+
+  /// `getSimplifiedEntityColliders()`: `null` while the carriage is in a portal.
+  CollisionList? getSimplifiedEntityColliders() =>
+      (simplifiedCollidersHidden?.call() ?? false) ? null : simplifiedEntityColliders;
 
   /// `invalidateColliders()`: rebuilds the collision boxes of the carried blocks.
   void invalidateColliders() {

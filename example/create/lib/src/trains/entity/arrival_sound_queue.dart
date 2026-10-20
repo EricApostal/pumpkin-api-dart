@@ -104,7 +104,8 @@ class ArrivalSoundQueue {
       'dragon' => 'minecraft:block.note_block.imitate.ender_dragon',
       'wither_skeleton' => 'minecraft:block.note_block.imitate.wither_skeleton',
       'piglin' => 'minecraft:block.note_block.imitate.piglin',
-      'custom_head' => 'minecraft:block.note_block.harp',
+      // `NoteBlockInstrument.CUSTOM_HEAD.getSoundEvent()` is the UI click.
+      'custom_head' => 'minecraft:ui.button.click',
       _ => 'minecraft:block.note_block.$name',
     };
   }
@@ -117,7 +118,7 @@ class ArrivalSoundQueue {
       if (state.key == hauntedBellKey) {
         _playSimple(entity, 'create:haunted_bell_use', 1, 1);
       } else {
-        _playSimple(entity, 'minecraft:block.bell.block', 1, 1);
+        _playSimple(entity, 'minecraft:block.bell.use', 1, 1);
       }
     }
 

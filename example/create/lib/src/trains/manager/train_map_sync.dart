@@ -189,11 +189,46 @@ abstract final class TrainMapSync {
     final runtime = train.runtime;
     if (runtime.getSchedule() != null && stopped) {
       if (runtime.paused) {
-        state = TrainState.scheduleInterrupted;
-      } else if (train.status.conductor) {
-        state = TrainState.conductorMissing;
-      } else if (train.status.navigation) {
-        state = TrainState.navigationFailed;
+        return _entry(
+          positions: positions,
+          dimensions: dimensions,
+          state: TrainState.scheduleInterrupted,
+          signalState: signalState,
+          fueled: fueled,
+          backwards: train.currentlyBackwards,
+          targetStationDistance: targetStationDistance,
+          ownerName: ownerName,
+          targetStationName: targetStationName,
+          waitingForTrain: waitingForTrain,
+        );
+      }
+      if (train.status.conductor) {
+        return _entry(
+          positions: positions,
+          dimensions: dimensions,
+          state: TrainState.conductorMissing,
+          signalState: signalState,
+          fueled: fueled,
+          backwards: train.currentlyBackwards,
+          targetStationDistance: targetStationDistance,
+          ownerName: ownerName,
+          targetStationName: targetStationName,
+          waitingForTrain: waitingForTrain,
+        );
+      }
+      if (train.status.navigation) {
+        return _entry(
+          positions: positions,
+          dimensions: dimensions,
+          state: TrainState.navigationFailed,
+          signalState: signalState,
+          fueled: fueled,
+          backwards: train.currentlyBackwards,
+          targetStationDistance: targetStationDistance,
+          ownerName: ownerName,
+          targetStationName: targetStationName,
+          waitingForTrain: waitingForTrain,
+        );
       }
     }
 

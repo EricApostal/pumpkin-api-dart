@@ -1,4 +1,5 @@
 import 'package:create/src/core/nbt.dart';
+import 'package:pumpkin_api/pumpkin_api_core.dart';
 import 'package:create/src/equipment/clipboard/clipboard_nbt.dart';
 import 'package:create/src/equipment/data/equipment_components.dart';
 import 'package:create/src/equipment/symmetry/mirror.dart';
@@ -103,5 +104,28 @@ void main() {
       'extra': NbtValue.list([NbtValue.compound({'text': const NbtValue.string('world')})]),
     });
     expect(ClipboardEntryData(checked: false, text: styled).plainText, 'Hello world');
+  });
+
+  // `minecraft:equippable`'s `equip_sound` is a `Holder<SoundEvent>` resolved
+  // through the *host's* sound registry, and the plugin registers no sound
+  // events with it (`CreateSounds` only maps names onto vanilla ones). Naming a
+  // plugin sound such as `create:copper_armor_equip` therefore throws while the
+  // item components are encoded, which aborts the whole module load — the
+  // component has to name the vanilla event the wrapper delegates to.
+  test('equip sounds resolve through the host sound registry', () {
+    expect(
+      () => DataComponentCodec.encode('minecraft:equippable', {
+        'slot': 'head',
+        'equip_sound': 'minecraft:item.armor.equip_gold',
+      }),
+      returnsNormally,
+    );
+    expect(
+      () => DataComponentCodec.encode('minecraft:equippable', {
+        'slot': 'head',
+        'equip_sound': 'create:copper_armor_equip',
+      }),
+      throwsA(isA<ComponentEncodeException>()),
+    );
   });
 }

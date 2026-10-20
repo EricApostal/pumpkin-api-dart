@@ -2,11 +2,15 @@
 // ploughs, rollers, seats, portable storage interfaces, contraption controls, train controls and the
 // block behaviours that run on a moving contraption. The contraptions module
 // (`contraptions_module.dart`) calls these in its phases.
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
+import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import '../api/payloads.dart' show HostItemStacks, PayloadBus;
 import '../api/wrenchable.dart';
 import '../common/common.dart';
+import '../common/host_bridge.dart';
 import '../core/block_entity.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
@@ -32,6 +36,7 @@ import 'actors/train_controls/controls_block.dart';
 import 'bearing/stabilized_bearing_movement_behaviour.dart';
 import 'behaviours/all_movement_behaviours.dart';
 import 'core/movement.dart';
+import 'entity/host_contraption_entities.dart';
 
 /// The 16 seats, in `DyeColor` order.
 final List<String> seatBlockKeys = [
@@ -156,6 +161,24 @@ void loadActorContent(CreateContext ctx) {
     return e;
   });
 
+  // `Contraption.addPassengersToWorld` -> `SeatBlock.sitDown`: when a contraption is placed back
+  // into the world, a rider that sat on one of its seats sits on the seat block again.
+  ContraptionHostHooks.sitPassenger = (worldId, pos, passenger) {
+    final world = ctx.worlds.byId(worldId);
+    if (world == null) return false;
+    if (!isSeatBlock(world.getBlock(pos: pos.toBlockPos()).name)) return false;
+    if (isSeatOccupied(world, pos)) return false;
+    // The host handle of the passenger is released when this callback returns; the seating
+    // finishes on a later tick, so keep it until then.
+    final kept = passenger.keep();
+    unawaited(sitDown(world, pos, kept).whenComplete(kept.dispose));
+    return true;
+  };
+
+  // `ContraptionEntityHooks.leashedMob` (`SeatBlock.getLeashed`) stays uninstalled: the host
+  // exposes the `leashed` entity flag but not the leash holder, so a mob cannot be matched to the
+  // player leading it.
+
   // The contraption controls actor tells the core how to apply its filters.
   ActorControlHooks.isDisabledInitially =
       ContraptionControlsMovement.isDisabledInitially;
@@ -215,6 +238,7 @@ void unloadActorContent() {
   ActorControlHooks.isDisabledInitially = null;
   ActorControlHooks.filterOf = null;
   ActorControlHooks.isSameFilter = null;
+  ContraptionHostHooks.sitPassenger = null;
 }
 
 Future<WrenchResult> _refuseWrench(WrenchContext c) async => WrenchResult.fail;

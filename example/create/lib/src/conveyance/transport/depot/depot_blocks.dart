@@ -221,7 +221,7 @@ FutureOr<int?> _depotComparator(CustomBlockComparatorOutputEventData e) {
 int _comparatorOf(DepotBehaviour? behaviour) {
   if (behaviour == null) return 0;
   final present = behaviour.getPresentStackSize();
-  final max = behaviour.maxStackSize;
+  final max = behaviour.maxStackSize();
   final fraction = present / (max == 0 ? 64 : max);
   return ((fraction * 14).floor() + (fraction > 0 ? 1 : 0)).clamp(0, 15);
 }

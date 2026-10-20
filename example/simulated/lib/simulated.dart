@@ -1,0 +1,36 @@
+/// The Simulated port: sub-level assemblies, their blocks and their physics
+/// hooks.
+///
+/// Everything exported here is pure (it imports `create`'s pure modules and
+/// `sable`, never `pumpkin_api`), so the Dart VM tests can load it. The plugin
+/// entry point is `simulated_plugin.dart`.
+library;
+
+export 'src/api/analog_signal_source.dart';
+export 'src/api/bearing_slowdown_controller.dart';
+export 'src/api/custom_stress_impact_tooltip_provider.dart';
+export 'src/api/directional_analog_output.dart';
+export 'src/api/simple_resource_manager.dart';
+export 'src/api/sim_sounds.dart';
+export 'src/config/sim_config.dart';
+export 'src/config/sim_config_service.dart';
+export 'src/content/blocks/physics_assembler/disassembly_prevention.dart';
+export 'src/content/blocks/physics_assembler/physics_assembler.dart';
+export 'src/content/blocks/physics_assembler/physics_assembler_logic.dart';
+export 'src/content/blocks/spring/spring_logic.dart';
+export 'src/content/blocks/steering_wheel/steering_wheel_logic.dart';
+export 'src/content/blocks/swivel_bearing/swivel_bearing_logic.dart';
+export 'src/content/blocks/symmetric_sail/symmetric_sail_lift_provider.dart';
+export 'src/content/blocks/throttle_lever/throttle_lever_logic.dart';
+export 'src/content/blocks/torsion_spring/torsion_spring_logic.dart';
+export 'src/content/entities/honey_glue/honey_glue_logic.dart';
+export 'src/host/simulated_host.dart';
+export 'src/index/sim_lift_providers.dart';
+export 'src/service/sim_services.dart';
+export 'src/util/assembly/sim_assembly_contraption.dart';
+export 'src/util/assembly/sim_assembly_exception.dart';
+export 'src/util/host_calls.dart';
+export 'src/util/sim_assembly_events.dart';
+export 'src/util/sim_assembly_helper.dart';
+export 'src/util/sim_level_util.dart';
+export 'src/util/sim_math_utils.dart';

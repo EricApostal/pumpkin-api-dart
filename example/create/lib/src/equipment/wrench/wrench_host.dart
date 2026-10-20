@@ -2,6 +2,7 @@
 // items acting on Create blocks), `WrenchItem.wrenchInstaKillsMinecarts`, and the default
 // `IWrenchable` rotate / dismantle used by `WrenchRegistry`.
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
@@ -87,8 +88,44 @@ final class WrenchHost {
         properties: {for (final (k, v) in state.properties) k: v},
         hand: e.hand,
         stack: e.stack,
-        cursor: (0.5, 0.5, 0.5),
+        cursor: _cursor(player, e.blockPos, e.face),
       );
+
+  /// `UseOnContext.getClickLocation()` inside the block: where the player's look ray crosses the
+  /// clicked face. 0..1 per axis, the block centre when the ray does not cross it.
+  (double, double, double) _cursor(Player player, BlockPos pos, BlockDirection face) {
+    const centre = (0.5, 0.5, 0.5);
+    final normal = switch (face) {
+      BlockDirection.down => (0.0, -1.0, 0.0),
+      BlockDirection.up => (0.0, 1.0, 0.0),
+      BlockDirection.north => (0.0, 0.0, -1.0),
+      BlockDirection.south => (0.0, 0.0, 1.0),
+      BlockDirection.west => (-1.0, 0.0, 0.0),
+      BlockDirection.east => (1.0, 0.0, 0.0),
+    };
+    final eye = player.asEntity().getEyePosition();
+    final yaw = player.getYaw() * math.pi / 180;
+    final pitch = player.getPitch() * math.pi / 180;
+    final look = (
+      -math.sin(yaw) * math.cos(pitch),
+      -math.sin(pitch),
+      math.cos(yaw) * math.cos(pitch),
+    );
+    final denominator = look.$1 * normal.$1 + look.$2 * normal.$2 + look.$3 * normal.$3;
+    if (denominator.abs() < 1e-6) return centre;
+    // The face plane sits half a block out from the block's centre along the normal.
+    final planeX = pos.x + centre.$1 + normal.$1 * 0.5;
+    final planeY = pos.y + centre.$2 + normal.$2 * 0.5;
+    final planeZ = pos.z + centre.$3 + normal.$3 * 0.5;
+    final t = ((planeX - eye.$1) * normal.$1 +
+            (planeY - eye.$2) * normal.$2 +
+            (planeZ - eye.$3) * normal.$3) /
+        denominator;
+    final hitX = (eye.$1 + look.$1 * t - pos.x).clamp(0.0, 1.0);
+    final hitY = (eye.$2 + look.$2 * t - pos.y).clamp(0.0, 1.0);
+    final hitZ = (eye.$3 + look.$3 * t - pos.z).clamp(0.0, 1.0);
+    return (hitX, hitY, hitZ);
+  }
 
   ItemUseFirstResult _toUseResult(WrenchResult r) => switch (r) {
     WrenchResult.success => ItemUseFirstResult.success,

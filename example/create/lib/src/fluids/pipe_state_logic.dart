@@ -128,41 +128,31 @@ abstract final class PipeStateLogic {
   }
 
   /// `DirectionalAxisKineticBlock.getStateForPlacement` as `FluidValveBlock` uses it: the
-  /// `axis_along_first` that makes the valve's pipe axis (`valvePipeAxis`) run along the pipes it
-  /// is placed on. The kinetic shaft preferences of the base class are not expressible through
-  /// [FluidWorld]; the pipe preferences are.
+  /// `axis_along_first` of the placed valve. Both branches only look at neighbouring shafts
+  /// (`prefersConnectionTo` with `shaftAxis: false` always answers `false`), so the pipe next to
+  /// the valve does not decide.
   static bool valveAxisAlignmentForPlacement(
-    FluidWorld world,
-    Pos pos,
     Direction facing,
-    Direction horizontalLook,
-  ) {
+    Direction horizontalLook, {
+    bool Function(Direction side)? shaftTowards,
+  }) {
     var alongFirst = false;
     final faceAxis = facing.axis;
 
+    // `prefersConnectionTo(reader, pos, side, shaftAxis: true)`.
+    bool prefersShaft(Direction side) =>
+        shaftTowards != null && shaftTowards(side);
+
     if (faceAxis.isHorizontal) {
       alongFirst = faceAxis == Axis.z;
-      final positivePerpendicular = faceAxis == Axis.x
-          ? Direction.south
-          : Direction.east;
-      bool prefers(Direction side) =>
-          canConnectTo(world, pos.relative(side), world.stateAt(pos.relative(side)), side);
-      if (prefers(positivePerpendicular) ||
-          prefers(positivePerpendicular.opposite)) {
-        alongFirst = faceAxis == Axis.x;
-      }
+      final shaftAbove = prefersShaft(Direction.up);
+      final shaftBelow = prefersShaft(Direction.down);
+      if (shaftAbove || shaftBelow) alongFirst = faceAxis == Axis.x;
     } else {
       alongFirst = horizontalLook.axis == Axis.x;
       Direction? preferredSide;
       for (final side in Direction.horizontals) {
-        if (!canConnectTo(
-          world,
-          pos.relative(side.clockWise),
-          world.stateAt(pos.relative(side.clockWise)),
-          side.clockWise,
-        )) {
-          continue;
-        }
+        if (!prefersShaft(side)) continue;
         if (preferredSide != null && preferredSide.axis != side.axis) {
           preferredSide = null;
           break;

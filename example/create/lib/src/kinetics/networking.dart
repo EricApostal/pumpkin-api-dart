@@ -38,7 +38,12 @@ void bindKineticPackets(PayloadBus bus) {
   bus.onServerbound('create:value_settings', (player, f) {
     final be = _blockEntityFor(player, f['pos'] as (int, int, int));
     if (be is! ValueSettingsHost) return;
-    final targets = be.valueSettingsTargets.where((t) => t.acceptsValueSettings).toList();
+    // A short interaction (the click that never opened the board) reaches a target whose box
+    // has no value row as well: `FilteringBehaviour` has no amount row on most blocks.
+    final short = f['interactHand'] != null;
+    final targets = be.valueSettingsTargets
+        .where((t) => short ? t is ShortInteractTarget : t.acceptsValueSettings)
+        .toList();
     if (targets.isEmpty) return;
     // The netId is a global counter of behaviour types in Create; with one
     // candidate the index is not needed.
@@ -46,7 +51,7 @@ void bindKineticPackets(PayloadBus bus) {
     final target = targets.length == 1
         ? targets.single
         : targets.firstWhere((t) => t.netId == index, orElse: () => targets.first);
-    if (f['interactHand'] != null) {
+    if (short) {
       // A short interaction: the click that did not open the board.
       if (target is ShortInteractTarget) (target as ShortInteractTarget).onShortInteract(player);
       return;

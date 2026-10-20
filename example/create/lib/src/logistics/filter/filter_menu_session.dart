@@ -304,8 +304,9 @@ final class FilterMenuSession {
   void dispose() => target.dispose();
 
   /// The attribute entries in the private `minecraft:custom_data` key, because the standard
-  /// `create:attribute_filter_matched_attributes` component is a registry dispatch whose ids the
-  /// host does not expose for encoding. `FilterItemStack` reads the same key.
+  /// `create:attribute_filter_matched_attributes` component is a registry dispatch whose type ids
+  /// and per-type payloads this process cannot encode (the gap is spelled out at
+  /// `FilterComponents.privateAttributes`). `FilterItemStack` reads the same key.
   LStack _withAttributes(LStack filter) {
     var root = <String, NbtValue>{};
     final customData = filter.compBytes('minecraft:custom_data');

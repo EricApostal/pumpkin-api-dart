@@ -32,6 +32,7 @@ import '../../runtime.dart';
 import '../funnel/funnel_block_entity.dart';
 import '../transport_support.dart';
 import 'depot_behaviour.dart';
+import 'ejector_lid.dart';
 import 'entity_launcher.dart';
 
 /// `EjectorBlockEntity.State`.
@@ -71,6 +72,7 @@ class EjectorBlockEntity extends KineticBlockEntity {
   EjectorBlockEntity(super.worldId, super.pos) {
     depotBehaviour = addBehaviour(DepotBehaviour());
     maxStackSize = addBehaviour(ScrollValueBehaviour()..between(0, 64));
+    depotBehaviour.maxStackSize = () => maxStackSize.value;
     depotBehaviour.canAcceptItems = () => _state == _EjectorState.charged;
     depotBehaviour.canFunnelsPullFrom = (Direction side) => side != getFacing();
     depotBehaviour.enableMerging();
@@ -125,23 +127,52 @@ class EjectorBlockEntity extends KineticBlockEntity {
 
     final windUp = getWindUpSpeed();
     if (_state == _EjectorState.launching) {
-      lidProgress = math.max(0, lidProgress - windUp);
-      if (lidProgress <= 0) {
+      // `lidProgress.chase(1, .8f, Chaser.EXP)`: the lid keeps opening until it is nearly there.
+      _chaseLid(1, ejectorLidChaseSpeed);
+      _tickLidChaser();
+      if (lidProgress > ejectorLidOpenThreshold) {
         _state = _EjectorState.retracting;
         lidProgress = 1;
       }
     } else if (_state == _EjectorState.retracting) {
-      lidProgress = math.max(0, lidProgress - windUp);
-      if (lidProgress <= 0) {
-        _state = _EjectorState.charged;
-        lidProgress = 0;
-        sendData();
+      // Finish the opening chase first, then close at the wind-up speed.
+      if (_lidTarget == 1 && !_lidSettled) {
+        _tickLidChaser();
+      } else {
+        _chaseLid(0, 0);
+        if (lidProgress == 0) {
+          _state = _EjectorState.charged;
+          lidProgress = 0;
+          sendData();
+        }
+        lidProgress = ejectorLidRetract(lidProgress, windUp);
       }
     } else {
+      // `CHARGED`: the lid sits closed with no chase running.
+      _chaseLid(0, 0);
       lidProgress = 0;
-      depotBehaviour.maxStackSize = maxStackSize.value;
       await ejectIfTriggered();
     }
+  }
+
+  double _lidTarget = 1;
+  double _lidSpeed = 0;
+
+  bool get _lidSettled => (lidProgress - _lidTarget).abs() < 1e-5;
+
+  void _chaseLid(double target, double speed) {
+    _lidTarget = target;
+    _lidSpeed = speed;
+  }
+
+  /// `LerpedFloat.tickChaser`.
+  void _tickLidChaser() {
+    if (_lidSpeed == 0) return;
+    if (_lidSettled) {
+      lidProgress = _lidTarget;
+      return;
+    }
+    lidProgress = ejectorLidChase(lidProgress, _lidTarget, _lidSpeed);
   }
 
   /// `activate`.
@@ -156,7 +187,8 @@ class EjectorBlockEntity extends KineticBlockEntity {
     await launchItems();
     await launchEntities();
     _state = _EjectorState.launching;
-    lidProgress = 1;
+    // `lidProgress.chase(1, .8f, Chaser.EXP)`: the lid opens over the following ticks.
+    _chaseLid(1, ejectorLidChaseSpeed);
     final world = this.world;
     if (world != null) {
       playSoundAt(
@@ -219,35 +251,67 @@ class EjectorBlockEntity extends KineticBlockEntity {
     final above = this.pos.toPos().above;
     if (funnelFacing(stateAt(above)) == facing) {
       final funnel = rt.typedAt<FunnelBlockEntity>(worldId, above);
-      if (funnel != null) {
-        final held = depotBehaviour.heldItem;
-        if (held != null) {
-          final remainder = await funnel.insert(held.stack, simulate: false);
+      // `directOutput.tryExportingToBeltFunnel(stack, funnelFacing, false)`: `null` means the
+      // funnel above refuses outright (not a pulling belt funnel, or no block entity), and the
+      // stack stays put. Either way a funnel above ends the launch attempt.
+      Future<ItemValue?> exportToFunnel(ItemValue stack) async => funnel == null
+          ? null
+          : await funnel.tryExportingToBeltFunnel(
+              stack,
+              facing,
+              simulate: false,
+            );
+      final held = depotBehaviour.heldItem;
+      if (held != null) {
+        final remainder = await exportToFunnel(held.stack);
+        if (remainder != null) {
           if (remainder.isEmpty) {
             depotBehaviour.removeHeldItem();
-          } else {
+          } else if (remainder.count != held.stack.count) {
             held.stack = remainder;
           }
         }
-        for (final ts in List.of(depotBehaviour.incoming)) {
-          final remainder = await funnel.insert(ts.stack, simulate: false);
-          if (remainder.isEmpty) {
-            depotBehaviour.incoming.remove(ts);
-          } else {
-            ts.stack = remainder;
-          }
+      }
+      for (final ts in List.of(depotBehaviour.incoming)) {
+        final stack = ts.stack;
+        final remainder = await exportToFunnel(stack);
+        if (remainder == null) continue;
+        if (remainder.isEmpty) {
+          depotBehaviour.incoming.remove(ts);
+        } else if (remainder.count != stack.count) {
+          ts.stack = remainder;
         }
-        for (
-          var slot = 0;
-          slot < depotBehaviour.processingOutputBuffer.slots;
-          slot++
-        ) {
-          final stack = depotBehaviour.processingOutputBuffer.getStack(slot);
-          if (stack.isEmpty) continue;
-          final remainder = await funnel.insert(stack, simulate: false);
+      }
+      for (
+        var slot = 0;
+        slot < depotBehaviour.processingOutputBuffer.slots;
+        slot++
+      ) {
+        final stack = depotBehaviour.processingOutputBuffer.getStack(slot);
+        if (stack.isEmpty) continue;
+        final remainder = await exportToFunnel(stack);
+        if (remainder != null) {
           depotBehaviour.processingOutputBuffer.setStack(slot, remainder);
         }
-        return;
+      }
+      return;
+    }
+
+    // Non-funnel launch: vanilla observers aimed at the ejector see a change
+    // (`ObserverBlock.updateShape` from the side that faces the ejector). The host's
+    // `updateShapeAround` is exactly that shape update sent to the six neighbours.
+    final world = this.world;
+    if (world != null) {
+      var notifiesObserver = false;
+      for (final d in Direction.values) {
+        final neighbour = this.pos.toPos().relative(d);
+        final neighbourState = stateAt(neighbour);
+        if (neighbourState.key != 'minecraft:observer') continue;
+        if (neighbourState.dir('facing') != d.opposite) continue;
+        notifiesObserver = true;
+      }
+      if (notifiesObserver) {
+        await world.updateShapeAround(pos: this.pos);
       }
     }
 
@@ -297,10 +361,15 @@ class EjectorBlockEntity extends KineticBlockEntity {
         worldId,
         this.pos.toPos().above,
       );
-      if (funnel != null) {
-        final remainder = await funnel.insert(held.stack, simulate: true);
-        if (remainder.isNotEmpty) return;
-      }
+      final remainder = funnel == null
+          ? null
+          : await funnel.tryExportingToBeltFunnel(
+              held.stack,
+              facing,
+              simulate: true,
+            );
+      // `tryFunnel == null || !tryFunnel.isEmpty()`: the funnel would not take everything.
+      if (remainder == null || remainder.isNotEmpty) return;
     }
 
     final target = getTargetDirectInput();
@@ -466,14 +535,12 @@ class EjectorBlockEntity extends KineticBlockEntity {
       ..putBool('Powered', powered)
       // `State.name()` is the upper-case constant.
       ..putString('State', enumNbtName(_state.name))
-      // `Lid` is the `LerpedFloat` compound (`{Speed, Target, Value}`). The port has only the
-      // value; Java's client ignores `Value` on a client packet and chases `Target`, so the
-      // target is the current value and the speed is the launching chaser's constant.
+      // `Lid` is the `LerpedFloat` compound (`{Speed, Target, Value}`).
       ..putCompound(
         'Lid',
         NbtCompound()
-          ..putFloat('Speed', .8)
-          ..putFloat('Target', lidProgress)
+          ..putFloat('Speed', _lidSpeed)
+          ..putFloat('Target', _lidTarget)
           ..putFloat('Value', lidProgress),
       )
       // `IntAttached.serializeNBT`: `{Item, Location}`.
@@ -509,9 +576,15 @@ class EjectorBlockEntity extends KineticBlockEntity {
       orElse: () => _EjectorState.charged,
     );
     final lid = tag.getCompound('Lid');
-    lidProgress = lid != null
-        ? lid.getDouble('Value') ?? 0
-        : tag.getDouble('Lid') ?? 0; // legacy float form
+    if (lid != null) {
+      lidProgress = lid.getDouble('Value') ?? 0;
+      _lidTarget = lid.getDouble('Target') ?? lidProgress;
+      _lidSpeed = lid.getDouble('Speed') ?? 0;
+    } else {
+      lidProgress = tag.getDouble('Lid') ?? 0; // legacy float form
+      _lidTarget = lidProgress;
+      _lidSpeed = 0;
+    }
     _launchedItems
       ..clear()
       ..addAll([

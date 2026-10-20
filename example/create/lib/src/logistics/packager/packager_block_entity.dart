@@ -13,6 +13,8 @@ import '../../conveyance/transport/crate/creative_crate_block_entity.dart'
     show CreativeCrateBlockEntity;
 import '../../conveyance/transport/vault/item_vault_block_entity.dart'
     show ItemVaultBlockEntity;
+import '../../conveyance/transport/hatch/item_hatch_logic.dart'
+    show canFitInsideContainerItems;
 import '../../conveyance/transport/transport_inventory_api.dart'
     show ItemInventoryProvider;
 import '../factory/factory_panel_block_entity.dart';
@@ -99,9 +101,10 @@ class PackagerBlockEntity extends LgBlockEntity
   int animationTicks = 0;
   bool animationInward = true;
 
-  /// `availableItems`, cached for one tick (`getAvailableItems`).
+  /// `availableItems`: the last summary, valid while the inventory's version is unchanged
+  /// (`invVersionTracker.stillWaiting`).
   InventorySummary? _available;
-  int _availableTick = -1;
+  final VersionTracker _invVersionTracker = VersionTracker();
 
   final Map<String, dynamic> _state = {};
 
@@ -183,13 +186,6 @@ class PackagerBlockEntity extends LgBlockEntity
       'QueuedExitingPackages',
       bigStacksToNbt(queuedExitingPackages, client: false),
     );
-    final available = _available;
-    if (available != null) {
-      tag.putList(
-        'LastSummary',
-        bigStacksToNbt(available.getStacks(), client: false),
-      );
-    }
   }
 
   @override
@@ -224,12 +220,6 @@ class PackagerBlockEntity extends LgBlockEntity
       queuedExitingPackages = bigStacksFromNbt(
         tag.getList('QueuedExitingPackages'),
       );
-    }
-    if (tag.containsKey('LastSummary')) {
-      _available = InventorySummary.fromList(
-        bigStacksFromNbt(tag.getList('LastSummary')),
-      );
-      _availableTick = Lg.loaded ? Lg.i.tick : 0;
     }
   }
 
@@ -505,7 +495,11 @@ class PackagerBlockEntity extends LgBlockEntity
               !extracted.sameItemSameComponents(request.item))
             continue;
 
-          final bulky = PackageItem.isPackage(extracted);
+          // `!extracted.getItem().canFitInsideContainerItems()`: shulker boxes (and other
+          // container items) do not fit into a package; a package always fits.
+          final bulky = !canFitInsideContainerItems(
+            ItemValue(extracted.key, 1, maxStack: extracted.maxStack),
+          );
           if (bulky && anyItemPresent) continue;
 
           anyItemPresent = true;
@@ -655,20 +649,25 @@ class PackagerBlockEntity extends LgBlockEntity
   /// `triggerStockCheck()`.
   @override
   Future<void> triggerStockCheck() {
-    _availableTick = -1;
+    _invVersionTracker.reset();
     return getAvailableItems();
   }
 
+  /// The version of [inv] for the tracker, `null` when it does not count changes.
+  static (int, int)? _versionOf(ItemInv? inv) =>
+      inv is VersionedInv ? (inv as VersionedInv).inventoryVersion : null;
+
   /// `getAvailableItems()`: a summary of the inventory behind the packager.
   Future<InventorySummary> getAvailableItems() async {
-    final now = Lg.i.tick;
-    if (_available != null && now - _availableTick < 1) return _available!;
+    final inv = targetInventory;
+    final version = _versionOf(inv);
+    if (_available != null && _invVersionTracker.stillWaiting(version)) {
+      return _available!;
+    }
 
     final available = InventorySummary();
-    final inv = targetInventory;
     if (inv == null || targetsPackager) {
       _available = available;
-      _availableTick = now;
       return available;
     }
 
@@ -681,7 +680,6 @@ class PackagerBlockEntity extends LgBlockEntity
       final supplied = fromItemValue(crate.suppliedStack, Lg.i.wire);
       if (supplied.isNotEmpty) available.add(supplied, BigStack.inf);
       _available = available;
-      _availableTick = now;
       return available;
     }
 
@@ -689,20 +687,19 @@ class PackagerBlockEntity extends LgBlockEntity
       available.addStack(await inv.stackAt(slot));
     }
 
-    final before = _available;
+    _invVersionTracker.awaitNewVersion(version);
+    await _submitNewArrivals(_available, available);
     _available = available;
-    _availableTick = now;
-    if (before != null) await _submitNewArrivals(before, available);
     return available;
   }
 
   /// `submitNewArrivals(before, after)`: promise queues of adjacent restockers and links hear
   /// about items that arrived since the last check.
   Future<void> _submitNewArrivals(
-    InventorySummary before,
+    InventorySummary? before,
     InventorySummary after,
   ) async {
-    if (after.isEmpty) return;
+    if (before == null || after.isEmpty) return;
     final queues = <RequestPromiseQueue>{};
 
     for (final d in Direction.values) {

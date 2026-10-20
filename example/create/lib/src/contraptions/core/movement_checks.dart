@@ -222,7 +222,7 @@ bool _brittleFallback(BState state, ContraptionLevel? level) {
   if (_isTorch(state)) return true;
   if (_isSign(state)) return true;
   if (_isPressurePlate(state)) return true;
-  if (_isFaceAttached(state) && !_isGrindstone(state) && state.key != 'create:packager_link') return true;
+  if (_isFaceAttached(state) && !_isGrindstone(state) && state.key != 'create:stock_link') return true;
   if (_isCartAssembler(state)) return false;
   if (_isRail(state)) return true;
   if (_isDiode(state)) return true;

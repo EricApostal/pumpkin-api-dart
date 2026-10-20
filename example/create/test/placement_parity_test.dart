@@ -26,10 +26,20 @@
 //   content/contraptions/bearing/SailBlock.java:67-71                 sail frame, dyed sails
 //   foundation/block/WrenchableDirectionalBlock.java:42-44            sail (super)
 //   content/contraptions/bearing/BearingBlock.java                    bearings (no placement override)
+import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:create/src/contraptions/actors/actor_placement.dart';
 import 'package:create/src/contraptions/bearing/bearing_placement.dart';
 import 'package:create/src/contraptions/bearing/sail.dart';
+import 'package:create/src/contraptions/chassis/chassis_placement.dart';
+import 'package:create/src/contraptions/gantry/gantry_logic.dart'
+    show gantryCarriagePlacementRules;
+import 'package:create/src/contraptions/piston/linear_actuator_logic.dart'
+    show mechanicalPistonHeadPlacementRules;
+import 'package:create/src/conveyance/transport/funnel/funnel_placement.dart';
+import 'package:create/src/conveyance/transport/hatch/item_hatch_logic.dart'
+    show itemHatchPlacementRules;
 import 'package:create/src/kinetics/block_data.dart'
     show
         facingShaftPaths,
@@ -78,9 +88,18 @@ void main() {
             final (yaw, pitch) = _lookAngles[look]!;
             for (final layout in _layouts) {
               for (final sneaking in const [false, true]) {
-                cases++;
                 final world = layout.build(KPos.zero, face);
                 KState stateAt(KPos p) => world[p] ?? KState.air;
+                final p = _Placement(
+                  face: face,
+                  look: look,
+                  horizontal: horizontalDirection(yaw),
+                  pitch: pitch,
+                  sneaking: sneaking,
+                  stateAt: stateAt,
+                );
+                if (target.skip != null && target.skip!(p)) continue;
+                cases++;
                 final ctx = PlacementContext(
                   pos: KPos.zero,
                   clickedFace: face,
@@ -89,14 +108,6 @@ void main() {
                   sneaking: sneaking,
                   stateAt: stateAt,
                   blocks: registry,
-                );
-                final p = _Placement(
-                  face: face,
-                  look: look,
-                  horizontal: horizontalDirection(yaw),
-                  pitch: pitch,
-                  sneaking: sneaking,
-                  stateAt: stateAt,
                 );
                 final actual = target.actual(p, ctx);
                 final expected = target.expected(p);
@@ -115,6 +126,89 @@ void main() {
         expect(divergences, isEmpty, reason: report);
       });
     }
+  });
+
+  group('placement rules the host cannot express', () {
+    // Each test pins one Java branch whose value the host's rule vocabulary cannot produce. The
+    // rule list falls back to the nearest expressible value; when the host grows the missing
+    // source, the fallback and this test change together.
+
+    test('a chassis placed on another chassis copies its axis', () {
+      // `LinearChassisBlock.getStateForPlacement`: `isChassis(clickedState)` wins over the look
+      // axis. The host has no source for the clicked block's `axis`, so the clicked face's axis
+      // (y for a top face) stands in.
+      final p = _Placement(
+        face: Dir.up,
+        look: Dir.down,
+        horizontal: Dir.south,
+        pitch: 90,
+        sneaking: false,
+        stateAt: (pos) => pos == const KPos(0, -1, 0)
+            ? const KState('create:linear_chassis', {'axis': 'x'})
+            : KState.air,
+      );
+      expect(_javaChassisAxis(p), KAxis.x);
+      expect(_applyHostRules(linearChassisPlacementRules, _HostInput.of(p)), {
+        'axis': 'y',
+      });
+    });
+
+    test('an actor placed on another actor copies its facing', () {
+      // `AttachedActorBlock.getStateForPlacement` copies the clicked actor's `FACING`; the host
+      // has no source for a clicked block's property, so the look's opposite stands in.
+      final p = _Placement(
+        face: Dir.north,
+        look: Dir.south,
+        horizontal: Dir.south,
+        pitch: 0,
+        sneaking: false,
+        stateAt: (pos) => pos == const KPos(0, 0, 1)
+            ? const KState('create:mechanical_harvester', {'facing': 'east'})
+            : KState.air,
+      );
+      expect(_javaAttachedActorFacing(p), Dir.east);
+      expect(
+        _applyHostRules(attachedActorPlacementRules, _HostInput.of(p))['facing'],
+        'north',
+      );
+    });
+
+    test('an item hatch is refused on a top face in Java', () {
+      // `ItemHatchBlock.getStateForPlacement` returns `null` for a vertical click, so no hatch
+      // appears. A rule cannot refuse a placement; the host places it with the look direction.
+      final p = _Placement(
+        face: Dir.up,
+        look: Dir.down,
+        horizontal: Dir.south,
+        pitch: 90,
+        sneaking: false,
+        stateAt: (_) => KState.air,
+      );
+      expect(_javaItemHatchFacing(p), isNull);
+      expect(
+        _applyHostRules(itemHatchPlacementRules, _HostInput.of(p))['facing'],
+        'south',
+      );
+    });
+
+    test('a belt funnel clicked on a top face takes the look direction', () {
+      // `BeltFunnelBlock.getStateForPlacement`: a vertical click falls back to
+      // `getHorizontalDirection()`, which is the look direction; the host rule gives its opposite
+      // (the clicked face of a horizontal click), so a vertical click is 180 degrees off.
+      final p = _Placement(
+        face: Dir.up,
+        look: Dir.down,
+        horizontal: Dir.south,
+        pitch: 90,
+        sneaking: false,
+        stateAt: (_) => KState.air,
+      );
+      expect(_javaBeltFunnelFacing(p), Dir.south);
+      expect(
+        _applyHostRules(beltFunnelPlacementRules, _HostInput.of(p))['facing'],
+        'north',
+      );
+    });
   });
 
   group('the harness catches the regressions it was built for', () {
@@ -393,6 +487,95 @@ void main() {
       ]);
     });
 
+    test('the chassis, sticker, gantry, piston head, actors, funnels and hatch declare theirs', () {
+      for (final key in [
+        ..._linearChassisKeys,
+        'create:radial_chassis',
+        'create:sticker',
+        'create:gantry_carriage',
+        'create:mechanical_piston_head',
+        ..._attachedActorKeys,
+        ..._beltFunnelKeys,
+        'create:item_hatch',
+      ]) {
+        expect(
+          _declaredRules(key),
+          isNotEmpty,
+          reason: '$key declares no placement rules',
+        );
+      }
+    });
+
+    test('the rules are the ones the Java placement needs', () {
+      // `StickerBlock.getStateForPlacement`: the look direction, flipped unless sneaking.
+      expect(_describe(stickerPlacementRules), [
+        'facing/lookingDirection',
+        'facing/lookingDirection/opposite',
+      ]);
+      // `GantryCarriageBlock.getFacingForPlacement`: the clicked face.
+      expect(_describe(gantryCarriagePlacementRules), ['facing/clickedFace']);
+      // `WrenchableDirectionalBlock` (the piston head): the look direction, never flipped.
+      expect(_describe(mechanicalPistonHeadPlacementRules), [
+        'facing/lookingDirection',
+        'waterlogged/inWater',
+      ]);
+      // The belt funnel faces the clicked face, which is the look turned around for a side click.
+      expect(_describe(beltFunnelPlacementRules), [
+        'facing/horizontalFacing/opposite',
+        'waterlogged/inWater',
+      ]);
+      // The item hatch faces away from the clicked face, which is the look direction.
+      expect(_describe(itemHatchPlacementRules), [
+        'facing/horizontalFacing',
+        'waterlogged/inWater',
+      ]);
+      // The actors face the clicked face, which is the look turned around.
+      expect(_describe(attachedActorPlacementRules), [
+        'facing/horizontalFacing/opposite',
+        'waterlogged/inWater',
+      ]);
+      // The chassis: the host has neither a clicked-block property source nor a look-axis one,
+      // so the clicked face's axis stands in for both branches.
+      for (final rules in [
+        linearChassisPlacementRules,
+        radialChassisPlacementRules,
+      ]) {
+        expect(_describe(rules), ['axis/clickedAxis']);
+      }
+    });
+
+    test('the block definitions use the pure rule lists', () {
+      // An inline list would drift from the rules the tests check (the bearing test's rule).
+      const uses = {
+        'lib/src/contraptions/chassis/chassis_blocks.dart': [
+          'placement: linearChassisPlacementRules',
+          'placement: radialChassisPlacementRules',
+          'placement: stickerPlacementRules',
+        ],
+        'lib/src/contraptions/gantry/gantry_carriage.dart': [
+          'placement: gantryCarriagePlacementRules',
+        ],
+        'lib/src/contraptions/piston/piston_blocks.dart': [
+          'placement: mechanicalPistonHeadPlacementRules',
+        ],
+        'lib/src/contraptions/actors/attached_actor_block.dart': [
+          'placement: attachedActorPlacementRules',
+        ],
+        'lib/src/conveyance/transport/funnel/funnel_blocks.dart': [
+          'placement: beltFunnelPlacementRules',
+        ],
+        'lib/src/logistics/itemhatch/item_hatch_part.dart': [
+          'placement: itemHatchPlacementRules',
+        ],
+      };
+      uses.forEach((file, snippets) {
+        final source = File(file).readAsStringSync();
+        for (final snippet in snippets) {
+          expect(source, contains(snippet), reason: '$file must use $snippet');
+        }
+      });
+    });
+
     test('the track declares the look rule the ordinary placement needs', () {
       // `TrackBlock.getStateForPlacement` is the ordinary placement path in Java
       // (`BlockItem.useOn`), so the host has to place the shape itself. An `onPlaced` write
@@ -559,11 +742,16 @@ final class _Target {
   final Map<String, String> Function(_Placement p, PlacementContext ctx) actual;
   final Map<String, String> Function(_Placement p) expected;
 
+  /// Placements whose Java rule the host cannot express (a clicked-block property, a clicked
+  /// horizontal face, a refused placement). They are covered by their own focused test.
+  final bool Function(_Placement p)? skip;
+
   const _Target(
     this.label,
     this.java, {
     required this.actual,
     required this.expected,
+    this.skip,
   });
 }
 
@@ -660,6 +848,105 @@ List<_Target> _targets() => [
     },
     expected: (p) => {'shape': _javaTrackShape(p)},
   ),
+  // The chassis family, the sticker, the gantry carriage, the piston head, the attached actors,
+  // the belt funnels and the item hatch are placed by the host too: their state selection is the
+  // rule list of the pure module named in `_declaredRules`.
+  for (final key in _linearChassisKeys)
+    _Target(
+      key,
+      'LinearChassisBlock.getStateForPlacement + RotatedPillarKineticBlock.getStateForPlacement',
+      actual: (p, _) => _hostFacing(_declaredRules(key), p, 'axis'),
+      expected: (p) => {'axis': _javaChassisAxis(p).name},
+      // The clicked chassis's `axis` has no host source; the clicked face's axis stands in and
+      // is the look axis only when the player clicks the face they look at.
+      skip: (p) => p.face.axis != p.look.axis,
+    ),
+  _Target(
+    'radial_chassis',
+    'RotatedPillarKineticBlock.getStateForPlacement',
+    actual: (p, _) => _hostFacing(_declaredRules('create:radial_chassis'), p, 'axis'),
+    expected: (p) => {'axis': _javaChassisAxis(p).name},
+    skip: (p) => p.face.axis != p.look.axis,
+  ),
+  _Target(
+    'sticker',
+    'StickerBlock.getStateForPlacement',
+    actual: (p, _) => _hostFacing(_declaredRules('create:sticker'), p, 'facing'),
+    expected: (p) => {'facing': _javaStickerFacing(p).name},
+  ),
+  _Target(
+    'gantry_carriage',
+    'GantryCarriageBlock.getFacingForPlacement (DirectionalAxisKineticBlock)',
+    actual: (p, _) =>
+        _hostFacing(_declaredRules('create:gantry_carriage'), p, 'facing'),
+    expected: (p) => {'facing': _javaGantryFacing(p).name},
+  ),
+  _Target(
+    'mechanical_piston_head',
+    'MechanicalPistonHeadBlock on WrenchableDirectionalBlock.getStateForPlacement',
+    actual: (p, _) => _hostFacing(
+      _declaredRules('create:mechanical_piston_head'),
+      p,
+      'facing',
+    ),
+    expected: (p) => {'facing': _javaPistonHeadFacing(p).name},
+  ),
+  for (final key in _attachedActorKeys)
+    _Target(
+      key,
+      'AttachedActorBlock.getStateForPlacement',
+      actual: (p, _) => _hostFacing(_declaredRules(key), p, 'facing'),
+      expected: (p) => {'facing': _javaAttachedActorFacing(p).name},
+      // The clicked face (or the clicked actor's `facing`) has no host source; the opposite of
+      // the look is the clicked face only for an aligned click.
+      skip: (p) => p.face.isHorizontal && p.face != p.horizontal.opposite,
+    ),
+  for (final key in _beltFunnelKeys)
+    _Target(
+      key,
+      'BeltFunnelBlock.getStateForPlacement',
+      actual: (p, _) => _hostFacing(_declaredRules(key), p, 'facing'),
+      expected: (p) => {'facing': _javaBeltFunnelFacing(p).name},
+      // A horizontal clicked face is not a host source, and a vertical click wants the look
+      // direction where the rule gives its opposite.
+      skip: (p) => !p.face.isHorizontal || p.face != p.horizontal.opposite,
+    ),
+  _Target(
+    'item_hatch',
+    'ItemHatchBlock.getStateForPlacement',
+    actual: (p, _) =>
+        _hostFacing(_declaredRules('create:item_hatch'), p, 'facing'),
+    expected: (p) => {'facing': _javaItemHatchFacing(p)!.name},
+    // Java refuses a vertical click; the host cannot, and the clicked face is not a source.
+    skip: (p) => !p.face.isHorizontal || p.face != p.horizontal.opposite,
+  ),
+];
+
+/// The `facing` (or `axis`) the host places with [rules], as the single-property map the matrix
+/// compares.
+Map<String, String> _hostFacing(
+  List<PlacementRule> rules,
+  _Placement p,
+  String property,
+) => {property: _applyHostRules(rules, _HostInput.of(p))[property]!};
+
+/// The two linear chassis (`LinearChassisBlock`).
+const List<String> _linearChassisKeys = [
+  'create:linear_chassis',
+  'create:secondary_linear_chassis',
+];
+
+/// The actors of `AttachedActorBlock` (`HarvesterBlock`, `PloughBlock`, `RollerBlock`).
+const List<String> _attachedActorKeys = [
+  'create:mechanical_harvester',
+  'create:mechanical_plough',
+  'create:mechanical_roller',
+];
+
+/// The two belt funnels (`BeltFunnelBlock`).
+const List<String> _beltFunnelKeys = [
+  'create:andesite_belt_funnel',
+  'create:brass_belt_funnel',
 ];
 
 /// The sail rule, as the plugin declares it (`sail_block.dart`).
@@ -682,11 +969,26 @@ final List<String> _sailKeys = [
 /// The `placement:` list of `manifestBlock('<blockKey>', ...)`, as declared in the library.
 ///
 /// Sails keep theirs in the pure `sail.dart` (`sailPlacement`), the bearings in the pure
-/// `bearing_placement.dart` (`bearingPlacementRules`), so both are used directly.
+/// `bearing_placement.dart` (`bearingPlacementRules`), and the blocks below in their own pure
+/// modules, so all of them are used directly.
 List<PlacementRule> _declaredRules(String blockKey) {
   if (_bearingKeys.contains(blockKey)) return bearingPlacementRules;
   if (_sailKeys.contains(blockKey)) return sailPlacement;
-  throw StateError('no placement rules known for $blockKey');
+  return switch (blockKey) {
+    'create:linear_chassis' ||
+    'create:secondary_linear_chassis' => linearChassisPlacementRules,
+    'create:radial_chassis' => radialChassisPlacementRules,
+    'create:sticker' => stickerPlacementRules,
+    'create:gantry_carriage' => gantryCarriagePlacementRules,
+    'create:mechanical_piston_head' => mechanicalPistonHeadPlacementRules,
+    'create:mechanical_harvester' ||
+    'create:mechanical_plough' ||
+    'create:mechanical_roller' => attachedActorPlacementRules,
+    'create:andesite_belt_funnel' ||
+    'create:brass_belt_funnel' => beltFunnelPlacementRules,
+    'create:item_hatch' => itemHatchPlacementRules,
+    _ => throw StateError('no placement rules known for $blockKey'),
+  };
 }
 
 /// `property/source/opposite` of every rule, for assertions.
@@ -1019,6 +1321,60 @@ Dir _javaDirectionalFacing(_Placement c) {
 
 /// `WrenchableDirectionalBlock.getStateForPlacement` + `SailBlock.getStateForPlacement`.
 Dir _javaSailFacing(_Placement c) => c.look.opposite;
+
+/// `GantryCarriageBlock.getFacingForPlacement`, used by
+/// `DirectionalAxisKineticBlock.getStateForPlacement`: the clicked face.
+Dir _javaGantryFacing(_Placement c) => c.face;
+
+/// `StickerBlock.getStateForPlacement`: the nearest looking direction, flipped unless sneaking.
+Dir _javaStickerFacing(_Placement c) => c.sneaking ? c.look : c.look.opposite;
+
+/// `MechanicalPistonHeadBlock.getStateForPlacement` on `WrenchableDirectionalBlock`: the nearest
+/// looking direction, never flipped.
+Dir _javaPistonHeadFacing(_Placement c) => c.look;
+
+/// `LinearChassisBlock.getStateForPlacement`, falling back to
+/// `RotatedPillarKineticBlock.getStateForPlacement` when the player sneaks.
+KAxis _javaChassisAxis(_Placement c) {
+  if (!c.sneaking) {
+    final clicked = c.stateAt(c.placedOnPos);
+    if (_javaIsChassis(clicked)) return clicked.axisOf('axis') ?? KAxis.y;
+    return c.look.axis;
+  }
+  return _javaRotatedPillarAxis(c);
+}
+
+/// `AbstractChassisBlock` of the manifest.
+bool _javaIsChassis(KState state) => switch (state.path) {
+  'linear_chassis' || 'secondary_linear_chassis' || 'radial_chassis' => true,
+  _ => false,
+};
+
+/// `AttachedActorBlock.getStateForPlacement`.
+Dir _javaAttachedActorFacing(_Placement c) {
+  if (!c.face.isHorizontal) return c.horizontal.opposite;
+  final clicked = c.stateAt(c.placedOnPos);
+  if (_javaIsAttachedActor(clicked)) {
+    return clicked.dirOf('facing') ?? Dir.north;
+  }
+  return c.face;
+}
+
+/// The blocks that extend `AttachedActorBlock`.
+bool _javaIsAttachedActor(KState state) => switch (state.path) {
+  'mechanical_harvester' || 'mechanical_plough' || 'mechanical_roller' => true,
+  _ => false,
+};
+
+/// `BeltFunnelBlock.getStateForPlacement`: the clicked face when it is horizontal, else the
+/// horizontal look direction.
+Dir _javaBeltFunnelFacing(_Placement c) =>
+    c.face.isHorizontal ? c.face : c.horizontal;
+
+/// `ItemHatchBlock.getStateForPlacement`: the opposite of the clicked face, or no placement
+/// (`null`) for a click on a top or bottom face.
+Dir? _javaItemHatchFacing(_Placement c) =>
+    c.face.isHorizontal ? c.face.opposite : null;
 
 /// `CogWheelBlock.getAxisForPlacement`.
 KAxis _javaCogwheelAxis(_Placement c, {required bool large}) {

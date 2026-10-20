@@ -35,7 +35,8 @@ final class TrackingResolution {
   bool get isTracking => tracking != null;
 
   @override
-  String toString() => 'TrackingResolution(tracking=$tracking, containing=$containing)';
+  String toString() =>
+      'TrackingResolution(tracking=$tracking, containing=$containing)';
 }
 
 /// The per-entity state the Java mixin keeps in fields.
@@ -55,22 +56,26 @@ abstract final class SubLevelEntityRules {
   /// The tick-time resolution of `EntityMixin#tick`.
   ///
   /// An entity is either inside a sub-level or on top of one, never both: a
-  /// containing sub-level clears the tracking state, and otherwise a vehicle
-  /// (or the sub-level the vehicle is in) becomes the tracking sub-level.
+  /// containing sub-level clears the tracking state. Otherwise a ridden vehicle
+  /// decides — the sub-level it is inside, else the sub-level it stands on, else
+  /// nothing — and with no vehicle the previous state is kept.
   ///
   /// [vehicleContaining] is the sub-level containing the entity's vehicle,
-  /// [vehicleTracking] the sub-level that vehicle is standing on.
+  /// [vehicleTracking] the sub-level that vehicle is standing on, and
+  /// [hasVehicle] whether the entity rides anything at all (a vehicle with no
+  /// sub-level clears the tracking state rather than keeping it).
   static TrackingResolution resolve({
     required SubLevel? containing,
     required SubLevel? vehicleContaining,
     required SubLevel? vehicleTracking,
     required SubLevel? currentTracking,
+    bool hasVehicle = false,
   }) {
     SubLevel? tracking;
 
     if (containing != null) {
       tracking = null;
-    } else if (vehicleContaining != null || vehicleTracking != null) {
+    } else if (hasVehicle) {
       tracking = vehicleContaining ?? vehicleTracking;
     } else {
       tracking = currentTracking;
@@ -83,8 +88,10 @@ abstract final class SubLevelEntityRules {
 
   /// `getTrackingOrVehicleSubLevel`: the tracking sub-level, else the sub-level
   /// the entity rides in.
-  static SubLevel? trackingOrVehicle(SubLevel? tracking, SubLevel? vehicleContaining) =>
-      tracking ?? vehicleContaining;
+  static SubLevel? trackingOrVehicle(
+    SubLevel? tracking,
+    SubLevel? vehicleContaining,
+  ) => tracking ?? vehicleContaining;
 
   /// Whether an entity of [typeId] must be destroyed once it leaves the plot of
   /// the sub-level it is in (`#sable:destroy_when_leaving_plot`).
@@ -101,7 +108,9 @@ abstract final class SubLevelEntityRules {
     if (containing == null) return false;
     if (!destroyWhenLeavingPlot.contains(typeId)) return false;
 
-    final plotBounds = BoundingBox3d.fromBoundingBox3i(containing.getPlot().getBoundingBox());
+    final plotBounds = BoundingBox3d.fromBoundingBox3i(
+      containing.getPlot().getBoundingBox(),
+    );
     if (plotBounds.minX > plotBounds.maxX) return false; // empty plot bounds
     return !entityBox.intersects(plotBounds.expand(inflate));
   }
@@ -124,7 +133,10 @@ abstract final class SubLevelEntityRules {
 
   /// The global block position of a plot-local block, as `getNextNodePos` and
   /// the block-outline code need it (the block centre is transformed).
-  static (int, int, int) globalBlockPos(SubLevel subLevel, (int, int, int) local) {
+  static (int, int, int) globalBlockPos(
+    SubLevel subLevel,
+    (int, int, int) local,
+  ) {
     final centre = Vector3d(local.$1 + 0.5, local.$2 + 0.5, local.$3 + 0.5);
     final global = subLevel.logicalPose.transformPosition(centre);
     return (global.x.floor(), global.y.floor(), global.z.floor());
@@ -139,17 +151,37 @@ abstract final class SubLevelEntityRules {
   /// `distanceSquaredWithSubLevels`: both points are projected out of the
   /// sub-level that contains them before the distance is taken, so a player in
   /// a plot and an entity outside it are compared in world space.
-  static double distanceSquaredWithSubLevels(SableLevel level, Vector3d a, Vector3d b) {
-    final globalA = SubLevelHelper.projectOutOfSubLevel(level, Vector3d.copy(a));
-    final globalB = SubLevelHelper.projectOutOfSubLevel(level, Vector3d.copy(b));
+  static double distanceSquaredWithSubLevels(
+    SableLevel level,
+    Vector3d a,
+    Vector3d b,
+  ) {
+    final globalA = SubLevelHelper.projectOutOfSubLevel(
+      level,
+      Vector3d.copy(a),
+    );
+    final globalB = SubLevelHelper.projectOutOfSubLevel(
+      level,
+      Vector3d.copy(b),
+    );
     return globalA.distanceSquared(globalB);
   }
 
   /// `rectilinearDistanceWithSubLevels` (Chebyshev distance), used by the world
   /// border and by `ConduitBlockEntity`.
-  static double rectilinearDistanceWithSubLevels(SableLevel level, Vector3d a, Vector3d b) {
-    final globalA = SubLevelHelper.projectOutOfSubLevel(level, Vector3d.copy(a));
-    final globalB = SubLevelHelper.projectOutOfSubLevel(level, Vector3d.copy(b));
+  static double rectilinearDistanceWithSubLevels(
+    SableLevel level,
+    Vector3d a,
+    Vector3d b,
+  ) {
+    final globalA = SubLevelHelper.projectOutOfSubLevel(
+      level,
+      Vector3d.copy(a),
+    );
+    final globalB = SubLevelHelper.projectOutOfSubLevel(
+      level,
+      Vector3d.copy(b),
+    );
     final dx = (globalB.x - globalA.x).abs();
     final dy = (globalB.y - globalA.y).abs();
     final dz = (globalB.z - globalA.z).abs();
@@ -180,7 +212,11 @@ abstract final class SubLevelEntityRules {
       eyePosition.z - position.z,
     );
     final transformed = subLevel.logicalPose.transformPosition(
-      Vector3d(position.x + eyeOffset.x, position.y + eyeOffset.y, position.z + eyeOffset.z),
+      Vector3d(
+        position.x + eyeOffset.x,
+        position.y + eyeOffset.y,
+        position.z + eyeOffset.z,
+      ),
     );
     return Vector3d(
       transformed.x - eyeOffset.x,
@@ -197,8 +233,7 @@ abstract final class SubLevelEntityRules {
   static SubLevel? lastTrackingSubLevel(
     String? lastTrackingId,
     SubLevel? Function(String id) lookup,
-  ) =>
-      lastTrackingId == null ? null : lookup(lastTrackingId);
+  ) => lastTrackingId == null ? null : lookup(lastTrackingId);
 
   /// Clears the remembered id once the entity has been on the ground and is no
   /// longer tracking anything (`death_message/EntityMixin`), so a later fall

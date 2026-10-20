@@ -43,6 +43,22 @@ const Map<String, String> kCreateEnglish = {
   'create.display_target.line': 'Line %1\$s',
   'create.tooltip.analogStrength': 'Analog Strength: %1\$s/15',
   'create.gui.threshold_switch.fluid_amount': 'Fluid amount',
+  'create.train.status': '<i> Information about Train: %1\$s',
+  'create.train.status.back_on_track': 'Train is back on Track',
+  'create.train.status.collision': 'Collision with other Train',
+  'create.train.status.collision.where': 'In %1\$s near [%2\$s]',
+  'create.train.status.coupling_stress': 'Forced stop due to Stress on Couplings',
+  'create.train.status.double_portal': 'A Carriage cannot enter a portal whilst leaving another',
+  'create.train.status.end_of_track': 'A Carriage has reached the end of its Track',
+  'create.train.status.found_driver': 'A new driver has been found',
+  'create.train.status.missing_driver': 'Driver has gone missing',
+  'create.train.status.navigation_success': 'Navigation succeeded',
+  'create.train.status.no_match': "No station on graph matches '%1\$s'",
+  'create.train.status.no_package_target': 'A package in cargo has no postbox that matches its address',
+  'create.train.status.no_path': 'No suitable path to the next Scheduled destination could be found',
+  'create.train.status.opposite_driver': 'Path requires a driver facing the opposite direction',
+  'create.train.status.paused_for_manual': 'Schedule paused for manual controls',
+  'create.train.status.track_missing': 'Tracks are missing beneath the Train',
 };
 
 /// A mutable text component.
@@ -103,14 +119,16 @@ final class Txt {
     return c;
   }
 
+  /// `Component.getString()` of this component without its siblings.
+  String get ownPlain {
+    if (literal != null) return literal!;
+    return _translate(translateKey!, [for (final a in args) a.plain]);
+  }
+
   /// `Component.getString()`: the text with siblings, translations in English.
   String get plain {
     final b = StringBuffer();
-    if (literal != null) {
-      b.write(literal);
-    } else {
-      b.write(_translate(translateKey!, [for (final a in args) a.plain]));
-    }
+    b.write(ownPlain);
     for (final s in siblings) {
       b.write(s.plain);
     }

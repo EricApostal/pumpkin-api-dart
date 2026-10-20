@@ -4,7 +4,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../model/stack.dart';
 
-const String _plugin = 'PluginStack';
+/// The private JSON of a stack, next to the `{id, count}` a Create client reads.
+const String pluginStackKey = 'PluginStack';
 
 /// `TransferUtil.saveItem` for the client (`client` true: only `{id, count}`, what a Create client
 /// can read) or for saving (adds the lossless JSON). An empty stack is an empty compound.
@@ -14,14 +15,14 @@ NbtCompound stackToNbt(LStack s, {required bool client}) {
   tag
     ..putString('id', s.key)
     ..putInt('count', s.count);
-  if (!client) tag.putString(_plugin, s.toJson());
+  if (!client) tag.putString(pluginStackKey, s.toJson());
   return tag;
 }
 
 /// `TransferUtil.parseItem`: the stack of [tag] (the JSON copy when present, else `{id, count}`).
 LStack stackFromNbt(NbtCompound? tag, {int maxStack = 64}) {
   if (tag == null) return LStack.empty;
-  final json = tag.getString(_plugin);
+  final json = tag.getString(pluginStackKey);
   if (json != null) {
     try {
       return LStackMapper.fromJson(json);

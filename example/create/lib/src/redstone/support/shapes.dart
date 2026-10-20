@@ -91,3 +91,29 @@ List<ShapeRule> directionalShapeRules(String property, List<BlockBox> boxes, Dir
       selectionShape: BlockShape.boxes(rotateBoxes(boxes, from, d)),
     ),
 ];
+
+/// The vanilla lever shapes (`Shapes.rotateAttachFace(Block.boxZ(6.0, 8.0, 10.0, 16.0))`),
+/// selection only: the lever has no collision shape. The wall shape faces north.
+List<ShapeRule> leverShapeRules() {
+  BlockBox px(double x0, double y0, double z0, double x1, double y1, double z1) =>
+      BlockBox(x0 / 16, y0 / 16, z0 / 16, x1 / 16, y1 / 16, z1 / 16);
+  BlockShape s(BlockBox b) => BlockShape.boxes([b]);
+  final rules = <ShapeRule>[];
+  for (final facing in Direction.horizontals) {
+    final nsAxis = facing.axis == Axis.z;
+    // The floor and ceiling variants are the wall shape turned a quarter about x, so the
+    // 2px handle band becomes a 6px band along y: y 0..6 on the floor, y 10..16 on a ceiling.
+    rules.add(ShapeRule(when: {'face': 'floor', 'facing': facing.serializedName}, selectionShape: s(nsAxis ? px(5, 0, 4, 11, 6, 12) : px(4, 0, 5, 12, 6, 11))));
+    rules.add(ShapeRule(when: {'face': 'ceiling', 'facing': facing.serializedName}, selectionShape: s(nsAxis ? px(5, 10, 4, 11, 16, 12) : px(4, 10, 5, 12, 16, 11))));
+    rules.add(ShapeRule(
+      when: {'face': 'wall', 'facing': facing.serializedName},
+      selectionShape: s(switch (facing) {
+        Direction.north => px(5, 4, 10, 11, 12, 16),
+        Direction.south => px(5, 4, 0, 11, 12, 6),
+        Direction.west => px(10, 4, 5, 16, 12, 11),
+        _ => px(0, 4, 5, 6, 12, 11),
+      }),
+    ));
+  }
+  return rules;
+}

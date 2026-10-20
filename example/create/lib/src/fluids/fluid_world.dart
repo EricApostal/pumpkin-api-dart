@@ -151,6 +151,14 @@ abstract class FluidWorld extends BlockGetter {
 
   // -- writes ------------------------------------------------------------------------------
 
+  /// `Level.updateNeighbourForOutputSignal(pos, block)`: tells the comparators next to [p] to
+  /// read the block again, because its analog output changed.
+  void updateComparators(Pos p);
+
+  /// `IRotate.hasShaftTowards(level, neighbourPos, neighbourState, face)`: the neighbour at [p]
+  /// has a shaft pointing out of [face].
+  bool hasShaftTowards(Pos p, Direction face);
+
   /// `Level.setBlock(pos, state, UPDATE_ALL)`; with [quiet] the flags are `2 | 16` (clients are
   /// told, the neighbours' shapes are not updated).
   void setBlock(Pos p, BState state, {bool quiet = false});

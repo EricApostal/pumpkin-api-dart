@@ -1,9 +1,12 @@
 // `ContraptionControlsMovement` and `ContraptionControlsMovingInteraction`: the actor of the
 // contraption controls, and the click that toggles a whole actor type.
+import 'dart:typed_data';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../../api/payloads.dart' show ItemStackData;
+import '../../../api/payloads.dart' show ItemComponentPatch, ItemStackData;
 import '../../../common/common.dart';
+import '../../../core/nbt.dart';
 import '../../core/contraption.dart';
 import '../../core/movement.dart';
 import '../../core/nbt_map.dart';
@@ -165,12 +168,11 @@ final class ContraptionControlsMovingInteraction
     final ids = actors?.itemIds;
     var stack = ItemStackData.empty;
     if (filter.isNotEmpty && ids != null) {
-      try {
-        stack = ItemStackData.of(filter.item, ids, count: filter.count);
-      } on ArgumentError {
-        // An item the id table does not know cannot be sent; the empty filter means "all".
-        stack = ItemStackData.empty;
-      }
+      // `ItemStack.OPTIONAL_STREAM_CODEC` of `filter.getStack()`: the item, its count and
+      // the components that differ from the item's defaults.
+      final id = ids.idOf(filter.item);
+      // An item the id table does not know cannot be sent; the empty filter means "all".
+      if (id != null) stack = ItemStackData(id, filter.count, filterComponentPatch(filter));
     }
     entity.sendPayload('create:contraption_actor_toggle', {
       'entityId': entity.entityId,
@@ -183,3 +185,35 @@ final class ContraptionControlsMovingInteraction
   static MovementContext? _actorAt(Contraption contraption, Pos localPos) =>
       contraption.getActorAt(localPos);
 }
+
+/// The component patch of the saved [filter] (`DataComponentPatch.STREAM_CODEC`): the saved
+/// components, each encoded with the component's own network codec. A component the codec
+/// table cannot encode is left out (the receiver then sees the item's default).
+ItemComponentPatch filterComponentPatch(StoredStack filter) {
+  final comps = filter.components;
+  if (comps == null || comps.isEmpty) return ItemComponentPatch.empty;
+  final added = <(int, Uint8List)>[];
+  for (final key in comps.keys) {
+    final id = VanillaIds.dataComponentTypes.idOf(key);
+    if (id == null) continue;
+    try {
+      added.add((id, DataComponentCodec.encode(key, _componentJson(comps[key]!))));
+    } on Object {
+      // No encoder for this component: the receiver keeps the item's default value.
+    }
+  }
+  return added.isEmpty ? ItemComponentPatch.empty : ItemComponentPatch(added: added);
+}
+
+/// An NBT value as the JSON shape `DataComponentCodec` reads (the text component codecs take
+/// exactly the tag's own shape).
+Object? _componentJson(NbtValue v) => switch (v.kind) {
+  NbtKind.compound => <String, Object?>{
+    for (final e in NbtMap.of(v).map.entries) e.key: _componentJson(e.value),
+  },
+  NbtKind.list => [for (final e in v.value as List<NbtValue>) _componentJson(e)],
+  NbtKind.string => v.value as String,
+  NbtKind.byte => (v.value as int) != 0,
+  NbtKind.byteArray || NbtKind.intArray || NbtKind.longArray => v.value,
+  _ => v.value,
+};

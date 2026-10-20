@@ -138,6 +138,7 @@ final class FluidsModule extends CreateModule {
         registerFluidWrench(wrench);
         registerPumpWrench(wrench);
       }
+      registerFluidPipeTransforms();
     }
   }
 

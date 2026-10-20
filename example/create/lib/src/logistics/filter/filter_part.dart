@@ -7,11 +7,14 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/util.dart' hide pos;
+import '../../api/fluids.dart';
 import '../../api/payloads.dart' show ItemStackData;
+import '../../api/processing.dart';
 import '../../api/value_settings.dart';
 import '../../core/module.dart';
 import '../../core/nbt.dart';
 import '../../core/registry.dart';
+import '../../data/datapack.g.dart' show datapackBlobs;
 import '../factory/factory_panel_block_entity.dart';
 import '../host/runtime.dart';
 import '../logistics_part.dart';
@@ -46,8 +49,23 @@ final class FilterPart extends LogisticsPart {
   void onLoad(CreateContext ctx, LgRuntime rt) {
     // Tags are the host's; the attribute filter asks through the hook.
     ItemAttributeHooks.itemInTag = (itemKey, tag) => Tags.item(itemKey, tag);
+    // The host can test a tag but not list the tags of an item, so the candidates are the item
+    // tags of the shipped data pack (see [itemTagCandidates]).
+    ItemAttributeHooks.tagsOf = (itemKey) => [
+      for (final tag in itemTagCandidates())
+        if (Tags.item(itemKey, tag)) tag,
+    ];
+    // `ItemContainerContents.STREAM_CODEC`: the ghost slots of a shulker box.
+    ItemAttributeHooks.containerContents = (bytes) {
+      try {
+        return PacketBuffer.decode(bytes, rt.wire.readContents);
+      } on Object {
+        return null;
+      }
+    };
+    _installProcessingHooks(ctx);
+    _installFluidHooks();
 
-    // `FilterItem.use` / `useOn`: a main-hand use that no block consumed opens the item's screen.
     // The host cannot expose the state of the mod menu, so the plugin tracks the edited filter
     // stack itself (see `filter_menu_session.dart`).
     ctx.listen(Events.playerUseItem, (server, e) async {
@@ -176,4 +194,98 @@ final class FilterPart extends LogisticsPart {
       );
     });
   }
+
+  @override
+  void onServerLoaded(CreateRuntime runtime, LgRuntime rt) {
+    // `AllItemAttributeTypes.maxEnchanted` needs the maximum level of every enchantment; the
+    // manager lists them, so the map is filled once the server exists.
+    unawaited(_loadEnchantmentLevels(runtime.server));
+  }
+
+  static Future<void> _loadEnchantmentLevels(Server server) async {
+    try {
+      final manager = server.getEnchantmentManager();
+      final ids = await manager.ids();
+      final levels = <String, int>{};
+      for (final id in ids) {
+        final definition = await manager.find(id);
+        if (definition != null) levels[id] = definition.maxLevel;
+      }
+      ItemAttributeHooks.enchantmentMaxLevels = levels;
+    } on Object {
+      // a server that cannot list its enchantments leaves `max_enchanted` without an answer
+    }
+  }
+
+  /// `AllItemAttributeTypes.testRecipe`: the recipe lookups of the single-input types. The
+  /// processing module owns the recipes; a server without it (module disabled) answers "no".
+  void _installProcessingHooks(CreateContext ctx) {
+    final book = ctx.services.find<RecipeBook>();
+    if (book == null) return;
+    bool create(CreateRecipeType type, LStack stack) =>
+        book.findForInput(type, PStack(stack.key, stack.count)) != null;
+    bool cooking(List<CookingEntry> recipes, LStack stack) =>
+        FanCookingCache.firstOf(
+          recipes,
+          PStack(stack.key, stack.count),
+          book.tags,
+        ) !=
+        null;
+    final cache = FanCookingCache.current;
+    ItemAttributeHooks.hasRecipe = (recipeType, stack) => switch (recipeType) {
+      'create:splashing' => create(CreateRecipeType.splashing, stack),
+      'create:haunting' => create(CreateRecipeType.haunting, stack),
+      'create:crushing' => create(CreateRecipeType.crushing, stack),
+      'create:milling' => create(CreateRecipeType.milling, stack),
+      'minecraft:smelting' => cache != null && cooking(cache.smelting, stack),
+      'minecraft:smoking' => cache != null && cooking(cache.smoking, stack),
+      'minecraft:blasting' => cache != null && cooking(cache.blasting, stack),
+      _ => false,
+    };
+  }
+
+  /// The fluid contents of an item (`GenericItemEmptying`), for `has_fluid` and for the fluid a
+  /// plain filter item stands for (`FilterItemStack.resolveFluid`).
+  void _installFluidHooks() {
+    if (!FluidsRuntime.isLoaded) return;
+    final rules = FluidsRuntime.instance.rules;
+    final emptying = GenericItemEmptying(rules);
+    String? fluidOf(LStack stack) {
+      final spec = FluidItemSpec(stack.key, stack.count);
+      if (!emptying.canItemBeEmptied(spec)) return null;
+      final (fluid, _, _) = emptying.emptyItem(spec, simulate: true);
+      return fluid.isEmpty ? null : FluidKeys.still(fluid.fluid);
+    }
+
+    ItemAttributeHooks.fluidOf = fluidOf;
+    ItemAttributeHooks.holdsFluid = (stack) =>
+        emptying.canItemBeEmptied(FluidItemSpec(stack.key, stack.count));
+    FilterItemStack.filterFluid = fluidOf;
+  }
+}
+
+/// The item tag names the shipped data pack declares (`data/<ns>/tags/item/**.json`).
+///
+/// The host can answer "is this item in that tag" but not "which tags has this item": Java reads
+/// the item's tag set (`InTagAttribute.Type`). The pack's own tags are the names this process can
+/// know, so `in_tag` is offered for those; a vanilla tag the pack does not mention (for example
+/// `minecraft:logs`) is still matched when a filter names it, but is not offered in the menu.
+List<String> itemTagCandidates() => _itemTagCandidates ??= _readItemTagCandidates();
+
+List<String>? _itemTagCandidates;
+
+List<String> _readItemTagCandidates() {
+  final names = <String>{};
+  for (final blob in datapackBlobs) {
+    if (blob.category != 'tags') continue;
+    for (final file in blob.unpack()) {
+      // data/<namespace>/tags/item/<path>.json
+      final parts = file.path.split('/');
+      if (parts.length < 5 || parts[0] != 'data' || parts[2] != 'tags') continue;
+      if (parts[3] != 'item' || !file.path.endsWith('.json')) continue;
+      final path = parts.sublist(4).join('/');
+      names.add('${parts[1]}:${path.substring(0, path.length - '.json'.length)}');
+    }
+  }
+  return names.toList()..sort();
 }

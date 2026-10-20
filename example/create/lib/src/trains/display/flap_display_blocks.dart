@@ -108,7 +108,7 @@ FutureOr<KState> _placement(PlacementContext ctx, KState placed, UseRecord? use,
     Direction.byName(ctx.horizontal.name)!,
     sneaking: ctx.sneaking,
     hasPlayer: ctx.hasPlayer,
-    inWater: placed.flag('waterlogged'),
+    inWater: world.getFluidState(pos: BlockPos(x: pos.$1, y: pos.$2, z: pos.$3))?.fluid == 'minecraft:water',
   );
   return _kstate(state);
 }
@@ -185,7 +185,10 @@ Future<BlockUseResult> _use(HookCtx c, CustomBlockUseEventData e) async {
       state[FlapDisplayBlock.facingProperty]!,
     );
     placed = FlapDisplayBlock.updateColumn(level, target, placed, true);
-    placed = placed.setFlag('waterlogged', level.isWater(target));
+    placed = placed.setFlag(
+      'waterlogged',
+      world.getFluidState(pos: BlockPos(x: target.$1, y: target.$2, z: target.$3))?.fluid == 'minecraft:water',
+    );
     await setBlockState(world, target, placed);
     if (!isCreative(player)) await shrinkHeld(player, e.hand);
     world.playCustomSound(

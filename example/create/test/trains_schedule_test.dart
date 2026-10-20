@@ -107,9 +107,9 @@ class FakeCargo implements CarriageStorage {
   }
 
   @override
-  void write(CTag tag, bool spawnPacket) {}
+  void writeCargo(CTag tag, bool spawnPacket) {}
   @override
-  void read(CTag tag, bool spawnPacket) {}
+  void readCargo(CTag tag, bool spawnPacket) {}
   @override
   int extractFuel() => 0;
 }

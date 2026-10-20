@@ -45,10 +45,9 @@ List<CreateBlock> buildPistonBlocks() => [
   ),
   manifestBlock(
     'mechanical_piston_head',
-    placement: const [
-      PlacementRule.clickedFace('facing', opposite: true),
-      PlacementRule.inWater('waterlogged'),
-    ],
+    // `MechanicalPistonHeadBlock` on `WrenchableDirectionalBlock`:
+    // `getNearestLookingDirection()`, not the clicked face and no flip.
+    placement: mechanicalPistonHeadPlacementRules,
     behavior: pistonHeadBehavior(),
   ),
 ];

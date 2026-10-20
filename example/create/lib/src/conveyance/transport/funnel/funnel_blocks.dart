@@ -23,6 +23,7 @@ import '../../runtime.dart';
 import '../../shapes.dart';
 import '../transport_support.dart';
 import 'funnel_block_entity.dart';
+import 'funnel_placement.dart';
 
 /// Phase 1: the four funnel blocks and their shared block entity type.
 void registerFunnels(CreateRegistry registry) {
@@ -51,19 +52,13 @@ void registerFunnels(CreateRegistry registry) {
       'andesite_belt_funnel',
       blockEntityType: 'create:funnel',
       behavior: _beltFunnelBehavior(),
-      placement: const [
-        PlacementRule.horizontalFacing('facing'),
-        PlacementRule.inWater('waterlogged'),
-      ],
+      placement: beltFunnelPlacementRules,
     ),
     manifestBlock(
       'brass_belt_funnel',
       blockEntityType: 'create:funnel',
       behavior: _beltFunnelBehavior(),
-      placement: const [
-        PlacementRule.horizontalFacing('facing'),
-        PlacementRule.inWater('waterlogged'),
-      ],
+      placement: beltFunnelPlacementRules,
     ),
   ];
   for (final block in blocks) {

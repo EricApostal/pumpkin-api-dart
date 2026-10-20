@@ -6,6 +6,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/block_state.dart';
 import '../api/blocks.dart' show setBlockState, toDirection;
+import '../api/contraption/transformable.dart'
+    show MovedBlockTransformerRegistries;
 import '../api/wrenchable.dart';
 import '../common/direction.dart';
 import '../core/block_entity.dart';
@@ -89,7 +91,27 @@ void registerFluidWrench(WrenchRegistry wrench) {
     'create:smart_fluid_pipe',
     'create:spout',
     'create:item_drain',
+    // `FluidValveBlock` and `HosePulleyBlock` are `IWrenchable` through `KineticBlock`: the
+    // default rotation turns the valve's `axis_along_first` and the hose pulley's facing.
+    'create:fluid_valve',
+    'create:hose_pulley',
   ]);
+}
+
+/// `FluidPipeBlock.transform` / `EncasedPipeBlock.transform` (`TransformableBlock`): a pipe that a
+/// contraption rotates or mirrors about any axis takes its six connection flags along.
+void registerFluidPipeTransforms() {
+  for (final key in const [_fluidPipeKey, _encasedPipeKey]) {
+    MovedBlockTransformerRegistries.registerBlock(
+      key,
+      (state, transform) => PipeBlocks.transform(
+        state,
+        rotation: transform.rotation,
+        rotationAxis: transform.rotationAxis ?? Axis.y,
+        mirror: transform.mirror,
+      ),
+    );
+  }
 }
 
 Future<void> _encasePipe(

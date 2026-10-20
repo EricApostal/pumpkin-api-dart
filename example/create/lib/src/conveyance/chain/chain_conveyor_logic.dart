@@ -8,6 +8,9 @@ import 'dart:math' as math;
 import '../../common/direction.dart';
 import '../../common/pos.dart';
 import '../../common/vec_helper.dart';
+import '../../contraptions/core/nbt_map.dart';
+import '../../contraptions/core/structure_transform.dart';
+import '../../core/nbt.dart' show NbtKind, NbtValue;
 import '../items/item_data.dart';
 
 /// `ChainConveyorBlockEntity.ConnectionStats`.
@@ -107,6 +110,20 @@ ConnectionStats calculateConnectionStats(
   return ConnectionStats(angle, length, start, end);
 }
 
+/// `ChainConveyorBlockEntity.calculateConnectionStats(BlockPos)`: computes the stats of one
+/// connection and stores them in [stats]. The direction comes from the current [speed], not from
+/// the cached `reversed` field.
+void putConnectionStats(
+  Map<Pos, ConnectionStats> stats,
+  Pos worldPos,
+  Pos connection,
+  double speed,
+) => stats[connection] = calculateConnectionStats(
+  worldPos,
+  connection,
+  reversed: speed < 0,
+);
+
 /// `ChainConveyorBlockEntity.getPackagePosition`.
 Vec3 chainPackagePosition(
   Pos worldPos,
@@ -190,4 +207,33 @@ bool forPointsAlongChains(
     }
   }
   return true;
+}
+
+/// `ChainConveyorBlockEntity.transform` (`TransformableBlockEntity`): the connections and the
+/// targets of the travelling packages follow a contraption that rotates or mirrors the conveyor.
+/// The connection stats are rebuilt from the transformed offsets when the data is read back.
+void transformChainConveyorNbt(NbtMap nbt, StructureTransform transform) {
+  final connections = nbt.getList('Connections');
+  if (connections.isEmpty) return;
+
+  nbt.putList('Connections', [
+    for (final c in connections) NbtValue.intArray(_transformedPos(c, transform)),
+  ]);
+  for (final entry in nbt.getList('TravellingPackages')) {
+    if (entry.kind != NbtKind.compound) continue;
+    final packages = NbtMap.of(entry);
+    packages.putBlockPos(
+      'Target',
+      transform.applyPosWithoutOffset(packages.getBlockPos('Target')),
+    );
+  }
+}
+
+/// One `Connections` entry (an int array of three) transformed by [transform].
+List<int> _transformedPos(NbtValue value, StructureTransform transform) {
+  if (value.kind != NbtKind.intArray) return const [0, 0, 0];
+  final array = value.value as List<int>;
+  if (array.length < 3) return const [0, 0, 0];
+  final p = transform.applyPosWithoutOffset((array[0], array[1], array[2]));
+  return [p.$1, p.$2, p.$3];
 }

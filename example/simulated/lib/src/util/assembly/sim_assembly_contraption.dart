@@ -12,12 +12,15 @@
 // Pure: no host imports.
 //
 // Java: dev.simulated_team.simulated.util.assembly.SimAssemblyContraption
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'dart:collection';
 
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/bounds.dart' show Aabb;
 import 'package:create/src/common/direction.dart' show Direction;
-import 'package:create/src/common/pos.dart' show Pos;
+import 'package:create/src/common/pos.dart';
 import 'package:create/src/contraptions/core/level.dart' show PushReaction;
 
 import '../../config/sim_config_service.dart';
@@ -189,6 +192,8 @@ final class SimAssemblyContraption {
       if (frontier.isEmpty) return;
       _moveBlock(world, frontier, visited);
     }
+    // The frontier still had blocks after the whole budget: the structure is
+    // larger than the config allows.
     throw SimAssemblyException.structureTooLarge(maxBlocksMoved);
   }
 

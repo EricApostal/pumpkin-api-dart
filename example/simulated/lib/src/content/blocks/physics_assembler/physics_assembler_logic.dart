@@ -6,6 +6,9 @@
 // forwards its lifecycle to it; everything here is pure.
 //
 // Java: dev.simulated_team.simulated.content.blocks.physics_assembler.PhysicsAssemblerBlockEntity
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'dart:math' as math;
 
 import 'package:create/src/api/lerped_float.dart';

@@ -10,7 +10,6 @@ import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import '../../api/payloads.dart' show PayloadBus;
 import '../../common/pos.dart';
-import '../../common/vec_helper.dart' show AngleHelper;
 import '../items/item_codec.dart';
 import '../items/item_data.dart';
 import '../runtime.dart';
@@ -60,10 +59,26 @@ void installChainConveyorPackets(ConveyanceRuntime rt, PayloadBus bus) {
   });
 
   bus.onServerbound('create:chain_conveyor_riding', (player, fields) {
+    final pos = _posOf(fields['pos']);
+    if (pos == null) return;
+    final world = player.getWorld();
+    final worldId = rt.ctx.worlds.touch(world);
+    world.dispose();
+    // `ServerboundChainConveyorRidingPacket` is a configuration packet: a chain conveyor must be
+    // there, within twice the maximum chain length of the player.
+    if (!_canConfigure(rt, player, worldId, pos, rt.maxChainConveyorLength * 2)) {
+      return;
+    }
+    if (rt.typedAt<ChainConveyorBlockEntity>(worldId, pos) == null) return;
+
     final stop = fields['stop'] == true;
     final uuid = player.getId().asString;
     final entity = player.asEntity();
     entity.setFallDistance(distance: 0);
+    // Java also zeroes `connection.aboveGroundTickCount` and `aboveGroundVehicleTickCount`, which
+    // is what keeps a rider from being kicked for flying. The host exposes no such counter, so
+    // the player is reported as standing on the ground for the flight check instead.
+    entity.setOnGround(onGround: true);
     entity.dispose();
     if (stop) {
       ServerChainConveyorHandler.handleStopRiding(uuid);
@@ -74,6 +89,25 @@ void installChainConveyorPackets(ConveyanceRuntime rt, PayloadBus bus) {
 }
 
 Pos? _posOf(Object? value) => value is (int, int, int) ? value : null;
+
+/// `BlockEntityConfigurationPacket.handle`: whether [player] may configure the block entity at
+/// [pos] of [worldId] (not spectating or in adventure mode, in a loaded chunk and within
+/// [maxRange] blocks of it).
+bool _canConfigure(
+  ConveyanceRuntime rt,
+  Player player,
+  String worldId,
+  Pos pos,
+  int maxRange,
+) {
+  if (player.isSpectator || player.isAdventure) return false;
+  if (!rt.posLoaded(worldId, pos)) return false;
+  final (px, py, pz) = player.getPosition();
+  final dx = px - (pos.x + .5);
+  final dy = py - (pos.y + .5);
+  final dz = pz - (pos.z + .5);
+  return dx * dx + dy * dy + dz * dz <= maxRange * maxRange + 9;
+}
 
 Future<void> _connect(
   ConveyanceRuntime rt,
@@ -87,6 +121,7 @@ Future<void> _connect(
   world.dispose();
   final keptWorld = rt.worldOf(worldId);
   final maxRange = rt.maxChainConveyorLength + 16;
+  if (!_canConfigure(rt, player, worldId, pos, maxRange)) return;
   if (!pos.closerThan(targetPos, (maxRange - 16 + 1).toDouble())) return;
 
   final be = rt.typedAt<ChainConveyorBlockEntity>(worldId, pos);
@@ -150,6 +185,15 @@ Future<void> _packageInteraction(
   final world = player.getWorld();
   final worldId = rt.ctx.worlds.touch(world);
   world.dispose();
+  if (!_canConfigure(
+    rt,
+    player,
+    worldId,
+    pos,
+    rt.maxChainConveyorLength + 16,
+  )) {
+    return;
+  }
   final be = rt.typedAt<ChainConveyorBlockEntity>(worldId, pos);
   if (be == null) return;
 
@@ -162,19 +206,39 @@ Future<void> _packageInteraction(
     if (list == null || list.isEmpty) return;
 
     for (final liftPackage in list) {
-      final diff = connection == null
-          ? AngleHelper.getShortestAngleDiff(
-              liftPackage.chainPosition,
-              chainPosition,
-            ).abs()
-          : (liftPackage.chainPosition - chainPosition).abs();
+      // Java's `selectedConnection == null` test is never true (the packet normalises a missing
+      // connection to `BlockPos.ZERO`), so the plain difference is used for loop packages too.
+      final diff = (liftPackage.chainPosition - chainPosition).abs();
       if (diff > bestDiff) continue;
       bestDiff = diff;
       best = liftPackage;
     }
     if (best == null) return;
 
-    await ItemCodec.giveToPlayer(player, best.item);
+    // The package goes into an empty main hand, otherwise into the inventory.
+    final mainHand = player.getItemInHand(hand: Hand.right);
+    var mainHandEmpty = true;
+    if (mainHand != null) {
+      try {
+        mainHandEmpty = await mainHand.getCount() <= 0;
+      } on Object {
+        mainHandEmpty = false;
+      }
+      mainHand.dispose();
+    }
+    if (mainHandEmpty) {
+      final stack = await ItemCodec.write(best.item);
+      if (stack != null) {
+        final inventory = player.getInventory();
+        try {
+          await inventory.setItemInHand(hand: Hand.right, item: stack);
+        } finally {
+          inventory.dispose();
+        }
+      }
+    } else {
+      await ItemCodec.giveToPlayer(player, best.item);
+    }
     list.remove(best);
     be.sendData();
     return;

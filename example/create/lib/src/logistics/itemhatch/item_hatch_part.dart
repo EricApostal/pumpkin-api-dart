@@ -82,7 +82,10 @@ CreateBlock itemHatchBlock() => CreateBlock(
   requiresCorrectTool: true,
   soundType: 'netherite_block',
   blockEntityType: ItemHatchBlockEntity.type,
-  placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
+  // `ItemHatchBlock.getStateForPlacement`: the opposite of the clicked face (the look direction
+  // stands in), waterlogged when placed into water. Java also refuses a click on a top or bottom
+  // face, which the host cannot express from a rule.
+  placement: itemHatchPlacementRules,
   behavior: BlockBehavior(onUse: _onUse, onScheduledTick: _onScheduledTick),
 );
 

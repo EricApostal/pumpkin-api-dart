@@ -7,11 +7,21 @@
 // PulleyBlockEntity`.
 import 'dart:math' as math;
 
+import 'package:pumpkin_api/pumpkin_api_core.dart' show PlacementRule;
+
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../kinetics/settings.dart' show convertToLinear;
 
 // -- Piston blocks --------------------------------------------------------------------------
+
+/// `MechanicalPistonHeadBlock.getStateForPlacement`: `WrenchableDirectionalBlock`'s
+/// `getNearestLookingDirection()` (no flip, unlike a `DirectionalKineticBlock`) plus the water at
+/// the placed position.
+const List<PlacementRule> mechanicalPistonHeadPlacementRules = [
+  PlacementRule.lookingDirection('facing'),
+  PlacementRule.inWater('waterlogged'),
+];
 
 /// `MechanicalPistonBlock.isPiston`.
 bool isPistonStateKey(String key) =>

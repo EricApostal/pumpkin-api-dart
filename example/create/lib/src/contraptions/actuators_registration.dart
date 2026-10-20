@@ -12,6 +12,7 @@ import '../api/payloads.dart' show PayloadBus;
 import '../api/wrenchable.dart';
 import '../common/common.dart';
 import '../common/host_bridge.dart' show PosToHost;
+import '../common/vec_helper.dart' show VecHelper;
 import '../conveyance/belt/belt_geometry.dart' show nextSegmentPosition;
 import '../conveyance/chain/chain_conveyor_block_entity.dart'
     show ChainConveyorBlockEntity;
@@ -50,7 +51,8 @@ import 'elevator/elevator_packets.dart';
 import 'elevator/elevator_pulley_block_entity.dart';
 import 'entity/contraption_entity.dart';
 import 'entity/host_contraption_entities.dart' show ContraptionHostHooks;
-import 'entity/oriented_contraption_entity.dart' show OrientedContraptionHooks;
+import 'entity/oriented_contraption_entity.dart'
+    show MinecartStallSink, OrientedContraptionHooks;
 import 'gantry/gantry_carriage.dart';
 import 'gantry/gantry_contraption.dart';
 import 'glue/super_glue_handler.dart';
@@ -198,6 +200,33 @@ void loadActuatorContent(CreateContext ctx) {
   OrientedContraptionHooks.coupledPositions = _coupledCartPositions;
   OrientedContraptionHooks.addExtraInventories = (c, riding) {
     if (c is MountedContraption) c.addExtraInventories(riding);
+  };
+  // `OrientedContraptionHooks.powerFurnace` stays uninstalled: the host exposes neither the
+  // fuel of a furnace minecart nor a way to set it, so a cart is not refuelled from the cargo.
+  // `MountedContraptionHooks.externalInventory` stays uninstalled for the same reason: the host
+  // has no container view of an entity, so the contents of a chest or hopper minecart do not
+  // join the contraption inventory.
+
+  // `riding.getData(MINECART_CONTROLLER)`: a cart that has a controller takes its stall from the
+  // contraption; without this the contraption and the controller each stop the cart.
+  OrientedContraptionHooks.minecartControllerOf = (vehicle) {
+    final controller = CapabilityMinecartController.byUuid(
+      vehicle.worldId,
+      vehicle.uuid,
+    );
+    return controller == null ? null : _ControllerStallSink(controller);
+  };
+
+  // `MinecartSim2020.getRailVec`: the cart turns along its rail, not along its motion.
+  OrientedContraptionHooks.projectOnRail = (vehicle, motion) {
+    final world = ctx.worlds.byId(vehicle.worldId);
+    if (world == null) return null;
+    final cart = HostMinecartWorld(world, ctx.blockEntities).byId(
+      vehicle.entityId,
+    );
+    final shape = cart?.railShape;
+    if (shape == null) return null;
+    return VecHelper.project(motion, railVec(shape));
   };
 
   // `Contraption.moveBlock`: a windmill bearing inside a moved structure lets go first.
@@ -429,6 +458,8 @@ void unloadActuatorContent() {
   OrientedContraptionHooks.stabilizedFacing = null;
   OrientedContraptionHooks.coupledPositions = null;
   OrientedContraptionHooks.addExtraInventories = null;
+  OrientedContraptionHooks.minecartControllerOf = null;
+  OrientedContraptionHooks.projectOnRail = null;
   ContraptionHostHooks.disassembleWindmillBearing = null;
   ContraptionMovementHooks.addAttachedChasses = null;
   ContraptionMovementHooks.chassisIncludedPositions = null;
@@ -462,6 +493,20 @@ void unloadActuatorContent() {
   final second = other.cart?.position;
   if (first == null || second == null) return null;
   return (first, second);
+}
+
+/// The stall part of a `MinecartController`, as the oriented contraption entity sees it.
+final class _ControllerStallSink implements MinecartStallSink {
+  final MinecartController controller;
+
+  const _ControllerStallSink(this.controller);
+
+  @override
+  bool get isPresent => controller.isPresent;
+
+  @override
+  void setStalledExternally(bool stall) =>
+      controller.setStalledExternally(stall);
 }
 
 /// `create:<color>_sail` keys.

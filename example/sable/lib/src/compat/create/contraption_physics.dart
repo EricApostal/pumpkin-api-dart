@@ -37,18 +37,20 @@ import 'package:create/src/contraptions/entity/contraption_world.dart';
 import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockBox;
 import 'package:pumpkin_api/src/geometry.dart' show Vec3;
 
-import '../../math/bounding_box.dart';
-import '../../math/matrix3.dart';
-import '../../math/vector.dart';
-import '../../model/server_level_plot.dart' show LiftProviderContext;
-import '../../model/server_sub_level.dart';
-import '../../model/server_sub_level_container.dart';
-import '../../model/sub_level.dart';
-import '../../model/sub_level_container.dart';
-import '../../physics/physics_block_properties.dart';
-import '../../sublevel/api/physics.dart';
+import '../../sublevel/host/sub_level_host.dart';
+import '../../sublevel/math/bounding_box.dart';
+import '../../sublevel/math/matrix3.dart';
+import '../../sublevel/math/pose.dart';
+import '../../sublevel/math/vector.dart';
+import '../../sublevel/model/server_level_plot.dart' show LiftProviderContext;
+import '../../sublevel/model/server_sub_level.dart';
+import '../../sublevel/model/server_sub_level_container.dart';
+import '../../sublevel/model/sub_level.dart';
+import '../../sublevel/model/sub_level_container.dart';
+import '../../sublevel/physics/physics_block_properties.dart';
+import '../../sublevel/api/physics.dart' show KinematicContraption, MassData;
 import '../../sublevel/api/sub_level_helper.dart';
-import '../../system/physics_system.dart';
+import '../../sublevel/system/physics_system.dart';
 import 'create_blocks.dart';
 
 /// The mass tracker of a contraption: `MassTracker.build` over the contraption's
@@ -374,12 +376,23 @@ final class ContraptionKinematicBody implements KinematicContraption {
   /// The mass tracker, or `null` when the contraption is empty.
   ContraptionMassTracker? get mass => massTracker;
 
+  /// `KinematicContraption.sable$getLocalPose`: the contraption's pose, with the
+  /// mass centre as the rotation point.
+  @override
+  Pose3d sable$getLocalPose(Pose3d dest, double partialTick) {
+    dest.rotationPoint().setFrom(sable$getMassTracker().getCenterOfMass());
+    dest.position().setFrom(sable$getPosition(partialTick));
+    dest.orientation().setFrom(sable$getOrientation(partialTick));
+    dest.scale().set(1.0, 1.0, 1.0);
+    return dest;
+  }
+
   @override
   Map<(int, int, int), Object> sable$liftProviders() =>
       {for (final entry in liftProviders.entries) entry.key: entry.value};
 
   @override
-  bool sable$isValid() => !entity.isRemoved;
+  bool sable$isValid() => !entity.host.isRemoved;
 
   @override
   bool sable$shouldCollide() => true;
@@ -394,7 +407,7 @@ final class ContraptionKinematicBody implements KinematicContraption {
     }
 
     final local = mass.getCenterOfMass();
-    var vec = Vec3(local.x, local.y, local.z);
+    var vec = (local.x, local.y, local.z);
     final anchor = lerpVec3(entity.getPrevAnchorVec(), entity.getAnchorVec(), partialTick);
     const rotationOffset = (0.5, 0.5, 0.5);
 
@@ -413,10 +426,10 @@ final class ContraptionKinematicBody implements KinematicContraption {
     final matrix = Matrix3d.identity();
 
     for (var column = 0; column < 3; column++) {
-      final axis = switch (column) {
-        0 => const Vec3(1.0, 0.0, 0.0),
-        1 => const Vec3(0.0, 1.0, 0.0),
-        _ => const Vec3(0.0, 0.0, 1.0),
+      final Vec3 axis = switch (column) {
+        0 => (1.0, 0.0, 0.0),
+        1 => (0.0, 1.0, 0.0),
+        _ => (0.0, 0.0, 1.0),
       };
       final transformed = entity.applyRotation(axis, partialTick);
       switch (column) {
@@ -553,7 +566,8 @@ final class ContraptionPhysicsBinding {
 
     final container = SubLevelContainer.of(level);
     if (container is ServerSubLevelContainer) {
-      container.physics.pipeline.addContraption(body);
+      final physics = container.physics;
+      if (physics is SubLevelPhysicsSystem) physics.pipeline.addContraption(body);
     }
   }
 
@@ -566,7 +580,8 @@ final class ContraptionPhysicsBinding {
 
     final container = SubLevelContainer.of(level);
     if (container is ServerSubLevelContainer) {
-      container.physics.pipeline.removeContraption(body);
+      final physics = container.physics;
+      if (physics is SubLevelPhysicsSystem) physics.pipeline.removeContraption(body);
     }
   }
 
@@ -620,5 +635,7 @@ abstract final class ContraptionDisassemblyTransforms {
 /// `SubLevelPhysicsSystem` of [level], or `null` when it has none.
 SubLevelPhysicsSystem? physicsSystemOf(SableLevel level) {
   final container = SubLevelContainer.of(level);
-  return container is ServerSubLevelContainer ? container.physics : null;
+  if (container is! ServerSubLevelContainer) return null;
+  final physics = container.physics;
+  return physics is SubLevelPhysicsSystem ? physics : null;
 }

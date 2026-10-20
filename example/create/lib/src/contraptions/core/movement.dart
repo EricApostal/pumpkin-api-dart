@@ -145,8 +145,12 @@ abstract class MovementBehaviour {
 
   /// `canBeDisabledVia`: the item the contraption controls filter uses to find this actor (its
   /// block item), `null` if it cannot be disabled.
+  ///
+  /// `new ItemStack(block)` of a block without an item is an empty stack, which no filter matches.
   StoredStack? canBeDisabledVia(MovementContext context) =>
-      StoredStack(context.state.key, 1);
+      context.level.blockHasItem(context.state)
+      ? StoredStack(context.state.key, 1)
+      : StoredStack.empty;
 
   /// `onDisabledByControls`.
   void onDisabledByControls(MovementContext context) => cancelStall(context);

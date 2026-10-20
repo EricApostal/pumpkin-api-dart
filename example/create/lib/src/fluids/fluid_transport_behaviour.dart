@@ -101,10 +101,17 @@ class SmartPipeTransportBehaviour extends StraightPipeTransportBehaviour {
 
   @override
   bool canPullFluidFrom(FStack fluid, BState state, Direction direction) {
-    final filter = (owner as SmartFluidPipeBlockEntity).filterFluid;
+    final pipe = owner as SmartFluidPipeBlockEntity;
     if (fluid.isEmpty) return super.canPullFluidFrom(fluid, state, direction);
-    if (filter == null) return super.canPullFluidFrom(fluid, state, direction);
+    // `FilterItemStack.test(world, FluidStack, matchNBT: true)`:
+    // `FluidStack.isSameFluidSameComponents`, so a filter for one potion does not pass another.
+    final filter = pipe.filterFluid;
+    if (filter == null) {
+      if (pipe.filterMatchesNothing) return false;
+      return super.canPullFluidFrom(fluid, state, direction);
+    }
     return FluidKeys.still(filter) == FluidKeys.still(fluid.fluid) &&
+        FStack.dataEquals(pipe.filterData, fluid.data) &&
         super.canPullFluidFrom(fluid, state, direction);
   }
 }

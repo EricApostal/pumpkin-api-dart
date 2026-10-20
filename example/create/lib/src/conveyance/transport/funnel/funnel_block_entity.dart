@@ -24,6 +24,7 @@ import '../../runtime.dart';
 import '../transport_inventory.dart';
 import '../transport_inventory_api.dart';
 import '../transport_support.dart';
+import 'funnel_logic.dart';
 
 /// `FunnelBlockEntity.Mode`.
 enum _FunnelMode {
@@ -118,7 +119,9 @@ class FunnelBlockEntity extends CreateBlockEntity
 
     final amount = amountToExtract;
     final mode = modeToExtract;
-    final stack = await extractMatching(inv, (_) => true, mode, amount);
+    // `InvManipulationBehaviour.getFilterTest`: the funnel's filter is ANDed into every
+    // extraction (`invManipulation.extract(mode, amount)`).
+    final stack = await extractMatching(inv, filtering.test, mode, amount);
     if (stack.isEmpty) {
       invVersionTracker.awaitNewVersion(versionOf(inv));
       return;
@@ -176,7 +179,7 @@ class FunnelBlockEntity extends CreateBlockEntity
     // Peek at what would be extracted, then check that the belt accepts it before taking it.
     final peek = await extractMatching(
       inv,
-      (_) => true,
+      filtering.test,
       mode,
       amount,
       simulate: true,
@@ -188,7 +191,7 @@ class FunnelBlockEntity extends CreateBlockEntity
     final remainder = await _insertAt(beltPos, peek, side, true);
     if (remainder.isNotEmpty) return;
 
-    final stack = await extractMatching(inv, (_) => true, mode, amount);
+    final stack = await extractMatching(inv, filtering.test, mode, amount);
     if (stack.isEmpty) return;
     flap(false);
     onTransfer(stack);
@@ -210,27 +213,58 @@ class FunnelBlockEntity extends CreateBlockEntity
   (int, int)? get inventoryVersion => versionOf(_inventoryBehind());
 
   @override
-  int get amountToExtract {
-    if (!supportsAmountOnFilter()) return 64;
-    final amount = filtering.amount;
-    if (!filtering.isActive) return 1;
-    return amount;
-  }
+  int get amountToExtract => funnelExtractionAmount(
+    supportsAmount: supportsAmountOnFilter(),
+    filterActive: filtering.isActive,
+    filterAmount: filtering.amount,
+  );
 
   @override
-  ExtractionCountMode get modeToExtract {
-    if (!supportsAmountOnFilter() || !filtering.isActive)
-      return ExtractionCountMode.upTo;
-    return filtering.upTo
-        ? ExtractionCountMode.upTo
-        : ExtractionCountMode.exactly;
-  }
+  ExtractionCountMode get modeToExtract => funnelExtractionMode(
+    supportsAmount: supportsAmountOnFilter(),
+    filterActive: filtering.isActive,
+    filterUpTo: filtering.upTo,
+  );
 
   @override
   Future<ItemValue> insert(ItemValue stack, {required bool simulate}) async {
     final inv = _inventoryBehind();
     if (inv == null) return stack;
     return insertStacked(inv, stack, simulate: simulate);
+  }
+
+  /// `AbstractFunnelBlock.tryInsert`: the funnel's filter is checked, then the stack goes into
+  /// the inventory behind the open face. Returns the remainder (the whole stack when refused).
+  Future<ItemValue> tryInsert(
+    ItemValue stack, {
+    required bool simulate,
+  }) async {
+    if (!filtering.test(stack)) return stack;
+    final inv = _inventoryBehind();
+    if (inv == null) return stack;
+    final insert = await insertStacked(inv, stack, simulate: simulate);
+    if (!simulate && insert.count != stack.count) {
+      onTransfer(stack);
+      // `if (funnelBlockEntity.hasFlap())`: only a funnel with a horizontal facing has a flap.
+      if (funnelFacing(state)?.isHorizontal ?? false) flap(true);
+    }
+    return insert;
+  }
+
+  /// `DirectBeltInputBehaviour.tryExportingToBeltFunnel` for this funnel: `null` when the block
+  /// above a depot/ejector is not a pulling belt funnel (or has no block entity). A powered
+  /// funnel takes nothing, so the stack comes back unchanged.
+  Future<ItemValue?> tryExportingToBeltFunnel(
+    ItemValue stack,
+    Direction? side, {
+    required bool simulate,
+  }) async {
+    final blockState = state;
+    if (!beltFunnelTakesOutput(blockState, side)) return null;
+    if (blockState.flag('powered')) return stack;
+    final insert = await tryInsert(stack, simulate: simulate);
+    if (insert.count != stack.count && !simulate) flap(true);
+    return insert;
   }
 
   @override

@@ -24,11 +24,14 @@ import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:create/src/contraptions/bearing/sail.dart' show isSailKey, sailColors, sailFrame, dyedSail;
 
-import '../../math/vector.dart';
+import '../../sublevel/math/pose.dart';
+import '../../sublevel/math/vector.dart';
+import '../../sublevel/model/server_sub_level.dart';
 import '../../sublevel/api/block/block_sub_level_assembly_listener.dart';
 import '../../sublevel/api/block/block_sub_level_custom_center_of_mass.dart';
 import '../../sublevel/api/block/block_sub_level_lift_provider.dart';
 import '../../sublevel/api/physics/callback/block_sub_level_collision_callback.dart';
+import 'create_block_hooks.dart' show BeltStateReader, ChainConveyorAssemblyListener, DisplayLinkAssemblyListener, BeltBlockCallback;
 
 /// Parses a block state string as the plot host reports it
 /// (`create:white_sail[facing=north]`) into a [BState].
@@ -72,6 +75,43 @@ final class SailLiftProvider implements BlockSubLevelLiftProvider, BlockSubLevel
   /// `getCenterOfMass`: the middle of the block.
   @override
   Vector3d getCenterOfMass(BlockGetter blockGetter, BState state) => Vector3d.copy(half);
+
+  // The remaining `BlockSubLevelLiftProvider` members keep the interface
+  // defaults: an interface's method bodies are not inherited by its
+  // implementers in Dart, so they are forwarded here.
+
+  @override
+  double sable$getParallelDragScalar() => BlockSubLevelLiftProvider.defaultParallelDragScalar;
+
+  @override
+  double sable$getDirectionlessDragScalar() => BlockSubLevelLiftProvider.defaultDirectionlessDragScalar;
+
+  @override
+  double sable$getLiftScalar() => BlockSubLevelLiftProvider.defaultLiftScalar;
+
+  @override
+  void sable$contributeLiftAndDrag(
+    LiftProviderContext ctx,
+    ServerSubLevel subLevel,
+    Pose3d? localPose,
+    double timeStep,
+    Vector3d linearVelocity,
+    Vector3d angularVelocity,
+    Vector3d linearImpulse,
+    Vector3d angularImpulse, [
+    LiftProviderGroup? group,
+  ]) => BlockSubLevelLiftProvider.contributeLiftAndDrag(
+    this,
+    ctx,
+    subLevel,
+    localPose,
+    timeStep,
+    linearVelocity,
+    angularVelocity,
+    linearImpulse,
+    angularImpulse,
+    group,
+  );
 }
 
 /// One lift provider entry: the block and the normal it lifts along.
@@ -109,6 +149,28 @@ abstract final class CreateCompatBlocks {
 
   /// Block key -> assembly listener.
   static final Map<String, BlockSubLevelAssemblyListener> assemblyListeners = {};
+
+  // The host lookups the block-entity listeners need. They are function
+  // pointers rather than imports so this library stays loadable on the VM: the
+  // plugin installs the real ones in `create_host.dart`.
+
+  /// The block entity at a position, or `null`. Installed by the plugin.
+  static Object? Function(String worldId, Pos pos)? blockEntityLookup;
+
+  /// Reads the belt data of a block entity, `null` when it is not a belt.
+  static BeltStateReader? beltStateReader;
+
+  /// `ChainConveyorBlockEntity.notifyConnectedToValidate`.
+  static void Function(Object blockEntity)? chainConveyorValidate;
+
+  /// `ChainConveyorBlockEntity.checkInvalid = true`.
+  static void Function(Object blockEntity)? chainConveyorCheckInvalid;
+
+  /// `DisplayLinkBlockEntity.getTargetPosition()`.
+  static Pos? Function(Object blockEntity)? displayLinkTarget;
+
+  /// `DisplayLinkBlockEntity.target(pos)`.
+  static void Function(Object blockEntity, Pos target)? displayLinkRetarget;
 
   static bool _installed = false;
 
@@ -194,18 +256,29 @@ abstract final class CreateCompatBlocks {
     registerLiftProvider(sails, sail);
     registerCenterOfMass(sails, sail);
 
-    // The collision callbacks and assembly listeners of the host-side blocks
-    // (belt, bells, chain conveyors, display links, lectern controllers) are
-    // installed by `create_host.dart`: their Create classes pull in the wasm
-    // host API, which the pure library must not import.
+    // The belt's tangent velocity: `BeltBlockMixin`.
+    registerCollisionCallback('create:belt', const BeltBlockCallback());
+
+    // The assembly listeners of the blocks that must react to being moved.
+    const chainConveyor = ChainConveyorAssemblyListener();
+    registerAssemblyListener('create:chain_conveyor', chainConveyor);
+    registerAssemblyListener('create:chain_conveyor_terminal', chainConveyor);
+    registerAssemblyListener('create:display_link', const DisplayLinkAssemblyListener());
   }
 
-  /// Forgets every registered block contribution (tests, plugin unload).
+  /// Forgets every registered block contribution and host lookup (tests, plugin
+  /// unload).
   static void uninstall() {
     _installed = false;
     liftProviders.clear();
     centersOfMass.clear();
     collisionCallbacks.clear();
     assemblyListeners.clear();
+    blockEntityLookup = null;
+    beltStateReader = null;
+    chainConveyorValidate = null;
+    chainConveyorCheckInvalid = null;
+    displayLinkTarget = null;
+    displayLinkRetarget = null;
   }
 }

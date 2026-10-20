@@ -30,12 +30,12 @@ import 'travelling_point.dart';
 
 class CarriageSyncData {
   List<Pair<Couple<int>, double>?> wheelLocations = List<Pair<Couple<int>, double>?>.filled(4, null);
-  Pair<Vec3, Couple<Vec3>>? fallbackLocations;
+  Pair<Vec3?, Couple<Vec3?>>? fallbackLocations;
   double distanceToDestination = 0;
   bool leadingCarriage = false;
 
   // For Client interpolation
-  Pair<Vec3, Couple<Vec3>>? _fallbackPointSnapshot;
+  Pair<Vec3?, Couple<Vec3?>>? _fallbackPointSnapshot;
   final List<TravellingPoint> _pointsToApproach = List<TravellingPoint>.generate(4, (_) => TravellingPoint());
   final List<double> _pointDistanceSnapshot = List<double>.filled(4, 0);
   double _destinationDistanceSnapshot = 0;
@@ -69,9 +69,11 @@ class CarriageSyncData {
     if (fallbackLocations != null) {
       final contraptionAnchor = fallbackLocations!.getFirst();
       final rotationAnchors = fallbackLocations!.getSecond();
-      buffer.writeVec3(contraptionAnchor);
-      buffer.writeVec3(rotationAnchors.getFirst());
-      buffer.writeVec3(rotationAnchors.getSecond());
+      // Java writes the stored `Vec3`s (it throws when one is null); the anchors are always
+      // present by the time a carriage syncs, so a null here is written as the origin.
+      buffer.writeVec3(contraptionAnchor ?? (0, 0, 0));
+      buffer.writeVec3(rotationAnchors.getFirst() ?? (0, 0, 0));
+      buffer.writeVec3(rotationAnchors.getSecond() ?? (0, 0, 0));
       return;
     }
 
@@ -149,13 +151,8 @@ class CarriageSyncData {
   }
 
   void _updateFallbackLocations(DimensionalCarriageEntity dce) {
-    final anchor = dce.positionAnchor;
-    final r1 = dce.rotationAnchors.getFirst();
-    final r2 = dce.rotationAnchors.getSecond();
-    // The wire needs all three anchors; a carriage that never had any keeps the old data.
-    if (anchor != null && r1 != null && r2 != null) {
-      fallbackLocations = Pair.of(anchor, Couple.create(r1, r2));
-    }
+    // Java always assigns the pair, even while an anchor is still null.
+    fallbackLocations = Pair.of(dce.positionAnchor, Couple.create(dce.rotationAnchors.getFirst(), dce.rotationAnchors.getSecond()));
     dce.pointsInitialised = true;
     setDirty(true);
   }
@@ -165,12 +162,10 @@ class CarriageSyncData {
 
     _fallbackPointSnapshot = null;
     if (fallbackLocations != null) {
-      final anchor = dce.positionAnchor;
-      final r1 = dce.rotationAnchors.getFirst();
-      final r2 = dce.rotationAnchors.getSecond();
-      if (anchor != null && r1 != null && r2 != null) {
-        _fallbackPointSnapshot = Pair.of(anchor, Couple.create(r1, r2));
-      }
+      _fallbackPointSnapshot = Pair.of(
+        dce.positionAnchor,
+        Couple.create(dce.rotationAnchors.getFirst(), dce.rotationAnchors.getSecond()),
+      );
       dce.pointsInitialised = true;
       return;
     }
@@ -294,9 +289,9 @@ class CarriageSyncData {
     }
   }
 
-  Vec3? _approachVector(double partial, Vec3? current, Vec3 target, Vec3? snapshot) {
+  Vec3? _approachVector(double partial, Vec3? current, Vec3? target, Vec3? snapshot) {
     if (current == null || snapshot == null) return target;
-    return current + (target - snapshot) * partial;
+    return current + (target! - snapshot) * partial;
   }
 
   /// `getDistanceTo(graph, current, target, maxDistance, forward)`: the distance along the track

@@ -196,7 +196,15 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   }
 
   @override
-  bool get waterEvaporates => false;
+  /// `EnvironmentAttributes.WATER_EVAPORATES` of the dimension: only the Nether-like dimensions
+  /// set it, so water placed there turns to nothing instead of a source block.
+  @override
+  bool get waterEvaporates {
+    final dimension = world.dimension;
+    return dimension == 'minecraft:the_nether' ||
+        dimension == 'minecraft:nether' ||
+        dimension.endsWith(':the_nether');
+  }
 
   @override
   PipeNodeView? pipeAt(Pos p) {
@@ -271,6 +279,31 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   @override
   void neighboursChanged(Pos p) =>
       unawaited(world.updateShapeAround(pos: p.toBlockPos()));
+
+  @override
+  void updateComparators(Pos p) =>
+      unawaited(world.updateComparators(pos: p.toBlockPos()));
+
+  @override
+  bool hasShaftTowards(Pos p, Direction face) {
+    final id = world.getBlockStateId(pos: p.toBlockPos());
+    final info = BlockStates.info(id);
+    if (info == null) return false;
+    // The same three families the kinetic placement rules use: `axis` shafts, the blocks whose
+    // shaft leaves through `facing`, and those whose shaft points along `facing`.
+    if (BlockStates.isTag(id, 'create:shafts')) {
+      return info.properties['axis'] == face.axis.name;
+    }
+    final facing = info.properties['facing'];
+    if (facing == null) return false;
+    if (BlockStates.isTag(id, 'create:facing_shafts')) {
+      return facing == face.opposite.serializedName;
+    }
+    if (BlockStates.isTag(id, 'create:reverse_facing_shafts')) {
+      return facing == face.serializedName;
+    }
+    return false;
+  }
 
   @override
   bool fluidHasTag(String fluid, String tag) => Tags.fluid(fluid, tag);

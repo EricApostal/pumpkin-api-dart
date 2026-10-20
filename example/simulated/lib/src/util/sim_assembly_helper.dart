@@ -14,16 +14,16 @@
 // Pure: no host imports.
 //
 // Java: dev.simulated_team.simulated.util.SimAssemblyHelper
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'dart:math' as math;
 
-import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/bounds.dart' show Aabb;
-import 'package:create/src/common/pos.dart' show Pos;
-import 'package:pumpkin_api/pumpkin_api_core.dart' show Vec3;
+import 'package:create/src/common/pos.dart';
 import 'package:sable/sable.dart';
 
 import 'assembly/sim_assembly_contraption.dart';
-import 'assembly/sim_assembly_exception.dart';
 
 /// An entity the assembly moves or replaces.
 final class SimAssemblyEntityRef {
@@ -34,7 +34,7 @@ final class SimAssemblyEntityRef {
   final Aabb box;
 
   /// `Entity.position()`.
-  final Vec3 position;
+  final (double, double, double) position;
 
   /// `Entity.getYRot()`.
   final double yRot;
@@ -60,7 +60,7 @@ abstract interface class SimAssemblyEntities {
   void remove(SimAssemblyEntityRef entity);
 
   /// `entity.setPos`, and the y rotation the structure transform implies.
-  void move(SimAssemblyEntityRef entity, Vec3 position, double yRot);
+  void move(SimAssemblyEntityRef entity, (double, double, double) position, double yRot);
 
   /// `level.addFreshEntity(new SuperGlueEntity(level, box))`.
   void spawnSuperGlue(Aabb box);
@@ -81,7 +81,7 @@ final class NoSimAssemblyEntities implements SimAssemblyEntities {
   void remove(SimAssemblyEntityRef entity) {}
 
   @override
-  void move(SimAssemblyEntityRef entity, Vec3 position, double yRot) {}
+  void move(SimAssemblyEntityRef entity, (double, double, double) position, double yRot) {}
 
   @override
   void spawnSuperGlue(Aabb box) {}
@@ -267,7 +267,7 @@ abstract final class SimAssemblyHelper {
     }
   }
 
-  static Vec3 _apply(AssemblyTransform transform, Vec3 v) {
+  static (double, double, double) _apply(AssemblyTransform transform, (double, double, double) v) {
     final out = transform.applyVector(Vector3d(v.$1, v.$2, v.$3));
     return (out.x, out.y, out.z);
   }

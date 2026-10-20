@@ -83,6 +83,27 @@ class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
   /// The fluid the filter accepts, `null` for any fluid (`FilteringBehaviour.forFluids`).
   String? filterFluid;
 
+  /// The data of the filtered fluid (the potion type): two potions are different fluids.
+  List<int>? filterData;
+
+  /// The filter holds an item that has no fluid (`FilterItemStack.test(FluidStack)` is then
+  /// `false` for every fluid). `false` means there is no filter at all, which accepts anything.
+  bool filterMatchesNothing = false;
+
+  /// `FilteringBehaviour.setFilter` with a fluid.
+  void setFilterFluid(String? fluid, [List<int>? data]) {
+    filterFluid = fluid;
+    filterData = data;
+    filterMatchesNothing = false;
+  }
+
+  /// `FilteringBehaviour.setFilter` with an item that holds no fluid.
+  void setFilterMatchesNothing() {
+    filterFluid = null;
+    filterData = null;
+    filterMatchesNothing = true;
+  }
+
   @override
   FluidTransportBehaviour createTransportBehaviour() =>
       SmartPipeTransportBehaviour();
@@ -94,10 +115,19 @@ class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
     // derived from it. Virtual fluids have no bucket item, so their id is kept in `FilterFluid`
     // (a plugin-private key) to survive the round trip.
     filterFluid = tag.getString('FilterFluid');
+    filterData = tag.getIntArray('FilterFluidData');
+    filterMatchesNothing = false;
     if (filterFluid == null) {
       final stack = StackNbt.read(tag.getCompound('Filter'));
-      if (stack.isNotEmpty)
-        filterFluid = FluidRegistries.fromBucket(stack.key)?.fluid;
+      if (stack.isNotEmpty) {
+        final fluid = FluidRegistries.fromBucket(stack.key);
+        if (fluid == null) {
+          filterMatchesNothing = true;
+        } else {
+          filterFluid = fluid.fluid;
+          filterData = fluid.data;
+        }
+      }
     }
   }
 
@@ -112,6 +142,10 @@ class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
       bucket == null ? NbtCompound() : StackNbt.write(PStack(bucket, 1)),
     );
     if (fluid != null && bucket == null) tag.putString('FilterFluid', fluid);
+    final data = filterData;
+    if (fluid != null && data != null && data.isNotEmpty) {
+      tag.putIntArray('FilterFluidData', data);
+    }
     // `FilteringBehaviour.write` always writes the count; the smart pipe's slot shows no count.
     tag.putInt('FilterAmount', 64);
     tag.putBool('UpTo', true);

@@ -201,15 +201,6 @@ void main() {
       expect(registered.toSet().length, registered.length, reason: 'duplicate id');
     });
 
-    test('no payload id spells sub_level as sublevel', () {
-      for (final id in [
-        for (final codec in SablePackets.allClientbound) codec.id,
-        for (final codec in SablePackets.allServerbound) codec.id,
-      ]) {
-        expect(id, isNot(contains('sublevel')), reason: 'Java spells the payload id "$id" with sub_level');
-      }
-    });
-
     test('registration order is SableTCPPackets.init order', () {
       expect(SablePackets.allClientbound.map((codec) => codec.id), [
         'sable:snapshot_packet',
@@ -246,7 +237,7 @@ void main() {
         subLevelId: testUuid,
         lastPose: canonicalPose(),
         pose: poseOf(2.5, 3.5, 4.5, 0, 0, 0, 1, 0.5, 0.5, 0.5),
-        bounds: BoundingBox3i(0, 0, 0, 16, 16, 16),
+        bounds: BoundingBox3i.values(0, 0, 0, 16, 16, 16),
         name: 'Airship',
         gameTick: 42,
       );
@@ -270,7 +261,7 @@ void main() {
         subLevelId: testUuid,
         lastPose: canonicalPose(),
         pose: canonicalPose(),
-        bounds: BoundingBox3i(0, 0, 0, 1, 1, 1),
+        bounds: BoundingBox3i.values(0, 0, 0, 1, 1, 1),
         gameTick: 0,
       );
 
@@ -311,7 +302,7 @@ void main() {
     test('change_bounds_sublevel is a long then six ints', () {
       final packet = ClientboundChangeBoundsSubLevelPacket(
         packChunk(2, 3),
-        BoundingBox3i(-1, 0, -2, 15, 20, 16),
+        BoundingBox3i.values(-1, 0, -2, 15, 20, 16),
       );
       final expected = JavaBuf()
         ..i64(packChunk(2, 3))

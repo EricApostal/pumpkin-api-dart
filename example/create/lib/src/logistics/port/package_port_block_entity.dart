@@ -12,6 +12,8 @@ import '../../conveyance/items/inventory.dart' hide insertStacked;
 import '../../conveyance/items/item_data.dart';
 import '../../conveyance/transport/transport_inventory_api.dart'
     show ItemInventoryProvider;
+import '../../common/host_bridge.dart';
+import '../../trains/station/station_block_entity.dart';
 import '../host/host_inventory.dart';
 import '../host/lg_block_entity.dart';
 import '../host/lvl.dart';
@@ -22,7 +24,9 @@ import '../model/package.dart';
 import '../model/stack.dart';
 import '../packager/packager_block_entity.dart';
 import 'conveyance_items.dart';
+import 'package_port_menu.dart';
 import 'package_port_target.dart';
+import 'station_ports.dart';
 
 /// A frogport that can be woken by the packager below it (`FrogportBlockEntity`).
 abstract interface class FrogportPuller {
@@ -44,9 +48,16 @@ abstract class PackagePortBlockEntity extends LgBlockEntity
   String addressFilter = '';
   PackagePortTarget? target;
 
+  /// The players that have the port's screen open (`PackagePortMenu`).
+  final Set<String> openViewers = {};
+
   final Map<String, dynamic> _state = {};
 
-  PackagePortBlockEntity(super.worldId, super.pos);
+  PackagePortBlockEntity(super.worldId, super.pos) {
+    // `SmartInventory` calls `setChanged` after a change; the port saves (and the postbox copies
+    // its buffer into the station's offline buffer).
+    packages.onChanged = (_) => markDirty();
+  }
 
   @override
   Map<String, dynamic> get state => _state;
@@ -157,12 +168,26 @@ abstract class PackagePortBlockEntity extends LgBlockEntity
     registerTarget();
   }
 
-  /// `PackagePortTarget.register`: the target blocks belong to other modules; the concrete port
-  /// (`FrogportBlockEntity`, `PostboxBlockEntity`) knows which target it can talk to.
-  void registerTarget() {}
+  /// `PackagePortTarget.register`: a train station target adds the port to the station's
+  /// `connectedPorts`; a chain conveyor target is handled by the frogport itself.
+  void registerTarget() {
+    _stationTarget()?.attachPackagePort(this);
+  }
 
   /// `PackagePortTarget.deregister`.
-  void deregisterTarget() {}
+  void deregisterTarget() {
+    _stationTarget()?.removePackagePort(this);
+  }
+
+  /// The station this port sends to, when its target is a train station.
+  StationBlockEntity? _stationTarget() {
+    final t = target;
+    if (t == null || t.type != PackagePortTargetType.trainStation) return null;
+    return store.typed<StationBlockEntity>(
+      worldId,
+      (pos.toPos() + t.relativePos).toBlockPos(),
+    );
+  }
 
   /// `getComparatorOutput()`: the fill of the eighteen package slots.
   int get comparatorOutput =>
@@ -180,6 +205,21 @@ abstract class PackagePortBlockEntity extends LgBlockEntity
     final stack = await Lg.i.write(box);
     if (stack != null) await w.dropItem(pos.toPos().center, stack);
   }
+
+  /// `use(player)`: a clipboard takes the address, otherwise the port opens its screen. Returns
+  /// false when the click is passed on to the held item.
+  Future<bool> use(Player player) async {
+    if (player.asEntity().isSneaking()) return false;
+    if (!await PackagePortMenus.open(player, this)) return false;
+    onOpenedManually();
+    return true;
+  }
+
+  /// `onOpenedManually()`: the frogport plays its opening animation on the client.
+  void onOpenedManually() {}
+
+  /// `onOpenChange(open)`: the postbox opens its lid, the frogport does nothing.
+  void onOpenChange(bool open) {}
 
   /// The block key at [pos].
   String get blockKey =>
@@ -296,7 +336,7 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   void deregisterTarget() {
     final t = target;
     if (t == null || t.type != PackagePortTargetType.chainConveyor) return;
-    _chainConveyor?.removePort(-t.relativePos);
+    _chainConveyor?.removePort(-t.relativePos, filter: filterString);
   }
 
   /// `PackagePortTarget.export` of a chain conveyor target.
@@ -328,74 +368,50 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   void lazyTick() {
     super.lazyTick();
     final previousFail = failedLastExport;
-    _tryPushingToAdjacentInventories();
+    unawaited(_tryPushingToAdjacentInventories());
     tryPullingFromOwnAndAdjacentInventories();
     if (failedLastExport != previousFail) sendData();
   }
 
-  /// `tryPushingToAdjacentInventories()`: packages in the port move into the inventory below.
-  void _tryPushingToAdjacentInventories() {
-    if (packages.nonEmpty().isEmpty) return;
+  /// `tryPushingToAdjacentInventories()`: boxes the port does not want move into the inventory
+  /// below.
+  Future<void> _tryPushingToAdjacentInventories() async {
+    // Java clears the flag before it looks at the buffer, so a port that emptied its buffer stops
+    // reporting the previous failure.
     failedLastExport = false;
-    final below = pos.toPos().below;
+    if (packages.nonEmpty().isEmpty) return;
 
-    // A packager below exposes its tray as an inventory: inserting a package unpacks it.
-    final belowBe = store.at(worldId, below.toBlockPos());
-    if (belowBe is PackagerBlockEntity) {
-      for (var slot = 0; slot < packages.slots; slot++) {
-        if (packages.at(slot).isEmpty) continue;
-        unawaited(_pushIntoPackager(belowBe, slot));
-      }
-      return;
-    }
-
-    final inv = inventoryAt(
-      worldId,
-      below,
-      Lg.i.io,
-      side: Direction.up,
-    );
+    final inv = _adjacentInventory(Direction.down);
     if (inv == null) return;
+
     for (var slot = 0; slot < packages.slots; slot++) {
-      final stack = packages.at(slot);
-      if (stack.isEmpty) continue;
-      unawaited(_pushOne(inv, slot));
+      // The automation view (`PackagePortAutomationInventoryWrapper`) only offers boxes the port
+      // does not want; a box it is waiting for stays in the buffer.
+      final box = packageFrom(
+        await _automation.extract(slot, 1, simulate: true),
+      );
+      if (box.isEmpty) continue;
+      unawaited(_pushOne(inv, slot, box));
     }
   }
 
-  /// `PackagerItemHandler.insertItem`: the packager takes the package and unpacks it.
-  Future<void> _pushIntoPackager(PackagerBlockEntity packager, int slot) async {
-    final box = packages.at(slot);
-    if (box.isEmpty) return;
-    if (packager.heldBox.isNotEmpty ||
-        packager.queuedExitingPackages.isNotEmpty ||
-        packager.animationTicks != 0) {
+  /// `getAdjacentInventory(side)`: the inventory next to the port, never another frogport (two
+  /// frogports would hand a box back and forth).
+  ItemInv? _adjacentInventory(Direction side) {
+    final p = pos.toPos().relative(side);
+    final be = store.at(worldId, p.toBlockPos());
+    if (be == null || be is FrogportBlockEntity) return null;
+    return inventoryAt(worldId, p, Lg.i.io, side: side.opposite);
+  }
+
+  Future<void> _pushOne(ItemInv target, int slot, LStack box) async {
+    final remainder = await insertStacked(target, box);
+    if (remainder.isNotEmpty) {
       failedLastExport = true;
       return;
     }
-    if (!await packager.unwrapBox(box, simulate: true)) {
-      failedLastExport = true;
-      return;
-    }
-    if (!await packager.unwrapBox(box, simulate: false)) {
-      failedLastExport = true;
-      return;
-    }
-    packages.extractNow(slot, 1);
+    _automation.extract(slot, 1);
     markDirty();
-    await packager.triggerStockCheck();
-  }
-
-  Future<void> _pushOne(ItemInv target, int slot) async {
-    final stack = packages.extractNow(slot, 1, simulate: true);
-    if (stack.isEmpty) return;
-    final remainder = await insertStacked(target, stack);
-    if (remainder.isEmpty) {
-      packages.extractNow(slot, 1);
-      markDirty();
-    } else {
-      failedLastExport = true;
-    }
   }
 
   /// `tryPullingFromOwnAndAdjacentInventories()`.
@@ -403,45 +419,31 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   void tryPullingFromOwnAndAdjacentInventories() => unawaited(_pull());
 
   Future<void> _pull() async {
+    if (isAnimationInProgress) return;
     if (target == null) return;
     // `tryPullingFromOwnAndAdjacentInventories`: only pull when the target can take a package.
     if (!_exportToTarget(PackageStyles.defaultBox(), simulate: true)) return;
     if (await _tryPullingFrom(packages)) return;
 
-    // The packager below exposes its held box through its capability in Java; plugin block
-    // entities have no item handler here, so the box is taken from the block entity directly.
-    final below = store.typed<PackagerBlockEntity>(
-      worldId,
-      pos.toPos().below.toBlockPos(),
-    );
-    if (below != null && below.heldBox.isNotEmpty) {
-      if (packages.nonEmpty().length < packages.slots) {
-        final box = below.heldBox;
-        below.heldBox = LStack.empty;
-        below.notifyUpdate();
-        startAnimationFor(box, deposit: true);
-        return;
-      }
-    }
-
-    final inv = inventoryAt(
-      worldId,
-      pos.toPos().below,
-      Lg.i.io,
-      side: Direction.up,
-    );
-    if (inv == null) return;
-    await _tryPullingFrom(inv);
+    final below = _adjacentInventory(Direction.down);
+    if (below == null) return;
+    final belowBe = store.at(worldId, pos.toPos().below.toBlockPos());
+    await _tryPullingFrom(below, isPackager: belowBe is PackagerBlockEntity);
   }
 
-  /// `tryPullingFrom(handler)`.
-  Future<bool> _tryPullingFrom(ItemInv handler) async {
+  /// `tryPullingFrom(handler)`: takes the first box the port wants out of [handler].
+  Future<bool> _tryPullingFrom(ItemInv handler, {bool isPackager = false}) async {
     final filter = filterString;
     for (var slot = 0; slot < handler.slots; slot++) {
       final stack = await handler.stackAt(slot);
       if (stack.isEmpty || !PackageItem.isPackage(stack)) continue;
-      if (filter != null && PackageItem.matchBoxAddress(stack, filter))
+      // A packager's tray hands out the box it finished, which is not subject to the port's
+      // address filter.
+      if (filter != null &&
+          !isPackager &&
+          PackageItem.matchBoxAddress(stack, filter)) {
         continue;
+      }
       final taken = await handler.extract(slot, 1);
       if (taken.isEmpty) continue;
       startAnimationFor(taken, deposit: true);
@@ -471,6 +473,12 @@ class PostboxBlockEntity extends PackagePortBlockEntity {
 
   bool forceFlag = false;
 
+  /// `trackedGlobalStation`: the station whose `connectedPorts` this postbox is in. A station keeps
+  /// its postboxes' contents in an offline buffer, so mail survives an unloaded chunk; the link
+  /// back is only used to write that buffer. Java keeps a `WeakReference`, a plain field is enough
+  /// here because a station is dropped with its world.
+  Object? trackedStation;
+
   /// `sendParticles`: the client-only `Particles` marker of the update tag.
   bool sendParticles = false;
 
@@ -494,16 +502,35 @@ class PostboxBlockEntity extends PackagePortBlockEntity {
     sendParticles = clientPacket && tag.containsKey('Particles');
   }
 
-  /// `onOpenChange(open)`.
+  /// `setChanged()`: every change of the buffer is copied into the station's offline buffer.
+  @override
+  void markDirty() {
+    saveOfflineBuffer();
+    super.markDirty();
+  }
+
+  /// `saveOfflineBuffer()`: the station keeps a copy of the buffer for while the chunk is unloaded.
+  void saveOfflineBuffer() => savePostboxOfflineBuffer(this);
+
+  /// `onOpenChange(open)`: the barrel lid of the postbox and its sounds.
   void onOpenChange(bool open) {
     final w = world;
     if (w == null) return;
     final info = Lvl(w).info(pos.toPos());
-    if (info == null || !info.key.contains('_postbox')) return;
+    // A cached block state can be stale after the block was blown up; the property is only set on
+    // a postbox.
+    if (info == null || !info.key.endsWith('_postbox')) return;
     unawaited(
       Lvl(w).setProps(pos.toPos(), {
         'open': open ? 'true' : 'false',
       }, neighbors: true),
+    );
+    w.playSound(
+      sound: open ? Sound.blockBarrelOpen : Sound.blockBarrelClose,
+      category: SoundCategory.blocks,
+      pos: pos.toPos().center,
+      volume: 1,
+      pitch: 1,
     );
   }
 }

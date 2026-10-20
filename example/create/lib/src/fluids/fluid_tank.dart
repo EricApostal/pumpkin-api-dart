@@ -10,6 +10,7 @@ import '../common/nbt_convert.dart';
 import '../common/pos.dart';
 import '../core/block_entity.dart';
 import '../decoration/block_entities.dart' show WhistleBlockEntity;
+import '../equipment/host/env.dart';
 import '../kinetics/runtime.dart' show SteamEngineBoilerSource;
 import 'boiler.dart';
 import 'connectivity.dart';
@@ -286,6 +287,10 @@ class FluidTankBlockEntity extends CreateBlockEntity
           final p = partPos.offset(xOffset, yOffset, zOffset);
           final be = store.at(worldId, BlockPos(x: p.$1, y: p.$2, z: p.$3));
           if (be is! FluidTankBlockEntity) continue;
+          // `level.updateNeighbourForOutputSignal(pos, ...)`: the fill state is the comparator
+          // output, so the comparators read the tank again.
+          final w = world;
+          if (w != null) w.updateComparators(pos: p.blockPos);
           be.setLuminosity(actualLuminosity);
         }
       }
@@ -298,7 +303,21 @@ class FluidTankBlockEntity extends CreateBlockEntity
   void setLuminosity(int luminosity) {
     if (this.luminosity == luminosity) return;
     this.luminosity = luminosity;
+    _applyLight();
     sendData();
+  }
+
+  /// `FluidTankBlock.getLightEmission`: a tank only lights the area while its windows show the
+  /// fluid, and only as bright as the fluid in that part of the multiblock.
+  void _applyLight() {
+    final w = world;
+    if (w == null) return;
+    final be = controllerBe;
+    final lit = be != null && be.window;
+    w.setBlockLight(
+      pos: BlockPos(x: partPos.$1, y: partPos.$2, z: partPos.$3),
+      level: lit ? luminosity.clamp(0, 15) : 0,
+    );
   }
 
   /// `applyFluidTankSize(blocks)`.
@@ -357,6 +376,8 @@ class FluidTankBlockEntity extends CreateBlockEntity
         }
       }
     }
+    // The windows decide whether the tank emits light at all.
+    _applyLight();
   }
 
   /// `updateBoilerState()`.
@@ -464,6 +485,9 @@ class FluidTankBlockEntity extends CreateBlockEntity
     forceFluidLevelUpdate = tag.getBool('ForceFluidLevel') ?? true;
     updateCapability = true;
     _capability = null;
+    // `level.getChunkSource().getLightEngine().checkBlock(worldPosition)` when the saved
+    // luminosity differs from the one in the light engine.
+    _applyLight();
   }
 
   @override

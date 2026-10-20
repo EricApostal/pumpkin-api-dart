@@ -20,9 +20,10 @@ Vec3 predictNextPositionOf(MinecartAccess cart) =>
 Vec3 clampVec(Vec3 v, double maxLength) =>
     v.lengthSquared > maxLength * maxLength ? v.normalized * maxLength : v;
 
-/// `canAddMotion`: a stalled or actively pushing furnace cart cannot be corrected.
+/// `canAddMotion`: a furnace cart that is actively pushing, or a stalled cart, cannot be
+/// corrected by the coupling.
 bool canAddMotion(MinecartAccess cart) {
-  if (cart.isFurnaceCart) return false;
+  if (cart.isFurnaceCart) return cart.furnacePushIsZero;
   return !MinecartStallLookup.isStalled(cart.uuid);
 }
 

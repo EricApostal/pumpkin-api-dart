@@ -1,6 +1,8 @@
 // `ItemVaultBlockEntity` (server behaviour): the vault's multiblock (up to 3x3 blocks wide and
 // three times as long), its inventory (one `vaultCapacity`-slot handler per block, seen as one
 // combined inventory), and the comparator output.
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../../api/blocks.dart';
@@ -36,6 +38,8 @@ class ItemVaultBlockEntity extends CreateBlockEntity
       onChanged: (_) {
         markDirty();
         sendData();
+        // `onContentsChanged`: a vault's comparators have to re-read the multiblock.
+        updateComparators();
       },
     );
   }
@@ -189,6 +193,46 @@ class ItemVaultBlockEntity extends CreateBlockEntity
     _updateConnectivity = false;
     if (!isController) return;
     ConnectivityHandler.formMulti(_VaultWorld(worldId), this);
+  }
+
+  /// `ItemVaultBlockEntity.updateComparators`: the comparators around the surface of the
+  /// multiblock re-read their signal. The host call also pokes the block behind one solid block,
+  /// which is what `Level.updateNeighbourForOutputSignal` does.
+  void updateComparators() {
+    final controller = isController
+        ? this
+        : rt.typedAt<ItemVaultBlockEntity>(worldId, this.controller);
+    if (controller == null) return;
+    final world = rt.worldOf(controller.worldId);
+    if (world == null) return;
+
+    final axis = controller.mainConnectionAxis;
+    final radius = controller.radius;
+    final length = controller.length;
+    final zMax = axis == Axis.x ? radius : length;
+    final xMax = axis == Axis.z ? radius : length;
+    final origin = controller.partPos;
+
+    for (var y = 0; y < radius; y++) {
+      for (var z = 0; z < zMax; z++) {
+        for (var x = 0; x < xMax; x++) {
+          // Only the blocks on the surface of the multiblock have comparators around them.
+          if (y != 0 &&
+              y != radius - 1 &&
+              z != 0 &&
+              z != zMax - 1 &&
+              x != 0 &&
+              x != xMax - 1) {
+            continue;
+          }
+          unawaited(
+            world.updateComparators(
+              pos: origin.offset(x, y, z).toBlockPos(),
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override

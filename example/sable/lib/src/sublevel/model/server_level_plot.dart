@@ -230,12 +230,16 @@ final class ServerLevelPlot extends LevelPlot {
     if (context != null) liftProviders[packed] = context;
   }
 
+  /// The lift provider lookup of the compat layer (the Create blocks).
+  ///
+  /// Dart block states are data, so a block cannot implement
+  /// `BlockSubLevelLiftProvider` itself; the compat layer registers a lookup by
+  /// block key instead and installs it here.
+  static LiftProviderContext? Function(Pos pos, String state)? liftProviderLookup;
+
   /// The lift provider context of the block at [pos], when the block is a lift
   /// provider.
-  ///
-  /// The Create blocks implement `BlockSubLevelLiftProvider`; the compat layer
-  /// supplies this lookup.
-  LiftProviderContext? liftProviderAt(Pos pos, String state) => null;
+  LiftProviderContext? liftProviderAt(Pos pos, String state) => liftProviderLookup?.call(pos, state);
 
   /// The sub-level actor block entity at [pos], or `null`.
   ///

@@ -94,20 +94,25 @@ Future<WrenchResult> _wrenchVault(WrenchContext c) async {
   final worldId = world.getId();
   final pos = c.pos.toPos();
   final state = ConveyanceRuntime.i.stateAt(worldId, pos);
-  if (c.face.toDirection().isVertical) {
-    final be = ConveyanceRuntime.i.typedAt<ItemVaultBlockEntity>(worldId, pos);
-    if (be != null) {
-      ConnectivityHandler.splitMulti(vaultMultiWorld(worldId), be);
-      be.removeController(true);
-    }
-    await writeState(world, pos, state.setFlag('large', false));
+  if (!c.face.toDirection().isVertical) {
+    // `IWrenchable.getRotatedBlockState`: only a vertical click rotates `HORIZONTAL_AXIS`; a
+    // horizontal click leaves the vault as it is (the click is still consumed).
     return WrenchResult.success;
   }
+  final be = ConveyanceRuntime.i.typedAt<ItemVaultBlockEntity>(worldId, pos);
+  if (be != null) {
+    ConnectivityHandler.splitMulti(vaultMultiWorld(worldId), be);
+    be.removeController(true);
+  }
+  // Java clears `LARGE` and then runs the default wrench rotation, which turns `HORIZONTAL_AXIS`
+  // a quarter turn about the vertical click axis: x <-> z.
   final axis = state.axisOf('axis') ?? Axis.x;
   await writeState(
     world,
     pos,
-    state.setValue('axis', axis == Axis.x ? 'z' : 'x'),
+    state
+        .setFlag('large', false)
+        .setValue('axis', axis == Axis.x ? 'z' : 'x'),
   );
   return WrenchResult.success;
 }

@@ -22,6 +22,7 @@ import '../common/stack.dart';
 import '../common/storage.dart';
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
+import '../recipe/recipe.dart';
 import '../recipe/recipe_book.dart';
 import '../recipe/recipe_type.dart';
 import '../transport/transport_behaviours.dart';
@@ -100,6 +101,10 @@ final class DeployerBlockEntity extends KineticBlockEntity
   /// The fake player (owned; kept alive across ticks).
   Player? _player;
 
+  /// The fake player's 36 main slots, mirrored for [write]: the host inventory can only be read
+  /// asynchronously, so it is refreshed after everything that can change it.
+  List<PStack> _playerInventory = List<PStack>.filled(36, PStack.empty);
+
   /// `invHandler`.
   late final DeployerItemHandler invHandler;
 
@@ -160,6 +165,7 @@ final class DeployerBlockEntity extends KineticBlockEntity
       }
 
       final facing = blockState.dirOf('facing') ?? Dir.up;
+      final (yaw, pitch) = lookOf(facing);
       FakePlayerActions(player).moveTo(
         world,
         (
@@ -167,10 +173,8 @@ final class DeployerBlockEntity extends KineticBlockEntity
           pos.y + .5 + facing.dy,
           pos.z + .5 + facing.dz,
         ),
-        yaw: facing == Dir.up || facing == Dir.down
-            ? 0
-            : Direction.values[facing.index].toYRot,
-        pitch: facing == Dir.up ? -90 : (facing == Dir.down ? 90 : 0),
+        yaw: yaw,
+        pitch: pitch,
       );
 
       sendData();
@@ -181,6 +185,33 @@ final class DeployerBlockEntity extends KineticBlockEntity
         stackTrace: s,
       );
     }
+  }
+
+  /// The look of the fake player for [facing] (`DeployerBlockEntity.activate`): `XRot` is -90
+  /// looking up, 90 looking down and 0 sideways; `YRot` is the facing's yaw.
+  static (double, double) lookOf(Dir facing) => (
+    Direction.values[facing.index].toYRot,
+    facing == Dir.up ? -90.0 : (facing == Dir.down ? 90.0 : 0.0),
+  );
+
+  /// The fake player (`DeployerBlockEntity.getPlayer`).
+  Player? get player => _player;
+
+  /// Refreshes [_playerInventory] from the fake player's main slots. Called after everything
+  /// that can change them, so [write] can serialise them synchronously.
+  Future<void> snapshotInventory() async {
+    final player = _player;
+    if (player == null) return;
+    final inventory = player.getInventory().storage;
+    final size = inventory.getSize();
+    final slots = List<PStack>.filled(36, PStack.empty);
+    for (var slot = 0; slot < size && slot < slots.length; slot++) {
+      final item = inventory.getItem(slot: slot);
+      if (item == null) continue;
+      slots[slot] = await HostStacks.read(item);
+      item.dispose();
+    }
+    _playerInventory = slots;
   }
 
   Future<void> _loadInventory(Player player, List<PStack> stacks) async {
@@ -199,6 +230,7 @@ final class DeployerBlockEntity extends KineticBlockEntity
     // `HeldItem` is the authoritative hand item (the inventory carries it at the selected slot).
     if (heldItem.isNotEmpty) await setHeld(heldItem);
     await _syncHeld();
+    await snapshotInventory();
   }
 
   /// `discardPlayer`: drops the inventory (when [drop]) and releases the fake player.
@@ -210,6 +242,8 @@ final class DeployerBlockEntity extends KineticBlockEntity
       unawaited(_dropPlayerContentsThenRelease(player));
       return;
     }
+    // The player is gone but the contents are not: the saved data has to keep them.
+    _deferredInventory = List<PStack>.of(_playerInventory);
     _releasePlayer(player);
   }
 
@@ -324,7 +358,9 @@ final class DeployerBlockEntity extends KineticBlockEntity
     // with `HeldItem` and `Overflow` alongside; without a player only the deferred list is kept.
     final player = _player;
     if (player != null) {
-      final inventory = List<PStack>.filled(36, PStack.empty);
+      // The host inventory can only be read asynchronously, so the mirror (refreshed after every
+      // activation) is what gets saved. The selected slot is the hand.
+      final inventory = List<PStack>.of(_playerInventory);
       inventory[0] = heldItem;
       tag.putList('Inventory', _writeInventoryList(inventory));
       tag.putCompound('HeldItem', StackNbt.writeOrEmpty(heldItem));
@@ -333,8 +369,9 @@ final class DeployerBlockEntity extends KineticBlockEntity
       ]);
     } else {
       final deferred = _deferredInventory;
-      if (deferred != null)
+      if (deferred != null) {
         tag.putList('Inventory', _writeInventoryList(deferred));
+      }
     }
 
     super.write(tag, clientPacket: clientPacket);
@@ -484,6 +521,7 @@ final class DeployerBlockEntity extends KineticBlockEntity
 
       if (changed) {
         await _syncHeld();
+        await snapshotInventory();
         sendData();
         timer = timerSpeed * 10;
         return;
@@ -514,6 +552,7 @@ final class DeployerBlockEntity extends KineticBlockEntity
     if (state == DeployerState.expanding) {
       if (fistBump) triggerFistBump();
       await activate();
+      await snapshotInventory();
       state = DeployerState.retracting;
       timer = 1000;
       sendData();
@@ -562,7 +601,14 @@ final class DeployerBlockEntity extends KineticBlockEntity
     if (player == null || world == null) return;
 
     final facing = blockState.dirOf('facing') ?? Dir.up;
-    final clickedPos = pos.toPos().relative(Direction.values[facing.index], 2);
+    final direction = Direction.values[facing.index];
+    final clickedPos = pos.toPos().relative(direction, 2);
+    final (yaw, pitch) = lookOf(facing);
+
+    // `DeployerBlockEntity.activate`: a belt or depot below the deployer is processed by
+    // `BeltDeployerCallbacks`, not by the vanilla item use.
+    if (facing == Dir.down && _beltBelow(clickedPos)) return;
+
     blockBreakingPos = await DeployerHandler.activate(
       player,
       world,
@@ -571,8 +617,20 @@ final class DeployerBlockEntity extends KineticBlockEntity
       _movementVector,
       mode,
       breakingPos: blockBreakingPos,
+      look: (yaw, pitch),
     );
     await _syncHeld();
+  }
+
+  /// Whether the block at [clickedPos] carries a `TransportedItemStackHandlerBehaviour`
+  /// (`BlockEntityBehaviour.get(level, pos, TYPE) != null`).
+  bool _beltBelow(Pos clickedPos) {
+    final rt = _rt;
+    final world = this.world;
+    if (world == null) return false;
+    final worldId = rt.worlds.touch(world);
+    final be = rt.store.at(worldId, clickedPos.toBlockPos());
+    return be?.getBehaviour<TransportedItemStackHandlerBehaviour>() != null;
   }
 
   /// `startFistBump`: two deployers facing each other with punch mode bump fists.
@@ -671,12 +729,17 @@ final class DeployerBlockEntity extends KineticBlockEntity
   }
 
   /// The recipe the deployer would apply to [stack] (`DeployerBlockEntity.getRecipe`).
+  ///
+  /// `checkRecipe` filters with `AllRecipeTypes.CAN_BE_AUTOMATED`: a recipe whose id ends in
+  /// `_manual_only` is never applied by a deployer.
   RecipeMatch? getRecipe(PStack stack) {
     if (heldItem.isEmpty) return null;
+    bool automated(ProcessingRecipe recipe) => !ignoredInAutomation(recipe.id);
     if (heldItem.key == 'create:sandpaper') {
       final polishing = _rt.recipes.findForInput(
         CreateRecipeType.sandpaperPolishing,
         stack,
+        accept: automated,
       );
       if (polishing != null) return polishing;
     }
@@ -684,6 +747,7 @@ final class DeployerBlockEntity extends KineticBlockEntity
       const [CreateRecipeType.deploying, CreateRecipeType.itemApplication],
       stack,
       heldItem,
+      accept: automated,
     );
   }
 

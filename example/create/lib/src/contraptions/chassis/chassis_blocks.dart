@@ -9,6 +9,7 @@ import '../../api/blocks.dart';
 import '../../common/common.dart';
 import '../../core/blocks.dart';
 import 'chassis_logic.dart';
+import 'chassis_placement.dart';
 
 /// `AllItems.SUPER_GLUE` / `minecraft:slime_ball`.
 const String superGlueItemKey = 'create:super_glue';
@@ -19,25 +20,25 @@ List<CreateBlock> buildChassisBlocks() => [
   manifestBlock(
     'linear_chassis',
     blockEntityType: 'create:linear_chassis',
-    placement: const [PlacementRule.clickedAxis('axis')],
+    placement: linearChassisPlacementRules,
     behavior: chassisBehavior(linearChassis),
   ),
   manifestBlock(
     'secondary_linear_chassis',
     blockEntityType: 'create:secondary_linear_chassis',
-    placement: const [PlacementRule.clickedAxis('axis')],
+    placement: linearChassisPlacementRules,
     behavior: chassisBehavior(secondaryLinearChassis),
   ),
   manifestBlock(
     'radial_chassis',
     blockEntityType: 'create:radial_chassis',
-    placement: const [PlacementRule.clickedAxis('axis')],
+    placement: radialChassisPlacementRules,
     behavior: chassisBehavior(radialChassis),
   ),
   manifestBlock(
     'sticker',
     blockEntityType: 'create:sticker',
-    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
+    placement: stickerPlacementRules,
     behavior: stickerBehavior(),
   ),
 ];

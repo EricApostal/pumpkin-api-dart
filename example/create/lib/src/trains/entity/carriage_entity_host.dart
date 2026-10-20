@@ -73,8 +73,9 @@ abstract interface class CarriageEntityHost {
   CarriagePassenger? findPlayer(String uuid);
 
   /// `EntityType.loadEntityRecursive(tag, level, ...)` at [position] followed by
-  /// `tryAddFreshEntityWithPassengers`.
-  CarriagePassenger? loadPassenger(CTag tag, Vec3 position);
+  /// `tryAddFreshEntityWithPassengers`. Spawning is a host call, so the passenger is returned
+  /// once the entity exists.
+  Future<CarriagePassenger?> loadPassenger(CTag tag, Vec3 position);
 
   /// `addSittingPassenger(passenger, seat)`.
   void addSittingPassenger(CarriagePassenger passenger, int seat);

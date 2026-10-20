@@ -23,8 +23,16 @@ abstract final class FilterComponents {
   static const String matchedAttributes =
       'create:attribute_filter_matched_attributes';
 
-  /// The key inside `minecraft:custom_data` that keeps the attribute entries this process could
-  /// not decode from the network form (the attribute registry ids are host assigned).
+  /// The key inside `minecraft:custom_data` that keeps the attribute entries.
+  ///
+  /// Gap: Java persists the selection in the `attribute_filter_matched_attributes` component
+  /// (`AttributeFilterMenu.saveData`, Java `AttributeFilterMenu.java:135-142`), whose stream codec
+  /// is a *registry dispatch* on `create:item_attribute_type` (a VarInt type id, then a per-type
+  /// payload, Java `ItemAttribute.java:29`). The plugin does not register that registry with the
+  /// host, so it has neither the numeric type ids nor a host codec that could delimit the
+  /// per-type payloads; the component is declared `approximate` for the same reason
+  /// (`content/components.dart:96-105`). Until the host offers a `dispatch` codec op and the
+  /// registry ids, the selection rides in this private key instead of the real component.
   static const String privateAttributes = 'CreateLogisticsFilter';
 }
 
@@ -47,19 +55,30 @@ class FilterItemStack {
 
   /// `FilterItemStack.of(stack)`: list, attribute and package filter items are recognised.
   /// [wire] decodes the stacks contained in a list filter.
+  ///
+  /// Java only builds a wrapper for a filter item that carries components: a freshly crafted
+  /// filter has an empty component patch and is a plain stack, so it matches itself
+  /// (`FilterItemStack.of`, Java `FilterItemStack.java:27-34`).
   static FilterItemStack of(LStack stack, {StackWire? wire}) {
     if (stack.isEmpty) return empty;
+    if (stack.comps.isEmpty) return FilterItemStack(stack);
     switch (stack.key) {
       case FilterItemKeys.list:
-        return ListFilterItemStack(stack, wire);
+        return ListFilterItemStack(_trimFilterComponents(stack), wire);
       case FilterItemKeys.attribute:
-        return AttributeFilterItemStack(stack);
+        return AttributeFilterItemStack(_trimFilterComponents(stack));
       case FilterItemKeys.package:
-        return PackageFilterItemStack(stack);
+        return PackageFilterItemStack(_trimFilterComponents(stack));
       default:
         return FilterItemStack(stack);
     }
   }
+
+  /// `FilterItemStack.trimFilterComponents`: the enchantments and attribute modifiers a filter
+  /// picked up (an enchanted book used as a filter, a renamed one) do not take part in matching.
+  static LStack _trimFilterComponents(LStack stack) => stack
+      .withComp('minecraft:enchantments', null)
+      .withComp('minecraft:attribute_modifiers', null);
 
   /// `FilterItemStack.of(registries, tag)`: the saved form is the JSON of the filter stack.
   static FilterItemStack fromJson(String json, {StackWire? wire}) {
@@ -92,8 +111,30 @@ class FilterItemStack {
     return item.sameItem(candidate);
   }
 
-  /// `test(level, fluidStack)`: [fluidKey] is the registry key of the fluid.
-  bool testFluid(String fluidKey, {bool matchNbt = false}) => isEmpty;
+  /// `test(level, fluidStack)`: [fluidKey] is the registry key of the fluid. The fluid of the
+  /// filter item is the one `GenericItemEmptying` gets out of it (`FilterItemStack.resolveFluid`);
+  /// [filterFluid] supplies that, the base class has no way to empty an item itself.
+  bool testFluid(String fluidKey, {bool matchNbt = false}) {
+    if (isEmpty) return true;
+    if (fluidKey.isEmpty) {
+      return false;
+    }
+    final held = filterFluid(item);
+    if (held == null || held.isEmpty) return false;
+    if (!matchNbt) return _still(held) == _still(fluidKey);
+    return held == fluidKey;
+  }
+
+  /// `FluidHelper.convertToStill`: the flowing variant of a fluid key is the same fluid.
+  static String _still(String key) => switch (key) {
+    'minecraft:flowing_water' => 'minecraft:water',
+    'minecraft:flowing_lava' => 'minecraft:lava',
+    _ => key.startsWith('create:flowing_') ? 'create:${key.substring(15)}' : key,
+  };
+
+  /// `GenericItemEmptying.emptyItem(level, filterItemStack, true).getFirst()`, installed by the
+  /// filter part; `null` for an item that holds no fluid.
+  static String? Function(LStack stack) filterFluid = (_) => null;
 
   /// The filter stack as saved (JSON in a string, the plugin's own state form).
   String toJson() => item.toJson();
@@ -163,17 +204,20 @@ final class ListFilterItemStack extends FilterItemStack {
   final bool shouldRespectNbt;
   final bool isBlacklist;
 
+  /// Both flags are only read when the filter has the `filter_items` component
+  /// (Java `FilterItemStack.java:127,137-138`): a list filter with no items is an *empty
+  /// whitelist* and matches nothing, not everything.
   ListFilterItemStack(super.item, StackWire? wire)
-    : shouldRespectNbt = FilterItemStack._boolComp(
-        item,
-        FilterComponents.respectNbt,
-        false,
-      ),
-      isBlacklist = FilterItemStack._boolComp(
-        item,
-        FilterComponents.blacklist,
-        false,
-      ),
+    : shouldRespectNbt =
+          item.hasComp(FilterComponents.filterItems) &&
+          FilterItemStack._boolComp(
+            item,
+            FilterComponents.respectNbt,
+            false,
+          ),
+      isBlacklist =
+          item.hasComp(FilterComponents.filterItems) &&
+          FilterItemStack._boolComp(item, FilterComponents.blacklist, false),
       containedItems = _readContained(item, wire);
 
   static List<FilterItemStack> _readContained(LStack filter, StackWire? wire) {

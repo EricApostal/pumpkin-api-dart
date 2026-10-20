@@ -9,6 +9,7 @@
 // the world, or a block that is not a candidate) aborts the whole build.
 //
 // Pure: no host imports.
+// ignore_for_file: implementation_imports
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/pos.dart' show Pos;
@@ -95,7 +96,7 @@ abstract final class BalloonBuilder {
         for (final layer in layersAtY) {
           if (layer.state == BalloonLayerDataState.complete) continue;
 
-          final queue = LinkedHashSet<Pos>();
+          final queue = <Pos>{};
           for (final block in layer.blocks) {
             queue.add((block.$1, block.$2 - 1, block.$3));
           }

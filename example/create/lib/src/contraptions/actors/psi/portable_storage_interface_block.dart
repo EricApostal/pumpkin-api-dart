@@ -2,8 +2,9 @@
 // to a stationary interface next to it and lets the contraption's items or fluids cross over.
 //
 // The host has no way to expose a dynamic item/fluid handler on a block entity (the storage that
-// belongs to the contraption), so the connected storage is kept on the block entity for the actor
-// and for other plugin code. Pipes from the host cannot pull through it.
+// belongs to the contraption), so the connected storage is kept on the block entity. The fluid
+// interface implements `FluidCapable` with an `InterfaceFluidHandler` over it, which is what lets
+// pipes connect to it and pull from the contraption.
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -13,6 +14,11 @@ import '../../../api/blocks.dart' show manifestBlock;
 import '../../../common/common.dart';
 import '../../../core/block_entity.dart';
 import '../../../core/blocks.dart';
+import '../../core/nbt_map.dart';
+import '../../../fluids/fluid_host.dart' show FluidCapable;
+import '../../../fluids/fluid_stack.dart';
+import '../../../fluids/fluid_storage.dart';
+import '../../../fluids/potion_data.dart';
 import '../../core/contraption.dart';
 import '../../storage/stacks.dart';
 import '../actor_runtime.dart';
@@ -182,7 +188,8 @@ final class PortableItemInterfaceBlockEntity
 
 /// `PortableFluidInterfaceBlockEntity`: the fluids of the connected contraption.
 final class PortableFluidInterfaceBlockEntity
-    extends PortableStorageInterfaceBlockEntity {
+    extends PortableStorageInterfaceBlockEntity
+    implements FluidCapable {
   static const String type = 'create:portable_fluid_interface';
 
   PortableFluidInterfaceBlockEntity(super.worldId, super.pos);
@@ -193,14 +200,108 @@ final class PortableFluidInterfaceBlockEntity
   @override
   void startTransferringTo(Contraption? contraption, double distance) {
     contraptionFluids = contraption?.storage.fluids;
+    _handler = _InterfaceFluidHandler(this);
     super.startTransferringTo(contraption, distance);
   }
 
   @override
   void stopTransferring() {
     contraptionFluids = null;
+    _handler = _InterfaceFluidHandler(this);
     super.stopTransferring();
   }
+
+  _InterfaceFluidHandler? _handler;
+
+  /// `Capabilities.Fluid.BLOCK`: the pipes pull the contraption's fluids through this handler.
+  @override
+  FluidStorage get fluidHandler => _handler ??= _InterfaceFluidHandler(this);
+}
+
+/// `InterfaceFluidHandler`: passes the connected contraption's tanks through, and keeps the
+/// interface engaged for as long as a transfer is committed.
+final class _InterfaceFluidHandler implements KeepAliveFluidStorage {
+  final PortableFluidInterfaceBlockEntity _interface;
+
+  _InterfaceFluidHandler(this._interface);
+
+  FluidTanks? get _tanks => _interface.canTransfer() ? _interface.contraptionFluids : null;
+
+  /// The module's stack of a contraption stack.
+  static FStack _toFStack(StoredFluid fluid) {
+    if (fluid.isEmpty) return FStack.empty;
+    final components = fluid.components;
+    final data = components == null || components.isEmpty
+        ? null
+        : PotionFluidData.fromComponents(components.map)?.encode();
+    return FStack(fluid.fluid, fluid.amount, data);
+  }
+
+  /// The contraption stack of the module's stack.
+  static StoredFluid _toStored(FStack stack) {
+    if (stack.isEmpty) return StoredFluid.empty;
+    final potion = PotionFluidData.decode(stack.data);
+    final components = potion == null ? null : NbtMap(potion.toComponents());
+    return StoredFluid(stack.fluid, stack.amount, components);
+  }
+
+  @override
+  int get tanks => _tanks?.tanks ?? 0;
+
+  @override
+  FStack fluidInTank(int tank) {
+    final t = _tanks;
+    if (t == null || tank < 0 || tank >= t.tanks) return FStack.empty;
+    return _toFStack(t.fluidInTank(tank));
+  }
+
+  @override
+  int tankCapacity(int tank) {
+    final t = _tanks;
+    if (t == null || tank < 0 || tank >= t.tanks) return 0;
+    return t.tankCapacity(tank);
+  }
+
+  @override
+  bool isFluidValid(int tank, FStack stack) {
+    final t = _tanks;
+    if (t == null || tank < 0 || tank >= t.tanks) return false;
+    return t.isFluidValid(tank, _toStored(stack));
+  }
+
+  @override
+  int fill(FStack resource, {required bool simulate}) {
+    if (!_interface.isConnected()) return 0;
+    final t = _tanks;
+    if (t == null) return 0;
+    final filled = t.fill(_toStored(resource), simulate: simulate);
+    if (filled > 0 && !simulate) keepAlive();
+    return filled;
+  }
+
+  @override
+  FStack drainFluid(FStack resource, {required bool simulate}) {
+    if (!_interface.canTransfer()) return FStack.empty;
+    final t = _tanks;
+    if (t == null) return FStack.empty;
+    final drained = t.drainFluid(_toStored(resource), simulate: simulate);
+    if (!drained.isEmpty && !simulate) keepAlive();
+    return _toFStack(drained);
+  }
+
+  @override
+  FStack drain(int maxDrain, {required bool simulate}) {
+    if (!_interface.canTransfer()) return FStack.empty;
+    final t = _tanks;
+    if (t == null) return FStack.empty;
+    final drained = t.drain(maxDrain, simulate: simulate);
+    if (!drained.isEmpty && !simulate) keepAlive();
+    return _toFStack(drained);
+  }
+
+  /// `InterfaceFluidHandler.keepAlive`: `onContentTransferred()`.
+  @override
+  void keepAlive() => _interface.onContentTransferred();
 }
 
 /// `PortableStorageInterfaceBlock` for items ([fluids] false) or fluids.

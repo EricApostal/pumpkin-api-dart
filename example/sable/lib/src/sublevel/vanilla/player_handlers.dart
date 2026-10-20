@@ -31,15 +31,21 @@ abstract final class PlayerProjection {
   }
 
   /// `respawn_point`: the same projection for a respawn position.
-  static Vector3d projectRespawn(SubLevel? containing, Vector3d respawnPosition) =>
-      projectOut(containing, respawnPosition);
+  static Vector3d projectRespawn(
+    SubLevel? containing,
+    Vector3d respawnPosition,
+  ) => projectOut(containing, respawnPosition);
 
   /// `sleeping/LivingEntityMixin#stopSleeping`: a player that wakes up on a
   /// ship stands on the deck, not half inside it.
   ///
   /// Java projects the position and then moves it down by half the entity's
   /// height.
-  static Vector3d standUpPosition(SubLevel? containing, Vector3d position, double halfHeight) {
+  static Vector3d standUpPosition(
+    SubLevel? containing,
+    Vector3d position,
+    double halfHeight,
+  ) {
     final projected = projectOut(containing, position);
     return Vector3d(projected.x, projected.y - halfHeight, projected.z);
   }

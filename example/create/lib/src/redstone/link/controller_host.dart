@@ -275,8 +275,9 @@ final class LecternControllerBlock {
         onCloneItem: (server, e) async => ItemStacks.plain('minecraft:lectern'),
         // LecternBlock: the pulse of a turned page; the controller never sets it itself.
         onWeakPower: (server, e) => block.stateOf(e.stateIndex)['powered'] == 'true' ? 15 : 0,
+        // `LecternBlock.getDirectSignal`: strong power only upwards (`direction == UP`).
         onStrongPower: (server, e) =>
-            e.face == BlockDirection.down && block.stateOf(e.stateIndex)['powered'] == 'true' ? 15 : 0,
+            e.face == BlockDirection.up && block.stateOf(e.stateIndex)['powered'] == 'true' ? 15 : 0,
       ),
     );
     return block;

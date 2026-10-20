@@ -36,6 +36,12 @@ final class _TestWorld extends BlockGetter implements FluidWorld {
   bool get waterEvaporates => false;
 
   @override
+  void updateComparators(Pos p) {}
+
+  @override
+  bool hasShaftTowards(Pos p, Direction face) => false;
+
+  @override
   PipeNodeView? pipeAt(Pos p) => null;
 
   @override

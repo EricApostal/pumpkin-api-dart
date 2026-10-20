@@ -7,6 +7,7 @@
 // operation.
 //
 // Pure: no host imports.
+// ignore_for_file: implementation_imports
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/pos.dart' show Pos;
@@ -34,7 +35,11 @@ abstract interface class BalloonWorld {
 
   /// Whether the world is the server side (only the server owns balloons).
   bool get isServerSide;
+}
 
+/// The position helpers of [BalloonWorld] (an extension, so every implementer
+/// gets them without restating them).
+extension BalloonWorldPositions on BalloonWorld {
   /// The state at a block position.
   BState stateAtPos(Pos pos) => stateAt(pos.$1, pos.$2, pos.$3);
 

@@ -86,6 +86,11 @@ abstract interface class ContraptionCollisionEntity implements CollidingEntity {
   Vec3 get deltaMovement;
   void setDeltaMovement(Vec3 motion);
   void setPosition(Vec3 position);
+
+  /// `Entity#collide`: the part of [movement] the world lets the entity travel, so a pushed
+  /// entity stops at a wall instead of being placed inside it. The fallback lets it through.
+  Vec3 collideMovement(Vec3 movement) => movement;
+
   void teleport(Vec3 position);
   void setOnGround(bool onGround);
   void setFallDistance(double distance);

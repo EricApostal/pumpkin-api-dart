@@ -35,7 +35,7 @@ class DepotBehaviour extends BlockEntityBehaviour {
   List<TransportedItemStack> incoming = [];
   late final ListInventory processingOutputBuffer;
 
-  int maxStackSize = 64;
+  late int Function() maxStackSize;
   bool Function() canAcceptItems = () => true;
   bool Function(Direction) canFunnelsPullFrom = (_) => true;
   void Function(ItemValue) onHeldInserted = (_) {};
@@ -43,6 +43,7 @@ class DepotBehaviour extends BlockEntityBehaviour {
   bool allowMerge = false;
 
   DepotBehaviour() {
+    maxStackSize = _defaultMaxStackSize;
     processingOutputBuffer = ListInventory(
       8,
       onChanged: (_) {
@@ -53,6 +54,9 @@ class DepotBehaviour extends BlockEntityBehaviour {
   }
 
   ConveyanceRuntime get rt => ConveyanceRuntime.i;
+
+  /// `maxStackSize`: the default reads the held item's own limit (64 while empty).
+  int _defaultMaxStackSize() => heldItem?.stack.maxStack ?? 64;
 
   BState stateAt(Pos p) => rt.stateAt(owner.worldId, p);
 
@@ -179,7 +183,14 @@ class DepotBehaviour extends BlockEntityBehaviour {
     for (var slot = 0; slot < processingOutputBuffer.slots; slot++) {
       final previous = processingOutputBuffer.getStack(slot);
       if (previous.isEmpty) continue;
-      final after = await funnel.insert(previous, simulate: false);
+      // `DirectBeltInputBehaviour.tryExportingToBeltFunnel(stack, null, false)`: `null` means
+      // the funnel above cannot take the item at all (not a pulling belt funnel, or no entity).
+      final after = await funnel.tryExportingToBeltFunnel(
+        previous,
+        null,
+        simulate: false,
+      );
+      if (after == null) return false;
       if (after.count != previous.count) {
         processingOutputBuffer.setStack(slot, after);
         owner.markDirty();
@@ -191,7 +202,12 @@ class DepotBehaviour extends BlockEntityBehaviour {
     final held = heldItem;
     if (held == null) return false;
     final previous = held.stack;
-    final after = await funnel.insert(previous, simulate: false);
+    final after = await funnel.tryExportingToBeltFunnel(
+      previous,
+      null,
+      simulate: false,
+    );
+    if (after == null) return false;
     if (after.count != previous.count) {
       if (after.isEmpty) {
         heldItem = null;
@@ -325,7 +341,7 @@ class DepotBehaviour extends BlockEntityBehaviour {
       cumulative += ts.stack.count;
     }
     final fromGetter = math.min(
-      maxStackSize == 0 ? 64 : maxStackSize,
+      maxStackSize() == 0 ? 64 : maxStackSize(),
       getHeldItemStack().maxStack,
     );
     return fromGetter - cumulative;
@@ -458,12 +474,21 @@ class DepotBehaviour extends BlockEntityBehaviour {
         'HeldItem',
         _writeTransported(held, clientPacket: clientPacket),
       );
-    tag.putList('Outputs', [
-      for (var i = 0; i < processingOutputBuffer.slots; i++)
-        if (processingOutputBuffer.getStack(i).isNotEmpty)
-          (ItemCodec.toNbt(processingOutputBuffer.getStack(i))
-            ..putInt('Slot', i)),
-    ]);
+    // `processingOutputBuffer.serializeNBT`: `{Size, Items:[{Slot, ...}]}` under `OutputBuffer`.
+    tag.putCompound(
+      'OutputBuffer',
+      NbtCompound()
+        ..putInt('Size', processingOutputBuffer.slots)
+        ..putList('Items', [
+          for (var i = 0; i < processingOutputBuffer.slots; i++)
+            if (processingOutputBuffer.getStack(i).isNotEmpty)
+              (ItemCodec.toTag(
+                    processingOutputBuffer.getStack(i),
+                    clientPacket: clientPacket,
+                  )
+                ..putInt('Slot', i)),
+        ]),
+    );
     if (canMergeItems() && incoming.isNotEmpty) {
       tag.putList('Incoming', [
         for (final t in incoming)
@@ -478,7 +503,8 @@ class DepotBehaviour extends BlockEntityBehaviour {
     final held = tag.getCompound('HeldItem');
     if (held != null) heldItem = _readTransported(held);
     processingOutputBuffer.clear();
-    for (final e in tag.getList('Outputs') ?? const <Object>[]) {
+    final outputs = tag.getCompound('OutputBuffer');
+    for (final e in outputs?.getList('Items') ?? const <Object>[]) {
       if (e is! NbtCompound) continue;
       final slot = e.getInt('Slot') ?? -1;
       if (slot < 0 || slot >= processingOutputBuffer.slots) continue;
@@ -503,7 +529,7 @@ class DepotBehaviour extends BlockEntityBehaviour {
         ..putString('id', t.stack.isEmpty ? 'minecraft:air' : t.stack.key)
         ..putInt('count', t.stack.count);
     }
-    return NbtCompound()
+    final nbt = NbtCompound()
       ..putCompound('Item', item)
       ..putFloat('Pos', t.beltPosition)
       ..putFloat('PrevPos', t.prevBeltPosition)
@@ -512,6 +538,16 @@ class DepotBehaviour extends BlockEntityBehaviour {
       ..putInt('InSegment', t.insertedAt)
       ..putInt('Angle', t.angle)
       ..putInt('InDirection', t.insertedFrom.data3d);
+    // `TransportedItemStack.serializeNBT`: a held depot item keeps its processing state and its
+    // locks, otherwise a locked item comes back unlocked after a reload.
+    if (t.processedBy != null) {
+      nbt
+        ..putString('FanProcessingType', t.processedBy!)
+        ..putInt('FanProcessingTime', t.processingTime);
+    }
+    if (t.locked) nbt.putBool('Locked', true);
+    if (t.lockedExternally) nbt.putBool('LockedExternally', true);
+    return nbt;
   }
 
   TransportedItemStack _readTransported(NbtCompound tag) {
@@ -525,6 +561,13 @@ class DepotBehaviour extends BlockEntityBehaviour {
     t.insertedAt = tag.getInt('InSegment') ?? 0;
     t.angle = tag.getInt('Angle') ?? 0;
     t.insertedFrom = Direction.from3DDataValue(tag.getInt('InDirection') ?? 0);
+    t.locked = tag.getBool('Locked') ?? false;
+    t.lockedExternally = tag.getBool('LockedExternally') ?? false;
+    final fan = tag.getString('FanProcessingType');
+    if (fan != null) {
+      t.processedBy = fan;
+      t.processingTime = tag.getInt('FanProcessingTime') ?? 0;
+    }
     return t;
   }
 

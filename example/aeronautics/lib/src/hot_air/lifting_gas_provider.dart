@@ -8,6 +8,7 @@
 // runs on the VM in tests.
 //
 // Pure: no host imports.
+// ignore_for_file: implementation_imports
 import 'package:create/src/common/pos.dart' show Pos;
 
 import '../config/aero_config.dart';
@@ -111,9 +112,8 @@ mixin BlockEntityLiftingGasProvider {
 
   /// The air pressure at the balloon's gas centre (the goggles' lift readout).
   double get balloonAirPressure {
-    final info = clientBalloonInfo;
-    if (info == null) return 1;
-    return BalloonMap.airPressureAt(balloonWorld, info.gasCenter.$1, info.gasCenter.$2, info.gasCenter.$3);
+    final center = clientBalloonInfo!.gasCenter;
+    return BalloonMap.airPressureAt(balloonWorld, center.$1, center.$2, center.$3);
   }
 
   /// The balloon data the client predicts from, or `null` on the server.
@@ -172,7 +172,6 @@ final class ClientBalloonInfo {
   static Map<String, Object?> toTag(ServerBalloon? balloon) {
     if (balloon == null) return const {};
     final center = balloon.center;
-    if (center == null) return const {};
     return {
       'Volume': balloon.capacity,
       'Filled': balloon.totalFilledVolume,

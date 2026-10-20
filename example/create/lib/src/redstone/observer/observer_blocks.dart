@@ -88,6 +88,14 @@ final class SmartObserverBlockEntity extends CreateBlockEntity {
   int turnOffTicks = 0;
   bool _busy = false;
 
+  /// `VersionedInventoryTrackerBehaviour.lastKnownVersion`: the inventory contents seen by
+  /// the last `awaitNewVersion`.
+  String? _inventoryVersion;
+
+  /// `sustainSignal`: a change was seen and the observer keeps its pulse alive while the
+  /// inventory does not change again.
+  bool sustainSignal = false;
+
   SmartObserverBlockEntity(super.worldId, super.pos) {
     lazyTickRate = 20;
     filtering = addBehaviour(FilterBehaviour());
@@ -150,18 +158,41 @@ final class SmartObserverBlockEntity extends CreateBlockEntity {
       return;
     }
 
-    // Containers.
+    // Containers (`observedInventory`): one six tick pulse per inventory change.
     final handler = ItemHandlers.at(world, targetPos.toBlockPos());
     if (handler != null) {
-      if (await _hasMatchingItem(handler)) {
-        await activate();
-        return;
+      final version = await _inventoryVersionOf(handler);
+      // `stillWaiting`: nothing changed since the last `awaitNewVersion`.
+      final skipInv = version == _inventoryVersion;
+      _inventoryVersion = version;
+      if (skipInv && sustainSignal) turnOffTicks = defaultDelay;
+      if (!skipInv) {
+        sustainSignal = false;
+        if (await _hasMatchingItem(handler)) {
+          sustainSignal = true;
+          await activate();
+          return;
+        }
       }
     }
     final tank = world.fluidHandlerAt(targetPos.toBlockPos());
     if (tank != null && readHandlerFluids(tank, filtering).isNotEmpty) {
       await activate();
     }
+  }
+
+  /// The contents of [handler] as one comparable value: the version the tracker watches.
+  Future<String> _inventoryVersionOf(ItemHandler handler) async {
+    final parts = <String>[];
+    final slots = handler.slotCount();
+    for (var slot = 0; slot < slots; slot++) {
+      final stack = handler.getStack(slot: slot);
+      if (stack == null) continue;
+      final count = await stack.getCount();
+      if (count <= 0) continue;
+      parts.add('$slot:${await stack.getRegistryKey()}:$count');
+    }
+    return parts.join('|');
   }
 
   Future<bool> _hasMatchingItem(ItemHandler handler) async {
@@ -443,7 +474,6 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
           if (space == 0) continue;
           currentMaxLevel += space;
           if (count > 0 && filtering.testItem(await stack!.getRegistryKey())) currentLevel += count;
-          if (count == 0 && filtering.isEmpty) currentLevel += 0;
         }
       }
 
@@ -655,7 +685,15 @@ bool configAllowed(Player player, World world, (int, int, int) pos) {
   final mode = player.getGamemode();
   if (mode == GameMode.spectator || mode == GameMode.adventure) return false;
   if (!world.isLoaded(pos: BlockPos(x: pos.$1, y: pos.$2, z: pos.$3))) return false;
-  final (x, y, z) = player.getPosition();
-  final dx = x - (pos.$1 + 0.5), dy = y - (pos.$2 + 0.5), dz = z - (pos.$3 + 0.5);
-  return dx * dx + dy * dy + dz * dz < 20 * 20;
+  // `player.isWithinBlockInteractionRange(pos, 20)`: the squared distance from the eye to
+  // the block's box against `blockInteractionRange + 20`.
+  final entity = player.asEntity();
+  final (ex, ey, ez) = entity.getEyePosition();
+  double gap(double v, double lo, double hi) => v < lo ? lo - v : (v > hi ? v - hi : 0);
+  final dx = gap(ex, pos.$1.toDouble(), pos.$1 + 1);
+  final dy = gap(ey, pos.$2.toDouble(), pos.$2 + 1);
+  final dz = gap(ez, pos.$3.toDouble(), pos.$3 + 1);
+  final reach = entity.asLiving()?.getAttributeValue(attr: Attribute.blockInteractionRange) ?? 4.5;
+  final range = reach + 20;
+  return dx * dx + dy * dy + dz * dz < range * range;
 }

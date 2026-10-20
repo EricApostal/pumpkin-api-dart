@@ -33,7 +33,9 @@ export 'gantry_logic.dart'
 List<CreateBlock> buildGantryBlocks() => [
   manifestBlock(
     'gantry_carriage',
-    placement: const [PlacementRule.clickedFace('facing')],
+    // `GantryCarriageBlock.getFacingForPlacement` on `DirectionalAxisKineticBlock`: the clicked
+    // face; the `axis_along_first` cycling follows in `onPlaced`.
+    placement: gantryCarriagePlacementRules,
     blockEntityType: gantryCarriageKey,
     behavior: BlockBehavior(
       onUseWithoutItem: (server, e) async {

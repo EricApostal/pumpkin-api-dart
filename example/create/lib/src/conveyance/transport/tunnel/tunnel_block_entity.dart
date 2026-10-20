@@ -522,8 +522,14 @@ class BrassTunnelBlockEntity extends BeltTunnelBlockEntity {
           tunnel.flap(side, true);
           final speed = env.directionAwareBeltMovementSpeed;
           final movementSpeed = math.max(speed.abs(), 1 / 8);
-          final center = tunnel.pos.toPos().below.center;
-          final outPos = (center.$1, center.$2 + 6 / 16, center.$3);
+          // `BeltHelper.getVectorForOffset(controllerBE, below.index + additionalOffset)`: the
+          // item leaves from the belt itself, not from the tunnel's block centre.
+          final additionalOffset = speed > 0 ? 1 : 0;
+          final segmentIndex = _segmentIndex(env, tunnel.pos.toPos().below);
+          final at = env.vectorForOffset(
+            (segmentIndex + additionalOffset).toDouble(),
+          );
+          final outPos = (at.$1, at.$2 + 6 / 16, at.$3);
           final motion = (
             side.stepX * movementSpeed,
             1 / 8,
@@ -535,6 +541,14 @@ class BrassTunnelBlockEntity extends BeltTunnelBlockEntity {
       }
     }
     return null;
+  }
+
+  /// The belt index of the segment at [pos] (`BeltBlockEntity.index`).
+  static int _segmentIndex(BeltEnvironment env, Pos pos) {
+    for (var i = 0; i < env.beltLength; i++) {
+      if (env.positionForOffset(i) == pos) return i;
+    }
+    return 0;
   }
 
   /// `testFlapFilter`.

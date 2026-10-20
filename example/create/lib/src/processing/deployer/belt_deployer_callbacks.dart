@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../common/stack.dart';
+import '../crafter/machine_support.dart' show giveToPlayerStack;
 import '../processing_runtime.dart';
 import '../recipe/recipe_applier.dart';
 import '../recipe/recipe_book.dart';
@@ -14,6 +15,7 @@ import '../recipe/recipe_type.dart';
 import '../support/kinetics_bridge.dart';
 import '../transport/transported_stack.dart';
 import 'deployer_block_entity.dart';
+import 'deployer_items.dart';
 import 'deployer_types.dart';
 
 /// The callbacks the deployer's `BeltProcessingBehaviour` uses.
@@ -77,7 +79,7 @@ abstract final class BeltDeployerCallbacks {
     }
     if (!match.recipe.keepHeldItem) {
       // The crafting remainder of the processed item (`returnProcessingRemainder`).
-      final remainder = _craftingRemainder(transported.stack.key);
+      final remainder = craftingRemainderOf(transported.stack);
       if (remainder != null) addToList(remainder, results);
     }
 
@@ -86,7 +88,7 @@ abstract final class BeltDeployerCallbacks {
         (transported.copy()
           ..stack = stack
           ..locked = false
-          ..angle = rt.random.nextInt(360)),
+          ..angle = transportedAngleFor(stack, rt.tags, rt.random)),
     ];
 
     // `clearFanProcessingData`.
@@ -112,7 +114,7 @@ abstract final class BeltDeployerCallbacks {
     }
 
     if (!match.recipe.keepHeldItem) {
-      await _consumeHeld(be, rt);
+      await _consumeHeld(be, be.player, world, rt);
     }
 
     if (world != null) {
@@ -146,57 +148,77 @@ abstract final class BeltDeployerCallbacks {
 
     be.markDirty();
     be.sendData();
+    // The remainder went into the fake player's inventory: keep the saved copy in step.
+    await be.snapshotInventory();
     // `awardAdvancements` is only an advancement trigger; the host has no portable hook here.
     if (resultItem.isEmpty) return;
   }
 
-  /// `heldItem.hurtAndBreak(1)` or the item's crafting remainder, then `shrink(1)`.
+  /// `heldItem.hurtAndBreak(1, player, MAINHAND)` for a damageable item, the item's crafting
+  /// remainder otherwise, then `shrink(1)` (`BeltDeployerCallbacks.activate`).
   static Future<void> _consumeHeld(
     DeployerBlockEntity be,
+    Player? player,
+    World? world,
     ProcessingRuntime rt,
   ) async {
     final held = be.heldItem;
     if (held.isEmpty) return;
 
-    if (held.hasComponent('minecraft:max_damage')) {
-      final damage = _readVarInt(held.component('minecraft:damage'));
-      final max = _readVarInt(held.component('minecraft:max_damage'));
-      final next = damage + 1;
-      if (next >= max && max > 0) {
-        be.heldItem = PStack.empty;
-      } else {
-        be.heldItem = held.withComponent(
-          'minecraft:damage',
-          _writeVarInt(next),
-        );
+    final max = _readVarInt(held.component('minecraft:max_damage'));
+    if (max > 0) {
+      // `ItemStack.hurtAndBreak`: `minecraft:unbreaking` can negate the point of damage
+      // (`EnchantmentHelper.processDurabilityChange`, 1 in level+1 per point).
+      var damage = 1;
+      final level = await _unbreakingLevel(player);
+      if (level > 0) {
+        for (var i = 0; i < damage; i++) {
+          if (rt.random.nextDouble() < 1 / (level + 1)) damage--;
+        }
       }
-      await be.setHeld(be.heldItem);
+      if (damage <= 0) return;
+
+      final next = _readVarInt(held.component('minecraft:damage')) + damage;
+      // A broken item is gone from the hand (`applyDamage` shrinks it away); the deployer's own
+      // `ITEM_BREAK` sound below is what a fake player's break event amounts to.
+      await be.setHeld(
+        next >= max
+            ? PStack.empty
+            : held.withComponent('minecraft:damage', _writeVarInt(next)),
+      );
       return;
     }
 
-    final remainder = _craftingRemainder(held.key);
-    var rest = held.shrink(1);
+    final remainder = craftingRemainderOf(held);
+    final rest = held.shrink(1);
     if (rest.isEmpty) {
-      be.heldItem = remainder ?? PStack.empty;
-    } else {
-      be.heldItem = rest;
+      // `player.setItemInHand(MAIN_HAND, leftover)`: the hand takes the remainder.
+      await be.setHeld(remainder ?? PStack.empty);
+      return;
     }
-    await be.setHeld(be.heldItem);
-    if (remainder != null && rest.isNotEmpty) {
-      // The remainder goes to the deployer's overflow (`player.getInventory().add`).
+
+    await be.setHeld(rest);
+    if (remainder == null) return;
+    // `player.getInventory().add(leftover)`, and dropped at the player when it is full.
+    if (player != null && world != null) {
+      await giveToPlayerStack(player, world, remainder);
+    } else {
       be.overflowItems.add(remainder);
     }
   }
 
-  /// `Item.getCraftingRemainder` for the common container items (the host has no item API for
-  /// it).
-  static PStack? _craftingRemainder(String key) => switch (key) {
-    'minecraft:water_bucket' ||
-    'minecraft:lava_bucket' ||
-    'minecraft:milk_bucket' => const PStack('minecraft:bucket', 1),
-    'minecraft:honey_bottle' => const PStack('minecraft:glass_bottle', 1),
-    _ => null,
-  };
+  /// `EnchantmentHelper.getLevel(UNBREAKING, stack)` of the item in the fake player's hand.
+  static Future<int> _unbreakingLevel(Player? player) async {
+    final hand = player?.getItemInHand(hand: Hand.right);
+    if (hand == null) return 0;
+    try {
+      return await hand.enchantmentLevelOf('minecraft:unbreaking');
+    } on Object {
+      return 0;
+    } finally {
+      hand.dispose();
+    }
+  }
 
   static int _readVarInt(List<int>? bytes) {
     if (bytes == null) return 0;

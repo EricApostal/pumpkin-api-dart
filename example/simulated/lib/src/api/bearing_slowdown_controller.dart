@@ -8,6 +8,9 @@
 // Pure: no host imports.
 //
 // Java: dev.simulated_team.simulated.api.BearingSlowdownController
+// create/sable internals are not exported from their barrels yet.
+// ignore_for_file: implementation_imports
+
 import 'dart:math' as math;
 
 import 'package:create/src/common/direction.dart' show Direction;

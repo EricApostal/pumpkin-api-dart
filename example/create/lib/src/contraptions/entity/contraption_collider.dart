@@ -79,6 +79,7 @@ abstract final class ContraptionCollider {
       obb.rotation = rotationMatrix;
 
       final collidableBBs = contraption.getSimplifiedEntityColliders();
+      if (collidableBBs == null) return;
       if (collidableBBs.size == 0) {
         _getPotentiallyCollidedShapes(
           contraption,
@@ -223,9 +224,9 @@ abstract final class ContraptionCollider {
         final slideFactor =
             (collisionNormal.$1, 0.0, collisionNormal.$3).length * 1.25;
         final motionIn = (
-          entityMotionNoTemporal.$1,
+          0.0,
           entityMotionNoTemporal.$2 * 0.9 - 0.01,
-          entityMotionNoTemporal.$3,
+          0.0,
         );
         final slideNormal = collisionNormal
             .cross(motionIn.cross(collisionNormal))
@@ -240,7 +241,9 @@ abstract final class ContraptionCollider {
 
       if (!hardCollision && !surfaceCollision) continue;
 
-      final allowedMovement = totalResponse;
+      // `Entity#collide`: the part of the response the world lets the entity travel, so a pushed
+      // entity stops at a wall instead of being placed inside it.
+      final allowedMovement = entity.collideMovement(totalResponse);
       entity.setPosition(entityPosition + allowedMovement);
       final newPosition = entity.position;
 
@@ -259,8 +262,19 @@ abstract final class ContraptionCollider {
         final canWalk = bounce != 0 || slide == 0;
         if (canWalk || !rotation.hasVerticalRotation) {
           if (canWalk) entity.setOnGround(true);
+          // An item does not slide along the surface of a moving contraption.
+          if (entity.isItemEntity)
+            entityMotion = (entityMotion.$1 * 0.5, entityMotion.$2, entityMotion.$3 * 0.5);
         }
-        entity.setPosition((newPosition.$1, newPosition.$2, newPosition.$3));
+        // The motion of the contraption at the contact point: the entity is carried along by the
+        // part of it that the world allows.
+        final contactPointMotion = contraptionEntity.getContactPointMotion(newPosition);
+        final contactAllowed = entity.collideMovement(contactPointMotion);
+        entity.setPosition((
+          newPosition.$1 + contactAllowed.$1,
+          newPosition.$2,
+          newPosition.$3 + contactAllowed.$3,
+        ));
       }
 
       entity.setDeltaMovement(entityMotion);

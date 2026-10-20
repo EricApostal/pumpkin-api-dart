@@ -13,14 +13,8 @@ import 'package:create/src/logistics/packager/repackager/repackage_helper.dart';
 import 'package:create/src/logistics/packager/unpacking.dart';
 import 'package:create/src/logistics/requester/auto_request_data.dart';
 import 'package:create/src/protocol/item_stack.dart';
-import 'package:pumpkin_api/pumpkin_api_core.dart' show PacketBuffer;
+import 'package:pumpkin_api/pumpkin_api_core.dart' show PacketBuffer, VanillaIds;
 import 'package:test/test.dart';
-
-/// The network encoding of a Minecraft string: a varint length and UTF-8 bytes.
-List<int> stringComponent(String value) {
-  final bytes = utf8.encode(value);
-  return [bytes.length, ...bytes];
-}
 
 LStack stackWithComponent(
   String key,
@@ -116,7 +110,10 @@ void main() {
       final named = stackWithComponent(
         'minecraft:stone',
         'minecraft:custom_name',
-        stringComponent('Special'),
+        // `ComponentSerialization.STREAM_CODEC`: a network NBT text component, not a string.
+        NetworkNbt.encode(
+          NbtValue.compound({'text': NbtValue.string('Special')}),
+        ),
       );
       final unnamed = LStack.of('minecraft:stone');
       expect(filter.test(named), isTrue);
@@ -205,6 +202,123 @@ void main() {
           FilterItemStack.of(filterStack) as AttributeFilterItemStack;
       expect(filter.whitelistMode, AttributeFilterWhitelistMode.blacklist);
       expect(filter.test(LStack.of('minecraft:stone')), isTrue);
+    });
+
+    test('a list filter without filter items matches nothing', () {
+      // Java only reads the flags when the component is present: an empty filter is an empty
+      // whitelist, not a blacklist.
+      final empty = FilterItemStack.of(
+        LStack(FilterItemKeys.list, 1, comps: const {'minecraft:custom_name': ''}),
+      ) as ListFilterItemStack;
+      expect(empty.isBlacklist, isFalse);
+      expect(empty.test(LStack.of('minecraft:stone')), isFalse);
+    });
+
+    test('a freshly crafted filter is a plain stack', () {
+      final fresh = FilterItemStack.of(LStack.of(FilterItemKeys.list));
+      expect(fresh, isA<FilterItemStack>());
+      expect(fresh.isFilterItem, isFalse);
+      expect(fresh.test(LStack.of(FilterItemKeys.list)), isTrue);
+    });
+
+    test('attributes read the component values Java reads', () {
+      final registry = ItemAttributeRegistry.instance;
+
+      // `has_color`: the `dye` component (a varint colour id).
+      final dyed = stackWithComponent(
+        'minecraft:wool',
+        'minecraft:dye',
+        [14],
+      );
+      final colors = registry
+          .typeOf('has_color')!
+          .attributesOf(dyed)
+          .cast<ColorAttribute>();
+      expect(colors.map((c) => c.color), ['red']);
+      expect(colors.single.appliesTo(dyed), isTrue);
+      expect(colors.single.translationKey, 'color');
+
+      // `has_color`: the item key prefix (Java's `RegisteredObjectsHelper` path check).
+      final namedColor = registry
+          .typeOf('has_color')!
+          .attributesOf(LStack.of('minecraft:light_blue_wool'))
+          .cast<ColorAttribute>();
+      expect(namedColor.map((c) => c.color), ['light_blue']);
+
+      // `has_enchant`: `enchantments` is a map of registry id -> level.
+      final sharpness = VanillaIds.enchantments.idOf('sharpness')!;
+      final enchanted = stackWithComponent(
+        'minecraft:diamond_sword',
+        'minecraft:enchantments',
+        [1, sharpness, 5],
+      );
+      final enchants = registry
+          .typeOf('has_enchant')!
+          .attributesOf(enchanted)
+          .cast<EnchantAttribute>();
+      expect(enchants.map((e) => e.enchantment), ['minecraft:sharpness']);
+      expect(enchants.single.appliesTo(enchanted), isTrue);
+      expect(
+        const EnchantAttribute('minecraft:unbreaking').appliesTo(enchanted),
+        isFalse,
+      );
+
+      // `book_copy`: the generation is an int, the key names the copy.
+      final book = stackWithComponent(
+        'minecraft:written_book',
+        'minecraft:written_book_content',
+        [
+          ...utf8.encode('\x04Test'), // title (Filterable<String> raw)
+          0, // no filtered title
+          ...utf8.encode('\x06Author'),
+          2, // generation
+          0, // no pages
+          0, // not resolved
+        ],
+      );
+      final copies = registry
+          .typeOf('book_copy')!
+          .attributesOf(book)
+          .cast<BookCopyAttribute>();
+      expect(copies.single.generation, 2);
+      expect(copies.single.translationKey, 'book_copy_second');
+      expect(
+        registry.attributeFromMap({'type': 'create:book_copy', 'value': 2}),
+        isA<BookCopyAttribute>(),
+      );
+
+      final authors = registry
+          .typeOf('book_author')!
+          .attributesOf(book)
+          .cast<BookAuthorAttribute>();
+      expect(authors.single.author, 'Author');
+
+      // `equipable`: only a slot of another type than HAND (0 mainhand, 1 offhand).
+      final helmet = stackWithComponent(
+        'minecraft:iron_helmet',
+        'minecraft:equippable',
+        [5],
+      );
+      expect(registry.typeOf('placeable')!.attributesOf(helmet), isEmpty);
+      expect(
+        registry.typeOf('equipable')!.attributesOf(helmet),
+        hasLength(1),
+      );
+      final inHand = stackWithComponent(
+        'minecraft:stick',
+        'minecraft:equippable',
+        [0],
+      );
+      expect(registry.typeOf('equipable')!.attributesOf(inHand), isEmpty);
+
+      // `shulker_fill_level` is keyed by its enum name and named `shulker_level`.
+      final shulker = ShulkerFillLevelAttribute(1);
+      expect(shulker.key, 'partial');
+      expect(shulker.value, 'partial');
+      expect(shulker.translationKey, 'shulker_level');
+
+      // `in_tag` writes the tag with its `#`.
+      expect(const InTagAttribute('minecraft:logs').value, '#minecraft:logs');
     });
   });
 

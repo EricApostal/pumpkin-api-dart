@@ -6,6 +6,7 @@
 /// implemented by the plugin, not by this library.
 library;
 
+export '../compat/create/create_compat.dart';
 export 'api/block/block_entity_propeller.dart';
 export 'api/block/block_entity_sub_level_actor.dart';
 export 'api/block/block_entity_sub_level_propeller_actor.dart';
@@ -99,4 +100,5 @@ export 'util/bounded_bit_volume3i.dart';
 export 'util/sable_math_utils.dart';
 export 'util/sable_nbt.dart';
 export 'util/uuid.dart';
+export 'vanilla/vanilla.dart';
 export 'water_occlusion/water_occlusion_container.dart';

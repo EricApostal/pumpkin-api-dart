@@ -6,9 +6,14 @@
 // See `docs/ARCHITECTURE.md` for the module contract.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../api/trains.dart' show CarriageContraptionAssembly;
+import '../common/common.dart' show Direction;
 import '../core/module.dart';
 import '../core/registry.dart';
 import '../common/host_bridge.dart';
+import '../trains/entity/carriage.dart' show Carriage;
+import '../trains/entity/carriage_entity_host.dart' show CarriageEntities;
+import '../trains/entity/train_level.dart' show TrainSettings;
 import '../infrastructure/config/create_configs.dart';
 import '../manifest/manifest.dart';
 import '../api/payloads.dart' show PayloadBus;
@@ -16,9 +21,13 @@ import 'actors_registration.dart';
 import 'actuators_registration.dart';
 import 'blocks/actuator_contract.dart';
 import 'blocks/actuator_runtime.dart';
+import 'core/contraption_type.dart';
 import 'core/structure_info.dart';
+import 'entity/carriage_contraption_host.dart';
 import 'entity/contraption_collider.dart';
 import 'entity/contraption_entity.dart';
+import 'entity/controlled_contraption_entity.dart';
+import 'gantry/gantry_contraption_entity.dart';
 import 'entity/contraption_handler.dart';
 import 'entity/contraption_packets.dart';
 import 'entity/translating_contraption.dart';
@@ -26,6 +35,7 @@ import 'entity/host_contraption_entities.dart';
 import 'storage/host_mounted_storage.dart';
 import 'storage/mounted_storage.dart';
 import 'storage/storage_manager.dart';
+import 'storage/train_cargo_manager.dart';
 
 /// The contraption entity types the base module registers.
 const List<String> _contraptionEntityTypes = [
@@ -66,6 +76,12 @@ final class ContraptionsModule extends CreateModule {
         ),
       );
     }
+
+    // A saved carriage contraption is read back as the train's kind.
+    ContraptionTypes.register(
+      carriageContraptionTypeId,
+      () => HostCarriageContraption(Direction.north),
+    );
 
     registerActuatorContent(registry);
     registerActorContent(registry);
@@ -149,6 +165,32 @@ final class ContraptionsModule extends CreateModule {
       host.forgetWorld(e.targetWorld.getId());
     });
 
+    // The trains module creates the entities of its carriages through this factory, and a fresh
+    // carriage starts with the cargo the train takes over after assembly (`TrainCargoManager`).
+    CarriageEntities.factory = HostCarriageEntityFactory(host);
+    Carriage.storageFactory = TrainCargoManager.new;
+    ctx.services.provide<CarriageContraptionAssembly>(
+      HostCarriageContraptionAssembly(host),
+    );
+
+    // The station assembles carriages through `CarriageContraptionAssembly`, which is not one of
+    // the contraption kinds above; the spawn needs the right entity type.
+    ContraptionHostHooks.entityTypeOf = (entity) => switch (entity) {
+      HostCarriageContraptionEntity() => carriageContraptionEntityKey,
+      ControlledContraptionEntity() => 'create:stationary_contraption',
+      GantryContraptionEntity() => 'create:gantry_contraption',
+      _ => 'create:contraption',
+    };
+
+    // `ContraptionCollider` treats a carriage entity as a train carriage: it runs over entities
+    // and hurts them (`create:run_over`) when the config allows it.
+    ContraptionColliderHooks.isTrainCarriage =
+        (entity) => entity is HostCarriageContraptionEntity;
+    ContraptionColliderHooks.trainsCauseDamage =
+        () => TrainSettings.current.trainsCauseDamage;
+    ContraptionColliderHooks.damageRunOver =
+        (entity, damage) => entity.damageRunOver(damage);
+
     loadActuatorContent(ctx);
     loadActorContent(ctx);
   }
@@ -182,5 +224,7 @@ final class ContraptionsModule extends CreateModule {
     ContraptionHostHooks.sitPassenger = null;
     ContraptionHostHooks.entityTypeOf = null;
     ContraptionHostHooks.spawned = null;
+    CarriageEntities.factory = null;
+    Carriage.storageFactory = null;
   }
 }

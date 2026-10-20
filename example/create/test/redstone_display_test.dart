@@ -132,6 +132,33 @@ class FakeLink implements GatheredDataLink {
   Future<void> updateGatheredData() async => updates++;
 }
 
+class FakeFlap implements FlapControllerView {
+  final Map<int, FlapLayoutSpec> layouts = {};
+
+  @override
+  Pos get pos => (0, 64, 0);
+  @override
+  int get xSize => 3;
+  @override
+  int get ySize => 1;
+  @override
+  int get maxCharCount => ((xSize * 16 - 2) / 3.5).toInt();
+  @override
+  int maxCharCountFor(int gaps) => ((xSize * 16 - 2 - 4 * gaps) / 3.5).toInt();
+  @override
+  bool get speedRequirementFulfilled => true;
+  @override
+  int get lineCount => 2;
+  @override
+  bool isManualLine(int line) => false;
+  @override
+  void setLine(int line, List<String> texts, {required FlapLayoutSpec layout}) => layouts[line] = layout;
+  @override
+  void clearLine(int line) {}
+  @override
+  void sendData() {}
+}
+
 const link = (10, 64, 10);
 const source = (10, 64, 11);
 const target = (20, 70, 20);
@@ -454,6 +481,50 @@ void main() {
       expect(await text(s, ctx(env), rows: 3), ['Not enough space ', 'for Boiler Status']);
       env.boiler = (heatLevel: Txt.literal('Idle'), size: Txt.literal('3'), water: Txt.literal('2'), heat: Txt.literal('1'));
       expect(await text(s, ctx(env), rows: 4), ['Boiler:  Idle', '3', '2', '1']);
+    });
+
+    test('flap layouts come from the source and its configuration', () {
+      final flap = FakeFlap();
+
+      final summary = ctx(
+        env,
+        config: ConfigTag()
+          ..putString('Filter', 'Central *')
+          ..putInt('NameColumn', 50)
+          ..putInt('PlatformColumn', 3),
+      );
+      final summaryLayout = StationSummaryDisplaySource().loadFlapDisplayLayout(summary, flap, 0);
+      expect(summaryLayout.key, 'StationSummary50true3');
+      expect(summaryLayout.sections, hasLength(5));
+
+      final boiler = ctx(env);
+      boiler.flapDisplayContext = false;
+      expect(BoilerDisplaySource().loadFlapDisplayLayout(boiler, flap, 1).sections, isNull);
+      boiler.flapDisplayContext = true;
+      expect(BoilerDisplaySource().loadFlapDisplayLayout(boiler, flap, 0).sections, isNull);
+      final boilerLayout = BoilerDisplaySource().loadFlapDisplayLayout(boiler, flap, 1);
+      expect(boilerLayout.key, 'Boiler');
+      expect(boilerLayout.sections, hasLength(2));
+      expect(boilerLayout.sections![1].cycle, 'pixel');
+      expect(boilerLayout.sections![1].wideFlaps, isTrue);
+
+      final list = ctx(env);
+      list.flapDisplayContext = MutableInt(1234);
+      final listLayout = ItemListDisplaySource().loadFlapDisplayLayout(list, flap, 0);
+      expect(listLayout.key, 'ValueList_true_0');
+      expect(listLayout.sections, hasLength(3)); // value, suffix, name
+
+      final fluids = ctx(env);
+      fluids.flapDisplayContext = MutableInt(1234);
+      final fluidLayout = FluidListDisplaySource().loadFlapDisplayLayout(fluids, flap, 0);
+      expect(fluidLayout.key, 'FluidList_5');
+      expect([for (final s in fluidLayout.sections!) s.cycle], ['number', 'fluid_units', 'alphabet']);
+
+      final progress = ctx(env, config: ConfigTag()..putInt('Mode', 1));
+      final progressLayout = RedstonePowerDisplaySource().loadFlapDisplayLayout(progress, flap, 0);
+      expect(progressLayout.key, 'Progress');
+      expect(progressLayout.sections!.single.cycle, 'pixel');
+      expect(progressLayout.sections!.single.wideFlaps, isTrue);
     });
 
     test('station summary rows, padding and platform column', () async {

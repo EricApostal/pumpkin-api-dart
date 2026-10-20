@@ -42,7 +42,8 @@ final class RedstoneContactBlock {
           return redstoneContactSignal(
             powered: p['powered'] == 'true',
             facing: _facing(p, Direction.up),
-            side: e.face.toDirection().opposite,
+            // `e.face` is the side of the block facing the reader, vanilla `side`.
+            side: e.face.toDirection(),
           );
         },
         canConnectRedstone: (server, e) => redstoneContactConnects(
@@ -195,7 +196,9 @@ final class DeskBellBlock {
         onWeakPower: (server, e) => block.stateOf(e.stateIndex)['powered'] == 'true' ? 15 : 0,
         onStrongPower: (server, e) {
           final p = block.stateOf(e.stateIndex);
-          return p['powered'] == 'true' && _facing(p, Direction.up) == e.face.toDirection().opposite ? 15 : 0;
+          // `getDirectSignal`: `getConnectedDirection(state) == side`, and the bell's
+          // connected direction is its `facing` (`DeskBellBlock:123`).
+          return p['powered'] == 'true' && _facing(p, Direction.up) == e.face.toDirection() ? 15 : 0;
         },
         isPathfindable: (server, e) => false,
       ),
@@ -328,7 +331,8 @@ final class AnalogLeverBlock {
         onStrongPower: (server, e) {
           final p = block.stateOf(e.stateIndex);
           final connected = analogLeverConnected(p['face'] ?? 'floor', _facing(p));
-          return analogLeverDirectSignal(_state(e.targetWorld, e.pos), connected, e.face.toDirection().opposite);
+          // `getDirectSignal`: `getConnectedDirection(state) == side`.
+          return analogLeverDirectSignal(_state(e.targetWorld, e.pos), connected, e.face.toDirection());
         },
         isPathfindable: (server, e) => false,
       ),
@@ -337,29 +341,6 @@ final class AnalogLeverBlock {
   }
 
   int _state(World world, BlockPos pos) => Rs.i.be<AnalogLeverBlockEntity>(world, pos)?.state ?? 0;
-
-  /// The vanilla lever shapes (selection only; the block has no collision).
-  static List<ShapeRule> leverShapeRules() {
-    BlockBox px(double x0, double y0, double z0, double x1, double y1, double z1) =>
-        BlockBox(x0 / 16, y0 / 16, z0 / 16, x1 / 16, y1 / 16, z1 / 16);
-    BlockShape s(BlockBox b) => BlockShape.boxes([b]);
-    final rules = <ShapeRule>[];
-    for (final facing in Direction.horizontals) {
-      final nsAxis = facing.axis == Axis.z;
-      rules.add(ShapeRule(when: {'face': 'floor', 'facing': facing.serializedName}, selectionShape: s(nsAxis ? px(5, 0, 4, 11, 3, 12) : px(4, 0, 5, 12, 3, 11))));
-      rules.add(ShapeRule(when: {'face': 'ceiling', 'facing': facing.serializedName}, selectionShape: s(nsAxis ? px(5, 13, 4, 11, 16, 12) : px(4, 13, 5, 12, 16, 11))));
-      rules.add(ShapeRule(
-        when: {'face': 'wall', 'facing': facing.serializedName},
-        selectionShape: s(switch (facing) {
-          Direction.north => px(5, 4, 10, 11, 12, 16),
-          Direction.south => px(5, 4, 0, 11, 12, 6),
-          Direction.west => px(10, 4, 5, 16, 12, 11),
-          _ => px(0, 4, 5, 6, 12, 11),
-        }),
-      ));
-    }
-    return rules;
-  }
 
   Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
     final ctx = placeContextOf(server, e);

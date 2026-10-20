@@ -31,6 +31,8 @@ export '../redstone/display/display_core.dart'
         DisplayTarget,
         DisplayTargetStats,
         FlapControllerView,
+        FlapLayoutSpec,
+        FlapSectionSpec,
         FlapTarget,
         GaugeEntryView,
         TrainPredictionView;

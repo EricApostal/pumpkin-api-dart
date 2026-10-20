@@ -31,7 +31,11 @@ final class ProjectileLaunch {
   Vector3d applyTo(Vector3d deltaMovement) {
     final inherited = inheritedVelocity;
     if (inherited == null) return Vector3d.copy(deltaMovement);
-    return Vector3d(deltaMovement.x + inherited.x, deltaMovement.y + inherited.y, deltaMovement.z + inherited.z);
+    return Vector3d(
+      deltaMovement.x + inherited.x,
+      deltaMovement.y + inherited.y,
+      deltaMovement.z + inherited.z,
+    );
   }
 }
 
@@ -71,14 +75,22 @@ abstract final class SubLevelProjectiles {
   /// `ProjectileMixin#sable$zeroVelocityBeforeShooting`: a projectile fired from
   /// inside a sub-level must leave along the *world* direction, not the local
   /// one.
-  static Vector3d shootDirection(SubLevel? containing, Vector3d localDirection) {
+  static Vector3d shootDirection(
+    SubLevel? containing,
+    Vector3d localDirection,
+  ) {
     if (containing == null) return Vector3d.copy(localDirection);
-    return containing.logicalPose.transformNormal(Vector3d.copy(localDirection));
+    return containing.logicalPose.transformNormal(
+      Vector3d.copy(localDirection),
+    );
   }
 
   /// `ProjectileMixin#sable$shootFromRotation` tail: add the shooter's inherited
   /// velocity to the shot.
-  static Vector3d inheritVelocity(Vector3d deltaMovement, Vector3d? inheritedVelocity) {
+  static Vector3d inheritVelocity(
+    Vector3d deltaMovement,
+    Vector3d? inheritedVelocity,
+  ) {
     if (inheritedVelocity == null) return Vector3d.copy(deltaMovement);
     return Vector3d(
       deltaMovement.x + inheritedVelocity.x,
@@ -93,14 +105,23 @@ abstract final class SubLevelProjectiles {
     required SubLevel? containing,
     required Vector3d localDirection,
     required Vector3d? inheritedVelocity,
-  }) =>
-      ProjectileLaunch(
-        shootDirection(containing, localDirection),
-        inheritedVelocity,
-      );
+  }) => ProjectileLaunch(
+    shootDirection(containing, localDirection),
+    inheritedVelocity,
+  );
 
   /// `AbstractArrowMixin#sable$setDeltaMovement` + `sable$setPosRaw`: the arrow
   /// sticks at the local hit point and pushes the body back.
+  ///
+  /// [arrowPosition] and [hitPosition] are both in the level's coordinates (the
+  /// plot the ship's blocks live in); [deltaMovement] is the arrow's motion in
+  /// the same space. The returned impulse point and stuck position are in the
+  /// ship's own frame, which is where the arrow is placed.
+  ///
+  /// The Java patch subtracts the *ship-local* arrow position from the
+  /// *level-space* hit location, which mixes the two frames; the port keeps the
+  /// arrow's new delta movement in level space (hit minus arrow) so the arrow
+  /// actually travels to the hit point.
   ///
   /// Returns `null` when the hit is not inside a sub-level, in which case the
   /// host's own handling is correct.
@@ -118,22 +139,30 @@ abstract final class SubLevelProjectiles {
   }) {
     if (containing == null) return null;
 
-    final localPosition = containing.logicalPose.transformPositionInverse(Vector3d.copy(arrowPosition));
+    final localPosition = containing.logicalPose.transformPositionInverse(
+      Vector3d.copy(arrowPosition),
+    );
     final diff = Vector3d(
-      hitPosition.x - localPosition.x,
-      hitPosition.y - localPosition.y,
-      hitPosition.z - localPosition.z,
+      hitPosition.x - arrowPosition.x,
+      hitPosition.y - arrowPosition.y,
+      hitPosition.z - arrowPosition.z,
     );
 
     var impulse = Vector3d();
     if (!clientSide && !inGround) {
-      impulse = containing.logicalPose.transformNormalInverse(Vector3d.copy(deltaMovement));
+      impulse = containing.logicalPose.transformNormalInverse(
+        Vector3d.copy(deltaMovement),
+      );
     }
 
     final length = diff.length;
     final nudgeVector = length == 0
         ? Vector3d()
-        : Vector3d(diff.x / length * nudge, diff.y / length * nudge, diff.z / length * nudge);
+        : Vector3d(
+            diff.x / length * nudge,
+            diff.y / length * nudge,
+            diff.z / length * nudge,
+          );
 
     final localHit = Vector3d(
       localPosition.x - nudgeVector.x,
@@ -157,6 +186,12 @@ abstract final class SubLevelProjectiles {
   ///
   /// [direction] is the dispenser's facing as a unit vector; the impulse is
   /// `-1.5` along it, applied at [position] in the plot's coordinates.
-  static Vector3d dispenserRecoil(Vector3d direction, {double magnitude = 1.5}) =>
-      Vector3d(-direction.x * magnitude, -direction.y * magnitude, -direction.z * magnitude);
+  static Vector3d dispenserRecoil(
+    Vector3d direction, {
+    double magnitude = 1.5,
+  }) => Vector3d(
+    -direction.x * magnitude,
+    -direction.y * magnitude,
+    -direction.z * magnitude,
+  );
 }

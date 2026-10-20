@@ -150,6 +150,9 @@ final class MapBlockGetter extends BlockGetter {
 
   /// Extra sturdiness rule (called before the [fullBlocks] check).
   final bool? Function(BState state, Direction face)? sturdy;
+
+  /// Positions that hold water. Vanilla water is registered `.replaceable()`, so a placement
+  /// helper may place into it (`BlockState.canBeReplaced()`).
   final Set<Pos> water;
 
   /// Collision boxes by block key; blocks in [fullBlocks] are a unit cube, others empty.
@@ -191,7 +194,7 @@ final class MapBlockGetter extends BlockGetter {
   bool supportShapeEmpty(Pos p) => collisionBoxes(p).isEmpty;
 
   @override
-  bool canBeReplaced(Pos p) => stateAt(p).isAir;
+  bool canBeReplaced(Pos p) => stateAt(p).isAir || water.contains(p);
 
   @override
   bool hasTag(Pos p, String tag) => tags[tag]?.contains(stateAt(p).key) ?? false;

@@ -1,8 +1,12 @@
-// How a mechanical pump distributes pressure over the pipes on one of its sides (pure):
-// `PumpBlockEntity.distributePressureTo` and its helpers.
+// How a mechanical pump distributes pressure over the pipes on one of its sides,
+// its kinetic rules and the wrench flip (pure): `PumpBlockEntity.distributePressureTo`,
+// `PumpBlock` and its helpers.
+import '../api/block_state.dart';
 import '../common/data.dart';
 import '../common/direction.dart';
 import '../common/pos.dart';
+import '../kinetics/block_defs.dart';
+import '../kinetics/geometry.dart';
 import 'fluid_propagator.dart';
 import 'fluid_world.dart';
 import 'pipe_blocks.dart';
@@ -12,6 +16,30 @@ class PipeGraphEntry {
   final Map<Direction, bool> faces = {};
 
   PipeGraphEntry(this.distance);
+}
+
+/// `PumpBlock`: an `ICogWheel` (a small cog) with no shaft faces. It rotates on
+/// its facing axis and is driven by a cogwheel beside it; Java's `PumpBlock`
+/// does not override `hasShaftTowards`, so shafts do not connect to it.
+class PumpDef extends KineticBlockDef {
+  const PumpDef();
+
+  @override
+  KAxis rotationAxis(KState state) => (state.dirOf('facing') ?? Dir.north).axis;
+
+  @override
+  bool hasShaftTowards(KState state, Dir face) => false;
+
+  @override
+  bool get isSmallCog => true;
+}
+
+/// `PumpBlock.getRotatedBlockState`: the wrench always flips the pump's facing,
+/// whichever face was clicked (the default rotation would only cycle it).
+BState pumpWrenchState(BState state) {
+  final facing = state.dir('facing');
+  if (facing == null) return state;
+  return state.setDir('facing', facing.opposite);
 }
 
 abstract final class PumpLogic {

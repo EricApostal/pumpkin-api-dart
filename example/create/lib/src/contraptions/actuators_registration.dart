@@ -256,38 +256,6 @@ void loadActuatorContent(CreateContext ctx) {
     );
   }
 
-  // Wrench: the bearings disassemble on a wrench click, the sails rotate, the elevator contact
-  // turns back into a redstone contact, the cart assembler rotates and turns back into a rail.
-  final wrench = ctx.services.find<WrenchRegistry>();
-  if (wrench != null) {
-    for (final key in bearingBlocks) {
-      wrench.register(
-        key,
-        bearingWrenchable(
-          disassemble: (c) async {
-            final be = ctx.blockEntities.at(c.world.getId(), c.pos);
-            if (be is MechanicalBearingBlockEntity) be.disassemble();
-            if (be is ClockworkBearingBlockEntity) be.disassemble();
-          },
-        ),
-      );
-    }
-    wrench.registerDefault(['create:sail_frame', ...dyedSailKeys]);
-    wrench.register('create:elevator_contact', elevatorContactWrenchable());
-    wrench.register('create:cart_assembler', cartAssemblerWrenchable());
-    // `MechanicalPistonBlock.onWrenched`: rotate only while retracted.
-    wrench.register('create:mechanical_piston', pistonWrenchable());
-    wrench.register('create:sticky_mechanical_piston', pistonWrenchable());
-    // `KineticBlock`/`WrenchableDirectionalBlock` keep the `IWrenchable` default (rotate,
-    // sneak-dismantle): the pulley, the carriage, the piston head and the extension pole.
-    wrench.registerDefault([
-      'create:rope_pulley',
-      'create:gantry_carriage',
-      'create:mechanical_piston_head',
-      'create:piston_extension_pole',
-    ]);
-  }
-
   // The white sail item places every dyed sail block (`BlankSailBlockItem.registerBlocks`).
   for (final key in dyedSailKeys) {
     try {
@@ -308,7 +276,13 @@ void loadActuatorContent(CreateContext ctx) {
       final stateId = fields['newState'] as int;
       final state = HostBlockGetter.stateOfId(stateId);
       unawaited(
-        handleRadialWrenchSubmit(player, kinetics, wrench, blockPos, state),
+        handleRadialWrenchSubmit(
+          player,
+          kinetics,
+          ctx.services.find<WrenchRegistry>(),
+          blockPos,
+          state,
+        ),
       );
     });
   }
@@ -392,6 +366,44 @@ void loadActuatorContent(CreateContext ctx) {
 void serverActuatorContentLoaded(CreateRuntime runtime) {
   final bus = runtime.services.find<PayloadBus>();
   if (bus != null) ActuatorHosts.payloadBus = bus;
+
+  // Wrench: the bearings disassemble on a wrench click, the sails rotate, the elevator contact
+  // turns back into a redstone contact, the cart assembler rotates and turns back into a rail.
+  // The registry is provided by the equipment module, which loads after this one in phase 2, so
+  // it only exists here (`onServerLoaded`), like the kinetic wrench registrations.
+  final wrench = runtime.services.find<WrenchRegistry>();
+  if (wrench == null) {
+    runtime.log.warn(
+      'No wrench registry: the bearings, sails, pistons, pulley and gantry carriage cannot be wrenched.',
+    );
+    return;
+  }
+  for (final key in bearingBlocks) {
+    wrench.register(
+      key,
+      bearingWrenchable(
+        disassemble: (c) async {
+          final be = runtime.blockEntities.at(c.world.getId(), c.pos);
+          if (be is MechanicalBearingBlockEntity) be.disassemble();
+          if (be is ClockworkBearingBlockEntity) be.disassemble();
+        },
+      ),
+    );
+  }
+  wrench.registerDefault(['create:sail_frame', ...dyedSailKeys]);
+  wrench.register('create:elevator_contact', elevatorContactWrenchable());
+  wrench.register('create:cart_assembler', cartAssemblerWrenchable());
+  // `MechanicalPistonBlock.onWrenched`: rotate only while retracted.
+  wrench.register('create:mechanical_piston', pistonWrenchable());
+  wrench.register('create:sticky_mechanical_piston', pistonWrenchable());
+  // `KineticBlock`/`WrenchableDirectionalBlock` keep the `IWrenchable` default (rotate,
+  // sneak-dismantle): the pulley, the carriage, the piston head and the extension pole.
+  wrench.registerDefault([
+    'create:rope_pulley',
+    'create:gantry_carriage',
+    'create:mechanical_piston_head',
+    'create:piston_extension_pole',
+  ]);
 }
 
 /// Plugin unload.

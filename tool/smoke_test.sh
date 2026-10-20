@@ -4,7 +4,8 @@
 #
 # Usage: PUMPKIN_BIN=/path/to/pumpkin tool/smoke_test.sh plugin.wasm [command...]
 #
-# Set ALLOW_PERMISSIONS to pre-approve plugin permissions.
+# Permissions are approved automatically (ask_permission_confirmation = false).
+# Set ALLOW_PERMISSIONS to pre-approve a specific list instead.
 # Set PORT_OFFSET (e.g. 100) to run several smoke tests at the same time.
 # Set STARTUP_SECONDS to how long to wait before typing commands, and
 # SERVER_TIMEOUT to the hard limit on the whole run. A first run against a new
@@ -30,8 +31,10 @@ sed -e "s/0.0.0.0:25565/0.0.0.0:$JAVA/; s/0.0.0.0:25575/0.0.0.0:$RCON/; s/0.0.0.
   "$PUMPKIN_CONFIG" > "$DIR/pumpkin.toml"
 
 # Plugins that request permissions are normally approved interactively, which a
-# scripted run can't do. ALLOW_PERMISSIONS="fs.write.data fs.read.data" grants
-# them up front.
+# scripted run can't do: there is no console to answer the prompt, so the server
+# denies every permission and skips loading the plugin. Approve them up front.
+# ALLOW_PERMISSIONS="fs.write.data fs.read.data" grants only those.
+sed -i.bak "s/^ask_permission_confirmation = .*/ask_permission_confirmation = false/" "$DIR/pumpkin.toml"
 if [ -n "$ALLOW_PERMISSIONS" ]; then
   LIST=$(for permission in $ALLOW_PERMISSIONS; do printf '"%s", ' "$permission"; done)
   sed -i.bak "s/^allowed_permissions = .*/allowed_permissions = [${LIST%, }]/" "$DIR/pumpkin.toml"

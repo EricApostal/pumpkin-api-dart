@@ -54,6 +54,17 @@ abstract final class ContraptionHostHooks {
   static void Function(AbstractContraptionEntity entity)? spawned;
 }
 
+/// The `namespace:path` key of a host entity (`minecraft:minecart`, `minecraft:chest_minecart`).
+///
+/// A plugin type keeps its registered key. A vanilla type only has the host's kebab-case
+/// [EntityType.wireName] (`chest-minecart`), which is neither namespaced nor the key the
+/// contraption code compares against (`minecraft:chest_minecart`), so it is mapped here once.
+String hostEntityTypeKey(Entity entity) {
+  final pluginKey = entity.getPluginTypeKey();
+  if (pluginKey != null) return pluginKey;
+  return 'minecraft:${entity.getType().wireName.replaceAll('-', '_')}';
+}
+
 /// A [ContraptionLevel] over a host [World].
 final class HostContraptionLevel extends ContraptionLevel {
   final World world;
@@ -372,11 +383,7 @@ final class HostContraptionLevel extends ContraptionLevel {
     filter: const EntityFilterAll(),
   );
 
-  static String _entityTypeName(Entity entity) {
-    final key = entity.getPluginTypeKey();
-    if (key != null) return key;
-    return entity.getType().wireName;
-  }
+  static String _entityTypeName(Entity entity) => hostEntityTypeKey(entity);
 
   static bool _isMinecartType(String type) => const {
     'minecraft:minecart',
@@ -457,10 +464,7 @@ final class HostPassengerRef implements ContraptionPassengerRef {
   @override
   Object get hostEntity => handle;
 
-  String get _typeName {
-    final key = handle.getPluginTypeKey();
-    return key ?? handle.getType().wireName;
-  }
+  String get _typeName => hostEntityTypeKey(handle);
 }
 
 /// A colliding entity, wrapping a host [Entity].
@@ -633,10 +637,7 @@ final class HostCollisionEntity implements ContraptionCollisionEntity {
   @override
   AbstractContraptionEntity? get contraptionEntity => entityById(entityId);
 
-  String get _typeName {
-    final key = handle.getPluginTypeKey();
-    return key ?? handle.getType().wireName;
-  }
+  String get _typeName => hostEntityTypeKey(handle);
 
   static bool _isMinecartType(String type) => const {
     'minecraft:minecart',
@@ -805,8 +806,7 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   bool get vehicleIsMinecart {
     final v = _handle?.getVehicle();
     if (v == null) return false;
-    final key = v.getPluginTypeKey() ?? v.getType().wireName;
-    return HostCollisionEntity._isMinecartType(key);
+    return HostCollisionEntity._isMinecartType(hostEntityTypeKey(v));
   }
 
   @override

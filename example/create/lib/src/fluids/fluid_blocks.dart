@@ -9,7 +9,9 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/block_state.dart';
 import '../api/blocks.dart' show manifestBlock;
+import '../api/wrenchable.dart';
 import '../common/direction.dart';
+import '../common/host_bridge.dart' show BlockStates;
 import '../common/pos.dart';
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
@@ -36,7 +38,9 @@ import 'generic_item_fluid.dart';
 import 'hose_pulley_entity.dart';
 import 'pipe_block_entities.dart';
 import 'pipe_blocks.dart';
+import 'pipe_shapes.dart';
 import 'pipe_state_logic.dart';
+import 'pump_logic.dart';
 import 'spout.dart';
 import 'virtual_fluid.dart';
 
@@ -76,10 +80,15 @@ CreateBlock _pipeBlock(
   bool valve = false,
 }) {
   late final CreateBlock block;
+  // `FluidPipeBlock.getShape` and friends: the arm/core boxes of the pipe, per state.
+  final shapes = pipeShapeSpec('create:$key');
   block = manifestBlock(
     key,
     blockEntityType: blockEntityType,
     placement: placement,
+    collisionShape: shapes?.collisionShape,
+    selectionShape: shapes?.selectionShape,
+    shapeRules: shapes?.shapeRules ?? const [],
     behavior: _pipeBehavior(
       () => block,
       encased: encased,
@@ -773,6 +782,7 @@ List<CreateBlock> buildFluidBlocks() => [
 /// `PumpBlock`: the mechanical pump.
 CreateBlock pumpBlock() {
   late final CreateBlock block;
+  final shapes = pipeShapeSpec(PipeKeys.pump);
   block = manifestBlock(
     'mechanical_pump',
     blockEntityType: 'create:mechanical_pump',
@@ -780,6 +790,9 @@ CreateBlock pumpBlock() {
       PlacementRule.lookingDirection('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
+    collisionShape: shapes?.collisionShape,
+    selectionShape: shapes?.selectionShape,
+    shapeRules: shapes?.shapeRules ?? const [],
     behavior: buildKineticBehavior(
       () => block,
       neighbor: (c, e) => _kineticNeighbour(c, e),
@@ -787,21 +800,25 @@ CreateBlock pumpBlock() {
       replaced: (c, e) => _propagateKinetic(c),
       afterPlaced: (c, e) {
         final playerId = e.player;
-        if (playerId == null) return;
-        final player = c.server.getPlayerByUuid(id: playerId);
-        if (player == null) return;
-        final preferred = PipeStateLogic.pumpPreferredFacing(
-          fluidWorldOf(c.world),
-          kposOf(c),
-          nearestLooking(player),
-          player.asEntity().isSneaking(),
-        );
+        final player = playerId == null
+            ? null
+            : c.server.getPlayerByUuid(id: playerId);
         var state = c.state;
-        if (preferred != null) {
-          state = state.set('facing', preferred.serializedName);
-          unawaited(c.setState(state));
+        if (player != null) {
+          final preferred = PipeStateLogic.pumpPreferredFacing(
+            fluidWorldOf(c.world),
+            kposOf(c),
+            nearestLooking(player),
+            player.asEntity().isSneaking(),
+          );
+          if (preferred != null) {
+            state = state.set('facing', preferred.serializedName);
+            unawaited(c.setState(state));
+          }
         }
-        // The facing decides the open sides, so propagate the state just placed.
+        // `PumpBlock.onPlace` schedules a tick whenever the state changes, and the
+        // tick propagates the pipe network: a wrench flip (no player) must re-route
+        // the pressure too. The facing decides the open sides.
         _propagateKineticState(c, state);
       },
     ),
@@ -809,9 +826,24 @@ CreateBlock pumpBlock() {
   return block;
 }
 
+/// The wrench handler of the mechanical pump.
+void registerPumpWrench(WrenchRegistry wrench) {
+  wrench.register(
+    'create:mechanical_pump',
+    CallbackWrenchable(
+      rotatedState: (c) {
+        final rotated = pumpWrenchState(BState(c.blockKey, c.properties));
+        return BlockStates.withProperties(c.blockKey, rotated.props);
+      },
+    ),
+  );
+}
+
 /// `FluidValveBlock`: the kinetic valve.
 CreateBlock valveBlock() {
   late final CreateBlock block;
+  // `FluidValveBlock.getShape`: `AllShapes.FLUID_VALVE` along the axis the valve gates.
+  final shapes = pipeShapeSpec(PipeKeys.valve);
   block = manifestBlock(
     'fluid_valve',
     blockEntityType: 'create:fluid_valve',
@@ -819,6 +851,9 @@ CreateBlock valveBlock() {
       PlacementRule.lookingDirection('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
+    collisionShape: shapes?.collisionShape,
+    selectionShape: shapes?.selectionShape,
+    shapeRules: shapes?.shapeRules ?? const [],
     behavior: buildKineticBehavior(
       () => block,
       neighbor: (c, e) => _kineticNeighbour(c, e),
@@ -939,7 +974,7 @@ class HosePulleyDef extends KineticBlockDef {
 
 /// The kinetic defs the module registers in `onLoad`.
 const Map<String, KineticBlockDef> fluidKineticDefs = {
-  'create:mechanical_pump': FacingAxisBlockDef(),
+  'create:mechanical_pump': PumpDef(),
   'create:fluid_valve': DirectionalAxisBlockDef(),
   'create:hose_pulley': HosePulleyDef(),
 };

@@ -130,7 +130,8 @@ BlockBehavior sailBlockBehavior(String blockKey, {required bool frame}) {
 
       final world = e.targetWorld;
       final pos = (e.pos.x, e.pos.y, e.pos.z);
-      final hit = e.cursor;
+      // `ray.getLocation()`: world coordinates, not the host's block-relative cursor.
+      final hit = sailHitLocation(pos, e.cursor);
 
       // `PlacementHelper.matchesItem` comes first and is the only branch sneaking disables.
       if (isSailItemKey(itemKey) && !e.sneaking && _mayBuild(e.player)) {

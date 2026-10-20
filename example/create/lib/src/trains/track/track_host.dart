@@ -495,6 +495,11 @@ Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
   final pos = e.blockPos.toPos();
   final lookVec = player.lookDirection;
 
+  // TEMPORARY PROBE - delete before finishing.
+  Tr.i.log.info(
+    'TRACKPROBE entry item=$itemKey from=${stack.connectingFrom} at=$pos look=$lookVec',
+  );
+
   // The player the placement reads and writes; its slots are written back below, after the
   // placement took the items it needs.
   final placementPlayer = await HostTrackPlacementPlayer.load(player);
@@ -510,6 +515,12 @@ Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
     sneaking: _isSneaking(player),
   );
   await placementPlayer.flush();
+
+  // TEMPORARY PROBE - delete before finishing.
+  Tr.i.log.info(
+    'TRACKPROBE outcome=${result.outcome} message=${result.message} '
+    'from=${stack.connectingFrom} at=$pos',
+  );
 
   switch (result.outcome) {
     case TrackUseOutcome.pass:

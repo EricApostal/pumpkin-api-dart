@@ -344,6 +344,40 @@ void main() {
       expect(placedTracks(level), [for (var z = 0; z <= 8; z++) (0, 0, z)]);
     });
 
+    test('click 1 then click 2 on a turn lays a curved track between the positions', () async {
+      // The same two clicks the player makes in the world: the first selects the start track,
+      // the second clicks the end track 90 degrees away and the curve between them is built.
+      final level = MemoryTrackLevel({(0, 0, 0): zo});
+      final stack = TrackItemStack('create:track', 64);
+      await firstClick(level, stack, (0.0, 0.0, 1.0));
+      expect(stack.connectingFrom, isNotNull, reason: 'click 1 stores the pending connection');
+
+      level.blocks[(9, 0, 8)] = xo;
+      final result = await TrackBlockItem.useOn(
+        level: level,
+        player: TestPlacementPlayer((-1.0, 0.0, 0.0)),
+        stack: stack,
+        clickedPos: (9, 0, 8),
+        clickedFace: Direction.up,
+        clickedState: xo,
+        lookVec: (-1.0, 0.0, 0.0),
+        yRot: 0,
+        sneaking: false,
+      );
+
+      expect(result.outcome, TrackUseOutcome.placed, reason: result.message);
+      final curve = result.info!.curve;
+      expect(curve, isNotNull, reason: 'the two ends are not on one axis: the run is a curve');
+      expect(curve!.bePositions.first, (0, 0, 0));
+      expect(curve.bePositions.second, (8, 0, 8));
+      // The curve is registered on both ends: the `turn` property is set there and the two
+      // blocks are the curve's ends.
+      expect(hasBe(level.stateAt((0, 0, 0))), isTrue);
+      expect(hasBe(level.stateAt((8, 0, 8))), isTrue);
+      expect(placedTracks(level), [(0, 0, 0), (8, 0, 8), (9, 0, 8)]);
+      expect(stack.connectingFrom, isNull);
+    });
+
     test('a click next to a non-track block places the run from there', () async {
       final level = MemoryTrackLevel({(0, 0, 0): zo});
       final stack = TrackItemStack('create:track', 64);

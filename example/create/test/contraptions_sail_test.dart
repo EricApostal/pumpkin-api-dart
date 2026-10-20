@@ -6,6 +6,7 @@ import 'package:pumpkin_api/pumpkin_api_core.dart';
 import 'package:test/test.dart';
 
 import 'package:create/src/api/block_state.dart';
+import 'package:create/src/api/placement.dart';
 import 'package:create/src/common/direction.dart';
 import 'package:create/src/common/pos.dart';
 import 'package:create/src/contraptions/bearing/sail.dart';
@@ -105,6 +106,104 @@ void main() {
       expect(offset.pos, (1, 64, 0));
       // The new sail keeps the clicked sail's facing.
       expect(offset.transform(const BState(white)), sail(Direction.up));
+    });
+
+    test('the host cursor is block-relative; the hit is converted to world coordinates', () {
+      // The host reports `e.cursor` as 0..1 inside the clicked block, while Java orders the
+      // directions by `BlockHitResult.getLocation()`, an absolute point. A raw cursor lets the
+      // block's position dominate the ordering and always picks the same side.
+      expect(
+        sailHitLocation((3, 64, -2), (0.5, 0.25, 0.5)),
+        (3.5, 64.25, -1.5),
+      );
+
+      final pos = (1000, 64, -2000);
+      final offset = sailPlacementOffset(
+        level: world({pos: sail(Direction.up)}),
+        state: sail(Direction.up),
+        pos: pos,
+        hit: sailHitLocation(pos, (0.98, 0.5, 0.5)),
+      );
+      // A click near the east face grows the row east, wherever the row is in the world.
+      expect(offset.pos, (1001, 64, -2000));
+    });
+
+    test('the click orders the in-plane neighbours, the closest face first', () {
+      // `orderedByDistanceExceptAxis`: each unit vector is compared with the hit relative to the
+      // block centre. A sail facing up lies in the x/z plane, so only those four remain.
+      List<Direction> order((double, double, double) hit) =>
+          orderedByDistanceExceptAxis((0, 64, 0), hit, Axis.y);
+
+      expect(order((0.5, 64.5, 0.02)), [
+        Direction.north,
+        Direction.west,
+        Direction.east,
+        Direction.south,
+      ]);
+      expect(order((0.5, 64.5, 0.98)), [
+        Direction.south,
+        Direction.west,
+        Direction.east,
+        Direction.north,
+      ]);
+      expect(order((0.02, 64.5, 0.5)), [
+        Direction.west,
+        Direction.north,
+        Direction.south,
+        Direction.east,
+      ]);
+      expect(order((0.98, 64.5, 0.5)), [
+        Direction.east,
+        Direction.north,
+        Direction.south,
+        Direction.west,
+      ]);
+      // Dead centre: all four tie, and `Iterate.directions` order (north, south, west, east,
+      // the y axis filtered out) decides, like Java's stable sort.
+      expect(order((0.5, 64.5, 0.5)), [
+        Direction.north,
+        Direction.south,
+        Direction.west,
+        Direction.east,
+      ]);
+    });
+
+    test('a row extends into air on the far side of the click when the near side is taken', () {
+      final level = world({
+        (0, 64, 0): sail(Direction.up),
+        // The row continues south, the side the player clicked.
+        (0, 64, 1): sail(Direction.up),
+        (1, 64, 0): const BState('minecraft:stone'),
+        (-1, 64, 0): const BState('minecraft:stone'),
+      });
+      // South is a sail, east and west are stone, so the next closest replaceable neighbour is
+      // north, away from the click: the sail is added to the end of the row, not to the face.
+      final offset = sailPlacementOffset(
+        level: level,
+        state: sail(Direction.up),
+        pos: (0, 64, 0),
+        hit: sailHitLocation((0, 64, 0), (0.5, 0.5, 0.98)),
+      );
+      expect(offset.pos, (0, 64, -1));
+    });
+
+    test('a water cell counts as replaceable, like vanilla water', () {
+      // `Blocks.WATER` is registered `.replaceable()`, so `canBeReplaced()` is true there; an
+      // air-only test would miss a row that stops at the edge of a pond.
+      final level = MapBlockGetter(
+        blocks: {
+          (0, 64, 0): sail(Direction.up),
+          (1, 64, 0): const BState('minecraft:water'),
+        },
+        water: {(1, 64, 0)},
+      );
+      final offset = sailPlacementOffset(
+        level: level,
+        state: sail(Direction.up),
+        pos: (0, 64, 0),
+        hit: sailHitLocation((0, 64, 0), (0.98, 0.5, 0.5)),
+      );
+      expect(offset.pos, (1, 64, 0));
     });
 
     test('never extends along the facing axis', () {

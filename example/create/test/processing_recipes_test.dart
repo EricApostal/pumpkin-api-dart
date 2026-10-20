@@ -318,6 +318,18 @@ void main() {
       expect(crushingRecipeFor(book, const PStack('minecraft:dirt', 1)), isNull);
     });
 
+    test('a host key without a namespace still matches (vanilla items)', () {
+      // `ItemStack.getRegistryKey()` returns `cobblestone`; the recipes say
+      // `minecraft:cobblestone`. Without normalising, no vanilla item matches any recipe and the
+      // machine runs its 100 tick no-recipe path and ejects nothing.
+      expect(namespacedItemKey('cobblestone'), 'minecraft:cobblestone');
+      expect(namespacedItemKey('minecraft:cobblestone'), 'minecraft:cobblestone');
+      expect(namespacedItemKey('create:brass_ingot'), 'create:brass_ingot');
+      expect(namespacedItemKey(''), '');
+      final bare = PStack(namespacedItemKey('stone'), 1);
+      expect(crushingRecipeFor(book, bare)?.recipe.id, 'create:milling/stone');
+    });
+
     test('the timer of an inserted stack is the recipe duration', () {
       final match = crushingRecipeFor(book, const PStack('minecraft:stone', 4))!;
       expect(match.recipe.processingDuration, 100);

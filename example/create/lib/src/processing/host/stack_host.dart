@@ -17,12 +17,17 @@ final List<String> _customKeys = [for (final c in createComponents) c.key];
 
 /// Host stack conversions.
 abstract final class HostStacks {
+  /// `ItemStack.getRegistryKey()` drops the namespace of vanilla items (`cobblestone`), while
+  /// every recipe, tag and item key of the mod is `namespace:path`. Add the default namespace
+  /// back, or no vanilla item ever matches a recipe ingredient.
+  static String namespaced(String key) => namespacedItemKey(key);
+
   /// Reads [stack] (not consumed). `null` and empty stacks give [PStack.empty].
   static Future<PStack> read(ItemStack? stack) async {
     if (stack == null) return PStack.empty;
     final count = await stack.getCount();
     if (count <= 0) return PStack.empty;
-    final key = await stack.getRegistryKey();
+    final key = namespaced(await stack.getRegistryKey());
     final max = await stack.getMaxCount();
     final comps = <(String, List<int>)>[];
     for (final c in await stack.getComponents()) {

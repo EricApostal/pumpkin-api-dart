@@ -134,7 +134,10 @@ final class FluidsModule extends CreateModule {
       final encasing = runtime.services.find<EncasingRegistry>();
       if (encasing != null) registerFluidEncasing(encasing);
       final wrench = runtime.services.find<WrenchRegistry>();
-      if (wrench != null) registerFluidWrench(wrench);
+      if (wrench != null) {
+        registerFluidWrench(wrench);
+        registerPumpWrench(wrench);
+      }
     }
   }
 

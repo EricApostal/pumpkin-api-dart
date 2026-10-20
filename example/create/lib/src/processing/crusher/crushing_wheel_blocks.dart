@@ -188,6 +188,10 @@ List<ShapeRule> _controllerShapeRules() {
     collisionShape: shape([b]),
     selectionShape: shape([b]),
   );
+  // `AllShapes.CRUSHING_WHEEL_CONTROLLER_COLLISION` is `shape(0, 0, 0, 16, 13, 16)
+  // .forDirectional(Direction.DOWN)`. `forDirectional(shape, facing)` rotates from `facing`, and
+  // `rotate` returns the shape unchanged when `from == to`, so `down` is the identity: the slab
+  // is y 0..13 and the solid part sits on the `facing` side, the opening away from it.
   return [
     rule('down', box(0, 0, 0, 16, 13, 16)),
     rule('up', box(0, 3, 0, 16, 16, 16)),

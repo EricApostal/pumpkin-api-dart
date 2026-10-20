@@ -8,6 +8,14 @@
 /// `ItemStack.EMPTY`'s key.
 const String airKey = 'minecraft:air';
 
+/// The full resource location of an item key.
+///
+/// The host's `ItemStack.getRegistryKey()` returns vanilla items without their namespace
+/// (`cobblestone`), while every recipe ingredient, tag and item key of the mod is
+/// `namespace:path`. Keys that already have a namespace are returned unchanged.
+String namespacedItemKey(String key) =>
+    key.isEmpty || key.contains(':') ? key : 'minecraft:$key';
+
 /// An item stack: item key, count and the data components that make two stacks of the same
 /// item different. Components are `(name, value bytes)` pairs sorted by name: vanilla ones by
 /// wire name, `create:*` ones prefixed with `custom:` (the convention of the equipment module).

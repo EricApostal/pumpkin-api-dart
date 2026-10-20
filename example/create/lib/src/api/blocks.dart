@@ -292,6 +292,11 @@ PistonBehavior _piston(String reaction) => switch (reaction) {
 /// A [CreateBlock] for the manifest block [key] (`metal_girder`): properties, default state,
 /// stats, item and sound come from the manifest; the caller adds behaviour, shapes, placement and
 /// the drops that differ from "the block item".
+///
+/// [collisionShape] and [selectionShape] default to the manifest's `noCollision` (empty) and to
+/// vanilla's `Block.getShape` (a full cube). A block whose Java class overrides `getShape` must
+/// pass its boxes, or its hitbox is the whole block: the pipes carry theirs from
+/// `fluids/pipe_shapes.dart` (`FluidPipeBlock`'s 8-voxel arms, the glass pipe's pole, ...).
 CreateBlock manifestBlock(
   String key, {
   BlockBehavior? behavior,

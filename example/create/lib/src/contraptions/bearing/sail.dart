@@ -77,10 +77,22 @@ const List<PlacementRule> sailPlacement = [
 bool isSailItemKey(String itemKey) =>
     itemKey == whiteSail || itemKey == sailFrame;
 
+/// `BlockHitResult.getLocation()`: the click point in world coordinates.
+///
+/// The host reports a click as [cursor], `0..1` inside the block, while the placement helpers
+/// order directions by the distance from the block centre to the exact hit (Java:
+/// `ray.getLocation()`). Adding the block position first is what makes a row grow to the side the
+/// player clicked rather than to a fixed side.
+(double, double, double) sailHitLocation(Pos pos, (double, double, double) cursor) =>
+    (pos.x + cursor.$1, pos.y + cursor.$2, pos.z + cursor.$3);
+
 /// `SailBlock.PlacementHelper.getOffset`: the next sail of a row goes to the neighbour closest to
 /// the click that can be replaced, never along the sail's facing axis (the row lies in the plane
 /// of the canvas). The new sail keeps the clicked sail's `facing` (upstream
 /// `PlacementOffset.success(pos, s -> s.setValue(FACING, state.getValue(FACING)))`).
+///
+/// [hit] is the click point in world coordinates (`BlockHitResult.getLocation()`); see
+/// [sailHitLocation].
 PlacementOffset sailPlacementOffset({
   required BlockGetter level,
   required BState state,

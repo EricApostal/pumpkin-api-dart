@@ -6,15 +6,12 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../core/registry.dart' show RegistryKind;
-
-import '../../api/block_state.dart';
-import '../../api/blocks.dart' show HostBlockGetter, setBlockState;
-import '../../api/kinetics.dart' show KState;
+import '../../api/blocks.dart' show HostBlockGetter, stateIdOf;
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart';
 import '../../core/pos.dart' show packPos, unpackPos;
 import '../runtime.dart';
+import 'belt_block_entity.dart';
 import 'belt_geometry.dart';
 
 /// `create:belt_connector`.
@@ -128,22 +125,48 @@ Future<void> createBelts(
   );
 
   final getter = HostBlockGetter(world);
-  final planned = planBelts(start, end, getter);
-  final created = <Pos>[];
+  // `BeltConnectorItem.java:124-146` builds every state and writes it in one synchronous loop:
+  // the whole run exists before any block entity ticks, so `BeltBlock.initBelt` always sees one
+  // chain. `set-block-state` is an async host call (`wit/v0.2/world.wit`), so writing segment by
+  // segment lets a tick run mid-loop; `initBelt` then finds a partial chain and makes every
+  // segment its own controller (or destroys it). Build the run first and write it as one batch.
+  final batch = beltCreationStates(start, end, getter);
 
-  for (final (at, part, slope, facing) in planned) {
+  for (final (at, _) in batch) {
     if (!getter.canBeReplaced(at)) {
       await world.breakBlock(at.toBlockPos(), drop: false);
     }
-    final state = BState('create:belt', {
-      'casing': 'false',
-      'facing': facing.serializedName,
-      'part': part.name,
-      'slope': slope.name,
-      'waterlogged': '${_waterAt(world, at)}',
-    });
-    await _switch(rt, world, worldId, at, state);
-    created.add(at);
+  }
+
+  final changes = <BlockPlacementChange>[];
+  for (final (at, state) in batch) {
+    final id = stateIdOf(state);
+    if (id == null) continue;
+    changes.add(BlockPlacementChange(at.toBlockPos(), id));
+  }
+  if (changes.isEmpty) return;
+  try {
+    await world.placeBlocks(changes);
+  } on HostException catch (e) {
+    // `placeBlocks` throws after everything else was placed when a block entity could not be
+    // created: the states are there, so still create the entities and initialise the belt.
+    rt.log.error('Placing the belt from $start to $end failed', error: e);
+  }
+
+  // A bulk write does not create block entities. Create them for the whole run and initialise
+  // the belt once, so it is a single controller from the first tick on.
+  final typeKey = rt.blocks[beltKey]?.blockEntityType;
+  if (typeKey != null) {
+    for (final change in changes) {
+      rt.store.createAt(world, change.pos, typeKey);
+    }
+  }
+  final segment = rt.typedAt<BeltBlockEntity>(worldId, start);
+  if (segment == null) return;
+  try {
+    BeltBlockEntity.initBelt(segment);
+  } on Object catch (e, s) {
+    rt.log.error('Initialising the belt at $start failed', error: e, stackTrace: s);
   }
 }
 
@@ -155,32 +178,6 @@ bool _validateAxis(World world, Pos pos) {
 double? _speedAt(ConveyanceRuntime rt, String worldId, Pos pos) {
   final be = rt.kinetics?.kineticAt(worldId, pos.toBlockPos());
   return be?.theoreticalSpeed;
-}
-
-bool _waterAt(World world, Pos pos) {
-  final fluid = world.getFluidState(pos: pos.toBlockPos());
-  return fluid != null && fluid.fluid == 'minecraft:water' && fluid.isSource;
-}
-
-Future<void> _switch(
-  ConveyanceRuntime rt,
-  World world,
-  String worldId,
-  Pos pos,
-  BState state,
-) async {
-  final kinetics = rt.kinetics;
-  if (kinetics != null) {
-    await kinetics.switchToBlockState(
-      worldId,
-      pos.toBlockPos(),
-      KState(state.key, state.props),
-    );
-    return;
-  }
-  final id = rt.ctx.ids.of(RegistryKind.blocks, state.key);
-  if (id == null) return;
-  await setBlockState(world, pos, state);
 }
 
 /// The stored first shaft (`BlockPos.STREAM_CODEC`: one big-endian long, the

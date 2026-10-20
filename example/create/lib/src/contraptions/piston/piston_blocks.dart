@@ -62,10 +62,10 @@ BlockBehavior pistonBehavior({required bool sticky}) => BlockBehavior(
     // placement event does not carry; the host default stays.)
     if (e.moved || e.player == null) return;
     final pos = (e.pos.x, e.pos.y, e.pos.z);
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final level = HostBlockGetter(e.targetWorld);
+    final state = level.stateAt(pos);
     final facing = state.dir('facing') ?? Direction.north;
     if (!facing.axis.isHorizontal) return;
-    final level = HostBlockGetter(e.targetWorld);
     final alongFirst = pistonAlongFirstForPlacement(
       facing,
       (Direction side) =>
@@ -87,11 +87,11 @@ BlockBehavior pistonBehavior({required bool sticky}) => BlockBehavior(
     }
     if (itemKey == 'minecraft:slime_ball') {
       if (sticky) return BlockUseResult.tryEmptyHand;
-      final state = HostBlockGetter.stateOfId(e.stateIndex);
+      final pos = (e.pos.x, e.pos.y, e.pos.z);
+      final state = HostBlockGetter(e.targetWorld).stateAt(pos);
       if (state['state'] != 'retracted') return BlockUseResult.tryEmptyHand;
       final facing = state.dir('facing') ?? Direction.north;
       if (toDirection(e.face) != facing) return BlockUseResult.tryEmptyHand;
-      final pos = (e.pos.x, e.pos.y, e.pos.z);
       final next = BState(stickyMechanicalPistonKey, {
         'facing': facing.serializedName,
         'axis_along_first': state['axis_along_first'] ?? 'true',
@@ -130,7 +130,7 @@ BlockBehavior pistonBehavior({required bool sticky}) => BlockBehavior(
   onPlayerWillDestroy: (server, e) async {
     final world = e.targetWorld;
     final pos = (e.pos.x, e.pos.y, e.pos.z);
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = HostBlockGetter(world).stateAt(pos);
     final direction = state.dir('facing') ?? Direction.north;
     final drop = e.player.getGamemode() != GameMode.creative;
     await destroyPistonExtensions(world, pos, direction, drop: drop);
@@ -183,7 +183,7 @@ BlockBehavior pistonHeadBehavior() => BlockBehavior(
   onPlayerWillDestroy: (server, e) async {
     final world = e.targetWorld;
     final pos = (e.pos.x, e.pos.y, e.pos.z);
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = HostBlockGetter(world).stateAt(pos);
     final direction = state.dir('facing') ?? Direction.north;
     final drop = e.player.getGamemode() != GameMode.creative;
 

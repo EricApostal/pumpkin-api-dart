@@ -46,7 +46,9 @@ List<CreateBlock> buildChassisBlocks() => [
 /// side, an empty sneaking hand removes it, and a slime ball on a sticky side fills every side.
 BlockBehavior chassisBehavior(String blockKey) => BlockBehavior(
   onUseWithItem: (server, e) async {
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final pos = (e.pos.x, e.pos.y, e.pos.z);
+    // The clicked state (`useItemOn`'s `state` argument), not the event's per-block `stateIndex`.
+    final state = HostBlockGetter(e.targetWorld).stateAt(pos);
     final String itemKey;
     try {
       itemKey = await e.item.getRegistryKey();
@@ -55,7 +57,6 @@ BlockBehavior chassisBehavior(String blockKey) => BlockBehavior(
     }
     final isGlue = itemKey == slimeBallItem || itemKey == superGlueItemKey;
     if (!isGlue) return BlockUseResult.tryEmptyHand;
-    final pos = (e.pos.x, e.pos.y, e.pos.z);
     final next = chassisGlueClick(
       state,
       toDirection(e.face),
@@ -70,8 +71,8 @@ BlockBehavior chassisBehavior(String blockKey) => BlockBehavior(
   },
   onUseWithoutItem: (server, e) async {
     if (!e.sneaking || !await _isEmpty(e.item)) return BlockUseResult.pass;
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
     final pos = (e.pos.x, e.pos.y, e.pos.z);
+    final state = HostBlockGetter(e.targetWorld).stateAt(pos);
     final next = chassisGlueClick(
       state,
       toDirection(e.face),
@@ -87,7 +88,9 @@ BlockBehavior chassisBehavior(String blockKey) => BlockBehavior(
   onUpdateShape: (server, e) {
     // `LinearChassisBlock.updateShape`: a neighbouring chassis of the same kind and axis clears
     // the glue of the shared side.
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = HostBlockGetter(e.targetWorld).stateAt(
+      (e.pos.x, e.pos.y, e.pos.z),
+    );
     if (!isLinearChassis(state)) return null;
     final other = HostBlockGetter.stateOfId(e.neighborStateId);
     final next = linearChassisUpdateShape(
@@ -120,12 +123,16 @@ Future<bool> _isEmpty(ItemStack stack) async {
 BlockBehavior stickerBehavior() => BlockBehavior(
   onPlaced: (server, e) async {
     if (await e.targetWorld.hasNeighborSignal(pos: e.pos)) {
-      final state = HostBlockGetter.stateOfId(e.stateIndex);
+      final state = HostBlockGetter(e.targetWorld).stateAt(
+        (e.pos.x, e.pos.y, e.pos.z),
+      );
       await _setStickerPowered(e.targetWorld, e.pos, state, true);
     }
   },
   onNeighborUpdate: (server, e) async {
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = HostBlockGetter(e.targetWorld).stateAt(
+      (e.pos.x, e.pos.y, e.pos.z),
+    );
     if (state.key != 'create:sticker') return;
     final powered = state.flag('powered');
     final shouldPower = await e.targetWorld.hasNeighborSignal(pos: e.pos);

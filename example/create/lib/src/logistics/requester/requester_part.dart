@@ -48,11 +48,12 @@ Future<void> _onNeighborUpdate(
   );
   if (be == null) return;
   final powered = await e.targetWorld.hasRedstoneNeighborSignal(e.pos);
-  final info = BlockStates.info(e.stateIndex);
+  final stateId = e.targetWorld.getBlockStateId(pos: e.pos);
+  final info = BlockStates.info(stateId);
   if ((info?.properties['powered'] == 'true') != powered) {
     await e.targetWorld.setBlockState(
       pos: e.pos,
-      state: BlockStates.setValues(e.stateIndex, {
+      state: BlockStates.setValues(stateId, {
         'powered': powered ? 'true' : 'false',
       }),
       updateFlags: BlockUpdateFlags.clientsOnly,
@@ -76,7 +77,9 @@ Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
   final world = e.targetWorld;
   await world.setBlockState(
     pos: e.pos,
-    state: BlockStates.setValues(e.stateIndex, {'axis': axis}),
+    state: BlockStates.setValues(world.getBlockStateId(pos: e.pos), {
+      'axis': axis,
+    }),
     updateFlags: BlockUpdateFlags.clientsOnly,
   );
 }

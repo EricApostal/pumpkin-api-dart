@@ -88,18 +88,21 @@ BlockBehavior _trackBehavior(TrackBlock track) => BlockBehavior(
   },
   onStateReplaced: (server, e) {
     final level = HostTrackLevel(e.targetWorld, Tr.i.store);
+    // The position has the replacing block already, so the old state comes from the block's
+    // `baseStateId + oldStateIndex` (`docs/block-callbacks.md`).
     track.onRemoved(
       level,
       e.pos.toPos(),
-      HostBlockGetter.stateOfId(e.oldStateIndex),
+      HostBlockGetter.stateOfIndex(e.block, e.oldStateIndex),
     );
   },
   onPlayerWillDestroy: (server, e) async {
     final level = HostTrackLevel(e.targetWorld, Tr.i.store);
+    final pos = e.pos.toPos();
     await track.playerWillDestroy(
       level,
-      e.pos.toPos(),
-      HostBlockGetter.stateOfId(e.stateIndex),
+      pos,
+      level.stateAt(pos),
       isCreative: e.player.getGamemode() == GameMode.creative,
     );
     return true;
@@ -121,7 +124,7 @@ Future<BlockUseResult> _trackUse(
   if (areas == null) return BlockUseResult.tryEmptyHand;
 
   final pos = e.pos.toPos();
-  final state = HostBlockGetter.stateOfId(e.stateIndex);
+  final state = HostBlockGetter(e.targetWorld).stateAt(pos);
   for (final entry in areas.entries) {
     if (!entry.value.isInside(pos)) continue;
     final station = Tr.i.store.typed<StationBlockEntity>(

@@ -48,31 +48,29 @@ List<CreateBlock> buildGantryBlocks() => [
         // behind the carriage becomes the valid shaft axis.
         if (e.moved) return;
         final pos = (e.pos.x, e.pos.y, e.pos.z);
-        final state = HostBlockGetter.stateOfId(e.stateIndex);
-        final facing = state.dir('facing') ?? Direction.north;
-        final behind = HostBlockGetter(e.targetWorld)
-            .stateAt(pos.relative(facing.opposite));
-        final next = cycleGantryAxisIfNecessary(
-          state,
-          facing.opposite,
-          behind,
-        );
+        final level = HostBlockGetter(e.targetWorld);
+        final state = level.stateAt(pos);
+        final next = gantryPlacementState(level, pos);
         if (next != state) await setBlockState(e.targetWorld, pos, next);
       },
       onNeighborUpdate: (server, e) async {
         // `GantryCarriageBlock.neighborChanged`: `canSurvive` needs a shaft behind the
         // carriage, on another axis.
-        final state = HostBlockGetter.stateOfId(e.stateIndex);
+        final level = HostBlockGetter(e.targetWorld);
+        final state = level.stateAt((e.pos.x, e.pos.y, e.pos.z));
         final facing = state.dir('facing') ?? Direction.north;
-        final shaft = HostBlockGetter(e.targetWorld)
-            .stateAt((e.pos.x, e.pos.y, e.pos.z).relative(facing.opposite));
+        final shaft = level.stateAt(
+          (e.pos.x, e.pos.y, e.pos.z).relative(facing.opposite),
+        );
         if (!gantryCarriageCanSurvive(state, shaft)) {
           await e.targetWorld.breakBlock(e.pos, drop: true);
         }
       },
       onUpdateShape: (server, e) {
         // `cycleAxisIfNecessary`: the axis along first follows the shaft's axis.
-        final state = HostBlockGetter.stateOfId(e.stateIndex);
+        final state = HostBlockGetter(e.targetWorld).stateAt(
+          (e.pos.x, e.pos.y, e.pos.z),
+        );
         final facing = state.dir('facing');
         if (facing == null || facing.opposite != toDirection(e.direction))
           return null;

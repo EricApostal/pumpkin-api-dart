@@ -240,22 +240,31 @@ class Contraption {
     settings = level.settings;
     bounds ??= Aabb.ofBlock(posZero);
 
-    if (!BlockMovementChecks.isBrittle(level.stateAt(pos), level))
-      frontier.add(pos);
-    if (!addToInitialFrontier(level, pos, forcedDirection, frontier))
-      return false;
-    for (var limit = 100000; limit > 0; limit--) {
-      if (frontier.isEmpty) return true;
-      if (!Perf.enabled) {
-        if (!moveBlock(level, forcedDirection, frontier, visited)) return false;
-        continue;
+    // The search is synchronous, so no block can change while it runs: the level may serve the
+    // repeated reads of one position (each neighbour of every frontier entry) from a cache
+    // instead of asking the host once per read.
+    level.beginBatch();
+    try {
+      if (!BlockMovementChecks.isBrittle(level.stateAt(pos), level))
+        frontier.add(pos);
+      if (!addToInitialFrontier(level, pos, forcedDirection, frontier))
+        return false;
+      for (var limit = 100000; limit > 0; limit--) {
+        if (frontier.isEmpty) return true;
+        if (!Perf.enabled) {
+          if (!moveBlock(level, forcedDirection, frontier, visited))
+            return false;
+          continue;
+        }
+        final watch = Stopwatch()..start();
+        final moved = moveBlock(level, forcedDirection, frontier, visited);
+        Perf.record('assemble.moveBlock', watch.elapsedMicroseconds);
+        if (!moved) return false;
       }
-      final watch = Stopwatch()..start();
-      final moved = moveBlock(level, forcedDirection, frontier, visited);
-      Perf.record('assemble.moveBlock', watch.elapsedMicroseconds);
-      if (!moved) return false;
+      throw AssemblyException.structureTooLarge(level.settings.maxBlocksMoved);
+    } finally {
+      level.endBatch();
     }
-    throw AssemblyException.structureTooLarge(level.settings.maxBlocksMoved);
   }
 
   /// `moveBlock`: captures the first block of [frontier] and adds the blocks it drags along.

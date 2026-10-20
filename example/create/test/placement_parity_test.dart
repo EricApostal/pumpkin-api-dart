@@ -392,6 +392,43 @@ void main() {
         'facing/lookingDirection',
       ]);
     });
+
+    test('the track declares the look rule the ordinary placement needs', () {
+      // `TrackBlock.getStateForPlacement` is the ordinary placement path in Java
+      // (`BlockItem.useOn`), so the host has to place the shape itself. An `onPlaced` write
+      // would recurse through the host's `placed` callback.
+      expect(_describe(trackPlacementRules), [
+        'shape/trackShape',
+        'waterlogged/inWater',
+      ]);
+    });
+
+    test('the track shape follows all four horizontal look directions', () {
+      // `TrackBlock.java:139-190`: `(0, 0, 1)` is south, `(1, 0, 0)` east; the look picks the
+      // nearest of the two straight axes, so south/north give `zo` and east/west give `xo`.
+      final shapes = {
+        for (final look in const [Dir.south, Dir.north, Dir.east, Dir.west])
+          look: _applyHostRules(
+            trackPlacementRules,
+            _HostInput.of(
+              _Placement(
+                face: Dir.up,
+                look: look,
+                horizontal: look,
+                pitch: 0,
+                sneaking: false,
+                stateAt: (_) => const KState('air'),
+              ),
+            ),
+          )['shape'],
+      };
+      expect(shapes, {
+        Dir.south: 'zo',
+        Dir.north: 'zo',
+        Dir.east: 'xo',
+        Dir.west: 'xo',
+      });
+    });
   });
 
   test('every look direction maps to its canonical yaw/pitch', () {

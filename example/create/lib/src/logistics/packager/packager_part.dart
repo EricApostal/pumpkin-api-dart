@@ -85,7 +85,7 @@ Future<void> _onNeighborUpdate(
 
   // `neighborChanged`: the `powered` state follows the redstone input; a rising edge activates.
   final poweredNow = await world.hasRedstoneNeighborSignal(e.pos);
-  final info = BlockStates.info(e.stateIndex);
+  final info = BlockStates.info(world.getBlockStateId(pos: e.pos));
   final wasPowered = info?.properties['powered'] == 'true';
   if (wasPowered == poweredNow) return;
   final lvl = Lvl(world);

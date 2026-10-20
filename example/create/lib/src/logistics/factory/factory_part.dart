@@ -47,7 +47,8 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   );
   if (be == null) return BlockUseResult.pass;
 
-  final info = BlockStates.info(e.stateIndex);
+  // The clicked state (`useItemOn`'s `state` argument); `e.stateIndex` counts within the block.
+  final info = BlockStates.info(e.targetWorld.getBlockStateId(pos: e.pos));
   final slot = targetedSlot(e.cursor, info?.properties ?? const {});
   final held = await _heldStack(e.player, e.hand);
 

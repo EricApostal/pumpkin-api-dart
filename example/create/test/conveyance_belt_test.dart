@@ -9,6 +9,7 @@ import 'package:create/src/conveyance/belt/belt_inventory.dart';
 import 'package:create/src/conveyance/belt/belt_ports.dart';
 import 'package:create/src/conveyance/belt/transported_item.dart';
 import 'package:create/src/conveyance/items/item_data.dart';
+import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockBox;
 import 'package:create/src/kinetics/geometry.dart' show Dir, KAxis, KPos, KState;
 import 'package:test/test.dart';
 
@@ -435,6 +436,106 @@ void main() {
     });
   });
 
+  group('belt chain resolution', () {
+    /// The world a connector leaves behind: the states of [beltCreationStates] written at their
+    /// positions (the shafts it replaced are gone).
+    MapBlockGetter createdBelt(Pos start, Pos end) {
+      final shafts = MapBlockGetter();
+      shafts.set(start, const BState('create:shaft', {'axis': 'z'}));
+      shafts.set(end, const BState('create:shaft', {'axis': 'z'}));
+      final world = MapBlockGetter();
+      for (final (at, state) in beltCreationStates(start, end, shafts)) {
+        world.set(at, state);
+      }
+      return world;
+    }
+
+    test('two shafts make one belt: every segment resolves to the same controller', () {
+      const start = (0, 0, 0);
+      const end = (3, 0, 0);
+      final world = createdBelt(start, end);
+      const chain = [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0)];
+
+      for (final at in chain) {
+        final resolved = resolveBeltChain(world, at);
+        expect(resolved.status, BeltChainStatus.ok, reason: 'from $at');
+        expect(resolved.controller, start, reason: 'from $at');
+        expect(resolved.chain, chain, reason: 'from $at');
+      }
+
+      // The parts run start / middle / end along the chain the controller sees.
+      expect(
+        [for (final at in chain) world.stateAt(at).beltPart],
+        [BeltPart.start, BeltPart.middle, BeltPart.middle, BeltPart.end],
+      );
+
+      // The controller's inventory spans the whole run: offset i of a belt of this length is
+      // exactly segment i.
+      final controllerState = world.stateAt(start);
+      for (var i = 0; i < chain.length; i++) {
+        expect(positionForOffset(start, controllerState, chain.length, i), chain[i]);
+      }
+    });
+
+    test('the whole run is planned before anything is written', () {
+      final shafts = MapBlockGetter()
+        ..set((0, 0, 0), const BState('create:shaft', {'axis': 'z'}))
+        ..set((2, 2, 0), const BState('create:shaft', {'axis': 'z'}));
+      final batch = beltCreationStates((0, 0, 0), (2, 2, 0), shafts);
+      expect([
+        for (final (at, state) in batch)
+          (at, state.beltPart, state.beltSlope, state.beltFacing, state.flag('waterlogged')),
+      ], [
+        ((0, 0, 0), BeltPart.start, BeltSlope.upward, Direction.east, false),
+        ((1, 1, 0), BeltPart.middle, BeltSlope.upward, Direction.east, false),
+        ((2, 2, 0), BeltPart.end, BeltSlope.upward, Direction.east, false),
+      ]);
+    });
+
+    test('a vertical run resolves the same way', () {
+      final world = MapBlockGetter();
+      world.set((0, 0, 0), const BState('create:shaft', {'axis': 'z'}));
+      world.set((0, 3, 0), const BState('create:shaft', {'axis': 'z'}));
+      final states = MapBlockGetter();
+      for (final (at, state) in beltCreationStates((0, 0, 0), (0, 3, 0), world)) {
+        states.set(at, state);
+      }
+      final resolved = resolveBeltChain(states, (0, 3, 0));
+      expect(resolved.status, BeltChainStatus.ok);
+      expect(resolved.controller, (0, 0, 0));
+      expect(resolved.chain, [(0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0)]);
+    });
+
+    test('a missing segment breaks the chain instead of making separate belts', () {
+      final world = createdBelt((0, 0, 0), (3, 0, 0));
+      world.set((2, 0, 0), BState.air);
+      // Walking back from the end runs into the hole: Java destroys the block it started at.
+      final fromEnd = resolveBeltChain(world, (3, 0, 0));
+      expect(fromEnd.status, BeltChainStatus.broken);
+      expect(fromEnd.controller, (3, 0, 0));
+    });
+
+    test('a lone segment is not a belt', () {
+      final world = MapBlockGetter()
+        ..set((0, 0, 0), const BState(beltKey, {
+          'casing': 'false',
+          'facing': 'east',
+          'part': 'start',
+          'slope': 'horizontal',
+          'waterlogged': 'false',
+        }));
+      final resolved = resolveBeltChain(world, (0, 0, 0));
+      expect(resolved.status, BeltChainStatus.broken);
+      expect(resolved.controller, (0, 0, 0));
+    });
+
+    test('a chain that leaves the loaded area is left alone', () {
+      final world = createdBelt((0, 0, 0), (3, 0, 0));
+      final unloaded = _UnloadedBlockGetter(world, const {(2, 0, 0)});
+      expect(resolveBeltChain(unloaded, (3, 0, 0)).status, BeltChainStatus.unloaded);
+    });
+  });
+
   group('BeltBlockDef', () {
     const def = BeltBlockDef();
     KState beltState(
@@ -595,4 +696,37 @@ class _FunnelPort implements BeltFunnelPort, FunnelPort {
   void flap(bool inward) {}
   @override
   void onTransfer(ItemValue stack) {}
+}
+
+/// A [BlockGetter] over a [MapBlockGetter] that reports some positions as unloaded (a chain
+/// crossing a chunk border).
+class _UnloadedBlockGetter extends BlockGetter {
+  _UnloadedBlockGetter(this.inner, this.unloaded);
+
+  final MapBlockGetter inner;
+  final Set<Pos> unloaded;
+
+  @override
+  BState stateAt(Pos p) => inner.stateAt(p);
+
+  @override
+  bool isLoaded(Pos p) => !unloaded.contains(p) && inner.isLoaded(p);
+
+  @override
+  bool isFaceSturdy(Pos p, Direction face) => inner.isFaceSturdy(p, face);
+
+  @override
+  List<BlockBox> collisionBoxes(Pos p) => inner.collisionBoxes(p);
+
+  @override
+  bool supportShapeEmpty(Pos p) => inner.supportShapeEmpty(p);
+
+  @override
+  bool canBeReplaced(Pos p) => inner.canBeReplaced(p);
+
+  @override
+  bool hasTag(Pos p, String tag) => inner.hasTag(p, tag);
+
+  @override
+  bool isWater(Pos p) => inner.isWater(p);
 }

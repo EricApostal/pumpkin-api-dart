@@ -32,6 +32,13 @@ final class _SableCollisionContextImpl implements SableCollisionContext {
 final class _EmptyBlockGetter implements BlockGetter {
   static final _EmptyBlockGetter instance = _EmptyBlockGetter();
 
+  // `BlockGetter` batches repeated reads; the empty getter has nothing to cache.
+  @override
+  void beginBatch() {}
+
+  @override
+  void endBatch() {}
+
   @override
   BState stateAt((int, int, int) p) => BState.air;
 

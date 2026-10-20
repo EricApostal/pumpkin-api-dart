@@ -62,6 +62,31 @@ final class HostBlockGetter extends BlockGetter {
     return s;
   }
 
+  /// The state with local index [stateIndex] of the block [blockKey]: the state id of a block
+  /// callback's `stateIndex` is `baseStateId + stateIndex` (`docs/block-callbacks.md`), so the
+  /// index is resolved against the block's own states.
+  ///
+  /// Use this only where the state cannot be read from the world, because the position no longer
+  /// has the block (a `state-replaced` event) or does not have it yet (a `can-place` event).
+  /// Otherwise `HostBlockGetter(world).stateAt(pos)` is the state the callback is about.
+  static BState stateOfIndex(String blockKey, int stateIndex) {
+    final ids = _stateIdsByBlock[blockKey] ?? _stateIdsOf(blockKey);
+    if (stateIndex < 0 || stateIndex >= ids.length) return BState.air;
+    return stateOfId(ids[stateIndex]);
+  }
+
+  /// The state ids of [blockKey] in state index order (the block's states are contiguous, so
+  /// entry `i` is `baseStateId + i`).
+  static List<int> _stateIdsOf(String blockKey) {
+    final block = BlockRegistry.of(blockKey);
+    final ids = block == null
+        ? const <int>[]
+        : [for (final state in block.states) state.id];
+    return _stateIdsByBlock[blockKey] = ids;
+  }
+
+  static final Map<String, List<int>> _stateIdsByBlock = {};
+
   static _StateShapeInfo _shapeOf(int id) {
     final cached = _shapes[id];
     if (cached != null) return cached;
@@ -105,14 +130,45 @@ final class HostBlockGetter extends BlockGetter {
     return info;
   }
 
-  /// The state id at [p].
-  int idAt(Pos p) => world.getBlockStateId(pos: p.toBlockPos());
+  /// The state id at [p]. Inside a batch ([beginBatch]) a position is read once: the structure
+  /// search asks for the same block tens of times, and each read is a wasm call.
+  int idAt(Pos p) {
+    if (_batchDepth == 0) return world.getBlockStateId(pos: p.toBlockPos());
+    final cached = _batchIds[p];
+    if (cached != null) return cached;
+    final id = world.getBlockStateId(pos: p.toBlockPos());
+    _batchIds[p] = id;
+    return id;
+  }
+
+  int _batchDepth = 0;
+  final Map<Pos, int> _batchIds = {};
+  final Map<Pos, bool> _batchLoaded = {};
+
+  @override
+  void beginBatch() => _batchDepth++;
+
+  @override
+  void endBatch() {
+    if (_batchDepth == 0) return;
+    if (--_batchDepth == 0) {
+      _batchIds.clear();
+      _batchLoaded.clear();
+    }
+  }
 
   @override
   BState stateAt(Pos p) => stateOfId(idAt(p));
 
   @override
-  bool isLoaded(Pos p) => world.isLoaded(pos: p.toBlockPos());
+  bool isLoaded(Pos p) {
+    if (_batchDepth == 0) return world.isLoaded(pos: p.toBlockPos());
+    final cached = _batchLoaded[p];
+    if (cached != null) return cached;
+    final loaded = world.isLoaded(pos: p.toBlockPos());
+    _batchLoaded[p] = loaded;
+    return loaded;
+  }
 
   @override
   bool isFaceSturdy(Pos p, dir.Direction face) =>

@@ -94,7 +94,7 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   if (be == null) return BlockUseResult.pass;
   if (!e.withItem) return BlockUseResult.pass;
 
-  final info = BlockStates.info(e.stateIndex);
+  final info = BlockStates.info(e.targetWorld.getBlockStateId(pos: e.pos));
   final facing =
       Direction.byName(info?.properties['facing'] ?? 'north') ??
       Direction.north;
@@ -179,11 +179,12 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
 }
 
 Future<void> _onScheduledTick(Server server, CustomBlockTickEventData e) async {
-  final info = BlockStates.info(e.stateIndex);
+  final stateId = e.targetWorld.getBlockStateId(pos: e.pos);
+  final info = BlockStates.info(stateId);
   if (info?.properties['open'] != 'true') return;
   await e.targetWorld.setBlockState(
     pos: e.pos,
-    state: BlockStates.setValues(e.stateIndex, {'open': 'false'}),
+    state: BlockStates.setValues(stateId, {'open': 'false'}),
     updateFlags: BlockUpdateFlags.clientsOnly,
   );
 }

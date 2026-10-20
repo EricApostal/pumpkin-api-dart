@@ -96,6 +96,18 @@ final class BState {
 
 /// A read-only view of the world's blocks (`BlockGetter` / `LevelReader`).
 abstract class BlockGetter {
+  /// Starts a batch of reads during which no block can change: one structure search
+  /// (`Contraption.searchMovedStructure` is synchronous) or one pass over a fixed area.
+  ///
+  /// The structure search reads each position many times over (every neighbour of every frontier
+  /// entry), and every read of a [BlockGetter] over a host world is a wasm boundary crossing. An
+  /// implementation may serve the repeated reads from a cache until [endBatch]; [endBatch] must
+  /// be called from a `finally`. Batches nest.
+  void beginBatch() {}
+
+  /// Ends the batch started by [beginBatch]; drops whatever it cached.
+  void endBatch() {}
+
   /// The state at [p]; [BState.air] for unloaded chunks.
   BState stateAt(Pos p);
 

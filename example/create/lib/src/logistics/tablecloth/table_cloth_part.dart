@@ -239,7 +239,7 @@ CreateBlock tableClothBlock(String key) => CreateBlock(
 
 Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   final worldId = e.targetWorld.getId();
-  final info = BlockStates.info(e.stateIndex);
+  final info = BlockStates.info(e.targetWorld.getBlockStateId(pos: e.pos));
   final hasEntity = info?.properties['entity'] == 'true';
 
   final be = Lg.i.store.typed<TableClothBlockEntity>(worldId, e.pos);

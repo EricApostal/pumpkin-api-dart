@@ -12,10 +12,12 @@ import '../../core/blocks.dart';
 import '../blocks/actuator_runtime.dart';
 import 'elevator_column.dart';
 import 'elevator_contact_block_entity.dart';
+import 'elevator_contact_logic.dart';
 import 'elevator_pulley_block_entity.dart';
 
+export 'elevator_contact_logic.dart' show elevatorContactKey;
+
 const String elevatorPulleyKey = 'create:elevator_pulley';
-const String elevatorContactKey = 'create:elevator_contact';
 const String redstoneContactKey = 'create:redstone_contact';
 
 /// The elevator block definitions.
@@ -56,7 +58,7 @@ BlockBehavior elevatorContactBehavior() => BlockBehavior(
   onNeighborUpdate: (server, e) async {
     final world = e.targetWorld;
     final pos = (e.pos.x, e.pos.y, e.pos.z);
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = HostBlockGetter(world).stateAt(pos);
     if (state.key != elevatorContactKey) return;
 
     final wasPowered = state.flag('powered');
@@ -74,7 +76,7 @@ BlockBehavior elevatorContactBehavior() => BlockBehavior(
   onScheduledTick: (server, e) async {
     final world = e.targetWorld;
     final pos = (e.pos.x, e.pos.y, e.pos.z);
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = HostBlockGetter(world).stateAt(pos);
     if (state.key != elevatorContactKey) return;
 
     final wasPowering = state.flag('powering');
@@ -94,22 +96,21 @@ BlockBehavior elevatorContactBehavior() => BlockBehavior(
   },
   // `getSignal`: no strong power (the block has no `getDirectSignal`), and a contact
   // directly behind the reading side does not power it.
-  onWeakPower: (server, e) {
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
-    final pos = (e.pos.x, e.pos.y, e.pos.z);
-    final behind = HostBlockGetter(e.targetWorld)
-        .stateAt(pos.relative(toDirection(e.face)));
-    if (behind.key == elevatorContactKey) return 0;
-    return state.flag('powering') ? 15 : 0;
-  },
-  canConnectRedstone: (server, e) {
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
-    final facing = state.dir('facing') ?? Direction.south;
-    return e.direction == null || toDirection(e.direction!) != facing.opposite;
-  },
+  onWeakPower: (server, e) => elevatorContactWeakPower(
+    HostBlockGetter(e.targetWorld),
+    (e.pos.x, e.pos.y, e.pos.z),
+    toDirection(e.face),
+  ),
+  canConnectRedstone: (server, e) => elevatorContactCanConnect(
+    HostBlockGetter(e.targetWorld),
+    (e.pos.x, e.pos.y, e.pos.z),
+    e.direction == null ? null : toDirection(e.direction!),
+  ),
   // `updateShape`: the contact in front changed, recheck whether it still powers.
   onUpdateShape: (server, e) {
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = HostBlockGetter(e.targetWorld).stateAt(
+      (e.pos.x, e.pos.y, e.pos.z),
+    );
     if (state.key != elevatorContactKey) return null;
     final facing = state.dir('facing') ?? Direction.south;
     if (toDirection(e.direction) != facing) return null;

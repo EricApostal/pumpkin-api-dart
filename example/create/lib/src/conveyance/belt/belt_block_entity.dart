@@ -810,30 +810,21 @@ class BeltBlockEntity extends KineticBlockEntity
     final w = start.world;
     if (w == null) return;
     final getter = HostBlockGetter(w);
-    final startPos = start.p;
-    if (!getter.stateAt(startPos).isBelt) return;
+    if (!getter.stateAt(start.p).isBelt) return;
 
-    // Find the controller by walking backwards.
-    var currentPos = startPos;
-    var limit = 1000;
-    while (limit-- > 0) {
-      final currentState = getter.stateAt(currentPos);
-      if (!currentState.isBelt) {
-        _destroy(start.worldId, startPos);
+    final resolution = resolveBeltChain(getter, start.p);
+    switch (resolution.status) {
+      case BeltChainStatus.unloaded:
         return;
-      }
-      final next = nextSegmentPosition(currentState, currentPos, false);
-      if (next == null) break;
-      if (!getter.isLoaded(next)) return;
-      currentPos = next;
+      case BeltChainStatus.broken:
+        _destroy(start.worldId, resolution.controller);
+        return;
+      case BeltChainStatus.ok:
+        break;
     }
 
-    final chain = getBeltChain(getter, currentPos);
-    if (chain.length < 2) {
-      _destroy(start.worldId, currentPos);
-      return;
-    }
-
+    final currentPos = resolution.controller;
+    final chain = resolution.chain;
     var index = 0;
     for (final beltPos in chain) {
       final be = start.store.at(start.worldId, beltPos.toBlockPos());

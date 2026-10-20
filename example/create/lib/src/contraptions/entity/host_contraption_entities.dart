@@ -91,6 +91,12 @@ final class HostContraptionLevel extends ContraptionLevel {
   BState stateAt(Pos p) => _getter.stateAt(p);
 
   @override
+  void beginBatch() => _getter.beginBatch();
+
+  @override
+  void endBatch() => _getter.endBatch();
+
+  @override
   bool isLoaded(Pos p) => _getter.isLoaded(p);
 
   @override

@@ -37,12 +37,10 @@ List<CreateBlock> buildPulleyBlocks() => [
         // perpendicular to the one the host's `horizontalAxis` rule picked.
         if (e.moved || e.player == null) return;
         final pos = (e.pos.x, e.pos.y, e.pos.z);
-        final state = HostBlockGetter.stateOfId(e.stateIndex);
+        final level = HostBlockGetter(e.targetWorld);
+        final state = level.stateAt(pos);
         final current = state.axisOf('axis') ?? Axis.x;
-        final preferred = preferredPulleyAxis(
-          HostBlockGetter(e.targetWorld),
-          pos,
-        );
+        final preferred = preferredPulleyAxis(level, pos);
         final axis = preferred ??
             (current == Axis.x ? Axis.z : Axis.x);
         final next = state.setValue('axis', axis.serializedName);

@@ -99,6 +99,59 @@ List<Pos> getBeltChain(BlockGetter world, Pos controllerPos) {
   return positions;
 }
 
+/// The outcome of `BeltBlock.initBelt`'s controller search.
+enum BeltChainStatus {
+  /// The whole chain is there: [BeltChainResolution.controller] and `.chain` are set.
+  ok,
+
+  /// A segment is missing (a non-belt block on the way back, or fewer than two segments).
+  /// Java destroys [BeltChainResolution.controller] then (`BeltBlock.java:425-426,443-446`).
+  broken,
+
+  /// The walk reached an unloaded chunk; Java returns without touching the block.
+  unloaded,
+}
+
+/// The controller search of `BeltBlock.initBelt` (`BeltBlock.java:413-468`): walks back from
+/// [from] to the first segment of its chain and collects the chain from there on.
+///
+/// [from] must hold a belt segment (`initBelt` checks that first, `BeltBlock.java:422-424`).
+final class BeltChainResolution {
+  final BeltChainStatus status;
+
+  /// The controller of the chain, also the block Java destroys when the chain is broken.
+  final Pos controller;
+
+  /// The chain from the controller to its end; empty unless [status] is [BeltChainStatus.ok].
+  final List<Pos> chain;
+
+  const BeltChainResolution._(this.status, this.controller, this.chain);
+}
+
+/// `BeltBlock.initBelt`'s walk back to the controller, then `BeltBlock.getBeltChain` forward.
+BeltChainResolution resolveBeltChain(BlockGetter world, Pos from) {
+  var current = from;
+  var limit = 1000;
+  while (limit-- > 0) {
+    final state = world.stateAt(current);
+    if (!state.isBelt) {
+      return BeltChainResolution._(BeltChainStatus.broken, from, const []);
+    }
+    final next = nextSegmentPosition(state, current, false);
+    if (next == null) break;
+    if (!world.isLoaded(next)) {
+      return BeltChainResolution._(BeltChainStatus.unloaded, from, const []);
+    }
+    current = next;
+  }
+
+  final chain = getBeltChain(world, current);
+  if (chain.length < 2) {
+    return BeltChainResolution._(BeltChainStatus.broken, current, const []);
+  }
+  return BeltChainResolution._(BeltChainStatus.ok, current, chain);
+}
+
 /// `BeltHelper.getBeltVector(state)` as a vector of whole steps.
 Vec3 beltVector(BState state) {
   final slope = state.beltSlope;
@@ -367,6 +420,30 @@ List<(Pos, BeltPart, BeltSlope, Direction)> planBelts(
 
 /// `ShaftBlock.isShaft(state)`.
 bool isShaftState(BState state) => state.key == 'create:shaft';
+
+/// `BeltConnectorItem.createBelts` (`BeltConnectorItem.java:105-151`): the states of the whole
+/// run, in chain order, as (position, state).
+///
+/// Java builds them and writes them in one synchronous loop, so no block entity can tick while
+/// the run is half built. The host's block writes are asynchronous, so the caller must write
+/// this batch in one call: a tick in between would let `BeltBlock.initBelt` see a partial chain
+/// and make each segment its own controller.
+List<(Pos, BState)> beltCreationStates(Pos start, Pos end, BlockGetter world) {
+  return [
+    for (final (at, part, slope, facing) in planBelts(start, end, world))
+      (
+        at,
+        BState(beltKey, {
+          'casing': 'false',
+          'facing': facing.serializedName,
+          'part': part.name,
+          'slope': slope.name,
+          // `ProperWaterloggedBlock.withWater`: a water source at the position is taken along.
+          'waterlogged': '${world.isWater(at)}',
+        }),
+      ),
+  ];
+}
 
 /// `BeltConnectorItem.validateAxis` for a loaded position.
 bool validateAxis(BlockGetter world, Pos pos) => world.isLoaded(pos) && isShaftState(world.stateAt(pos));

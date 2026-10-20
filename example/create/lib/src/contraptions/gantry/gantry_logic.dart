@@ -63,6 +63,19 @@ BState cycleGantryAxisIfNecessary(
   return state.cycleFlag('axis_along_first');
 }
 
+/// `GantryCarriageBlock.getStateForPlacement`: the state the carriage at [pos] gets after
+/// placing, with `axis_along_first` cycled to the shaft behind it.
+///
+/// The state is read from [level] at [pos]: that is the state the block is placed with (Java's
+/// `state` argument). A block callback's `stateIndex` counts within the block, so it cannot be
+/// used as a state id.
+BState gantryPlacementState(BlockGetter level, Pos pos) {
+  final state = level.stateAt(pos);
+  final facing = state.dir('facing') ?? Direction.north;
+  final behind = level.stateAt(pos.relative(facing.opposite));
+  return cycleGantryAxisIfNecessary(state, facing.opposite, behind);
+}
+
 /// `GantryCarriageBlock.getGantryPinionModifier`: the rotation handedness between the shaft and
 /// the carriage's pinion.
 double getGantryPinionModifier(Direction shaft, Direction pinionDirection) {

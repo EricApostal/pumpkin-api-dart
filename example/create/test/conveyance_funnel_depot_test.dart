@@ -220,4 +220,19 @@ void main() {
       expect(ejectorLidRetract(.5, 0), .5);
     });
   });
+
+  // A saved multiblock can be larger than the default, and `ItemVaultBlockEntity.read`
+  // resizes the inventory to the saved `Size`. The backing list has to grow, or a vault
+  // whose saved size exceeded the default lost its contents on load
+  // (`Unsupported operation: Cannot add to a fixed-length list`).
+  test('ListInventory grows when a saved multiblock is larger', () {
+    final inventory = ListInventory(2);
+    expect(inventory.slots, 2);
+    inventory.resize(20);
+    expect(inventory.slots, 20);
+    inventory.setStack(19, const ItemValue('minecraft:stone', 3));
+    expect(inventory.getStack(19).count, 3);
+    inventory.resize(2);
+    expect(inventory.slots, 2);
+  });
 }

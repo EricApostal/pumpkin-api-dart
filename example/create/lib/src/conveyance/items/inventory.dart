@@ -52,7 +52,11 @@ class ListInventory with VersionedInventory implements ItemInventory {
   bool Function(int slot, ItemValue stack)? validator;
 
   ListInventory(int size, {int slotLimit = 64, this.onChanged, this.validator})
-    : stacks = List<ItemValue>.filled(size, ItemValue.empty),
+    // Growable: `resize` grows the list when a saved multiblock is larger than the
+    // default (`ItemVaultBlockEntity.read` reads the saved `Size`). A fixed-length
+    // `List.filled` made that throw `Cannot add to a fixed-length list`, so a vault
+    // whose saved size exceeded the default lost its contents on load.
+    : stacks = List<ItemValue>.filled(size, ItemValue.empty, growable: true),
       slotLimitValue = slotLimit;
 
   @override

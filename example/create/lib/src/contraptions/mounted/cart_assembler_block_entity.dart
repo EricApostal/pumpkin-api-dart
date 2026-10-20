@@ -204,7 +204,9 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
     // `entity.startRiding(cart)`: the factory spawns asynchronously, so the passenger is attached
     // on the next world tick.
     final cartEntity = world!.getEntityById(id: cartRef.id);
-    if (cartEntity != null) attachContraptionToCart(entity, cartEntity);
+    if (cartEntity != null) {
+      attachContraptionToCart(entity, worldId, cartEntity.getId());
+    }
   }
 
   /// `disassemble`: the cart assembler stops an assembled cart. The contraption entity disassembles

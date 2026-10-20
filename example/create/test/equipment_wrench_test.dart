@@ -3,6 +3,28 @@ import 'package:create/src/equipment/wrench/wrench_rotation.dart';
 import 'package:test/test.dart';
 
 void main() {
+  // `WrenchHost.rotatedStateId` (equipment/wrench/wrench_host.dart) calls
+  // `WrenchRotation.rotated` with the clicked state's properties; kinetic blocks register the
+  // `IWrenchable` default, so this is the state a wrench click produces for them.
+  group('a wrench click rotates a directional kinetic block', () {
+    test('the axis of a shaft about the clicked side face', () {
+      final shaft = {'axis': 'y', 'waterlogged': 'false'};
+      final clicked = WrenchRotation.rotated(shaft, Dir.north, facing: FacingKind.none);
+      expect(clicked['axis'], 'x');
+      expect(clicked['waterlogged'], 'false');
+      // The face along the axis keeps it: clicking a shaft's top does not spin it.
+      expect(WrenchRotation.rotated(shaft, Dir.up, facing: FacingKind.none)['axis'], 'y');
+    });
+
+    test('the facing of a six-way directional block', () {
+      // `create:creative_motor` (`DirectionalKineticBlock`): a top click turns north to east.
+      final motor = WrenchRotation.rotated({'facing': 'north'}, Dir.up, facing: FacingKind.sixWay);
+      expect(motor['facing'], 'east');
+      // The face along the facing keeps it.
+      expect(WrenchRotation.rotated({'facing': 'north'}, Dir.north, facing: FacingKind.sixWay)['facing'], 'north');
+    });
+  });
+
   test('pillar axis rotates about the clicked face', () {
     final r = WrenchRotation.rotated({'axis': 'y'}, Dir.north, facing: FacingKind.none);
     // up rotated clockwise about Z -> east, so the axis becomes x

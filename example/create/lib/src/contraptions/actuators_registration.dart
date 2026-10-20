@@ -378,12 +378,18 @@ void serverActuatorContentLoaded(CreateRuntime runtime) {
     );
     return;
   }
+  registerActuatorWrenchables(wrench, () => runtime.blockEntities);
+}
+
+/// Registers the actuator blocks in [wrench] (`IWrenchable`). Called from `onServerLoaded`, where
+/// the equipment module's registry exists; kept separate so it can be tested without a server.
+void registerActuatorWrenchables(WrenchRegistry wrench, BlockEntityStore Function() blockEntities) {
   for (final key in bearingBlocks) {
     wrench.register(
       key,
       bearingWrenchable(
         disassemble: (c) async {
-          final be = runtime.blockEntities.at(c.world.getId(), c.pos);
+          final be = blockEntities().at(c.world.getId(), c.pos);
           if (be is MechanicalBearingBlockEntity) be.disassemble();
           if (be is ClockworkBearingBlockEntity) be.disassemble();
         },

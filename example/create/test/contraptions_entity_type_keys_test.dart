@@ -1,0 +1,50 @@
+// Entity type keys: the host reports a vanilla entity's type as a kebab-case wire name
+// (`chest-minecart`), while every contraption check compares `namespace:path` keys
+// (`minecraft:chest_minecart`). A missed mapping makes `ContraptionLevel.minecartsAt` return
+// nothing, so the cart assembler never sees the cart it should assemble.
+import 'package:create/src/contraptions/core/entity_type_keys.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('entityTypeKey', () {
+    test('maps a vanilla wire name to its namespaced snake_case key', () {
+      expect(entityTypeKey(wireName: 'minecart'), 'minecraft:minecart');
+      expect(entityTypeKey(wireName: 'chest-minecart'), 'minecraft:chest_minecart');
+      expect(entityTypeKey(wireName: 'furnace-minecart'), 'minecraft:furnace_minecart');
+      expect(entityTypeKey(wireName: 'player'), 'minecraft:player');
+    });
+
+    test('keeps the registered key of a plugin type', () {
+      expect(
+        entityTypeKey(pluginKey: 'create:stationary_contraption', wireName: 'stationary-contraption'),
+        'create:stationary_contraption',
+      );
+    });
+  });
+
+  group('isMinecartEntityType', () {
+    test('every minecart variant is one, with its namespaced key', () {
+      for (final key in [
+        'minecraft:minecart',
+        'minecraft:chest_minecart',
+        'minecraft:furnace_minecart',
+        'minecraft:hopper_minecart',
+        'minecraft:command_block_minecart',
+      ]) {
+        expect(isMinecartEntityType(key), isTrue, reason: key);
+      }
+    });
+
+    test('the raw wire name of a minecart is not a key', () {
+      // What `Entity.getType().wireName` gives: the bug this mapping prevents.
+      expect(isMinecartEntityType('minecart'), isFalse);
+      expect(isMinecartEntityType('chest-minecart'), isFalse);
+    });
+
+    test('a boat, a player and an unknown key are not minecarts', () {
+      expect(isMinecartEntityType('minecraft:oak_boat'), isFalse);
+      expect(isMinecartEntityType('minecraft:player'), isFalse);
+      expect(isMinecartEntityType('create:contraption'), isFalse);
+    });
+  });
+}

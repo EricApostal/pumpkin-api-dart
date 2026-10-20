@@ -56,7 +56,10 @@ List<ItemRegistration> minecartContraptionItemRegistrations() => [
 /// The contraption entities waiting for their host entity to exist before they ride the cart.
 /// `ContraptionEntityFactory.spawn` is asynchronous, so the passenger is attached on the next
 /// world tick.
-final List<(AbstractContraptionEntity, Entity)> _pendingRides = [];
+/// The cart is stored as `worldId` and entity id: the `Entity` the callback received is a
+/// borrowed resource that is released when the callback returns, so it cannot be held until the
+/// next tick.
+final List<(AbstractContraptionEntity, String, int)> _pendingRides = [];
 
 /// `MinecartContraptionItem.useOn`: a click on a rail with one of the items spawns the cart.
 Future<bool> useMinecartContraptionItem(
@@ -142,30 +145,41 @@ Future<void> addContraptionToMinecart(
     entity.startAtYaw(newFacing.toYRot);
   }
   factory.spawn(worldId, entity);
-  attachContraptionToCart(entity, cart);
+  attachContraptionToCart(entity, worldId, cart.getId());
 }
 
 /// `contraptionEntity.startRiding(cart)`: queued until the host entity exists (the factory's
 /// spawn is asynchronous).
-void attachContraptionToCart(AbstractContraptionEntity entity, Entity cart) =>
-    _pendingRides.add((entity, cart));
+void attachContraptionToCart(
+  AbstractContraptionEntity entity,
+  String worldId,
+  int cartId,
+) => _pendingRides.add((entity, worldId, cartId));
 
 /// Attaches the contraption entities spawned in the previous tick to their carts
 /// (`contraptionEntity.startRiding(cart)`).
 Future<void> tickPendingRides() async {
   if (_pendingRides.isEmpty) return;
-  for (final (entity, cart) in List.of(_pendingRides)) {
+  for (final (entity, worldId, cartId) in List.of(_pendingRides)) {
     final host = entity.host;
     if (host is! HostContraptionEntity) continue;
     final handle = host.handle;
     if (handle == null) continue;
+    // `world.getEntity(id)`: the cart may have been removed in the meantime.
+    final cart = ActuatorRuntime.maybe?.worlds.byId(worldId)?.getEntityById(
+      id: cartId,
+    );
+    if (cart == null) {
+      _pendingRides.remove((entity, worldId, cartId));
+      continue;
+    }
     try {
       await cart.addPassenger(passenger: handle);
       await handle.setVehicle(vehicle: cart);
     } on Object {
       // the cart or the contraption was removed in the meantime
     }
-    _pendingRides.remove((entity, cart));
+    _pendingRides.remove((entity, worldId, cartId));
   }
 }
 

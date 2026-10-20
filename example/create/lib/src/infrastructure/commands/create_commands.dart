@@ -18,8 +18,6 @@ import '../config/config_service.dart';
 import 'command_parsing.dart';
 import 'pipe_shape_probe.dart';
 import 'railway_report.dart';
-import 'track_probe.dart';
-import 'wrench_probe.dart';
 
 /// What the commands need at run time. The module fills it in `onLoad`; the commands are declared
 /// earlier (in `register`).
@@ -66,47 +64,6 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
   c.runs((ctx) => ctx.reply('/create <trains|debuginfo|highlight|passenger|coupling|clone|train|glue|util|config>'));
 
   // -- general purpose ----------------------------------------------------------
-  c.sub(
-    'wrenchprobe',
-    description: 'Temporary wrench probe',
-    runs: (ctx) async {
-      final w = firstWorld(st.worlds);
-      if (w == null) {
-        ctx.reply('PROBE no world');
-        return;
-      }
-      await runWrenchProbe(st.services, w, ctx);
-    },
-  );
-  c.sub(
-    'pipeshaperobe',
-    description: 'Temporary pipe shape probe',
-    runs: (ctx) async {
-      final w = firstWorld(st.worlds);
-      if (w == null) {
-        ctx.reply('PROBE no world');
-        return;
-      }
-      await runPipeShapeProbe(w, ctx);
-    },
-  );
-  c.sub(
-    'trackprobe',
-    description: 'Temporary track placement probe',
-    build: (s) => s.arg(
-      'pos',
-      ArgumentTypes.blockPos,
-      runs: (ctx) async {
-        final p = ctx.blockPos('pos');
-        final w = firstWorld(st.worlds);
-        if (w == null) {
-          ctx.reply('PROBE no world');
-          return;
-        }
-        await runTrackProbe(w, p.x, p.y, p.z, ctx);
-      },
-    ),
-  );
   c.sub(
     'trains',
     description: 'Summary of track networks and trains near you',

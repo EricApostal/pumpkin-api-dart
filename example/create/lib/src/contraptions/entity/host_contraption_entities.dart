@@ -6,6 +6,7 @@
 import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
+import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show HostBlockGetter, stateIdOf;
@@ -18,6 +19,7 @@ import '../../core/block_entity.dart';
 import '../../core/nbt.dart';
 import '../../core/worlds.dart';
 import '../core/contraption.dart';
+import '../core/entity_type_keys.dart';
 import '../core/contraption_type.dart';
 import '../core/level.dart';
 import '../core/nbt_map.dart';
@@ -59,11 +61,8 @@ abstract final class ContraptionHostHooks {
 /// A plugin type keeps its registered key. A vanilla type only has the host's kebab-case
 /// [EntityType.wireName] (`chest-minecart`), which is neither namespaced nor the key the
 /// contraption code compares against (`minecraft:chest_minecart`), so it is mapped here once.
-String hostEntityTypeKey(Entity entity) {
-  final pluginKey = entity.getPluginTypeKey();
-  if (pluginKey != null) return pluginKey;
-  return 'minecraft:${entity.getType().wireName.replaceAll('-', '_')}';
-}
+String hostEntityTypeKey(Entity entity) =>
+    entityTypeKey(pluginKey: entity.getPluginTypeKey(), wireName: entity.getType().wireName);
 
 /// A [ContraptionLevel] over a host [World].
 final class HostContraptionLevel extends ContraptionLevel {
@@ -385,13 +384,7 @@ final class HostContraptionLevel extends ContraptionLevel {
 
   static String _entityTypeName(Entity entity) => hostEntityTypeKey(entity);
 
-  static bool _isMinecartType(String type) => const {
-    'minecraft:minecart',
-    'minecraft:chest_minecart',
-    'minecraft:furnace_minecart',
-    'minecraft:hopper_minecart',
-    'minecraft:command_block_minecart',
-  }.contains(type);
+  static bool _isMinecartType(String type) => isMinecartEntityType(type);
 }
 
 /// A passenger of a contraption, wrapping a host [Entity].
@@ -639,13 +632,7 @@ final class HostCollisionEntity implements ContraptionCollisionEntity {
 
   String get _typeName => hostEntityTypeKey(handle);
 
-  static bool _isMinecartType(String type) => const {
-    'minecraft:minecart',
-    'minecraft:chest_minecart',
-    'minecraft:furnace_minecart',
-    'minecraft:hopper_minecart',
-    'minecraft:command_block_minecart',
-  }.contains(type);
+  static bool _isMinecartType(String type) => isMinecartEntityType(type);
 }
 
 /// The host entity of a contraption.
@@ -682,7 +669,10 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   void attachEntity(AbstractContraptionEntity entity) => _entity = entity;
 
   void attachHandle(Entity handle) {
-    _handle = handle;
+    // The handle comes back from an asynchronous host call, so its borrowed resource would be
+    // released when that callback returns. The contraption entity lives for many ticks: own the
+    // handle and dispose it with the entity (`remove`).
+    _handle = handle.keep();
     _entityId = handle.getId();
     _uuid = handle.getUuid().toString();
     _applyTransform();
@@ -970,6 +960,8 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   void remove() {
     _removed = true;
     _handle?.remove();
+    _handle?.dispose();
+    _handle = null;
   }
 
   void _applyTransform() {

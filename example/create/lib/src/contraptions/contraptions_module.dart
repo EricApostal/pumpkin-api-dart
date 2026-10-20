@@ -16,6 +16,7 @@ import '../trains/entity/carriage_entity_host.dart' show CarriageEntities;
 import '../trains/entity/train_level.dart' show TrainSettings;
 import '../infrastructure/config/create_configs.dart';
 import '../manifest/manifest.dart';
+import '../api/observable.dart' show RedstoneObservables;
 import '../api/payloads.dart' show PayloadBus;
 import 'actors_registration.dart';
 import 'actuators_registration.dart';
@@ -28,6 +29,7 @@ import 'entity/contraption_collider.dart';
 import 'entity/contraption_entity.dart';
 import 'entity/controlled_contraption_entity.dart';
 import 'gantry/gantry_contraption_entity.dart';
+import 'pulley/pulley_observable_probe.dart';
 import 'entity/contraption_handler.dart';
 import 'entity/contraption_packets.dart';
 import 'entity/translating_contraption.dart';
@@ -42,6 +44,15 @@ const List<String> _contraptionEntityTypes = [
   'contraption',
   'stationary_contraption',
   'gantry_contraption',
+];
+
+/// The registered keys of every entity type that carries a contraption, including the train
+/// carriage type of the trains module: all of them have to be ticked by the plugin.
+const List<String> _contraptionEntityKeys = [
+  'create:contraption',
+  'create:stationary_contraption',
+  'create:gantry_contraption',
+  carriageContraptionEntityKey,
 ];
 
 final class ContraptionsModule extends CreateModule {
@@ -160,6 +171,22 @@ final class ContraptionsModule extends CreateModule {
     ctx.listen(Events.worldTick, (server, e) async {
       await host.tick(e.targetWorld.getId());
     });
+
+    // `AbstractContraptionEntity.tick()` is the entity's own tick: the host only fires
+    // `Events.entityTick` for a plugin type that opted in (`entity_tick_interval` is 0 otherwise,
+    // `crates/pumpkin-core/src/world/mod.rs:1708-1734`). Without this every contraption exists,
+    // is sent to the client and then never moves: no actor ticks, no passenger placement.
+    ctx.listen(Events.entityTick, (server, e) async {
+      if (!_contraptionEntityKeys.contains(e.entityType)) return;
+      await host.onEntityTick(e.entityId);
+    });
+    for (final key in _contraptionEntityKeys) {
+      try {
+        ctx.host.tickPluginEntities(key, interval: 1);
+      } on Object catch (error) {
+        ctx.log.warn('contraptions of $key are not ticked: $error');
+      }
+    }
     ctx.listen(Events.worldUnload, (server, e) {
       if (e.cancelled) return;
       host.forgetWorld(e.targetWorld.getId());
@@ -199,6 +226,10 @@ final class ContraptionsModule extends CreateModule {
   void onServerLoaded(CreateRuntime runtime) {
     serverActuatorContentLoaded(runtime);
     serverActorContentLoaded(runtime);
+    // The threshold switch reads a pulley's rope offset (`ThresholdSwitchObservable`).
+    runtime.services
+        .find<RedstoneObservables>()
+        ?.register(const PulleyObservableProbe());
   }
 
   @override

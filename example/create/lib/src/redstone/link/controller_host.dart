@@ -10,6 +10,7 @@ import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
+import '../power_face.dart';
 import '../support/level.dart';
 import '../support/manifest_block.dart';
 import '../support/players.dart';
@@ -277,7 +278,7 @@ final class LecternControllerBlock {
         onWeakPower: (server, e) => block.stateOf(e.stateIndex)['powered'] == 'true' ? 15 : 0,
         // `LecternBlock.getDirectSignal`: strong power only upwards (`direction == UP`).
         onStrongPower: (server, e) =>
-            e.face == BlockDirection.up && block.stateOf(e.stateIndex)['powered'] == 'true' ? 15 : 0,
+            powerEventSide(e.face.toDirection()) == Direction.up && block.stateOf(e.stateIndex)['powered'] == 'true' ? 15 : 0,
       ),
     );
     return block;

@@ -116,6 +116,18 @@ abstract interface class PipeNodeView {
   bool get isPumpNode;
 }
 
+/// `FluidPropagator.getPipe` (`BlockEntityBehaviour.get(reader, pos,
+/// FluidTransportBehaviour.TYPE)`): the pipe node among the [behaviours] of the block
+/// entity at a position, `null` when it has none (or the node was removed). The node of a
+/// pipe is its transport behaviour; the block entity that owns it is not a node itself.
+PipeNodeView? pipeNodeIn(Iterable<Object?> behaviours) {
+  for (final behaviour in behaviours) {
+    if (behaviour is! PipeNodeView) continue;
+    return behaviour.isRemoved ? null : behaviour;
+  }
+  return null;
+}
+
 /// The world for the fluid logic: the block getter plus fluids, the pipes and the writes the
 /// logic issues.
 abstract class FluidWorld extends BlockGetter {

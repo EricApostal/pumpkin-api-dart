@@ -130,6 +130,10 @@ abstract class BlockGetter {
   /// `BlockState.canBeReplaced()`.
   bool canBeReplaced(Pos p);
 
+  /// `BlockState.isSolid()` (`blocksMotion()`): a block without a collision shape does not block
+  /// motion; the host implementation asks the host for the exact flag.
+  bool isSolid(Pos p) => !collisionShapeEmpty(p);
+
   /// `BlockState.isCollisionShapeFullBlock`.
   bool isCollisionShapeFullBlock(Pos p) {
     final boxes = collisionBoxes(p);

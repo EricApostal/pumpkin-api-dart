@@ -30,6 +30,7 @@ final class _StateShapeInfo {
   final bool isAir;
   final bool replaceable;
   final bool isFullCube;
+  final bool isSolid;
   final List<bool> sideSolid; // by Direction ordinal
   final List<BlockBox> collision;
 
@@ -37,6 +38,7 @@ final class _StateShapeInfo {
     this.isAir,
     this.replaceable,
     this.isFullCube,
+    this.isSolid,
     this.sideSolid,
     this.collision,
   );
@@ -98,6 +100,7 @@ final class HostBlockGetter extends BlockGetter {
         true,
         true,
         false,
+        false,
         List.filled(6, false),
         const [],
       );
@@ -106,6 +109,7 @@ final class HostBlockGetter extends BlockGetter {
         st.isAir,
         st.replaceable,
         st.isFullCube,
+        st.isSolid,
         [
           st.downSideSolid,
           st.upSideSolid,
@@ -172,6 +176,9 @@ final class HostBlockGetter extends BlockGetter {
   }
 
   @override
+  bool isSolid(Pos p) => _shapeOf(idAt(p)).isSolid;
+
+  @override
   bool isFaceSturdy(Pos p, dir.Direction face) =>
       _shapeOf(idAt(p)).sideSolid[face.index];
 
@@ -221,7 +228,9 @@ final Map<String, int?> _resolved = {};
 int? stateIdOf(BState s) {
   final k = s.toString();
   if (_resolved.containsKey(k)) return _resolved[k];
-  final id = BlockRegistry.resolveState(s.key, s.props);
+  // `BlockStates.resolveState`, not the host: a plugin block's property names and values
+  // (`turn`, `shape=zo`) are not in the host's vanilla `Property` enum, which drops them.
+  final id = BlockStates.resolveState(s.key, s.props);
   _resolved[k] = id;
   return id;
 }
@@ -351,9 +360,14 @@ BlockProperty hostProperty(ManifestProperty p) => switch (p.type) {
   _ => BlockProperty.enumeration(p.name, p.values),
 };
 
+/// The manifest uses the vocabulary of the Java tree it was extracted from
+/// (`PUSH_PULL`/`IMMOVEABLE`/`POPPED`); the host enum uses
+/// `normal`/`block`/`destroy`/`ignore`/`pushOnly`. Both spellings of the same reaction map to
+/// the same case, so a piston pole or head is not silently turned into `normal`.
 PistonBehavior _piston(String reaction) => switch (reaction) {
+  'PUSH_PULL' || 'NORMAL' => PistonBehavior.normal,
   'DESTROY' || 'POPPED' => PistonBehavior.destroy,
-  'BLOCK' => PistonBehavior.block,
+  'BLOCK' || 'IMMOVEABLE' => PistonBehavior.block,
   'IGNORE' => PistonBehavior.ignore,
   'PUSH_ONLY' => PistonBehavior.pushOnly,
   _ => PistonBehavior.normal,

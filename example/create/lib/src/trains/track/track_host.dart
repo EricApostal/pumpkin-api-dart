@@ -83,6 +83,8 @@ final class HostTrackLevel extends TrackLevel {
 
   @override
   Future<void> setBlock(Pos pos, BState state) async {
+    final dbgId = stateIdOf(state);
+    Tr.i.log.info('TRACKWRITE pos=$pos state=$state id=$dbgId');
     await setBlockState(world, pos, state);
     _syncBlockEntity(pos, state);
   }
@@ -494,6 +496,11 @@ Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
   );
   final pos = e.blockPos.toPos();
   final lookVec = player.lookDirection;
+  final clickedState = level.stateAt(pos);
+  Tr.i.log.info(
+    'TRACKDBG click pos=$pos state=$clickedState hostId=${world.getBlockStateId(pos: e.blockPos)} '
+    'info=${BlockStates.info(world.getBlockStateId(pos: e.blockPos))}',
+  );
 
   // The player the placement reads and writes; its slots are written back below, after the
   // placement took the items it needs.
@@ -511,6 +518,11 @@ Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
   );
   await placementPlayer.flush();
 
+  Tr.i.log.info(
+    'TRACKDBG outcome=${result.outcome} message=${result.message} '
+    'cf=${stack.connectingFrom?.pos} mid=${level.stateAt((0, 100, 2))} '
+    'at1=${level.stateAt((0, 100, 1))} at3=${level.stateAt((0, 100, 3))}',
+  );
   switch (result.outcome) {
     case TrackUseOutcome.pass:
       // No selection and no track clicked: the host places the single block.

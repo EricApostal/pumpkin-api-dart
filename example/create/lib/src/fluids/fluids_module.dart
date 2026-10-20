@@ -8,6 +8,7 @@ import '../api/behaviour/spouting/spouting.dart'
     show AllBlockSpoutingBehaviours;
 import '../api/config.dart' show CreateConfigs;
 import '../api/decoration.dart' show WhistleBoilerHooks;
+import '../api/observable.dart' show RedstoneObservables;
 import '../api/kinetics.dart' show KineticNetworkService;
 import '../api/wrenchable.dart' show WrenchRegistry;
 import '../common/pos.dart';
@@ -32,6 +33,7 @@ import 'fluid_tank_movement_behaviour.dart';
 import 'fluid_world.dart';
 import 'generic_item_fluid.dart';
 import 'open_pipe_effects.dart';
+import 'pipe_observable_probe.dart';
 
 /// The fluids module. Add `FluidsModule()` to `allModules` after `processing`.
 final class FluidsModule extends CreateModule {
@@ -140,6 +142,10 @@ final class FluidsModule extends CreateModule {
       }
       registerFluidPipeTransforms();
     }
+
+    // The smart observer sees the fluid flowing into a pipe (`ObservableProbe`); redstone
+    // publishes the registry in its `onLoad`.
+    runtime.services.find<RedstoneObservables>()?.register(const PipeObservableProbe());
   }
 
   @override

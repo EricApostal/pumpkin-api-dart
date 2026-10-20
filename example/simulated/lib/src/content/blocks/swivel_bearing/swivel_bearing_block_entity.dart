@@ -28,6 +28,7 @@ import 'package:sable/sable.dart' as sable
         SubLevel,
         Vector3d;
 
+import '../../../compat/computercraft/peripherals/swivel_bearing_peripheral.dart';
 import '../../../config/sim_config_service.dart';
 import '../../../host/simulated_host.dart';
 import '../../../util/assembly/sim_assembly_exception.dart';
@@ -40,7 +41,7 @@ import 'swivel_bearing_logic.dart';
 
 /// `SwivelBearingBlockEntity`.
 final class SwivelBearingBlockEntity extends KineticBlockEntity
-    implements sable.BlockEntitySubLevelActor {
+    implements sable.BlockEntitySubLevelActor, SimSwivelBearingSource {
   /// The block entity type key.
   static const String type = 'simulated:swivel_bearing';
 
@@ -365,7 +366,11 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
 
   @override
   void sable$physicsTick(sable.ServerSubLevel subLevel, sable.RigidBodyHandle handle, double timeStep) {
-    hasHandle = true;
+    // `SwivelBearingBlockEntity.physicsTick`: the hinge motor is re-driven every
+    // step, because the target angle is interpolated and the servo's coefficients
+    // depend on the masses the bodies have *now*. `hasHandle` is derived from
+    // `hinge`, so there is nothing to record here.
+    _driveServo();
   }
 
   @override
@@ -433,6 +438,7 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
   }
 
   /// `getTargetAngleDegrees()`.
+  @override
   double get targetAngleDegrees => logic.targetAngleDegrees;
 
   void setBlockFlag(String property, bool value) {

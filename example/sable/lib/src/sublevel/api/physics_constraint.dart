@@ -57,7 +57,7 @@ final class GenericConstraintConfiguration extends PhysicsConstraintConfiguratio
   final Vector3d pos2;
   final Quaterniond quatB;
 
-  /// Which axes are locked (`ConstraintJointAxis` bit mask).
+  /// Which axes are locked (`ConstraintJointAxisMask` bits).
   final int lockedAxesMask;
 
   GenericConstraintConfiguration(
@@ -69,17 +69,42 @@ final class GenericConstraintConfiguration extends PhysicsConstraintConfiguratio
   );
 }
 
-/// `ConstraintJointAxis`: the bit of each axis in the generic lock mask.
+/// `ConstraintJointAxis`: the axis number `setMotor`/`setLimit` take.
+///
+/// Java's enum ordinals are the contract (`RapierConstraintHandle.java:30`
+/// passes `axis.ordinal()`), so these are **indices**, not bits: linear X/Y/Z
+/// are 0-2 and angular X/Y/Z are 3-5. The lock mask uses
+/// [ConstraintJointAxisMask] instead.
 abstract final class ConstraintJointAxis {
-  static const int linearX = 1;
-  static const int linearY = 2;
-  static const int linearZ = 4;
-  static const int angularX = 8;
-  static const int angularY = 16;
-  static const int angularZ = 32;
+  static const int linearX = 0;
+  static const int linearY = 1;
+  static const int linearZ = 2;
+  static const int angularX = 3;
+  static const int angularY = 4;
+  static const int angularZ = 5;
+
+  /// Every linear axis.
+  static const List<int> linear = [linearX, linearY, linearZ];
+
+  /// Every angular axis.
+  static const List<int> angular = [angularX, angularY, angularZ];
 
   /// Every axis.
-  static const int all = 63;
+  static const List<int> all = [linearX, linearY, linearZ, angularX, angularY, angularZ];
+}
+
+/// The bit of each axis in a joint lock mask (Rapier's `JointAxesMask`, which
+/// `jolt_joint_create_sixdof` and `jolt_joint_lock_axes` take).
+abstract final class ConstraintJointAxisMask {
+  static const int linearX = 1 << 0;
+  static const int linearY = 1 << 1;
+  static const int linearZ = 1 << 2;
+  static const int angularX = 1 << 3;
+  static const int angularY = 1 << 4;
+  static const int angularZ = 1 << 5;
+
+  /// Every axis.
+  static const int all = 0x3f;
 }
 
 /// `PhysicsConstraintHandle`.
@@ -100,8 +125,8 @@ abstract interface class PhysicsConstraintHandle {
   /// `setMotor(axis, target, stiffness, damping, hasMaxForce, maxForce)`: adds
   /// or sets a PD motor on [axis] (`RapierConstraintHandle.java:30-33`).
   ///
-  /// [axis] is one of the [ConstraintJointAxis] bits; [target] is a position
-  /// [m] or angle [rad] depending on the axis.
+  /// [axis] is one of the [ConstraintJointAxis] indices (0-5); [target] is a
+  /// position [m] or angle [rad] depending on the axis.
   void setMotor(
     int axis,
     double target,
@@ -129,7 +154,7 @@ abstract interface class GenericConstraintHandle implements PhysicsConstraintHan
   /// `setLimit(axis, min, max)`.
   void setLimit(int axis, double min, double max);
 
-  /// `lockAxes(axes)`: a mask of [ConstraintJointAxis] bits.
+  /// `lockAxes(axes)`: a mask of [ConstraintJointAxisMask] bits.
   void lockAxes(int axes);
 }
 

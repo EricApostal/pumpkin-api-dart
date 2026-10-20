@@ -162,8 +162,10 @@ final class _TestPipe with PipeNodeMixin implements PipeNodeView {
   @override
   void nodeSendData() => sends++;
 
+  bool removed = false;
+
   @override
-  bool get isRemoved => false;
+  bool get isRemoved => removed;
 
   @override
   bool canHaveFlowToward(BState state, Direction direction) =>
@@ -692,6 +694,39 @@ void main() {
         draining.fluidBlockTypeAt(world, (3, 0, 0)),
         FluidBlockType.none,
       );
+    });
+  });
+
+  group('pipe node lookup', () {
+    // `FluidPropagator.getPipe` (`BlockEntityBehaviour.get(reader, pos,
+    // FluidTransportBehaviour.TYPE)`): the host resolves a pipe from the behaviours of
+    // the block entity at the position.
+    test('the node of a pipe is its transport behaviour, not the block entity', () {
+      final world = _TestWorld();
+      final pipe = _TestPipe(
+        (0, 0, 0),
+        world,
+        _pipeState({Direction.west, Direction.east}),
+      );
+      // A pipe block entity also owns a bracket behaviour; the node is found after it.
+      expect(pipeNodeIn([Object(), pipe]), same(pipe));
+    });
+
+    test('a block entity that only owns the behaviour is not a node', () {
+      // The regression: `pipeAt` used to test `blockEntity is PipeNodeView`. A pipe
+      // block entity is not one (it only owns the behaviour), so every pipe resolved
+      // to null and no network was ever formed.
+      final owner = Object();
+      expect(owner, isNot(isA<PipeNodeView>()));
+      expect(pipeNodeIn([owner]), isNull);
+      expect(pipeNodeIn(const []), isNull);
+    });
+
+    test('a removed pipe resolves to no node', () {
+      final world = _TestWorld();
+      final pipe = _TestPipe((0, 0, 0), world, _pipeState(const {}))
+        ..removed = true;
+      expect(pipeNodeIn([pipe]), isNull);
     });
   });
 

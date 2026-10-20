@@ -28,7 +28,8 @@ import 'sub_level.dart';
 import 'sub_level_container.dart';
 
 /// A sub-level in a server level.
-final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
+final class ServerSubLevel extends SubLevel
+    implements ServerSubLevelLike, QueuedForceTarget {
   /// The latest linear velocity of this sub-level.
   final Vector3d latestLinearVelocity = Vector3d();
 
@@ -248,6 +249,7 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
   /// The mass and inertia tracker for this sub-level.
   ///
   /// DEPENDS ON W3: the tracker is built by the physics pipeline.
+  @override
   MassData getMassTracker() {
     final tracker = massTracker;
     if (tracker == null) {
@@ -305,6 +307,7 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
   void enableIndividualQueuedForcesTracking(bool enable) => trackIndividualQueuedForces = enable;
 
   /// Whether individual queued forces are being tracked.
+  @override
   bool isTrackingIndividualQueuedForces() => trackIndividualQueuedForces;
 
   /// A map of force group to queued force groups.

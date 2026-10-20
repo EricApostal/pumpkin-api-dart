@@ -300,7 +300,10 @@ final class MassTracker implements MassData, MutableMassTracker {
   @override
   Vector3d getCenterOfMass() {
     final center = _centerOfMass;
-    if (center == null) {
+    // A tracker whose last block was removed keeps the NaN the zero-mass
+    // divide produced; Java's `isInvalid` is mass-based, so the Dart contract
+    // (throw instead of returning null) keys off the mass too.
+    if (center == null || _mass <= 0.0) {
       throw StateError('MassTracker: the structure has no solid blocks');
     }
     return center;
@@ -347,7 +350,7 @@ final class MergedMassTracker implements MassData {
   /// origin at the plot origin and only stores the centre of mass as a shape
   /// offset, so no teleport compensation is needed.
   bool update(double partialPhysicsTick) {
-    if (selfTracker.centerOfMassOrNull == null) {
+    if (selfTracker.isInvalid()) {
       return false;
     }
 
@@ -451,7 +454,7 @@ final class MergedMassTracker implements MassData {
   @override
   Vector3d getCenterOfMass() {
     final center = _centerOfMass;
-    if (center == null) {
+    if (center == null || _mass <= 0.0) {
       throw StateError('MergedMassTracker: the sub-level has no solid blocks');
     }
     return center;

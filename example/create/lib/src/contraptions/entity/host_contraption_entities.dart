@@ -34,6 +34,7 @@ import '../entity/controlled_contraption_entity.dart';
 import '../entity/i_control_contraption.dart';
 import '../entity/oriented_contraption_entity.dart';
 import '../gantry/gantry_contraption_entity.dart';
+import '../glue/super_glue_entity.dart' show glueBoxFromSpawnData, glueEntityPos, glueSpawnData;
 import '../storage/storage_manager.dart';
 
 /// Hooks the actuator, glue, seat and minecart modules install on the host adapter.
@@ -216,20 +217,7 @@ final class HostContraptionLevel extends ContraptionLevel {
       final entity = world.getEntityById(id: snapshot.id);
       if (entity == null) continue;
       if (entity.getPluginTypeKey() != 'create:super_glue') continue;
-      final bb = entity.getBoundingBox();
-      refs.add(
-        GlueRef(
-          snapshot.id,
-          Aabb(
-            bb.min.$1,
-            bb.min.$2,
-            bb.min.$3,
-            bb.max.$1,
-            bb.max.$2,
-            bb.max.$3,
-          ),
-        ),
-      );
+      refs.add(GlueRef(snapshot.id, glueEntityBox(entity)));
     }
     return refs;
   }
@@ -376,7 +364,7 @@ final class HostContraptionLevel extends ContraptionLevel {
 
   @override
   void addGlue(Aabb box) {
-    unawaited(world.spawnPlugin('create:super_glue', box.center));
+    unawaited(spawnGlue(world, box));
   }
 
   @override
@@ -1304,6 +1292,7 @@ final class ContraptionHost {
     if (world == null) return;
     final level = levelOf(worldId);
 
+    final spawned = <OrientedContraptionEntity>[];
     for (final face in c.pendingSubContraptions) {
       final sub = type.create();
       // `new StabilizedContraption(facing)` of the bearing that leaves it behind.
@@ -1326,22 +1315,65 @@ final class ContraptionHost {
         c.toLocalPos(face.pos),
         face.face,
       );
+      spawned.add(oriented);
+    }
+
+    // `Contraption.onEntityInitialize` (`Contraption.java:270-276`): every stabilized
+    // sub-contraption inside the parent's bounds starts riding the parent. Without the vehicle,
+    // `OrientedContraptionEntity.tickContraption` returns at the `vehicle == null` check before
+    // `tickActors`, so the sub-contraption never moves and its actors never tick.
+    await _mountSubContraptions(world, parent, spawned);
+  }
+
+  /// `orientedCE.startRiding(contraptionEntity)` for the stabilized sub-contraptions.
+  ///
+  /// The handles are looked up fresh per mount: `set-vehicle` takes ownership of both the
+  /// receiver and the vehicle handle, so neither may be reused afterwards.
+  Future<void> _mountSubContraptions(
+    World world,
+    AbstractContraptionEntity parent,
+    List<OrientedContraptionEntity> subContraptions,
+  ) async {
+    if (subContraptions.isEmpty) return;
+    for (final sub in subContraptions) {
+      if (!sub.host.isAlive || !parent.host.isAlive) continue;
+      final subHandle = world.getEntityById(id: sub.entityId);
+      if (subHandle == null) continue;
+      final parentHandle = world.getEntityById(id: parent.entityId);
+      if (parentHandle == null) {
+        subHandle.dispose();
+        continue;
+      }
+      try {
+        await subHandle.setVehicle(vehicle: parentHandle);
+      } on Object {
+        // One of the two was removed in the meantime.
+      }
     }
   }
 
   /// Ticks every contraption of [worldId] (`ContraptionHandler.tick`).
+  ///
+  /// The entities themselves are ticked by `Events.entityTick` ([onEntityTick]), the host's
+  /// entity tick. This is only the collision pass: the host fires one tick per entity, so ticking
+  /// them here as well would run every contraption twice per server tick.
   Future<void> tick(String worldId) async {
     final map = entities[worldId];
     if (map == null) return;
-    for (final entry in map.entries.toList()) {
-      final entity = entry.value;
-      if (!entity.host.isAlive) {
-        map.remove(entry.key);
-        continue;
-      }
-      await entity.tick();
-    }
+    map.removeWhere((_, entity) => !entity.host.isAlive);
     ContraptionHandler.tick(worldId);
+  }
+
+  /// `Events.entityTick`: `AbstractContraptionEntity.tick()` for one contraption entity.
+  ///
+  /// The host only fires the event for types that were opted in with
+  /// `tickPluginEntities(..., interval: 1)` (see `ContraptionsModule.onLoad`); without that
+  /// opt-in the plugin never sees the tick, the contraption never moves and nothing is rendered.
+  Future<void> onEntityTick(int entityId) async {
+    final entity = entityByIdAnyWorld(entityId);
+    if (entity == null) return;
+    if (!entity.host.isAlive) return;
+    await entity.tick();
   }
 
   void forgetWorld(String worldId) {
@@ -1356,6 +1388,24 @@ final class ContraptionHost {
   }
 }
 
+/// `new SuperGlueEntity(world, box)` + `addFreshEntity`: the box travels as the entity's spawn
+/// data (`writeSpawnData`), so the client can draw the glue overlay and the server reads the
+/// glue volume back instead of the entity's hitbox.
+Future<void> spawnGlue(World world, Aabb box) => world.spawnPlugin(
+  'create:super_glue',
+  glueEntityPos(box),
+  spawnData: glueSpawnData(box),
+);
+
+/// `SuperGlueEntity.getBoundingBox()` of a live glue entity: the box it was spawned with (from
+/// its spawn data), else the hitbox the host gives it.
+Aabb glueEntityBox(Entity entity) {
+  final box = glueBoxFromSpawnData(entity.pluginSpawnData);
+  if (box != null) return box;
+  final bb = entity.getBoundingBox();
+  return Aabb(bb.min.$1, bb.min.$2, bb.min.$3, bb.max.$1, bb.max.$2, bb.max.$3);
+}
+
 /// The `GlueEntityHost` of `actuator_contract.dart`: the super glue entities of a world.
 final class HostGlueEntityHost implements GlueEntityHost {
   final ContraptionHost host;
@@ -1368,7 +1418,7 @@ final class HostGlueEntityHost implements GlueEntityHost {
   void spawn(String worldId, Aabb box) {
     final world = _world(worldId);
     if (world == null) return;
-    unawaited(world.spawnPlugin('create:super_glue', box.center));
+    unawaited(spawnGlue(world, box));
   }
 
   @override
@@ -1391,11 +1441,7 @@ final class HostGlueEntityHost implements GlueEntityHost {
     if (entity == null || entity.getPluginTypeKey() != 'create:super_glue') {
       return null;
     }
-    final bb = entity.getBoundingBox();
-    return GlueRef(
-      entityId,
-      Aabb(bb.min.$1, bb.min.$2, bb.min.$3, bb.max.$1, bb.max.$2, bb.max.$3),
-    );
+    return GlueRef(entityId, glueEntityBox(entity));
   }
 }
 

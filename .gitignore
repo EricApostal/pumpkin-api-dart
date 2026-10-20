@@ -4,3 +4,8 @@ build/
 .DS_Store
 .vscode/
 **/bin/*.wasm
+
+world/
+pumpkin.toml
+data/
+logs/

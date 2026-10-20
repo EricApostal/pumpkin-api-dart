@@ -565,7 +565,13 @@ final class _Handle implements RigidBodyHandle {
   void applyLinearAndAngularImpulse(Vector3d linear, Vector3d angular, bool wakeUp) {}
 
   @override
-  void applyForcesAndReset(Vector3d force) {}
+  void applyForcesAndReset(ForceTotal forceTotal) {}
+
+  @override
+  void applyImpulseAtPoint(Vector3d position, Vector3d force) {}
+
+  @override
+  bool get isValid => true;
 
   @override
   void teleport(Vector3d position, Quaterniond orientation) {}

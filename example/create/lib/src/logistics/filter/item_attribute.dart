@@ -6,15 +6,19 @@
 //
 // The attribute values of `AllItemAttributeTypes` are derived from what an [LStack] carries:
 // the item key and the data components (each decoded with its `networkSynchronized` stream
-// codec). What only the server knows — item tags, recipe inputs, creative tabs, enchantment
-// levels, fluid contents — comes in through [ItemAttributeHooks], which the filter part installs
-// (see `filter_part.dart`). The defaults keep the model usable in tests: everything the server
-// would answer is "unknown" (`false`, no attribute).
+// codec). What only the server knows — item tags, recipe inputs, enchantment levels, fluid
+// contents — comes in through [ItemAttributeHooks], which the filter part installs (see
+// `filter_part.dart`); the creative tabs come from the shipped manifest (`kCreativeTabs`, see
+// [creativeTabContainsItem]) and are installed by `installLogisticsServices`. The defaults keep
+// the model usable in tests: everything the server would answer is "unknown" (`false`, no
+// attribute).
 import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api_core.dart' show VanillaIds;
 
 import '../../core/nbt.dart';
+import '../../manifest/manifest.dart'
+    show CreativeTabDef, ManifestItem, kCreativeTabs, kItems;
 import '../model/stack.dart';
 
 /// `ItemAttribute`: a named test on an item stack.
@@ -618,15 +622,83 @@ final class InTagAttribute extends ValuedAttribute {
   bool appliesTo(LStack stack) => ItemAttributeHooks.itemInTag(stack.key, tag);
 }
 
+/// `InItemGroupAttribute.Type.getAllAttributes`: the creative tabs that show [itemKey]
+/// (`create:base`, `create:palettes`), in registration order.
+///
+/// The host exposes neither the tabs nor their contents, so the shipped manifest is the source:
+/// [kCreativeTabs] names the tabs, the items each one hides and the items whose place differs
+/// from their registration source; [kItems] classifies the rest (palette blocks belong to the
+/// palettes tab, everything else to the base tab). Vanilla tabs are not known here and never
+/// match.
+List<String> creativeTabGroupsOf(String itemKey) => [
+  for (final tab in kCreativeTabs)
+    if (creativeTabContainsItem(itemKey, 'create:${tab.key}'))
+      'create:${tab.key}',
+];
+
+/// `InItemGroupAttribute.tabContainsItem` for the tab [group]: whether the tab shows [itemKey].
+///
+/// [group] is a tab key (`create:base`); a tab whose contents are unknown answers `false`.
+bool creativeTabContainsItem(String itemKey, String group) {
+  const namespace = 'create:';
+  if (!itemKey.startsWith(namespace)) return false;
+  final path = itemKey.substring(namespace.length);
+  final tab = _tabOf(group);
+  if (tab == null) return false;
+  if (tab.excluded.contains(path)) return false;
+  if (tab.contentOrder.contains(path)) return true;
+  final item = _itemOf(path);
+  if (item == null) return false;
+  // `PackageStyles.RARE_BOXES` are added to the tab's exclusion predicate (`AllCreativeModeTabs`
+  // Java `AllCreativeModeTabs.java:142`); the manifest lists them as regular items.
+  if (path.startsWith('rare_') && path.endsWith('_package')) return false;
+  final palettes = _paletteTab;
+  final inPalettes =
+      _isPaletteSource(item.source) ||
+      (palettes != null && palettes.contentOrder.contains(path));
+  // The base tab adds every non-palette registration (`includesItems`); the palettes tab adds
+  // the palette blocks (`AllPaletteBlocks` and the palette generators).
+  return tab.includesItems ? !inPalettes : inPalettes;
+}
+
+CreativeTabDef? _tabOf(String group) {
+  const namespace = 'create:';
+  final key = group.startsWith(namespace)
+      ? group.substring(namespace.length)
+      : group;
+  for (final tab in kCreativeTabs) {
+    if (tab.key == key) return tab;
+  }
+  return null;
+}
+
+CreativeTabDef? get _paletteTab {
+  for (final tab in kCreativeTabs) {
+    if (tab.key == 'palettes') return tab;
+  }
+  return null;
+}
+
+Map<String, ManifestItem>? _itemsByPath;
+
+ManifestItem? _itemOf(String path) => (_itemsByPath ??= {
+  for (final item in kItems) item.key: item,
+})[path];
+
+bool _isPaletteSource(String source) =>
+    source.startsWith('palette:') || source.startsWith('AllPalette');
+
 final class _InItemGroupAttributeType extends ValuedAttributeType {
   @override
   String get id => 'in_item_group';
 
-  /// `CreativeModeTabs.tabs()` has no counterpart in the plugin API: the host exposes neither the
-  /// creative tabs nor the items of one, so no group attribute is ever offered. Java lists the
-  /// category tabs whose contents include the stack (`InItemGroupAttribute.Type`).
+  /// Java lists the category tabs whose contents include the stack
+  /// (`InItemGroupAttribute.Type.getAllAttributes`); the tabs are [creativeTabGroupsOf].
   @override
-  List<ItemAttribute> attributesOf(LStack stack) => const [];
+  List<ItemAttribute> attributesOf(LStack stack) => [
+    for (final group in creativeTabGroupsOf(stack.key))
+      InItemGroupAttribute(group),
+  ];
 
   @override
   ItemAttribute? attributeFromValue(Object? value) =>

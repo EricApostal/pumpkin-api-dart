@@ -8,6 +8,7 @@ import '../core/contraption.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_transform.dart';
 import '../minecart/capability/minecart_controller.dart' show OrientedCouplingId;
+import 'contraption_collider.dart' show OrientedLike;
 import 'contraption_entity.dart';
 
 /// Hooks the mounted (minecart) and bearing modules install for the oriented entity.
@@ -65,7 +66,7 @@ abstract interface class MinecartStallSink {
 
 /// `OrientedContraptionEntity`.
 class OrientedContraptionEntity extends AbstractContraptionEntity
-    implements OrientedCouplingId {
+    implements OrientedCouplingId, OrientedLike {
   Vec3 motionBeforeStall = vec3Zero;
   bool forceAngle = false;
   bool _attachedExtraInventories = false;

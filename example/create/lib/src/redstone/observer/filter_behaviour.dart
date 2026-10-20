@@ -52,13 +52,16 @@ class FilterBehaviour extends BlockEntityBehaviour implements ValueSettingsTarge
     return true;
   }
 
-  /// `test(ItemStack)`: no filter accepts everything.
+  /// `test(ItemStack)`: no filter accepts everything. The slot keeps the item key only (Java keeps
+  /// the whole stack), so a list or attribute filter matches itself here.
   @override
   bool testItem(String itemKey) {
     final f = filter;
     if (f == null) return true;
     final api = Rs.i.ctx.services.find<ItemFilterApi>();
-    if (api != null) return api.testItem(owner.worldId, f, itemKey);
+    if (api != null) {
+      return api.testItem(owner.worldId, FilterItemValue.key(f), itemKey);
+    }
     return f == itemKey;
   }
 
@@ -68,7 +71,9 @@ class FilterBehaviour extends BlockEntityBehaviour implements ValueSettingsTarge
     final f = filter;
     if (f == null) return true;
     final api = Rs.i.ctx.services.find<ItemFilterApi>();
-    if (api != null) return api.testFluid(owner.worldId, f, fluidKey);
+    if (api != null) {
+      return api.testFluid(owner.worldId, FilterItemValue.key(f), fluidKey);
+    }
     return bucketFluid(f) == fluidKey;
   }
 

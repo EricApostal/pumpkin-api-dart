@@ -69,14 +69,33 @@ CreateBlock postboxBlock(String color) => CreateBlock(
   soundType: 'wood',
   blockEntityType: PostboxBlockEntity.type,
   placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
-  behavior: BlockBehavior(onUse: _onUse, onComparatorOutput: _comparator),
+  behavior: BlockBehavior(
+    onUse: _onUse,
+    onComparatorOutput: _comparator,
+    onPlaced: (server, e) async => _requestPortTarget(e),
+  ),
 );
+
+/// `PackagePortItem.place` (the item of both the frogport and the postboxes): after the port is
+/// placed, ask the client to flush its target selection
+/// (`PackagePortTargetSelectionHandler.flushSettings`), which then sends
+/// `create:place_package_port`. Without it a port is placed address-less.
+void _requestPortTarget(CustomBlockPlacedEventData e) {
+  final uuid = e.player?.asString;
+  if (uuid == null) return;
+  final player = Lg.i.player(uuid);
+  if (player == null) return;
+  Lg.i.bus.sendClientbound('create:s_place_package_port', player, {
+    'pos': (e.pos.x, e.pos.y, e.pos.z),
+  });
+}
 
 /// `FrogportBlock.setPlacedBy`: the port looks at the player that placed it.
 Future<void> _onFrogportPlaced(
   Server server,
   CustomBlockPlacedEventData e,
 ) async {
+  _requestPortTarget(e);
   final uuid = e.player?.asString;
   if (uuid == null) return;
   final player = Lg.i.player(uuid);

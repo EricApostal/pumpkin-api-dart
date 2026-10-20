@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../api/redstone.dart' show ItemFilterApi;
+import '../../api/filter_api.dart' show FilterItemValue, ItemFilterApi;
 import '../../api/value_settings.dart';
 import '../../core/block_entity.dart';
 import '../common/stack.dart';
@@ -27,7 +27,15 @@ bool deployerFilterTest(PStack filter, PStack candidate, String worldId) {
   if (_filterItemKeys.contains(filter.key)) {
     final api = ProcessingRuntime.instance.services.find<ItemFilterApi>();
     if (api == null) return false;
-    return api.testItem(worldId, filter.key, candidate.key);
+    return api.testItem(
+      worldId,
+      FilterItemValue(
+        filter.key,
+        count: filter.count,
+        components: filter.comps,
+      ),
+      candidate.key,
+    );
   }
   return candidate.key == filter.key;
 }

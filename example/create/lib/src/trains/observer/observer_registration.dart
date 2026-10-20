@@ -1,6 +1,6 @@
 // Registration of the observers for the trains module: the block `create:track_observer` and its
 // block entity type, the wrench handler, and the filter hooks of the observer edge point.
-import '../../api/redstone.dart' show ItemFilterApi;
+import '../../api/filter_api.dart' show FilterItemValue, ItemFilterApi;
 import '../../api/wrenchable.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
@@ -36,11 +36,19 @@ void loadObserver(CreateContext ctx) {
   // list and attribute filters are the logistics module's: ask its filter service when it is there
   FilterItemStack.itemMatcher = (filterItem, candidate) {
     final api = Tr.loaded ? Tr.i.service<ItemFilterApi>() : null;
-    return api != null ? api.testItem(overworldId, filterItem, candidate) : filterItem == candidate;
+    return api != null
+        ? api.testItem(overworldId, FilterItemValue.key(filterItem), candidate)
+        : filterItem == candidate;
   };
   FilterItemStack.fluidMatcher = (filterItem, fluid) {
     final api = Tr.loaded ? Tr.i.service<ItemFilterApi>() : null;
-    if (api != null) return api.testFluid(overworldId, filterItem, fluid);
+    if (api != null) {
+      return api.testFluid(
+        overworldId,
+        FilterItemValue.key(filterItem),
+        fluid,
+      );
+    }
     return filterItem.endsWith('_bucket') && filterItem.substring(0, filterItem.length - '_bucket'.length) == fluid;
   };
   _wireWrench(ctx.services.find<WrenchRegistry>());

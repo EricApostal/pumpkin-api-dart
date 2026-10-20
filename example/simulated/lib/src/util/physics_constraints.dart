@@ -80,7 +80,11 @@ abstract final class AssemblyAlignmentMotors {
 /// angular Y axis, which is the axis Rapier's rotary joint drives.
 abstract final class SwivelHinge {
   /// `RotaryConstraintHandle.DEFAULT_AXIS`: the axis the servo drives.
-  static const int defaultAxis = ConstraintJointAxis.angularY;
+  ///
+  /// Java names `ANGULAR_X` (`RotaryConstraintHandle.java:8`); a Rapier
+  /// revolute joint's free axis is its angular X, which is why that is the
+  /// motor axis and the other two angular axes stay locked.
+  static const int defaultAxis = ConstraintJointAxis.angularX;
 
   /// `attachConstraints(plateSubLevel, attachPos)`: the hinge between
   /// [containingSubLevel] (which may be `null` for a bearing in the world) and

@@ -4,11 +4,14 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart';
 import '../../api/util.dart' hide pos;
+import '../../content/advancement_ids.dart';
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
+import '../filter/filter_item_stack.dart';
 import '../filter/filtering_behaviour.dart';
 import '../host/lg_block_entity.dart';
 import '../host/nbt_codecs.dart';
@@ -44,6 +47,45 @@ const List<String> tableClothKeys = [
   'copper_table_cloth',
 ];
 
+/// `TableClothFilteringBehaviour`: the price tag. Unlike a plain filter it starts at an amount of
+/// one, keeps that amount when the price item changes, and shows its count whenever a price is
+/// set (`TableClothFilteringBehaviour.java:19-75`).
+class TableClothFilteringBehaviour extends FilteringBehaviour {
+  TableClothFilteringBehaviour(TableClothBlockEntity shop) : _shop = shop {
+    count = 1;
+    predicate = (stack) =>
+        !FilterItemStack.of(stack).isFilterItem &&
+        stack.key != 'create:shopping_list';
+  }
+
+  final TableClothBlockEntity _shop;
+
+  @override
+  bool get isCountVisible => filter.item.isNotEmpty;
+
+  @override
+  bool setFilter(LStack stack) {
+    final before = count;
+    final result = super.setFilter(stack);
+    count = before;
+    return result;
+  }
+
+  @override
+  void setValueSettings(
+    Player? player,
+    int row,
+    int value, {
+    required bool ctrlDown,
+  }) {
+    if (valueSettings == (row, value)) return;
+    count = value < 1 ? 1 : value;
+    upTo = row == 0;
+    _shop.markDirty();
+    _shop.sendData();
+  }
+}
+
 /// `TableClothBlockEntity`.
 class TableClothBlockEntity extends LgBlockEntity {
   static const String type = 'create:table_cloth';
@@ -52,12 +94,12 @@ class TableClothBlockEntity extends LgBlockEntity {
   String? owner;
   Direction facing = Direction.south;
   List<LStack> manuallyAddedItems = [];
-  late FilteringBehaviour priceTag;
+  late TableClothFilteringBehaviour priceTag;
 
   final Map<String, dynamic> _state = {};
 
   TableClothBlockEntity(super.worldId, super.pos) {
-    priceTag = addBehaviour(FilteringBehaviour());
+    priceTag = addBehaviour(TableClothFilteringBehaviour(this));
   }
 
   @override
@@ -152,6 +194,30 @@ class TableClothBlockEntity extends LgBlockEntity {
       if (manuallyAddedItems.isEmpty) return true;
       final last = manuallyAddedItems.removeLast();
       await giveToPlayer(player, last);
+      if (manuallyAddedItems.isEmpty) {
+        // `TableClothBlockEntity.use`: an empty cloth drops its block entity again, and the
+        // clients have to remove the one they show (`create:remove_te`).
+        final world = this.world;
+        if (world != null) {
+          final info = BlockStates.info(
+            world.getBlockStateId(pos: pos),
+          );
+          if (info != null && info.key.startsWith('create:')) {
+            await setBlockState(
+              world,
+              pos.toPos(),
+              BState(info.key, info.properties).setFlag('entity', false),
+            );
+            Lg.i.bus.sendToTracking(
+              'create:remove_te',
+              world,
+              pos,
+              {'pos': pos.toPos()},
+            );
+            return true;
+          }
+        }
+      }
       sendData();
       return true;
     }
@@ -240,26 +306,75 @@ CreateBlock tableClothBlock(String key) => CreateBlock(
 Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   final worldId = e.targetWorld.getId();
   final info = BlockStates.info(e.targetWorld.getBlockStateId(pos: e.pos));
-  final hasEntity = info?.properties['entity'] == 'true';
+  if (info == null || !info.key.startsWith('create:')) return BlockUseResult.pass;
 
   final be = Lg.i.store.typed<TableClothBlockEntity>(worldId, e.pos);
-  if (be == null) {
-    // Without a block entity there is nothing to show or trade.
-    return hasEntity ? BlockUseResult.success : BlockUseResult.pass;
+  if (be == null) return BlockUseResult.pass;
+
+  // `TableClothBlock.useItemOn`: the first use gives the cloth its block entity. The client
+  // creates the block entity only when `entity` is true, so the items it shows need the update.
+  if (info.properties['entity'] != 'true') {
+    await setBlockState(
+      e.targetWorld,
+      e.pos.toPos(),
+      BState(info.key, info.properties).setFlag('entity', true),
+    );
   }
+
   await be.use(e.player, e.sneaking);
   return BlockUseResult.success;
 }
 
 Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
-  // The shop data comes from the table cloth item, which carries `create:auto_request_data`;
-  // reading item components is not part of the host API, so a shop is only created when the
-  // block was already a shop (see the state).
-  final be = Lg.i.store.typed<TableClothBlockEntity>(
-    e.targetWorld.getId(),
-    e.pos,
-  );
+  // `TableClothBlock.setPlacedBy`: a cloth programmed at a stock keeper carries
+  // `create:auto_request_data` and is placed as a shop.
+  if (e.player == null) return;
+  final player = Lg.i.player(e.player!.asString);
+  if (player == null) return;
+  final world = e.targetWorld;
+  final pos = e.pos.toPos();
+  final data = await _requestDataFromHand(player);
+  if (data == null) return;
+
+  final be = Lg.i.store.typed<TableClothBlockEntity>(world.getId(), e.pos);
   if (be == null) return;
+
+  // `pLevel.setBlockAndUpdate(pPos, pState.setValue(HAS_BE, true))`: the cloth keeps its block
+  // entity once it is a shop.
+  final info = BlockStates.info(world.getBlockStateId(pos: e.pos));
+  if (info == null || !info.key.startsWith('create:')) return;
+  final state = BState(info.key, info.properties);
+  if (state['entity'] != 'true') {
+    await setBlockState(world, pos, state.setValue('entity', 'true'));
+  }
+
+  be.requestData = data.readFromItem(pos, world.getId());
+  be.owner = player.getId().asString;
+  be.facing = Direction.fromYRot(player.getYaw()).opposite;
+  be.sendData();
+
+  final advancements = Lg.i.advancements;
+  if (advancements != null) {
+    unawaited(advancements.award(player, AllAdvancements.tableClothShop));
+  }
+}
+
+/// The `create:auto_request_data` component of the cloth in the player's hands.
+Future<AutoRequestData?> _requestDataFromHand(Player player) async {
+  final inventory = player.getInventory();
+  try {
+    for (final hand in [Hand.right, Hand.left]) {
+      final held = inventory.getItemInHand(hand: hand);
+      if (held == null) continue;
+      final stack = await Lg.i.read(held);
+      final bytes = stack.compBytes('create:auto_request_data');
+      if (bytes == null) continue;
+      return AutoRequestData.decode(bytes, Lg.i.wire);
+    }
+  } finally {
+    inventory.dispose();
+  }
+  return null;
 }
 
 /// The `tablecloth` part.

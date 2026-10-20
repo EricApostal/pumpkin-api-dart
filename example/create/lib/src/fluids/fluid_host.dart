@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
+import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import '../api/block_state.dart';
 import '../api/blocks.dart' show HostBlockGetter;
@@ -90,6 +91,9 @@ final class HostFluidStorage implements FluidStorage {
   FStack drain(int maxDrain, {required bool simulate}) => maxDrain <= 0
       ? FStack.empty
       : fromHostFluid(handler.drain(maxAmount: maxDrain, simulate: simulate));
+
+  /// Releases the host handler (a kept resource) when the world goes away.
+  void dispose() => handler.dispose();
 }
 
 /// `CFluids` over the live config of the infrastructure module.
@@ -208,10 +212,10 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
 
   @override
   PipeNodeView? pipeAt(Pos p) {
+    // The node is the `FluidTransportBehaviour` the block entity owns, not the block
+    // entity: a pipe block entity is not a `PipeNodeView` (the pump's is a `PumpPeer`).
     final be = store.at(worldId, p.toBlockPos());
-    if (be is! PipeNodeView) return null;
-    final node = be as PipeNodeView;
-    return node.isRemoved ? null : node;
+    return be == null ? null : pipeNodeIn(be.behaviours);
   }
 
   @override
@@ -234,15 +238,37 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
     final key = (p.$1, p.$2, p.$3, side?.index ?? -1);
     final cached = _handlers[key];
     if (cached != null) return cached;
+    // The host releases a handler when the callback that received it returns; the pipe
+    // network keeps it across ticks, so it has to be kept (`ResourceKeep.keep`).
     final handler = FluidHandlers.at(
       world,
       p.toBlockPos(),
       side: side?.toHost(),
-    );
+    )?.keep();
     if (handler == null) return null;
     final storage = HostFluidStorage(handler);
     _handlers[key] = storage;
     return storage;
+  }
+
+  /// Forgets the host handlers at [p]: the block there may have changed, so the next
+  /// lookup asks the host again (`FluidHandlers.at`).
+  void _invalidateHandlers(Pos p) {
+    final keys = [
+      for (final key in _handlers.keys)
+        if (key.$1 == p.$1 && key.$2 == p.$2 && key.$3 == p.$3) key,
+    ];
+    for (final key in keys) {
+      _handlers.remove(key)?.dispose();
+    }
+  }
+
+  /// Releases the kept host handlers (world unload).
+  void dispose() {
+    for (final storage in _handlers.values) {
+      storage.dispose();
+    }
+    _handlers.clear();
   }
 
   @override
@@ -263,7 +289,7 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   void setBlock(Pos p, BState state, {bool quiet = false}) {
     final id = BlockRegistry.resolveState(state.key, state.props);
     if (id == null) return;
-    _handlers.clear();
+    _invalidateHandlers(p);
     final flags = quiet
         ? {BlockFlagsFlag.notifyListeners, BlockFlagsFlag.skipShapeUpdate}
         : BlockUpdateFlags.normal;

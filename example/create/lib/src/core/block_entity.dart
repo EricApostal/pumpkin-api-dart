@@ -100,6 +100,9 @@ abstract class CreateBlockEntity {
     return null;
   }
 
+  /// The behaviours this entity owns (`SmartBlockEntity.getAllBehaviours`).
+  Iterable<BlockEntityBehaviour> get behaviours => _behaviours;
+
   // -- Lifecycle hooks (override, call super) ----------------------------------
 
   /// After the data was read and the entity is in the store.

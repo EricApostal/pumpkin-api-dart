@@ -436,8 +436,12 @@ class Contraption {
 
     level.notifyChainConveyor(pos);
 
-    // Double chest halves stick together.
-    if (state.has('type') && state.has('facing') && state['type'] != 'single') {
+    // Double chest halves stick together. Java tests `state.hasProperty(ChestBlock.TYPE)`, the
+    // `ChestType` property instance; the `type` *name* alone is not enough, because
+    // `create:mechanical_piston_head` has a `type` property too (`PistonType`: normal/sticky).
+    // `ChestType` only ever holds single/left/right, so the two halves are the only values that
+    // may connect.
+    if (isChestHalf(state) && state.has('facing')) {
       final offset = _chestConnectedDirection(state);
       if (offset != null) {
         final attached = pos.relative(offset);
@@ -935,6 +939,12 @@ class Contraption {
       state.key == 'minecraft:honey_block';
 
   static bool _isBelt(BState state) => state.key == 'create:belt';
+
+  /// `state.getValue(ChestBlock.TYPE) != ChestType.SINGLE`: the `type` property holds
+  /// `left`/`right`. Other blocks reuse the property name with another value set (the mechanical
+  /// piston head's `normal`/`sticky`), which Java's property-instance test excludes.
+  static bool isChestHalf(BState state) =>
+      state['type'] == 'left' || state['type'] == 'right';
 
   static Direction? _chestConnectedDirection(BState state) {
     final facing = state.dir('facing');

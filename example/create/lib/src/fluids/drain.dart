@@ -8,6 +8,9 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../common/direction.dart';
 import '../common/nbt_convert.dart';
 import '../common/pos.dart';
+import '../conveyance/items/stack_bridge.dart' show fromPStack, toPStack;
+import '../conveyance/transport/funnel/funnel_block_entity.dart'
+    show FunnelBlockEntity;
 import '../core/block_entity.dart';
 import '../processing/common/stack.dart';
 import '../processing/host/stack_host.dart';
@@ -147,7 +150,7 @@ class ItemDrainBlockEntity extends CreateBlockEntity
 
     if (held.beltPosition > 1) {
       held.beltPosition = 1;
-      _export(held);
+      unawaited(_export(held));
       return;
     }
 
@@ -159,9 +162,48 @@ class ItemDrainBlockEntity extends CreateBlockEntity
     }
   }
 
+  /// `DirectBeltInputBehaviour.tryExportingToBeltFunnel(stack, side, simulate)`: the belt funnel
+  /// above the drain takes the item before the belt on the output side does.
+  Future<PStack?> _tryExportingToBeltFunnel(
+    PStack stack,
+    Direction? side, {
+    required bool simulate,
+  }) async {
+    final above = BlockPos(x: this.pos.x, y: this.pos.y + 1, z: this.pos.z);
+    final funnel = store.at(worldId, above);
+    if (funnel is! FunnelBlockEntity) return null;
+    final result = await funnel.tryExportingToBeltFunnel(
+      fromPStack(stack),
+      side,
+      simulate: simulate,
+    );
+    return result == null ? null : toPStack(result);
+  }
+
   /// The part of `tick()` that hands the item to the belt or drops it.
-  void _export(TransportedItemStack held) {
+  Future<void> _export(TransportedItemStack held) async {
     final side = Direction.byName(held.insertedFrom) ?? Direction.up;
+
+    // `ItemDrainBlockEntity.tick`: a pulling belt funnel above the drain gets the item first.
+    // `null` means there is no belt funnel above; an unchanged stack means it refused the item.
+    final funnelResult = await _tryExportingToBeltFunnel(
+      held.stack,
+      side.opposite,
+      simulate: false,
+    );
+    if (funnelResult != null) {
+      if (funnelResult.count != held.stack.count) {
+        if (funnelResult.isEmpty) {
+          heldItem = null;
+        } else {
+          held.stack = funnelResult;
+        }
+        sendData();
+        return;
+      }
+      if (funnelResult.isNotEmpty) return;
+    }
+
     final next = (this.pos.x, this.pos.y, this.pos.z).relative(side);
     final be = store.at(worldId, BlockPos(x: next.$1, y: next.$2, z: next.$3));
     final input = be?.getBehaviour<DirectBeltInputBehaviour>();

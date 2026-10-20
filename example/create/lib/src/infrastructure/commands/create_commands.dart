@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart';
 import '../../api/infra.dart';
 import '../../api/payloads.dart';
 import '../../common/binary_nbt.dart';
@@ -13,7 +14,9 @@ import '../../common/pos.dart';
 import '../../common/bounds.dart';
 import '../../core/registry.dart';
 import '../../core/services.dart';
+import '../../core/state_layouts.dart';
 import '../../core/worlds.dart';
+import '../../trains/track/track_host.dart' show readConnectingFrom;
 import '../config/config_service.dart';
 import 'command_parsing.dart';
 import 'railway_report.dart';
@@ -171,6 +174,21 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
       'from',
       ArgumentTypes.blockPos,
       build: (f) => f.arg('to', ArgumentTypes.blockPos, runs: (ctx) => _glue(ctx, st)),
+    ),
+  );
+
+  // TEMPORARY (track placement investigation): drive the item flow headlessly.
+  c.sub(
+    'trackdbg',
+    description: 'DEBUG: click a track with a fake player and report the placement',
+    build: (s) => s.arg(
+      'from',
+      ArgumentTypes.blockPos,
+      build: (f) => f.arg(
+        'to',
+        ArgumentTypes.blockPos,
+        runs: (ctx) => _trackDbg(ctx, st),
+      ),
     ),
   );
 
@@ -678,4 +696,71 @@ void _buildFlySpeed(CommandBuilder u, InfraCommandState st) {
 Future<void> _flySpeed(CommandContext ctx, Player player, double speed) async {
   player.setFlySpeed(speed: speed);
   ctx.reply("[Catnip]: Set ${player.getName()}'s fly speed to $speed");
+}
+
+// TEMPORARY (track placement investigation): the whole click flow of the track item with a fake
+// player, then a report of the blocks it left behind. Remove once the placement is proven.
+Future<void> _trackDbg(CommandContext ctx, InfraCommandState st) async {
+  final worlds = ctx.server.getAllWorlds();
+  if (worlds.isEmpty) throw CommandException('No worlds are loaded');
+  final world = ctx.sender.world() ?? worlds.first;
+  final a = ctx.blockPos('from').toPos();
+  final b = ctx.blockPos('to').toPos();
+
+  await setBlockState(world, a.below, const BState('minecraft:stone'));
+  await setBlockState(world, b.below, const BState('minecraft:stone'));
+  await setBlockState(
+    world,
+    a,
+    BState('create:track', {
+      'shape': 'zo',
+      'turn': 'false',
+      'waterlogged': 'false',
+    }),
+  );
+  await setBlockState(world, b, BState.air);
+  await setBlockState(world, (a.$1, a.$2 + 1, a.$3), BState.air);
+
+  final bot = FakePlayers.create(world, 'TrackDbgBot');
+  try {
+    await bot.setGamemode(mode: GameMode.creative);
+    FakePlayerActions(bot).moveTo(world, (a.$1 + 0.5, a.$2.toDouble(), a.$3 - 2.5), yaw: 0, pitch: 0);
+    await bot.give(ItemStack.create(registryKey: 'create:track', count: 64));
+    bot.getInventory().setSelectedSlot(slot: 0);
+    st.log.info('TRACKDBG before: A=${_dbgState(world, a)} B=${_dbgState(world, b)}');
+
+    await bot.useItemOnBlock(a.toBlockPos(), BlockDirection.up);
+    final held = bot.getItemInHand(hand: Hand.right);
+    final from = held == null ? null : readConnectingFrom(held);
+    st.log.info('TRACKDBG click1: held=${held == null ? null : await held.getRegistryKey()} connectingFrom=$from');
+
+    // The second click must be within the block interaction range of the bot.
+    FakePlayerActions(bot).moveTo(
+      world,
+      (b.$1 + 0.5, b.$2.toDouble(), b.$3 - 1.5),
+      yaw: 0,
+      pitch: 0,
+    );
+    await bot.useItemOnBlock(b.below.toBlockPos(), BlockDirection.up);
+    final held2 = bot.getItemInHand(hand: Hand.right);
+    st.log.info(
+      'TRACKDBG click2: held=${held2 == null ? null : await held2.getRegistryKey()} '
+      'connectingFrom=${held2 == null ? null : readConnectingFrom(held2)}',
+    );
+  } finally {
+    FakePlayers.remove(bot);
+  }
+
+  final report = [
+    for (var i = 0; i <= (b.$3 - a.$3).abs() + 1; i++)
+      (a.$1, a.$2, a.$3 + (b.$3 > a.$3 ? i : -i)),
+  ];
+  for (final p in report) {
+    ctx.reply('$p -> ${_dbgState(world, p)}');
+  }
+}
+
+String _dbgState(World world, Pos p) {
+  final id = world.getBlockStateId(pos: p.toBlockPos());
+  return 'id=$id info=${BlockStates.info(id)} layout=${PluginStateLayouts.valuesAt(id)}';
 }

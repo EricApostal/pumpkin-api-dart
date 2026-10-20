@@ -70,7 +70,13 @@ final class _Handle implements RigidBodyHandle {
   _Handle(this.pipeline);
 
   @override
-  void applyForcesAndReset(Vector3d force) {}
+  void applyForcesAndReset(ForceTotal forceTotal) {}
+
+  @override
+  void applyImpulseAtPoint(Vector3d position, Vector3d force) {}
+
+  @override
+  bool get isValid => true;
 
   @override
   void addLinearAndAngularVelocity(Vector3d linear, Vector3d angular) {}

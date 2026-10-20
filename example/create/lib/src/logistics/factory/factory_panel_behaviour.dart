@@ -47,17 +47,36 @@ final class FactoryPanelPosition {
 
   const FactoryPanelPosition(this.pos, this.slot);
 
+  /// The packet form: the position as a packed `BlockPos` and the slot ordinal (what the
+  /// clientbound encoder and the state JSON both expect). `FactoryPanelPosition.STREAM_CODEC`.
   Map<String, dynamic> toMap() => {
     'pos': [pos.$1, pos.$2, pos.$3],
-    'slot': slot.serializedName,
+    'slot': slot.index,
   };
 
+  /// Reads the packet form (a `BlockPos` record and the slot ordinal) and the older JSON form
+  /// (a list and the slot name).
   static FactoryPanelPosition? fromMap(Object? value) {
     if (value is! Map) return null;
     final p = value['pos'];
-    final slot = PanelSlot.byName(value['slot'] as String? ?? '');
-    if (p is! List || p.length != 3 || slot == null) return null;
-    return FactoryPanelPosition((p[0] as int, p[1] as int, p[2] as int), slot);
+    final (int, int, int)? position = switch (p) {
+      (final int x, final int y, final int z) => (x, y, z),
+      final List list when list.length == 3 => (
+        list[0] as int,
+        list[1] as int,
+        list[2] as int,
+      ),
+      _ => null,
+    };
+    final slot = switch (value['slot']) {
+      final int ordinal
+          when ordinal >= 0 && ordinal < PanelSlot.values.length =>
+        PanelSlot.values[ordinal],
+      final String name => PanelSlot.byName(name),
+      _ => null,
+    };
+    if (position == null || slot == null) return null;
+    return FactoryPanelPosition(position, slot);
   }
 
   @override
@@ -98,7 +117,8 @@ final class FactoryPanelConnection {
 /// `FactoryPanelBehaviour`.
 class FactoryPanelBehaviour extends FilteringBehaviour
     implements FactoryPanelHandle {
-  final FactoryPanelBlockEntity panelBE;
+  /// `BlockEntityBehaviour.blockEntity`: not final, [moveTo] rebinds it to the target block.
+  FactoryPanelBlockEntity panelBE;
   PanelSlot slot;
 
   bool active = false;
@@ -318,8 +338,8 @@ class FactoryPanelBehaviour extends FilteringBehaviour
     final oldPos = getPanelPosition();
     moveToSlot(newPos.slot);
 
-    // Add to the new block entity. `addBehaviour` sets `owner`, which also makes the callbacks
-    // coming from the old entity (it keeps this object in its list) no-ops.
+    // Add to the new block entity. `addBehaviour` sets `owner`; rebinding [panelBE] makes the
+    // moved gauge tick and render on its new block, like Java's `attachBehaviourLate`.
     final newBE = Lg.i.store.typed<FactoryPanelBlockEntity>(
       panelBE.worldId,
       newPos.pos.toBlockPos(),
@@ -327,7 +347,10 @@ class FactoryPanelBehaviour extends FilteringBehaviour
     if (newBE != null) {
       newBE.addBehaviour(this);
       newBE.panels[slot] = this;
+      panelBE = newBE;
       newBE.redraw = true;
+      newBE.lastShape = null;
+      newBE.world?.invalidateShape(newPos.pos.toBlockPos());
       newBE.notifyUpdate();
     }
 
@@ -336,6 +359,8 @@ class FactoryPanelBehaviour extends FilteringBehaviour
     oldBE.addBehaviour(replacement);
     oldBE.panels[oldPos.slot] = replacement;
     oldBE.redraw = true;
+    oldBE.lastShape = null;
+    oldBE.world?.invalidateShape(oldPos.pos.toBlockPos());
     oldBE.notifyUpdate();
 
     // Rewire the connections.
@@ -440,7 +465,15 @@ class FactoryPanelBehaviour extends FilteringBehaviour
     // An absent compound keeps the state loaded from the private JSON (old saves).
     if (panelTag == null) return;
     active = true;
-    super.read(panelTag, clientPacket: clientPacket);
+    // `FactoryPanelBehaviour.read`: the panel reads its own filter fields and never calls
+    // `FilteringBehaviour.read`, so an amount of 0 is not migrated to the stack size (Java keeps
+    // it, `FactoryPanelBehaviour.java:872-874`).
+    filter = FilterItemStack.of(
+      stackFromNbt(panelTag.getCompound('Filter')),
+      wire: Lg.loaded ? Lg.i.wire : null,
+    );
+    count = panelTag.getInt('FilterAmount') ?? 0;
+    upTo = panelTag.getBool('UpTo') ?? false;
     _timer = panelTag.getInt('Timer') ?? 0;
     _lastReportedLevelInStorage = panelTag.getInt('LastLevel') ?? 0;
     _lastReportedPromises = panelTag.getInt('LastPromised') ?? 0;

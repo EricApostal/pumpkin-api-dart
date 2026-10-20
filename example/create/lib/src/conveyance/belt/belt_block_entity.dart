@@ -250,11 +250,29 @@ class BeltBlockEntity extends KineticBlockEntity
   // -- Lifecycle ------------------------------------------------------------------------------
 
   @override
+  void sendData() {
+    final inv = isController ? getInventory() : null;
+    runtime.log.info(
+      'DBG sendData $p controller=$controller idx=$index speed=$speed '
+      'items=${inv?.items.map((t) => '${t.beltPosition.toStringAsFixed(3)}/${t.prevBeltPosition.toStringAsFixed(3)}').join(',')} '
+      'toInsert=${inv?.toInsert.length} toRemove=${inv?.toRemove.length}',
+    );
+    super.sendData();
+  }
+
+  @override
   void tick() {
     if (beltLength == 0) initBelt(this);
     super.tick();
     if (!beltState.isBelt) return;
     initializeItemHandler();
+    if (isController) {
+      final inv0 = getInventory();
+      runtime.log.info(
+        'DBG tick $p speed=$speed len=$beltLength '
+        'items=${inv0?.items.map((t) => '${t.beltPosition.toStringAsFixed(3)}/${t.prevBeltPosition.toStringAsFixed(3)}/${t.sideOffset.toStringAsFixed(3)}/${t.prevSideOffset.toStringAsFixed(3)}').join(',')}',
+      );
+    }
     if (!isController) return;
     final inv = getInventory();
     if (inv == null) return;
@@ -694,6 +712,9 @@ class BeltBlockEntity extends KineticBlockEntity
         );
     }
     super.write(tag, clientPacket: clientPacket);
+    if (clientPacket && isController) {
+      runtime.log.info('DBG clientTag $p $tag');
+    }
   }
 
   NbtCompound _writeInventory(BeltInventory inv, {required bool clientPacket}) {

@@ -5,35 +5,16 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../api/redstone.dart' show ItemFilterApi;
 import '../../common/direction.dart' as d;
 import '../../common/host_bridge.dart';
 import '../../core/block_entity.dart';
 import '../items/item_codec.dart';
+import '../items/filter_match.dart';
 import '../items/item_data.dart';
 import '../runtime.dart';
 import 'value_box.dart';
 
-/// Items that never act as a filter when held (`canShortInteract`).
-const Set<String> _notFilters = {'create:wrench', 'create:mechanical_arm'};
-
-/// The filter items (`FilterItem`): list, attribute and package filters.
-bool isFilterItemKey(String key) => key == 'create:filter' || key == 'create:attribute_filter' || key == 'create:package_filter';
-
-/// `FilterItemStack.test(world, stack)` for the filter [filter].
-bool filterTest(ItemValue filter, ItemValue stack, {required String worldId}) {
-  if (filter.isEmpty) return true;
-  switch (filter.key) {
-    case 'create:filter' || 'create:attribute_filter':
-      final api = ConveyanceRuntime.loaded ? ConveyanceRuntime.i.ctx.services.find<ItemFilterApi>() : null;
-      if (api == null) return false;
-      return api.testItem(worldId, filter.key, stack.key);
-    case 'create:package_filter':
-      if (!isPackageKey(stack.key)) return false;
-      return matchPackage(stack, packageAddressOf(filter));
-  }
-  return !stack.isEmpty && stack.key == filter.key;
-}
+export '../items/filter_match.dart' show filterTest, isFilterItemKey;
 
 /// `FilteringBehaviour`.
 class FilteringBehaviour extends BlockEntityBehaviour implements ValueBox {
@@ -170,7 +151,7 @@ class FilteringBehaviour extends BlockEntityBehaviour implements ValueBox {
   ValueBox? forSide(d.Direction side) => this;
 
   /// `canShortInteract(toApply)`.
-  bool canShortInteract(ItemValue toApply) => !_notFilters.contains(toApply.key);
+  bool canShortInteract(ItemValue toApply) => !notFilterItems.contains(toApply.key);
 
   @override
   Future<void> onShortInteract(Player player, Hand hand, d.Direction side) async {

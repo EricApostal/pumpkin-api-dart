@@ -90,7 +90,9 @@ final class Lvl {
     var power = await maxSignalAround(pos);
     for (final d in Direction.values) {
       if (facing.opposite == d) continue;
-      final s = await signalFrom(pos.relative(d), Direction.up);
+      // `level.getSignal(pos.relative(d), UP)` asks the neighbour block itself; [signalFrom]
+      // takes the reader, which sits one block below that neighbour for an `UP` read.
+      final s = await signalFrom(pos.relative(d).relative(Direction.down), Direction.up);
       if (s > power) power = s;
     }
     return power;

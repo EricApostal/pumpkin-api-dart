@@ -352,6 +352,26 @@ final class CcService implements ComputerServices {
   /// The peripheral attached to [side] of computer [id], if any.
   Peripheral? peripheral(int id, ComputerSide side) => _peripherals['$id/${side.luaName}'];
 
+  /// Attaches a peripheral that belongs to a block entity rather than to the
+  /// computer's own record: the compat of another mod (Simulated's sensors, for
+  /// example) creates it from the block next to the computer.
+  ///
+  /// It is not written to the record, because the block entity is what makes it
+  /// again after a reload; the caller detaches it with [detachExternal].
+  void attachExternal(int id, ComputerSide side, Peripheral peripheral) {
+    final computer = manager[id];
+    if (computer == null) return;
+    _peripherals['$id/${side.luaName}'] = peripheral;
+    computer.setPeripheral(side, peripheral);
+  }
+
+  /// Removes the peripheral of [side] of computer [id] that [attachExternal]
+  /// put there.
+  void detachExternal(int id, ComputerSide side) {
+    _peripherals.remove('$id/${side.luaName}');
+    manager[id]?.setPeripheral(side, null);
+  }
+
   // -- The server tick ----------------------------------------------------------
 
   /// Updates the in-game clock from the world: [dayTime] is the time of day in

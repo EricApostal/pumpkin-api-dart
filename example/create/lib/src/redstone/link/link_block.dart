@@ -10,6 +10,7 @@ import '../../api/blocks.dart' show HostBlockGetter;
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
+import '../power_face.dart';
 import '../support/level.dart';
 import '../support/manifest_block.dart';
 import '../support/placement.dart';
@@ -207,9 +208,8 @@ final class RedstoneLinkBlock {
         onWeakPower: (server, e) => _received(e),
         onStrongPower: (server, e) {
           final p = block.stateOf(e.stateIndex);
-          // `getDirectSignal`: only towards the side the link faces (`side == FACING`); `e.face`
-          // is the side facing the reader, like Java's `side`.
-          if (e.face.toDirection() != _facing(p)) return 0;
+          // `getDirectSignal`: only towards the side the link faces (`side == FACING`).
+          if (powerEventSide(e.face.toDirection()) != _facing(p)) return 0;
           return _received(e);
         },
         canConnectRedstone: (server, e) => e.direction != null,

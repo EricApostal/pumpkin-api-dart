@@ -81,7 +81,6 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
       state,
       hasPassengers: access?.isVehicle ?? false,
     );
-
     if (action.shouldAssemble) await assemble(cart);
     if (action.shouldDisassemble) await disassemble(cart);
 
@@ -134,7 +133,9 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
       HostMinecartWorld(world!, ActuatorRuntime.instance.store),
       cartRef.uuid,
     );
-    if (controller.isCoupledThroughContraption) return;
+    if (controller.isCoupledThroughContraption) {
+      return;
+    }
 
     final minecartLevel = HostMinecartWorld(
       world!,
@@ -142,11 +143,14 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
     );
     final cartAccess = minecartLevel.byId(cartRef.id);
     // `if (!cart.getPassengers().isEmpty()) return;`
-    if (cartAccess == null || cartAccess.isVehicle) return;
+    if (cartAccess == null || cartAccess.isVehicle) {
+      return;
+    }
 
     final contraption = MountedContraption(movementMode);
     try {
-      if (!await contraption.assemble(level, localPos)) {
+      final ok = await contraption.assemble(level, localPos);
+      if (!ok) {
         return;
       }
       lastException = null;

@@ -3,6 +3,7 @@
 import '../../api/block_state.dart';
 import '../../common/common.dart' hide pos;
 import '../../contraptions/actors/block_breaking_movement_behaviour.dart';
+import '../../contraptions/core/level.dart';
 import '../../contraptions/core/movement.dart';
 
 /// The drill as a contraption actor.
@@ -27,10 +28,10 @@ class DrillMovementBehaviour extends BlockBreakingMovementBehaviour {
   }
 
   @override
-  bool canBreak(MovementContext context, Pos breakingPos, BState state) =>
-      super.canBreak(context, breakingPos, state) &&
-      !context.level.stateCollisionEmpty(state) &&
-      !context.level.stateHasTag(state, 'create:tracks');
+  bool canBreak(ContraptionLevel level, Pos breakingPos, BState state) =>
+      super.canBreak(level, breakingPos, state) &&
+      !level.stateCollisionEmpty(state) &&
+      !level.stateHasTag(state, 'create:tracks');
 
   @override
   String? getDamageSourceKey() => 'create:mechanical_drill';

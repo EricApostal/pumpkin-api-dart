@@ -10,6 +10,7 @@ import 'direction.dart';
 import 'vec_helper.dart' show Vec3;
 import 'pos.dart';
 import '../core/perf.dart';
+import '../core/state_layouts.dart';
 
 extension PosToHost on (int, int, int) {
   /// The host's `BlockPos`.
@@ -87,11 +88,24 @@ abstract final class BlockStates {
   }
 
   /// The block key and properties of [stateId] (`null` when unknown).
+  ///
+  /// A block of this plugin is described from its own layout ([PluginStateLayouts]): the host
+  /// reports plugin properties through its vanilla `Property` enum, which drops `turn` and the
+  /// rail `shape` values.
   static ({String key, Map<String, String> properties})? info(int stateId) {
+    final local = PluginStateLayouts.of(stateId);
+    if (local != null) {
+      return (key: local.key, properties: local.layout.valuesAt(stateId - local.base));
+    }
     final i = BlockRegistry.stateInfo(stateId);
     if (i == null) return null;
     return (key: i.name, properties: {for (final (k, v) in i.properties) k: v});
   }
+
+  /// `BlockState.setValue` for a whole property map: the id of [key] with [properties]
+  /// (missing ones keep their value), `null` when the block or a value is unknown.
+  static int? resolveState(String key, Map<String, String> properties) =>
+      PluginStateLayouts.stateId(key, properties) ?? BlockRegistry.resolveState(key, properties);
 
   /// `BlockState.hasProperty`.
   static bool hasProperty(int stateId, String property) => info(stateId)?.properties.containsKey(property) ?? false;
@@ -101,7 +115,7 @@ abstract final class BlockStates {
   static int setValue(int stateId, String property, String value) {
     final i = info(stateId);
     if (i == null || !i.properties.containsKey(property)) return stateId;
-    return BlockRegistry.resolveState(i.key, {...i.properties, property: value}) ?? stateId;
+    return resolveState(i.key, {...i.properties, property: value}) ?? stateId;
   }
 
   /// `BlockState.setValue` for several properties.
@@ -112,7 +126,7 @@ abstract final class BlockStates {
     for (final e in values.entries) {
       if (merged.containsKey(e.key)) merged[e.key] = e.value;
     }
-    return BlockRegistry.resolveState(i.key, merged) ?? stateId;
+    return resolveState(i.key, merged) ?? stateId;
   }
 
   /// `BlockState.getValue` as a string, or `null`.
@@ -128,10 +142,10 @@ abstract final class BlockStates {
   static bool isTag(int stateId, String tag) => host.Tags.blockState(stateId, tag);
 
   /// The default state of the block [key].
-  static int? defaultOf(String key) => BlockRegistry.resolveState(key);
+  static int? defaultOf(String key) => resolveState(key, const {});
 
   /// The state of the block [key] with the properties of [properties] that it has.
-  static int? withProperties(String key, Map<String, String> properties) => BlockRegistry.resolveState(key, properties);
+  static int? withProperties(String key, Map<String, String> properties) => resolveState(key, properties);
 
   /// `BlockHelper.copyProperties(from, to)`: every property both states have is copied.
   static int copyProperties(int from, int to) {

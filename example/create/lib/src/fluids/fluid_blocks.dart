@@ -11,7 +11,7 @@ import '../api/block_state.dart';
 import '../api/blocks.dart' show manifestBlock;
 import '../api/wrenchable.dart';
 import '../common/direction.dart';
-import '../common/host_bridge.dart' show BlockStates;
+import '../common/host_bridge.dart' show BlockStates, BlockDirectionToPure;
 import '../common/pos.dart';
 import '../contraptions/bearing/bearing_placement.dart' show bearingShaftNeighbours;
 import '../core/block_entity.dart';
@@ -216,6 +216,27 @@ BlockBehavior _pipeBehavior(
       }
       propagate(world, p, updated);
     },
+    // `FluidPipeBlock.updateShape`: a changed neighbour opens or closes the side it is on. The
+    // neighbour-change hook alone is not enough: `FluidPropagator.validateNeighbourChange`
+    // ignores pipes, axis pipes, pumps and liquids, so without this a pipe placed next to a pipe
+    // or a pump would never open towards it.
+    onUpdateShape: encased || straight || smart
+        ? null
+        : (server, e) {
+            final world = e.targetWorld;
+            final p = posOf(e.pos);
+            final state = stateOfEvent(e.stateIndex);
+            final direction = e.direction.toDirection();
+            final updated = PipeStateLogic.updateBlockState(
+              state,
+              direction,
+              direction.opposite,
+              fluidWorldOf(world),
+              p,
+            );
+            if (updated == state) return null;
+            return BlockRegistry.resolveState(updated.key, updated.props);
+          },
     onScheduledTick: (server, e) =>
         propagate(e.targetWorld, posOf(e.pos), stateOfEvent(e.stateIndex)),
     onStateReplaced: (server, e) async {
@@ -344,6 +365,17 @@ int fractionToRedstoneLevel(double fraction) {
   return math.min(15, (fraction * 14).floor() + 1);
 }
 
+/// Writes [spec] to the hand of [player] (`Player.setItemInHand`); an empty spec clears it.
+Future<void> _setHand(Player player, Hand hand, FluidItemSpec spec) async {
+  if (spec.isEmpty) {
+    await player.setItemInHand(hand: hand, stack: null);
+    return;
+  }
+  final stack = await HostStacks.write(PStack(spec.key, spec.count));
+  if (stack == null) return;
+  await player.setItemInHand(hand: hand, stack: stack);
+}
+
 /// `FluidTankBlock.useItemOn`: moves fluid between the held item and the tank. Like Java, a
 /// regular tank only accepts a hand interaction from a creative player; a creative tank works for
 /// everyone and copies the fluid it is given.
@@ -385,8 +417,22 @@ Future<BlockUseResult> _tankUse(
     final (fluid, _, _) = emptying.emptyItem(item, simulate: true);
     if (fluid.isNotEmpty &&
         storage.fill(fluid, simulate: true) == fluid.amount) {
-      final (emptied, _, _) = emptying.emptyItem(item, simulate: false);
+      final (emptied, remainder, newStack) =
+          emptying.emptyItem(item, simulate: false);
       storage.fill(emptied, simulate: false);
+      // The held item is consumed: the last item of the stack becomes its container in the
+      // hand, an item of a bigger stack leaves the container in the inventory.
+      if (!player.isCreative && be is! CreativeFluidTankBlockEntity) {
+        if (newStack.isEmpty) {
+          await _setHand(player, e.hand, remainder);
+        } else {
+          await _setHand(player, e.hand, newStack);
+          final back = await HostStacks.write(
+            PStack(remainder.key, remainder.count),
+          );
+          if (back != null) await items.give(back);
+        }
+      }
       if (creative &&
           be is CreativeFluidTankBlockEntity &&
           emptied.isNotEmpty) {
@@ -406,11 +452,17 @@ Future<BlockUseResult> _tankUse(
         fluid,
       );
       if (required == -1 || required > fluid.amount) continue;
-      final (result, _, _) = filling.fillItem(required, item, fluid);
+      final (result, remaining, _) = filling.fillItem(required, item, fluid);
       if (result.isEmpty) continue;
       storage.drainFluid(fluid.withAmount(required), simulate: false);
-      // A creative player keeps the fluid; a creative tank gives the item back to everyone.
+      // `FluidHelper.tryFillItemFromBE`: a creative player, and any player at a creative tank,
+      // works on a copy, so the hand keeps its item; only a survival player at a regular tank
+      // consumes one. The filled container goes back to the inventory unless the player is
+      // creative (a creative tank still gives it back to everyone).
       if (!player.isCreative) {
+        if (be is! CreativeFluidTankBlockEntity) {
+          await _setHand(player, e.hand, remaining);
+        }
         final out = await HostStacks.write(PStack(result.key, result.count));
         if (out != null) await items.give(out);
       }

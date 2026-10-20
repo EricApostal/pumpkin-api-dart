@@ -270,14 +270,20 @@ class FunnelBlockEntity extends CreateBlockEntity
   @override
   void flap(bool inward) {
     final world = this.world;
-    if (world != null)
-      rt.playCreateSound(
-        world,
-        this.pos.toPos(),
-        'funnel_flap',
-        volume: 1,
-        pitch: 1,
-      );
+    if (world == null) return;
+    // `FunnelBlockEntity.flap`: the server tells the clients tracking the funnel which way the
+    // flap moved; the sound follows the animation there. Only a client sends nothing.
+    rt.bus?.sendToTracking('create:funnel_flap', world, this.pos, {
+      'pos': this.pos.toPos(),
+      'inwards': inward,
+    });
+    rt.playCreateSound(
+      world,
+      this.pos.toPos(),
+      'funnel_flap',
+      volume: 1,
+      pitch: 1,
+    );
   }
 
   @override

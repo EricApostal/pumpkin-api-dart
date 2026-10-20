@@ -13,6 +13,13 @@ dependencies:
     path: ../../packages/pumpkin_api
   pumpkin_neoforge:
     path: ../../packages/pumpkin_neoforge
+  # The compat of another mod: `lib/src/compat/simulated_peripherals.dart`
+  # adapts Simulated's peripherals to this package's `Peripheral`. The
+  # dependency points this way (and not simulated -> cc_tweaked) so that
+  # Simulated stays usable, and testable, without CC: see the header of that
+  # file.
+  simulated:
+    path: ../simulated
 
 # This package is deliberately not part of the repository's pub workspace, so
 # the workspace-relative dependencies of the packages above are redirected here.
@@ -23,9 +30,16 @@ dependency_overrides:
     path: ../../packages/wasm_components
   wasm_tools:
     path: ../../packages/wasm_tools
+  simulated:
+    path: ../simulated
+  create:
+    path: ../create
+  sable:
+    path: ../sable
   package_config: ^3.0.0
 
 dev_dependencies:
   lints: ^6.1.0
   pumpkin_tools:
     path: ../../packages/pumpkin_tools
+  test: ^1.25.6

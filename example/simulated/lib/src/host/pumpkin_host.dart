@@ -337,6 +337,9 @@ final class PumpkinSimulatedHost implements SimulatedHost {
   }
 
   @override
+  String? blockEntityTypeAt(String worldId, Pos pos) => blockEntities.at(worldId, pos.toBlockPos())?.typeKey;
+
+  @override
   int gameTime(String worldId) => worlds.byId(worldId)?.worldAge ?? 0;
 
   @override

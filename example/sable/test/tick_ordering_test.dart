@@ -116,7 +116,13 @@ final class LoggingHandle implements RigidBodyHandle {
   LoggingHandle(this.pipeline, this.log);
 
   @override
-  void applyForcesAndReset(Vector3d force) => log.add('handle.forces');
+  void applyForcesAndReset(ForceTotal forceTotal) => log.add('handle.forces');
+
+  @override
+  void applyImpulseAtPoint(Vector3d position, Vector3d force) => log.add('handle.impulseAtPoint');
+
+  @override
+  bool get isValid => true;
 
   @override
   void addLinearAndAngularVelocity(Vector3d linear, Vector3d angular) => log.add('handle.velocity');

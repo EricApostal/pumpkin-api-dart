@@ -23,6 +23,8 @@ import '../common/common.dart';
 import '../redstone/display/display_core.dart' show DisplaySource, DisplayTarget, FlapControllerView, TrainPredictionView;
 import '../redstone/support/text.dart' show Txt;
 
+export 'observable.dart';
+
 export '../redstone/display/display_core.dart'
     show
         DisplayLinkContext,
@@ -41,6 +43,7 @@ export '../redstone/link/frequency.dart' show Frequency, NetworkKey;
 export '../redstone/link/link_behaviour.dart' show LinkBehaviour;
 export '../redstone/link/link_network.dart' show RedstoneLinkNetworkHandler, RedstoneLinkable;
 export '../redstone/support/text.dart' show Txt;
+export 'filter_api.dart' show FilterItemValue, ItemFilterApi;
 export 'panel_support.dart';
 
 /// The display link registries and the notifications other modules send to display links.
@@ -126,60 +129,6 @@ abstract interface class SeatDisplayData {
 /// The display board (decoration module): the `FlapDisplayBlockEntity` controller.
 abstract interface class FlapDisplayAccess {
   FlapControllerView? controllerAt(String worldId, Pos pos);
-}
-
-/// Something the smart observer / threshold switch can look at besides item and fluid containers
-/// (belts and depots with `TransportedItemStackHandlerBehaviour`, pipes with
-/// `FluidTransportBehaviour`, chain conveyors, funnels). Register with
-/// [RedstoneObservables.register] in `onServerLoaded`.
-abstract interface class ObservableProbe {
-  /// Whether the block entity at [pos] is something this probe observes (placement uses it to pick the
-  /// observer's direction).
-  bool canObserve(String worldId, Pos pos);
-
-  /// `SmartObserverBlockEntity.tick` detection: `null` if the probe does not handle [pos]; else
-  /// whether an item or fluid accepted by the filter is passing now.
-  bool? detect(String worldId, Pos pos, ObserverFilter filter);
-
-  /// Packages looping on a chain conveyor at [pos] that pass the filter (`getLoopingPackages`):
-  /// their addresses; `null` if the probe does not handle [pos].
-  List<String>? loopingPackageAddresses(String worldId, Pos pos, ObserverFilter filter) => null;
-
-  /// `ThresholdSwitchObservable` of the block entity at [pos]: `null` if it is not observable.
-  ThresholdObservation? observation(String worldId, Pos pos) => null;
-}
-
-/// The filter an observer applies (`FilteringBehaviour.test`).
-abstract interface class ObserverFilter {
-  bool get isEmpty;
-  bool testItem(String itemKey);
-  bool testFluid(String fluidKey);
-}
-
-/// `ThresholdSwitchObservable`: a value a threshold switch can watch (a pulley's rope length).
-final class ThresholdObservation {
-  final int min;
-  final int max;
-  final int current;
-  final Txt Function(int value) format;
-
-  const ThresholdObservation({required this.min, required this.max, required this.current, required this.format});
-}
-
-/// The service that collects the [ObservableProbe]s.
-abstract interface class RedstoneObservables {
-  void register(ObservableProbe probe);
-}
-
-/// List and attribute filter items (logistics module): the redstone filter slots store only the
-/// filter item; matching a stack against a filter item (`create:filter`, `create:attribute_filter`)
-/// is the logistics module's `FilterItemStack`.
-abstract interface class ItemFilterApi {
-  /// Whether [candidateItem] passes the filter item [filterItem] (a plain item matches itself).
-  bool testItem(String worldId, String filterItem, String candidateItem);
-
-  /// Whether [fluidKey] passes the filter item (a bucket filter matches its fluid).
-  bool testFluid(String worldId, String filterItem, String fluidKey);
 }
 
 /// The clipboard (equipment module): nixie tubes display the first entry of a clipboard.

@@ -45,15 +45,22 @@ void bindKineticPackets(PayloadBus bus) {
         .where((t) => short ? t is ShortInteractTarget : t.acceptsValueSettings)
         .toList();
     if (targets.isEmpty) return;
-    // The netId is a global counter of behaviour types in Create; with one
-    // candidate the index is not needed.
+    // `ValueSettingsPacket.applySettings`: only the behaviour with this `netId` is applied, and
+    // when none has it the packet does nothing (no fallback to another behaviour).
     final index = f['behaviourIndex'] as int;
-    final target = targets.length == 1
-        ? targets.single
-        : targets.firstWhere((t) => t.netId == index, orElse: () => targets.first);
+    ValueSettingsTarget? target;
+    for (final t in targets) {
+      if (t.netId == index) {
+        target = t;
+        break;
+      }
+    }
+    if (target == null) return;
     if (short) {
       // A short interaction: the click that did not open the board.
-      if (target is ShortInteractTarget) (target as ShortInteractTarget).onShortInteract(player);
+      if (target is ShortInteractTarget) {
+        (target as ShortInteractTarget).onShortInteract(player);
+      }
       return;
     }
     target.setValueSettings(player, f['row'] as int, f['value'] as int, ctrlDown: f['ctrlDown'] as bool);

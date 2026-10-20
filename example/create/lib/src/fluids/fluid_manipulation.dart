@@ -447,7 +447,9 @@ class FluidFilling extends FluidManipulation {
           state.key != 'minecraft:end_portal' &&
           state.key != 'minecraft:end_gateway' &&
           state.key != 'minecraft:structure_void') {
-        return !world.isCollisionShapeFullBlock(pos);
+        // `BlockState.isSolid()`: `isCollisionShapeFullBlock` is stricter and would let the hose
+        // pulley delete chests, farmland, anvils, cauldrons, hoppers, fences and panes.
+        return !world.isSolid(pos);
       }
       return false;
     }

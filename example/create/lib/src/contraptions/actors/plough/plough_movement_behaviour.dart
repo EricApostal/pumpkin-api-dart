@@ -8,6 +8,7 @@ import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 import '../../../api/block_state.dart';
 import '../../../common/common.dart';
 import '../../../common/host_bridge.dart';
+import '../../core/level.dart';
 import '../../core/movement.dart';
 import '../actor_runtime.dart';
 import '../block_breaking_movement_behaviour.dart';
@@ -52,20 +53,18 @@ final class PloughMovementBehaviour extends BlockBreakingMovementBehaviour {
   }
 
   @override
-  bool canBreak(MovementContext context, Pos breakingPos, BState state) {
+  bool canBreak(ContraptionLevel level, Pos breakingPos, BState state) {
     if (state.isAir) return false;
-    if (context.level.stateAt(breakingPos.below).key == 'minecraft:farmland')
+    if (level.stateAt(breakingPos.below).key == 'minecraft:farmland')
       return false;
     if (state.key == 'minecraft:water' || state.key == 'minecraft:lava')
       return false;
     if (state.key == 'minecraft:bubble_column') return false;
     if (state.key == 'create:track') return true;
     if (state.key == 'create:fake_track') return false;
-    if (context.level.stateHasTag(state, 'create:plough_blacklist'))
-      return false;
-    if (context.level.stateHasTag(state, 'create:plough_whitelist'))
-      return true;
-    return context.level.stateCollisionEmpty(state);
+    if (level.stateHasTag(state, 'create:plough_blacklist')) return false;
+    if (level.stateHasTag(state, 'create:plough_whitelist')) return true;
+    return level.stateCollisionEmpty(state);
   }
 
   @override

@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart';
 import '../../api/panel_support.dart';
 import '../../api/payloads.dart' show ItemStackData;
 import '../../api/util.dart' hide pos;
@@ -15,6 +16,7 @@ import '../../core/registry.dart';
 import '../host/link_keys.dart';
 import '../host/player_items.dart';
 import '../host/runtime.dart';
+import '../host/shapes.dart';
 import '../link/linked_item.dart';
 import '../logistics_part.dart';
 import '../model/stack.dart';
@@ -36,9 +38,204 @@ CreateBlock factoryPanelBlock() => CreateBlock(
   requiresCorrectTool: true,
   soundType: 'copper',
   canOcclude: false,
+  // `FactoryPanelBlock.getCollisionShape`: entities pass through the thin panel; only the
+  // selection shape (below) is real. `FactoryPanelBlock.getStateForPlacement` needs the clicked
+  // face, which a placement rule cannot map to `face`, so [onCanPlace] computes it.
+  collisionShape: BlockShape.empty,
+  placement: const [PlacementRule.horizontalFacing('facing')],
   blockEntityType: FactoryPanelBlockEntity.type,
-  behavior: BlockBehavior(onUse: _onUse),
+  behavior: BlockBehavior(
+    onUse: _onUse,
+    onCanPlace: _onCanPlace,
+    onPlaced: _onPlaced,
+    onShape: _onShape,
+  ),
 );
+
+/// A gauge placement computed from the clicked face, kept until the `player-placed` event (the
+/// host has no state-for-placement hook).
+final Map<String, _GaugePlacement> _pendingGaugePlacements = {};
+
+final class _GaugePlacement {
+  final BState state;
+  final String player;
+
+  const _GaugePlacement(this.state, this.player);
+}
+
+String _gaugePlacementKey(World world, Pos pos) =>
+    '${world.getId()}:${pos.$1},${pos.$2},${pos.$3}';
+
+Direction _dirOf(BlockDirection d) => Direction.values[d.index];
+
+/// `FactoryPanelBlock.canAttachLenient`: the neighbour behind the panel has a collision shape.
+bool _canAttachLenient(BlockGetter level, Pos pos, BState state) {
+  final connected = switch (state['face']) {
+    'ceiling' => Direction.down,
+    'floor' => Direction.up,
+    'wall' => state.dir('facing'),
+    _ => null,
+  };
+  if (connected == null) return false;
+  return !level.collisionShapeEmpty(pos.relative(connected.opposite));
+}
+
+/// `FaceAttachedHorizontalDirectionalBlock.getStateForPlacement` plus
+/// `FactoryPanelBlock.getStateForPlacement`'s floor flip: the first nearest-looking direction
+/// whose support has a collision shape (the clicked face's opposite first, like
+/// `BlockPlaceContext.getNearestLookingDirections`).
+BState? _gaugeStateForPlacement(
+  World world,
+  Pos pos,
+  Player player,
+  Direction clickedFace,
+) {
+  final level = HostBlockGetter(world);
+  final horizontal = Direction.fromYRot(player.getYaw());
+  final look = player.lookDirection;
+  final ordered = Direction.orderedByNearest(look.$1, look.$2, look.$3);
+  final directions = <Direction>[
+    clickedFace.opposite,
+    for (final d in ordered)
+      if (d != clickedFace.opposite) d,
+  ];
+  final water = level.isWater(pos);
+  for (final d in directions) {
+    final props = <String, String>{
+      'face': d.axis == Axis.y
+          ? (d == Direction.up ? 'ceiling' : 'floor')
+          : 'wall',
+      'facing': (d.axis == Axis.y ? horizontal : d.opposite).serializedName,
+      'powered': 'false',
+      'waterlogged': water ? 'true' : 'false',
+    };
+    var state = BState('create:factory_gauge', props);
+    if (!_canAttachLenient(level, pos, state)) continue;
+    if (state['face'] == 'floor') {
+      state = state.setDir('facing', state.dir('facing')!.opposite);
+    }
+    return state;
+  }
+  return null;
+}
+
+Future<bool> _onCanPlace(Server server, CustomBlockCanPlaceEventData e) async {
+  if (!e.canPlace || e.player == null || e.face == null) return e.canPlace;
+  final player = Lg.i.player(e.player!.asString);
+  if (player == null) return true;
+  final world = e.targetWorld;
+  final pos = e.pos.toPos();
+  final fixed = _gaugeStateForPlacement(world, pos, player, _dirOf(e.face!));
+  if (fixed == null) return false;
+  _pendingGaugePlacements[_gaugePlacementKey(world, pos)] = _GaugePlacement(
+    fixed,
+    e.player!.asString,
+  );
+  return true;
+}
+
+/// `FactoryPanelBlock.setPlacedBy`: fixes the state computed in [onCanPlace] and adds the first
+/// gauge at the clicked quarter with the network of the held item.
+Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
+  if (e.player == null) return;
+  final world = e.targetWorld;
+  final pos = e.pos.toPos();
+  final key = _gaugePlacementKey(world, pos);
+  final pending = _pendingGaugePlacements.remove(key);
+  // A placement the host did not announce (or a state change of an existing gauge): leave it.
+  if (pending == null || pending.player != e.player!.asString) return;
+
+  final info = BlockStates.info(world.getBlockStateId(pos: e.pos));
+  if (info?.key != 'create:factory_gauge') return;
+  final current = BState('create:factory_gauge', info!.properties);
+  final differs = current.props.length != pending.state.props.length ||
+      current.props.entries.any(
+        (entry) => pending.state.props[entry.key] != entry.value,
+      );
+  if (differs) await setBlockState(world, pos, pending.state);
+
+  final be = Lg.i.store.typed<FactoryPanelBlockEntity>(world.getId(), e.pos);
+  if (be == null) return;
+  final player = Lg.i.player(e.player!.asString);
+  final slot =
+      _clickedSlot(world, pos, player, pending.state) ?? PanelSlot.bottomLeft;
+  be.addPanel(slot, player == null ? null : await _heldNetwork(player));
+}
+
+/// `p.getTargetedSlot(pos, state, clickLocation)` from the player's current ray.
+PanelSlot? _clickedSlot(
+  World world,
+  Pos pos,
+  Player? player,
+  BState state,
+) {
+  if (player == null) return null;
+  final eye = player.eyePosition;
+  final look = player.lookDirection;
+  final hit = world.rayTraceBlock(
+    start: eye,
+    end: eye + look * 6,
+    includeFluids: false,
+  );
+  if (hit == null ||
+      hit.pos.x != pos.$1 ||
+      hit.pos.y != pos.$2 ||
+      hit.pos.z != pos.$3) {
+    return null;
+  }
+  return targetedSlot(
+    (
+      hit.hitPos.$1 - pos.$1,
+      hit.hitPos.$2 - pos.$2,
+      hit.hitPos.$3 - pos.$3,
+    ),
+    state.props,
+  );
+}
+
+/// `LogisticallyLinkedBlockItem.networkFromStack(pStack)` of the placed item.
+Future<String?> _heldNetwork(Player player) async {
+  final inventory = player.getInventory();
+  try {
+    for (final hand in [Hand.right, Hand.left]) {
+      final held = inventory.getItemInHand(hand: hand);
+      if (held == null) continue;
+      final network = LinkedItem.networkFromStack(await Lg.i.read(held));
+      if (network != null) return network;
+    }
+  } finally {
+    inventory.dispose();
+  }
+  return null;
+}
+
+/// `FactoryPanelBlock.getShape`: the panels of the block entity, or the fallback slab when the
+/// entity is not there. The collision shape stays empty (entities pass through).
+Future<List<BlockBox>?> _onShape(
+  Server server,
+  CustomBlockShapeEventData e,
+) async {
+  if (e.kind == BlockShapeKind.collision) return null;
+  final be = Lg.i.store.typed<FactoryPanelBlockEntity>(
+    e.targetWorld.getId(),
+    e.pos,
+  );
+  if (be != null) return be.getShape();
+  final pos = e.pos.toPos();
+  final info = BlockStates.info(e.targetWorld.getBlockStateId(pos: e.pos));
+  final props = info?.properties ?? const <String, String>{};
+  final connected = switch (props['face']) {
+    'ceiling' => Direction.down,
+    'floor' => Direction.up,
+    'wall' => Direction.byName(props['facing'] ?? 'north') ?? Direction.north,
+    _ => Direction.down,
+  };
+  return rotateBoxes(
+    const [BlockBox(0, 0, 0, 1, 2 / 16, 1)],
+    Direction.up,
+    connected,
+  );
+}
 
 Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   final be = Lg.i.store.typed<FactoryPanelBlockEntity>(
@@ -219,11 +416,13 @@ PanelSlot targetedSlot(
   return bestSlot;
 }
 
+/// `AngleHelper.horizontalAngle` (`Direction.toYRot`, negated on the x axis): south 0, west -90,
+/// north 180, east 90 degrees.
 double _horizontalAngle(Direction d) => switch (d) {
   Direction.south => 0,
-  Direction.west => math.pi / 2,
+  Direction.west => -math.pi / 2,
   Direction.north => math.pi,
-  Direction.east => -math.pi / 2,
+  Direction.east => math.pi / 2,
   _ => 0,
 };
 

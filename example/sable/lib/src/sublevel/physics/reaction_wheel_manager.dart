@@ -29,6 +29,9 @@ final class ReactionWheelManager {
   final Vector3d _temp = Vector3d();
   final Vector3d _impulse = Vector3d();
 
+  /// The impulse total handed to the body (`ReactionWheelManager.java:24`).
+  final ForceTotal _forceTotal = ForceTotal();
+
   ReactionWheelManager(this.subLevel, this.properties);
 
   /// `physicsTick(handle)`.
@@ -44,7 +47,8 @@ final class ReactionWheelManager {
     _totalLocalAngularMomentum.subInto(previousAngularMomentum, _impulse);
     subLevel.logicalPose.orientation().transformInverse(_impulse, _impulse);
 
-    handle.applyLinearAndAngularImpulse(Vector3d(), _impulse, true);
+    _forceTotal.applyAngularImpulse(_impulse);
+    handle.applyForcesAndReset(_forceTotal);
     previousAngularMomentum.setFrom(_totalLocalAngularMomentum);
   }
 

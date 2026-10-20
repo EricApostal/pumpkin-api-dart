@@ -4,6 +4,8 @@
 import 'dart:math' as math;
 
 import '../../common/common.dart';
+import '../actors/block_breaking_movement_behaviour.dart';
+import '../actors/harvester/harvester_movement_behaviour.dart';
 import '../core/collision.dart';
 import '../core/contraption.dart';
 import '../core/movement.dart';
@@ -490,11 +492,23 @@ abstract final class ContraptionCollider {
 
       if (blockInfo != null) {
         final movementBehaviour = MovementBehaviours.of(blockInfo.state, level);
-        if (movementBehaviour != null) {
-          if (movementBehaviour.breaksBlocks()) {
-            if (!emptyCollider) return true;
-            continue;
+        if (movementBehaviour is BlockBreakingMovementBehaviour) {
+          // `BlockBreakingMovementBehaviour.canBreak(world, colliderPos, collidedState)`: the
+          // drill, saw, plough and roller each narrow it, so a gantry-mounted drill is not
+          // blocked by every solid block.
+          if (!movementBehaviour.canBreak(level, colliderPos, collidedState) &&
+              !emptyCollider) {
+            return true;
           }
+          continue;
+        }
+        if (movementBehaviour is HarvesterMovementBehaviour) {
+          if (!movementBehaviour.isValidCrop(level, collidedState) &&
+              !movementBehaviour.isValidOther(level, colliderPos, collidedState) &&
+              !emptyCollider) {
+            return true;
+          }
+          continue;
         }
       }
 
@@ -528,6 +542,10 @@ abstract final class ContraptionCollider {
 }
 
 /// `OrientedContraptionEntity` parts the collider reads without importing the class.
+///
+/// Implemented by `OrientedContraptionEntity` (and so by every train carriage, which extends it):
+/// Java reads `cce.nonDamageTicks` on a `CarriageContraptionEntity`, inherited from the oriented
+/// entity.
 abstract interface class OrientedLike {
   int get nonDamageTicks;
 }

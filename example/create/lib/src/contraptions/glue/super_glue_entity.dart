@@ -2,6 +2,11 @@
 // form. The entity itself is a plugin entity of the host adapter (`GlueEntityHost`).
 //
 // Java: `content/contraptions/glue/SuperGlueEntity`.
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:pumpkin_api/pumpkin_api_core.dart' show PacketReader;
+
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../core/nbt.dart';
@@ -10,8 +15,6 @@ import '../core/level.dart';
 import '../core/movement_checks.dart';
 import '../core/nbt_map.dart';
 import '../core/structure_transform.dart';
-
-import 'dart:math' as math;
 
 /// The block keys that are sticky on a side.
 const Set<String> stickyBlocks = {
@@ -138,3 +141,26 @@ NbtValue glueBoxValue(Aabb box) =>
           ..putVec('From', (box.minX, box.minY, box.minZ))
           ..putVec('To', (box.maxX, box.maxY, box.maxZ)))
         .toValue();
+
+/// `SuperGlueEntity.writeSpawnData`: the spawn payload of a glue entity is its box, as the
+/// nameless NBT root `writeNbt` puts on the wire.
+Uint8List glueSpawnData(Aabb box) => NetworkNbt.encode(glueBoxValue(box));
+
+/// `SuperGlueEntity.readSpawnData`: the box of a glue entity from its spawn data, `null` when
+/// the entity carries none (or it is malformed).
+Aabb? glueBoxFromSpawnData(List<int>? data) {
+  if (data == null || data.isEmpty) return null;
+  try {
+    final root = NetworkNbt.read(PacketReader(data));
+    if (root == null || root.kind != NbtKind.compound) return null;
+    final compound = NbtMap.of(root);
+    if (!compound.contains('From') || !compound.contains('To')) return null;
+    return readGlueBox(compound);
+  } on Object {
+    return null;
+  }
+}
+
+/// `SuperGlueEntity.resetPositionToBB`: the entity sits at the horizontal center of its box,
+/// on its bottom face.
+Vec3 glueEntityPos(Aabb box) => (box.center.$1, box.minY, box.center.$3);

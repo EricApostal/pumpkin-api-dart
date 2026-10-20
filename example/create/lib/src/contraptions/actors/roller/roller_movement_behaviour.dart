@@ -9,6 +9,7 @@ import '../../../api/blocks.dart' show setBlockState;
 import '../../../api/damage.dart' show CreateDamage;
 import '../../../common/common.dart';
 import '../../../common/host_bridge.dart';
+import '../../core/level.dart';
 import '../../core/movement.dart';
 import '../../core/nbt_map.dart';
 import '../../storage/stacks.dart';
@@ -45,18 +46,18 @@ final class RollerMovementBehaviour extends BlockBreakingMovementBehaviour {
   String? getDamageSourceKey() => CreateDamage.roller.key;
 
   @override
-  bool canBreak(MovementContext context, Pos breakingPos, BState state) {
+  bool canBreak(ContraptionLevel level, Pos breakingPos, BState state) {
     for (final side in Direction.values) {
-      if (context.level.stateHasTag(
-        context.level.stateAt(breakingPos.relative(side)),
+      if (level.stateHasTag(
+        level.stateAt(breakingPos.relative(side)),
         'minecraft:portals',
       )) {
         return false;
       }
     }
-    return super.canBreak(context, breakingPos, state) &&
-        !context.level.stateCollisionEmpty(state) &&
-        !context.level.stateHasTag(state, 'create:tracks');
+    return super.canBreak(level, breakingPos, state) &&
+        !level.stateCollisionEmpty(state) &&
+        !level.stateHasTag(state, 'create:tracks');
   }
 
   @override
@@ -161,7 +162,7 @@ final class RollerMovementBehaviour extends BlockBreakingMovementBehaviour {
     if (columnY == 0 && stateAbove.key == stateToPaveWith.key) return false;
     if (slab != null && columnY == 1 && stateAbove.key == slab.key)
       return false;
-    return canBreak(context, target, stateAbove);
+    return canBreak(context.level, target, stateAbove);
   }
 
   /// `createHeightProfileForTracks`: the roller's track paving needs the carriage's travelling

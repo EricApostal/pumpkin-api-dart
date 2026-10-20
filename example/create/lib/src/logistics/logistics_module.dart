@@ -8,7 +8,10 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
 import 'factory/factory_part.dart';
+import 'filter/filter_api.dart';
 import 'filter/filter_part.dart';
+import 'filter/item_attribute.dart' show ItemAttributeHooks;
+import 'filter/logistics_services.dart';
 import 'host/runtime.dart';
 import 'itemhatch/item_hatch_part.dart';
 import 'link/link_part.dart';
@@ -62,6 +65,8 @@ final class LogisticsModule extends CreateModule {
       }
     }
 
+    installLogisticsServices(ctx.services);
+
     // The networks live in the overworld's saved data; its ticks drive the promise timers.
     ctx.listen(Events.worldLoad, (server, e) {
       if (e.targetWorld.getId() == overworldId) rt.loadGlobal(e.targetWorld);
@@ -109,5 +114,7 @@ final class LogisticsModule extends CreateModule {
       }
     }
     Lg.clear();
+    ItemAttributeHooks.itemInGroup = (_, _) => false;
+    ItemFilterApiAdapter.wire = () => null;
   }
 }

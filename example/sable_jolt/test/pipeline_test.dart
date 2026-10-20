@@ -6,6 +6,7 @@
 // code: `JoltPhysicsPipeline`, its marshalling, and the ABI in
 // `native/jolt/src/jolt_abi.cpp`.
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:sable/sable.dart';
 import 'package:sable_jolt/sable_jolt.dart';
@@ -271,6 +272,64 @@ void main() {
     expect(fallen.position().y, lessThan(resting.position().y - 0.5));
   }, skip: skip);
 
+  test('removing a sub-level chunk section drops its colliders', () {
+    final level = TestLevel();
+    SubLevelContainer.register(TestContainer(level, TestChunkHost()));
+    addTearDown(() => SubLevelContainer.unregister(level));
+
+    final subLevel = ServerSubLevel(
+      level,
+      SubLevelContainer.defaultOrigin,
+      SubLevelContainer.defaultOrigin,
+      Pose3d()..position().set(0.0, 2.0, 0.0),
+      runtimeId: 13,
+    );
+    pipeline.addSubLevel(subLevel, subLevel.pose);
+    final collider = pipeline.registerVoxelCollider(const BlockColliderData());
+    pipeline.handleChunkSectionAddition(
+      0,
+      -1,
+      0,
+      _floorSection(collider),
+      global: true,
+    );
+    pipeline.handleChunkSectionAddition(
+      0,
+      0,
+      0,
+      _singleBlockSection(collider),
+      global: false,
+      subLevelRuntimeId: 13,
+    );
+    subLevel.massTracker = TestMassData.isotropic(
+      Vector3d(0.5, 0.5, 0.5),
+      1.0,
+      1.0,
+    );
+    pipeline.onStatsChanged(subLevel);
+
+    final boxPose = Pose3d()..position().set(0.0, 4.0, 0.0);
+    final box = pipeline.addBox(
+      BoxPhysicsObject(boxPose, Vector3d(0.5, 0.5, 0.5), 1.0),
+    );
+    for (var i = 0; i < 90; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final resting = Pose3d();
+    box.readPose(resting);
+    expect(resting.position().y, greaterThan(1.0));
+
+    // The section's ticket expired: the engine must forget the block's
+    // colliders too, not just the Dart-side store.
+    pipeline.handleChunkSectionRemoval(0, 0, 0);
+    for (var i = 0; i < 240; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final fallen = Pose3d();
+    box.readPose(fallen);
+    expect(fallen.position().y, lessThan(resting.position().y - 0.5));
+  }, skip: skip);
+
   test('a hinge holds a box to the world', () {
     final pose = Pose3d()..position().set(0.0, 2.0, 0.0);
     final box = pipeline.addBox(
@@ -301,4 +360,129 @@ void main() {
     hinge.remove();
     expect(hinge.isValid, isFalse);
   }, skip: skip);
+
+  test('a hinge motor turns the box to its target angle', () {
+    // Gravity off: the only torque is the motor's.
+    pipeline.setGravity(Vector3d());
+
+    final pose = Pose3d()..position().set(0.0, 2.0, 0.0);
+    final box = pipeline.addBox(
+      BoxPhysicsObject(pose, Vector3d(0.5, 0.5, 0.5), 1.0),
+    );
+    final hinge = pipeline.addHinge(
+      null,
+      box,
+      Vector3d(0.0, 2.0, 0.0),
+      Vector3d(0.0, 0.0, 0.0),
+      Vector3d(0.0, 1.0, 0.0),
+      Vector3d(0.0, 1.0, 0.0),
+    );
+
+    // Without a motor the box stays where it is.
+    for (var i = 0; i < 60; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final before = Pose3d();
+    box.readPose(before);
+    expect(_rotationAngle(before.orientation()), lessThan(0.05));
+
+    // `setMotor` with Rapier's gains: stiffness 10, damping 2 on the rotary
+    // joint's `ANGULAR_X` axis (`RotaryConstraintHandle.DEFAULT_AXIS`), which
+    // the Jolt handle routes to the hinge's motor slot. `JoltJointHandle`
+    // converts the gains to 1.23 Hz at a 0.775 damping ratio, and the ABI
+    // calls `HingeConstraint::SetTargetAngle` (`jolt_abi.cpp:1602-1640`).
+    hinge.setMotor(ConstraintJointAxis.angularX, math.pi / 2, 10.0, 2.0, false, 0.0);
+    for (var i = 0; i < 240; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final after = Pose3d();
+    box.readPose(after);
+    // The target is a quarter turn about +Y.
+    expect(_rotationAngle(after.orientation()), closeTo(math.pi / 2, 0.1));
+    expect(after.position().y, closeTo(2.0, 0.05));
+
+    hinge.remove();
+  }, skip: skip);
+
+  test('a six-DOF motor drives the box to its target position', () {
+    // The assembler's alignment joint is a free six-DOF joint
+    // (`FreeConstraintConfiguration`), so its linear motors are axes 0-2.
+    pipeline.setGravity(Vector3d());
+
+    final pose = Pose3d()..position().set(0.0, 2.0, 0.0);
+    final box = pipeline.addBox(
+      BoxPhysicsObject(pose, Vector3d(0.5, 0.5, 0.5), 1.0),
+    );
+    final joint = pipeline.addSixDof(
+      null,
+      box,
+      Vector3d(0.0, 2.0, 0.0),
+      Quaterniond(),
+      Vector3d(0.0, 0.0, 0.0),
+      Quaterniond(),
+    );
+
+    // The box sleeps with the joint holding it still.
+    for (var i = 0; i < 60; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final before = Pose3d();
+    box.readPose(before);
+    expect(before.position().x, closeTo(0.0, 0.01));
+
+    // 100 N/m at 20 N·s/m on a 1 kg box: 1.59 Hz, damping ratio 1.0.
+    joint.setMotor(0, 1.0, 100.0, 20.0, false, 0.0);
+    for (var i = 0; i < 240; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final after = Pose3d();
+    box.readPose(after);
+    expect(after.position().x, closeTo(1.0, 0.05));
+    expect(after.position().y, closeTo(2.0, 0.05));
+
+    joint.remove();
+  }, skip: skip);
+
+  test('a six-DOF angular motor turns the box to its target angle', () {
+    // The assembler holds the three angular axes at zero with a stiff,
+    // overdamped motor; here the target is a quarter turn so the motion is
+    // observable.
+    pipeline.setGravity(Vector3d());
+
+    final pose = Pose3d()..position().set(0.0, 2.0, 0.0);
+    final box = pipeline.addBox(
+      BoxPhysicsObject(pose, Vector3d(0.5, 0.5, 0.5), 1.0),
+    );
+    final joint = pipeline.addSixDof(
+      null,
+      box,
+      Vector3d(0.0, 2.0, 0.0),
+      Quaterniond(),
+      Vector3d(0.0, 0.0, 0.0),
+      Quaterniond(),
+    );
+
+    for (var i = 0; i < 60; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final before = Pose3d();
+    box.readPose(before);
+    expect(_rotationAngle(before.orientation()), lessThan(0.01));
+
+    // The assembler's angular gains (`AssemblyAlignmentMotors`).
+    joint.setMotor(ConstraintJointAxis.angularY, math.pi / 2, 13000.0, 1000.0, false, 0.0);
+    for (var i = 0; i < 240; i++) {
+      pipeline.physicsTick(1.0 / 60.0);
+    }
+    final after = Pose3d();
+    box.readPose(after);
+    expect(_rotationAngle(after.orientation()), closeTo(math.pi / 2, 0.05));
+    expect(after.position().y, closeTo(2.0, 0.02));
+
+    joint.remove();
+  }, skip: skip);
 }
+
+/// The unsigned angle of [q] in radians.
+double _rotationAngle(Quaterniond q) =>
+    2 * math.acos(q.w.clamp(-1.0, 1.0).toDouble());

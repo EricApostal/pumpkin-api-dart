@@ -19,6 +19,7 @@ import '../factory/factory_panel_block_entity.dart';
 import '../host/runtime.dart';
 import '../logistics_part.dart';
 import '../model/stack.dart';
+import 'filter_api.dart';
 import 'filter_item_stack.dart';
 import 'filter_menu_session.dart';
 import 'filtering_behaviour.dart';
@@ -47,6 +48,9 @@ final class FilterPart extends LogisticsPart {
 
   @override
   void onLoad(CreateContext ctx, LgRuntime rt) {
+    // The `ItemFilterApi` adapter decodes a list filter's ghost slots with the runtime's wire
+    // (the server's component ids).
+    ItemFilterApiAdapter.wire = () => rt.wire;
     // Tags are the host's; the attribute filter asks through the hook.
     ItemAttributeHooks.itemInTag = (itemKey, tag) => Tags.item(itemKey, tag);
     // The host can test a tag but not list the tags of an item, so the candidates are the item
@@ -157,10 +161,16 @@ final class FilterPart extends LogisticsPart {
       if (be == null) return;
 
       final index = fields['behaviourIndex'] as int? ?? 0;
-      final ValueSettingsTarget? target;
+      ValueSettingsTarget? target;
       if (be is FactoryPanelBlockEntity) {
-        final panels = be.panels.values.toList();
-        target = index >= 0 && index < panels.length ? panels[index] : null;
+        // `ValueSettingsPacket.applySettings` matches the behaviour's `netId()`, which a factory
+        // gauge reports as `2 + slot.ordinal()` (`FactoryPanelBehaviour.java:1069-1071`).
+        for (final panel in be.panels.values) {
+          if (panel.netId == index) {
+            target = panel;
+            break;
+          }
+        }
       } else {
         target = be.getBehaviour<FilteringBehaviour>();
       }

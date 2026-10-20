@@ -6,6 +6,7 @@ import '../../api/block_state.dart';
 import '../../common/common.dart' hide pos;
 import '../../contraptions/actors/actor_runtime.dart';
 import '../../contraptions/actors/block_breaking_movement_behaviour.dart';
+import '../../contraptions/core/level.dart';
 import '../../contraptions/core/movement.dart';
 import '../../common/host_bridge.dart';
 import 'tree_cutter.dart';
@@ -48,9 +49,9 @@ class SawMovementBehaviour extends BlockBreakingMovementBehaviour {
   }
 
   @override
-  bool canBreak(MovementContext context, Pos breakingPos, BState state) =>
-      super.canBreak(context, breakingPos, state) &&
-      isSawable(state, (s, tag) => context.level.stateHasTag(s, tag));
+  bool canBreak(ContraptionLevel level, Pos breakingPos, BState state) =>
+      super.canBreak(level, breakingPos, state) &&
+      isSawable(state, (s, tag) => level.stateHasTag(s, tag));
 
   @override
   Future<void> onBlockBroken(

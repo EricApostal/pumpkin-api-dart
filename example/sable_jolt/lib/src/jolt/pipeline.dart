@@ -21,8 +21,10 @@ import 'package:sable/sable.dart'
         BoxHandle,
         BoxPhysicsObject,
         ConstraintJointAxis,
+        ConstraintJointAxisMask,
         ConstraintPipeline,
         FixedConstraintConfiguration,
+        ForceTotal,
         FreeConstraintConfiguration,
         GenericConstraintConfiguration,
         GenericConstraintHandle,
@@ -363,13 +365,20 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
   @override
   void handleChunkSectionRemoval(int x, int y, int z, {bool global = false}) {
     _requireWorld();
-    abi.chunkRemove(_world, x, y, z, global, 0);
     if (global) {
+      abi.chunkRemove(_world, x, y, z, true, 0);
       levelBlocks.removeSection(x, y, z);
-    } else {
-      for (final body in _subLevels.values) {
-        body.blocks.removeSection(x, y, z);
+      return;
+    }
+    // `jolt_chunk_remove` needs the owning body (`jolt_abi.cpp:1399-1410`);
+    // with body 0 it is a no-op, which would leave the blocks' colliders in the
+    // scene after the section's ticket expired.
+    for (final body in _subLevels.values) {
+      if (body.removed || !body.blocks.hasSection(x, y, z)) {
+        continue;
       }
+      abi.chunkRemove(_world, x, y, z, false, body.handle);
+      body.blocks.removeSection(x, y, z);
     }
   }
 
@@ -615,7 +624,7 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
       axisB.y,
       axisB.z,
     );
-    return _joint(handle, 'hinge', bodyA, bodyB);
+    return _joint(handle, 'hinge', bodyA, bodyB, hingeAxis: Vector3d.copy(axisA));
   }
 
   /// `addFixedConstraint` (`joints.rs:390-475`).
@@ -649,7 +658,8 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
   }
 
   /// `addGenericConstraint` (`joints.rs:565-720`): a six-DOF joint with a
-  /// locked-axis mask (Rapier's `JointAxesMask`: bit 0 = X, 1 = Y, 2 = Z,
+  /// locked-axis mask (Rapier's `JointAxesMask`, i.e. the
+  /// [ConstraintJointAxisMask] bits: bit 0 = X, 1 = Y, 2 = Z,
   /// 3 = angX, 4 = angY, 5 = angZ).
   JoltJointHandle addSixDof(
     RigidBodyHandle? bodyA,
@@ -690,13 +700,14 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
     RigidBodyHandle? bodyA,
     RigidBodyHandle? bodyB, {
     bool generic = false,
+    Vector3d? hingeAxis,
   }) {
     if (handle == 0) {
       throw StateError('jolt_joint_create_$kind failed.');
     }
     return generic
-        ? JoltGenericJointHandle(this, handle, bodyA, bodyB)
-        : JoltJointHandle(this, handle, bodyA, bodyB);
+        ? JoltGenericJointHandle(this, handle, kind, bodyA, bodyB, hingeAxis)
+        : JoltJointHandle(this, handle, kind, bodyA, bodyB, hingeAxis);
   }
 
   /// `addConstraint(bodyA, bodyB, configuration)`
@@ -905,6 +916,30 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
     return inertiaA * inertiaB / (inertiaA + inertiaB);
   }
 
+  /// The reduced inertia about [axis], given in the bodies' local frame.
+  ///
+  /// A Jolt hinge stores its hinge axis in the body's local frame
+  /// (`jolt_abi.cpp:599-605`), so the hinge motor's gain conversion uses this
+  /// form rather than a world axis.
+  double reducedInertiaAbout(RigidBodyHandle? a, RigidBodyHandle? b, Vector3d axis) {
+    final inertiaA = _localInertia(a, axis);
+    final inertiaB = _localInertia(b, axis);
+    if (inertiaA <= 0.0) return inertiaB;
+    if (inertiaB <= 0.0) return inertiaA;
+    return inertiaA * inertiaB / (inertiaA + inertiaB);
+  }
+
+  double _localInertia(RigidBodyHandle? body, Vector3d axis) {
+    final local = _inertiaOfBody(body);
+    if (body == null || local == null) return 0.0;
+    final n = Vector3d.copy(axis);
+    final length = n.length;
+    if (!(length > 0.0)) return 0.0;
+    n.mul(1.0 / length);
+    final inertia = Matrix3d.copy(local).transform(n, Vector3d());
+    return n.dot(inertia);
+  }
+
   double _effectiveInertia(RigidBodyHandle? body, int axisIndex) {
     final local = _inertiaOfBody(body);
     if (body == null || local == null) return 0.0;
@@ -983,7 +1018,22 @@ class JoltJointHandle implements PhysicsConstraintHandle {
   final RigidBodyHandle? bodyA;
   final RigidBodyHandle? bodyB;
 
-  JoltJointHandle(this._pipeline, this.handle, [this.bodyA, this.bodyB]);
+  /// The joint shape: `hinge`, `fixed` or `six-DOF`.
+  final String kind;
+
+  /// The hinge direction on body A for a hinge, `null` otherwise. The native
+  /// side stores it in the constraint's local frame
+  /// (`jolt_abi.cpp:599-605`).
+  final Vector3d? hingeAxis;
+
+  JoltJointHandle(
+    this._pipeline,
+    this.handle,
+    this.kind, [
+    this.bodyA,
+    this.bodyB,
+    this.hingeAxis,
+  ]);
 
   /// The native joint handle.
   int get nativeHandle => handle;
@@ -1037,7 +1087,15 @@ class JoltJointHandle implements PhysicsConstraintHandle {
 
   /// `setMotor(axis, target, stiffness, damping, hasMaxForce, maxForce)`
   /// (`RapierConstraintHandle.java:30-33`): a PD motor on [axis], where 0-2 are
-  /// linear and 3-5 angular ([ConstraintJointAxis]).
+  /// linear and 3-5 angular ([ConstraintJointAxis]), as Java passes
+  /// `axis.ordinal()`.
+  ///
+  /// A Rapier revolute joint is driven on `ANGULAR_X`
+  /// (`RotaryConstraintHandle.DEFAULT_AXIS`); Jolt's [HingeConstraint] has a
+  /// single motor slot that `jolt_joint_set_motor` addresses as axis 5
+  /// (`jolt_abi.cpp:1625-1640`), so an angular X motor on a hinge is routed
+  /// there. Every other axis of a hinge is fixed by the constraint and has no
+  /// motor.
   ///
   /// Rapier takes a spring constant `k` [N/m | Nm/rad] and a damping
   /// coefficient `c` [N·s/m | Nm·s/rad]; Jolt's spring settings take a
@@ -1055,17 +1113,44 @@ class JoltJointHandle implements PhysicsConstraintHandle {
     double maxForce,
   ) {
     _pipeline._requireWorld();
+    final abiAxis = _abiAxis(axis);
+    if (abiAxis < 0) {
+      return;
+    }
     final (frequency, ratio) = _springTerms(axis, stiffness, damping);
     _pipeline.abi.jointSetMotor(
       _pipeline._world,
       handle,
-      axis,
+      abiAxis,
       target,
       frequency,
       ratio,
       hasMaxForce,
       maxForce,
     );
+    // `jolt_joint_set_motor` updates the constraint but does not activate the
+    // bodies (`jolt_abi.cpp:1602-1640`), so a sleeping sub-level would ignore
+    // its motor. Applying a motor is an external change that must resume
+    // physics, as `RigidBodyHandle.applyForces` does for forces.
+    final a = bodyA;
+    if (a != null) {
+      _pipeline.wakeUp(a);
+    }
+    final b = bodyB;
+    if (b != null) {
+      _pipeline.wakeUp(b);
+    }
+  }
+
+  /// The ABI axis for a Sable [axis], or -1 when the joint has no motor there.
+  int _abiAxis(int axis) {
+    if (kind != 'hinge') {
+      return axis >= 0 && axis <= 5 ? axis : -1;
+    }
+    // The hinge's own motor slot, plus the Sable name for it.
+    return axis == ConstraintJointAxis.angularX || axis == ConstraintJointAxis.angularZ
+        ? ConstraintJointAxis.angularZ
+        : -1;
   }
 
   /// Converts Rapier's `(stiffness, damping)` into Jolt's
@@ -1078,9 +1163,15 @@ class JoltJointHandle implements PhysicsConstraintHandle {
       return (1.0e-4, 0.0);
     }
 
-    final effective = axis < 3
-        ? _pipeline.reducedMass(bodyA, bodyB)
-        : _pipeline.reducedInertia(bodyA, bodyB, axis - 3);
+    final double effective;
+    if (kind == 'hinge') {
+      // The hinge's rotation axis, as the native constraint stores it.
+      effective = _pipeline.reducedInertiaAbout(bodyA, bodyB, hingeAxis ?? Vector3d(0, 1, 0));
+    } else if (axis < 3) {
+      effective = _pipeline.reducedMass(bodyA, bodyB);
+    } else {
+      effective = _pipeline.reducedInertia(bodyA, bodyB, axis - 3);
+    }
     if (!(effective > 0.0) || !effective.isFinite) {
       // A static/static joint or a body without mass data: the ABI's own units
       // are the best available answer.
@@ -1098,8 +1189,8 @@ class JoltJointHandle implements PhysicsConstraintHandle {
     _pipeline.abi.jointSetLimit(_pipeline._world, handle, axis, min, max);
   }
 
-  /// `lockAxes(axes)` (`joints.rs:208-240`): a mask of [ConstraintJointAxis]
-  /// bits.
+  /// `lockAxes(axes)` (`joints.rs:208-240`): a mask of
+  /// [ConstraintJointAxisMask] bits.
   void lockAxes(int mask) {
     _pipeline._requireWorld();
     _pipeline.abi.jointLockAxes(_pipeline._world, handle, mask);
@@ -1144,7 +1235,14 @@ class JoltJointHandle implements PhysicsConstraintHandle {
 
 /// `GenericConstraintHandle`: the six-DOF view of a [JoltJointHandle].
 final class JoltGenericJointHandle extends JoltJointHandle implements GenericConstraintHandle {
-  JoltGenericJointHandle(super.pipeline, super.handle, [super.bodyA, super.bodyB]);
+  JoltGenericJointHandle(
+    super.pipeline,
+    super.handle,
+    super.kind, [
+    super.bodyA,
+    super.bodyB,
+    super.hingeAxis,
+  ]);
 }
 
 /// A sub-level's body.
@@ -1167,8 +1265,6 @@ final class _SubLevelBody implements RigidBodyHandle {
   final BlockSectionStore blocks = BlockSectionStore();
 
   bool removed = false;
-
-  Vector3d? _lastForce;
 
   _SubLevelBody(this._pipeline, this.handle, this.subLevel);
 
@@ -1193,27 +1289,23 @@ final class _SubLevelBody implements RigidBodyHandle {
     _pipeline.applyLinearAndAngularImpulse(this, linear, angular, wakeUp);
   }
 
-  /// `RigidBodyHandle.applyForcesAndReset` sends a local force as an impulse
-  /// and only wakes the body when the force changed
+  /// `RigidBodyHandle.applyForcesAndReset` sends the accumulated local force
+  /// and torque as one impulse, waking the body only when the total changed
   /// (`ForceTotal.applyForces`, `ForceTotal.java:29-43`).
   @override
-  void applyForcesAndReset(Vector3d force) {
-    final previous = _lastForce;
-    final changed =
-        previous == null ||
-        (force.x - previous.x) * (force.x - previous.x) +
-                (force.y - previous.y) * (force.y - previous.y) +
-                (force.z - previous.z) * (force.z - previous.z) >
-            1e-5;
-    _lastForce ??= Vector3d();
-    _lastForce!.setFrom(force);
-    _pipeline.applyLinearAndAngularImpulse(
-      this,
-      force,
-      Vector3d(),
-      changed,
-    );
-  }
+  void applyForcesAndReset(ForceTotal forceTotal) => forceTotal.applyForces(this);
+
+  /// `applyImpulseAtPoint(position, force)` (`RigidBodyHandle.java:80-88`).
+  @override
+  void applyImpulseAtPoint(Vector3d position, Vector3d force) =>
+      _pipeline.applyImpulse(this, position, force);
+
+  /// `isValid()`: whether the engine still holds the body.
+  @override
+  bool get isValid =>
+      !removed &&
+      _pipeline._world != 0 &&
+      _pipeline.abi.bodyIsValid(_pipeline._world, handle) != 0;
 
   @override
   void teleport(Vector3d position, Quaterniond orientation) {
@@ -1299,9 +1391,17 @@ final class JoltBoxBody implements BoxHandle, RigidBodyHandle {
   }
 
   @override
-  void applyForcesAndReset(Vector3d force) {
-    _pipeline.applyLinearAndAngularImpulse(this, force, Vector3d(), true);
-  }
+  void applyForcesAndReset(ForceTotal forceTotal) => forceTotal.applyForces(this);
+
+  @override
+  void applyImpulseAtPoint(Vector3d position, Vector3d force) =>
+      _pipeline.applyImpulse(this, position, force);
+
+  @override
+  bool get isValid =>
+      !removed &&
+      _pipeline._world != 0 &&
+      _pipeline.abi.bodyIsValid(_pipeline._world, handle) != 0;
 
   @override
   void teleport(Vector3d position, Quaterniond orientation) {

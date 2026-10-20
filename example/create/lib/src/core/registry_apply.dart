@@ -4,6 +4,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import 'block_entity.dart';
 import 'perf.dart';
 import 'registry.dart';
+import 'state_layouts.dart';
 import 'shape_rule_checks.dart';
 
 /// The ids the host assigned, by registry and key.
@@ -102,6 +103,10 @@ Future<AppliedIds> applyRegistry(
       if (entry != null) {
         block.blockId = entry.id;
         block.baseStateId = entry.baseStateId;
+        // The host reports a plugin block's properties through its vanilla `Property` enum, which
+        // drops `turn` and the rail `shape` values. `BlockStates` describes plugin blocks from
+        // this layout instead (see `PluginStateLayouts`).
+        PluginStateLayouts.register(block.key, entry.baseStateId, block.layout);
       }
       if (block.placement.isNotEmpty)
         BlockPlacements.host.setRules(block.key, block.placement);

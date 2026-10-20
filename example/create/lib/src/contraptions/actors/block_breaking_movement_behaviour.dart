@@ -10,6 +10,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../common/host_bridge.dart';
+import '../core/level.dart';
 import '../core/movement.dart';
 import '../storage/stacks.dart';
 import 'actor_runtime.dart';
@@ -71,7 +72,7 @@ class BlockBreakingMovementBehaviour extends MovementBehaviour {
     if (!context.level.isRedstoneConductor(pos))
       await damageEntities(context, pos, world);
 
-    if (!canBreak(context, pos, stateVisited)) return;
+    if (!canBreak(context.level, pos, stateVisited)) return;
     context.data.putBlockPos('BreakingPos', pos);
     context.stall = true;
   }
@@ -186,7 +187,7 @@ class BlockBreakingMovementBehaviour extends MovementBehaviour {
         .getBlock(pos: breakingPos.toBlockPos())
         .hardness;
 
-    if (!canBreak(context, breakingPos, stateToBreak)) {
+    if (!canBreak(context.level, breakingPos, stateToBreak)) {
       if (destroyProgress != 0) {
         data.remove('Progress');
         data.remove('TicksUntilNextProgress');
@@ -255,11 +256,13 @@ class BlockBreakingMovementBehaviour extends MovementBehaviour {
   /// `shouldDestroyStartBlock`.
   bool shouldDestroyStartBlock(BState stateToBreak) => true;
 
-  /// `canBreak`.
-  bool canBreak(MovementContext context, Pos breakingPos, BState state) {
+  /// `canBreak(world, breakingPos, state)`: Java takes the level, not the context, because the
+  /// contraption collider asks whether a *moving block* could break the block it runs into
+  /// (`ContraptionCollider.isCollidingWithWorld`) before the actor ever ticks.
+  bool canBreak(ContraptionLevel level, Pos breakingPos, BState state) {
     if (state.isAir) return false;
-    if (context.level.isUnbreakable(state)) return false;
-    if (context.level.stateHasTag(state, 'create:non_breakable')) return false;
+    if (level.isUnbreakable(state)) return false;
+    if (level.stateHasTag(state, 'create:non_breakable')) return false;
     return true;
   }
 

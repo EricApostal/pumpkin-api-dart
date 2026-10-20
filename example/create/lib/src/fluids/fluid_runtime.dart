@@ -76,8 +76,10 @@ final class FluidsRuntime {
     );
   }
 
-  /// Forgets the level of a world (world unload).
-  void forgetWorld(String worldId) => _levels.remove(worldId);
+  /// Forgets the level of a world (world unload), releasing its kept host handlers.
+  void forgetWorld(String worldId) {
+    _levels.remove(worldId)?.dispose();
+  }
 
   /// `AdvancementBehaviour.tryAward(level, pos, advancement)`: awards the
   /// advancement to the players within ten blocks.
@@ -106,6 +108,9 @@ final class FluidsRuntime {
   }
 
   void dispose() {
+    for (final level in _levels.values) {
+      level.dispose();
+    }
     _levels.clear();
     if (identical(_instance, this)) _instance = null;
   }

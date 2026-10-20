@@ -144,7 +144,13 @@ void registerActuatorContent(CreateRegistry registry) {
   }
 
   // Entities.
-  void entity(String key, double width, double height, {bool saveable = true}) {
+  void entity(
+    String key,
+    double width,
+    double height, {
+    bool saveable = true,
+    String? spawnDataChannel,
+  }) {
     if (registry.entityTypes.contains('create:$key')) return;
     registry.entityType(
       EntityTypeSpec(
@@ -156,11 +162,20 @@ void registerActuatorContent(CreateRegistry registry) {
         updateInterval: 3,
         fireImmune: true,
         saveable: saveable,
+        spawnDataChannel: spawnDataChannel,
       ),
     );
   }
 
-  entity('super_glue', 0.6, 1.8, saveable: false);
+  // `SuperGlueEntity implements IEntityWithComplexSpawn`: the client rebuilds the glue box from
+  // the spawn payload (`writeSpawnData`), without which it draws no glue overlay.
+  entity(
+    'super_glue',
+    0.6,
+    1.8,
+    saveable: false,
+    spawnDataChannel: 'neoforge:advanced_add_entity',
+  );
 
   // Contraption kinds, so a saved contraption is read back as the right subclass.
   ContraptionTypes.registerAll({

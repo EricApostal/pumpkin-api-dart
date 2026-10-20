@@ -20,6 +20,7 @@
 // Nothing here has run against a host or a client: see docs/host-requirements.md.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../compat/simulated_driver.dart';
 import '../machine/computer.dart';
 import '../protocol/components.dart';
 import 'block_states.dart';
@@ -183,8 +184,10 @@ final class CcWorldComputers {
   Future<Computer?> _ensureComputer(Server server, Player player, _Placed placed) async {
     final id = placed.computerId;
     if (id != null) {
-      return _service.computer(id) ??
+      final computer = _service.computer(id) ??
           _service.resumeAt(id, placed.location, family: placed.family, label: placed.label, on: placed.on);
+      _refreshSimulated(placed, computer.id);
+      return computer;
     }
     final owner = player.getId().asString;
     final limit = _service.pluginConfig.maxComputersPerPlayer;
@@ -196,7 +199,15 @@ final class CcWorldComputers {
     _service.resumeAt(computer.id, placed.location, family: placed.family, on: false);
     placed.computerId = computer.id;
     _writeEntity(server, placed);
+    _refreshSimulated(placed, computer.id);
     return computer;
+  }
+
+  /// Attaches the peripherals of the blocks around [placed] to its computer
+  /// (the compat of another mod; nothing happens without it).
+  void _refreshSimulated(_Placed placed, int computerId) {
+    final location = placed.location;
+    CcSimulatedDriver.refresh(_service, location.world, (location.x, location.y, location.z), computerId);
   }
 
   // -- Pocket computers (`PocketComputerItem.use`) ----------------------------------
@@ -321,6 +332,7 @@ final class CcWorldComputers {
       if (id != null) {
         // Placed from an item: the machine starts off, like a fresh block entity.
         _service.resumeAt(id, location, family: placed.family, owner: ownerUuid, ownerName: ownerName, label: label, on: false);
+        _refreshSimulated(placed, id);
       }
     } on PluginRegistryException catch (e) {
       logger.warn('Could not create the block entity of $blockKey at $location: ${e.message}');
@@ -364,6 +376,7 @@ final class CcWorldComputers {
     final id = placed.computerId;
     if (id != null) {
       _service.resumeAt(id, location, family: placed.family, label: placed.label, on: placed.on);
+      _refreshSimulated(placed, id);
     }
   }
 
@@ -375,6 +388,7 @@ final class CcWorldComputers {
     final placed = _placed.remove(_key(location));
     final id = placed?.computerId ?? _tryReadId(event);
     if (id != null) {
+      CcSimulatedDriver.detachAll(_service, id);
       _network.closeAllFor(server, id);
       _service.suspend(id, blockRemoved: event.removed);
     }

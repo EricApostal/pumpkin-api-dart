@@ -42,13 +42,50 @@ final class _Body implements FloatingBlockBody {
   double pressureAt(Vector3d worldPosition) => 1.0;
 }
 
+final class _Mass implements MassData {
+  @override
+  Vector3d getCenterOfMass() => Vector3d(0, 1, 0);
+
+  @override
+  double getInverseMass() => 1.0;
+
+  @override
+  double getMass() => 1.0;
+
+  @override
+  Matrix3d getInertiaTensor() => Matrix3d.identity();
+
+  @override
+  Matrix3d getInverseInertiaTensor() => Matrix3d.identity();
+
+  @override
+  bool isInvalid() => false;
+
+  @override
+  BoundingBox3ic? getBounds() => null;
+}
+
+final class _ForceTarget implements QueuedForceTarget {
+  final _Mass mass = _Mass();
+
+  bool tracking = false;
+
+  @override
+  MassData getMassTracker() => mass;
+
+  @override
+  bool isTrackingIndividualQueuedForces() => tracking;
+}
+
 final class _Handle implements RigidBodyHandle {
   Vector3d lastTorque = Vector3d();
   bool applied = false;
+  bool lastWakeUp = false;
 
   @override
   void applyLinearAndAngularImpulse(Vector3d linear, Vector3d angular, bool wakeUp) {
     lastTorque = Vector3d(angular.x, angular.y, angular.z);
+    lastWakeUp = wakeUp;
     applied = true;
   }
 
@@ -56,7 +93,14 @@ final class _Handle implements RigidBodyHandle {
   void addLinearAndAngularVelocity(Vector3d linear, Vector3d angular) {}
 
   @override
-  void applyForcesAndReset(Vector3d force) {}
+  void applyForcesAndReset(ForceTotal forceTotal) => forceTotal.applyForces(this);
+
+  @override
+  void applyImpulseAtPoint(Vector3d position, Vector3d force) =>
+      applyLinearAndAngularImpulse(force, Vector3d(), true);
+
+  @override
+  bool get isValid => true;
 
   @override
   Vector3d getAngularVelocity([Vector3d? dest]) => (dest ?? Vector3d()).zero();
@@ -281,6 +325,78 @@ void main() {
     test('a stopped wheel needs no ticking', () {
       final manager = ReactionWheelManager(subLevel, PhysicsBlockPropertiesTable());
       expect(manager.needsTicking(), isFalse);
+    });
+  });
+
+  group('ForceTotal', () {
+    test('applyForces wakes the body only when the total changed', () {
+      final handle = _Handle();
+      final total = ForceTotal()..applyLinearImpulse(Vector3d(0, 1, 0));
+
+      total.applyForces(handle);
+      expect(handle.lastWakeUp, isTrue, reason: 'the first force is new');
+
+      // The first call left the total at zero, so this one changes it.
+      total.applyForces(handle);
+      expect(handle.lastWakeUp, isTrue);
+
+      // Nothing changed since the last call: the body may stay asleep.
+      total.applyForces(handle);
+      expect(handle.lastWakeUp, isFalse);
+      expect(handle.applied, isTrue);
+    });
+
+    test('applyImpulseAtPoint adds the lever-arm torque', () {
+      final total = ForceTotal()
+        ..applyImpulseAtPoint(_Mass(), Vector3d(1, 1, 0), Vector3d(0, 0, 2));
+
+      expect(total.getLocalForce().z, 2.0);
+      // (1,1,0) - COM(0,1,0) = (1,0,0); (1,0,0) × (0,0,2) = (0,-2,0).
+      expect(total.getLocalTorque().y, -2.0);
+    });
+  });
+
+  group('QueuedForceGroup', () {
+    test('a point force contributes its torque to the total', () {
+      final target = _ForceTarget();
+      final group = QueuedForceGroup(target);
+
+      group.applyAndRecordPointForce(Vector3d(1, 1, 0), Vector3d(0, 0, 2));
+
+      expect(group.getForceTotal().getLocalForce().z, 2.0);
+      expect(group.getForceTotal().getLocalTorque().y, -2.0);
+      expect(
+        group.getRecordedPointForces(),
+        isEmpty,
+        reason: 'recording is off by default',
+      );
+    });
+
+    test('point forces are recorded only while tracking', () {
+      final target = _ForceTarget()..tracking = true;
+      final group = QueuedForceGroup(target);
+
+      group.applyAndRecordPointForce(Vector3d(1, 1, 0), Vector3d(0, 0, 2));
+      expect(group.getRecordedPointForces(), hasLength(1));
+      expect(group.getRecordedPointForces().single.point.x, 1.0);
+      expect(group.getRecordedPointForces().single.force.z, 2.0);
+
+      // Below 0.001 N a force is not worth a display entry
+      // (`QueuedForceGroup.java:33-39`).
+      group.recordPointForce(Vector3d(), Vector3d(0, 0, 0.0005));
+      expect(group.getRecordedPointForces(), hasLength(1));
+    });
+
+    test('reset clears both the total and the recorded forces', () {
+      final target = _ForceTarget()..tracking = true;
+      final group = QueuedForceGroup(target);
+      group.applyAndRecordPointForce(Vector3d(1, 1, 0), Vector3d(0, 0, 2));
+
+      group.reset();
+
+      expect(group.getForceTotal().getLocalForce(), Vector3d());
+      expect(group.getForceTotal().getLocalTorque(), Vector3d());
+      expect(group.getRecordedPointForces(), isEmpty);
     });
   });
 }

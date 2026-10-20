@@ -9,6 +9,7 @@ import '../contraptions/elevator/elevator_column.dart';
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
 import 'lamp_logic.dart';
+import 'power_face.dart';
 import 'support/level.dart';
 import 'support/manifest_block.dart';
 import 'support/placement.dart';
@@ -42,8 +43,8 @@ final class RedstoneContactBlock {
           return redstoneContactSignal(
             powered: p['powered'] == 'true',
             facing: _facing(p, Direction.up),
-            // `e.face` is the side of the block facing the reader, vanilla `side`.
-            side: e.face.toDirection(),
+            // `e.face` faces the reader; vanilla's `side` is the side of the reader.
+            side: powerEventSide(e.face.toDirection()),
           );
         },
         canConnectRedstone: (server, e) => redstoneContactConnects(
@@ -198,7 +199,7 @@ final class DeskBellBlock {
           final p = block.stateOf(e.stateIndex);
           // `getDirectSignal`: `getConnectedDirection(state) == side`, and the bell's
           // connected direction is its `facing` (`DeskBellBlock:123`).
-          return p['powered'] == 'true' && _facing(p, Direction.up) == e.face.toDirection() ? 15 : 0;
+          return p['powered'] == 'true' && _facing(p, Direction.up) == powerEventSide(e.face.toDirection()) ? 15 : 0;
         },
         isPathfindable: (server, e) => false,
       ),
@@ -332,7 +333,7 @@ final class AnalogLeverBlock {
           final p = block.stateOf(e.stateIndex);
           final connected = analogLeverConnected(p['face'] ?? 'floor', _facing(p));
           // `getDirectSignal`: `getConnectedDirection(state) == side`.
-          return analogLeverDirectSignal(_state(e.targetWorld, e.pos), connected, e.face.toDirection());
+          return analogLeverDirectSignal(_state(e.targetWorld, e.pos), connected, powerEventSide(e.face.toDirection()));
         },
         isPathfindable: (server, e) => false,
       ),

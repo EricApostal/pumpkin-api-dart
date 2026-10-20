@@ -25,7 +25,8 @@ final class PackagePart extends LogisticsPart {
       registry.item(ItemRegistration(key: key, maxStackSize: 1));
     }
 
-    // `AllEntityTypes.PACKAGE`.
+    // `AllEntityTypes.PACKAGE`. `PackageEntity implements IEntityWithComplexSpawn`: the client
+    // needs the box stack (and the motion) to draw the package.
     registry.entityType(
       const EntityTypeSpec(
         key: 'create:package',
@@ -39,6 +40,7 @@ final class PackagePart extends LogisticsPart {
         saveable: true,
         pickable: true,
         pushable: true,
+        spawnDataChannel: 'neoforge:advanced_add_entity',
       ),
     );
   }

@@ -2,6 +2,8 @@
 // `PipeBlock` (the plain pipe), the poles of the glass pipe and the valve and the smart pipe's
 // shaper. A hairline shape (a `4 / 16f` pipe width) or an empty one leaves the block unbreakable:
 // the ray never hits it, so the outline never appears and no break packet is sent.
+import 'dart:io';
+
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart';
 import 'package:create/src/fluids/pipe_blocks.dart';
@@ -50,6 +52,18 @@ const Map<String, String> _pipes = {
   'smart_fluid_pipe': PipeKeys.smartPipe,
   'fluid_valve': PipeKeys.valve,
 };
+
+/// The body of `CreateBlock <name>(...)` in the fluid block library.
+String _functionBody(String source, String signature) {
+  final start = source.indexOf(signature);
+  expect(start, isNot(-1), reason: '$signature is missing');
+  // Skip the parameter list, whose closing brace is at the start of a line too.
+  final body = source.indexOf(') {', start);
+  expect(body, isNot(-1), reason: '$signature has no body');
+  final end = source.indexOf('\n}', body);
+  expect(end, isNot(-1), reason: '$signature has no end');
+  return source.substring(body, end);
+}
 
 void main() {
   test('every pipe-like block registers a non-empty selection shape', () {
@@ -268,5 +282,51 @@ void main() {
 
   test('a non-pipe block has no pipe shape spec', () {
     expect(pipeShapeSpec('create:fluid_tank'), isNull);
+  });
+
+  test('the pipe blocks pass the pipe shapes into manifestBlock', () {
+    // `fluid_blocks.dart` imports the host bindings (`dart:wasm`), so a VM test cannot build the
+    // blocks; check the wiring in the source instead, like `placement_parity_test.dart` does for
+    // placement rules.
+    final source = File('lib/src/fluids/fluid_blocks.dart').readAsStringSync();
+
+    // `_pipeBlock` registers the plain, encased, glass and smart pipes.
+    final pipe = _functionBody(source, 'CreateBlock _pipeBlock(');
+    expect(pipe, contains("final shapes = pipeShapeSpec('create:\$key');"));
+    expect(pipe, contains('collisionShape: shapes?.collisionShape,'));
+    expect(pipe, contains('selectionShape: shapes?.selectionShape,'));
+    expect(pipe, contains('shapeRules: shapes?.shapeRules ?? const [],'));
+
+    // The pump and the valve carry theirs the same way.
+    for (final signature in [
+      'CreateBlock pumpBlock()',
+      'CreateBlock valveBlock()',
+    ]) {
+      final body = _functionBody(source, signature);
+      expect(
+        body,
+        contains('collisionShape: shapes?.collisionShape,'),
+        reason: signature,
+      );
+      expect(
+        body,
+        contains('selectionShape: shapes?.selectionShape,'),
+        reason: signature,
+      );
+      expect(
+        body,
+        contains('shapeRules: shapes?.shapeRules ?? const [],'),
+        reason: signature,
+      );
+    }
+  });
+
+  test('manifestBlock keeps the selection shape and the rules', () {
+    // The pipe shapes are only useful if `manifestBlock` forwards both: the selection shape is
+    // the one a ray hits, and the per-state rules are what turn a state into its arms.
+    final source = File('lib/src/api/blocks.dart').readAsStringSync();
+    expect(source, contains('selectionShape: selectionShape ?? BlockShape.fullCube,'));
+    expect(source, contains('shapeRules: shapeRules,'));
+    expect(source, contains('collisionShape:'));
   });
 }

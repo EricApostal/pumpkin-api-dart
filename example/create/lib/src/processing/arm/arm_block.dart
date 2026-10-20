@@ -6,10 +6,12 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/payloads.dart' show PayloadBus;
 import '../../core/blocks.dart';
 import '../support/kinetics_bridge.dart';
 import '../common/stack.dart';
 import '../crafter/machine_support.dart' show giveToPlayerStack;
+import '../processing_runtime.dart';
 import 'arm_block_entity.dart';
 import 'arm_model.dart';
 
@@ -71,6 +73,25 @@ Future<String> _heldItemKey(CustomBlockUseEventData e) async {
   }
 }
 
+/// `ArmItem.place`: after a player places the arm, ask their client to flush the points it
+/// selected (`ArmInteractionPointHandler.flushSettings`), which then sends `create:place_arm`.
+/// Without this request the arm keeps no interaction points and never moves an item.
+void _requestArmPoints(HookCtx c, CustomBlockPlacedEventData e) {
+  final uuid = e.player;
+  if (uuid == null || !ProcessingRuntime.isLoaded) return;
+  final bus = ProcessingRuntime.instance.services.find<PayloadBus>();
+  if (bus == null) return;
+  final player = c.server.getPlayerByUuid(id: uuid);
+  if (player == null) return;
+  try {
+    bus.sendClientbound('create:s_place_arm', player, {
+      'pos': (e.pos.x, e.pos.y, e.pos.z),
+    });
+  } finally {
+    player.dispose();
+  }
+}
+
 /// The block and block entity type of the mechanical arm.
 KineticBlockSpec armSpec() {
   late final CreateBlock block;
@@ -84,7 +105,10 @@ KineticBlockSpec armSpec() {
       pathfindable: false,
       use: armUse,
       neighbor: (c, e) => c.beOf<ArmBlockEntity>()?.redstoneUpdate(),
-      afterPlaced: (c, e) => c.beOf<ArmBlockEntity>()?.redstoneUpdate(),
+      afterPlaced: (c, e) {
+        c.beOf<ArmBlockEntity>()?.redstoneUpdate();
+        _requestArmPoints(c, e);
+      },
     ),
   );
   spec = KineticBlockSpec(

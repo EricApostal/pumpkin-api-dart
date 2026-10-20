@@ -57,6 +57,10 @@ final class _EmptyBlockGetter implements BlockGetter {
   @override
   bool canBeReplaced((int, int, int) p) => true;
 
+  /// `BlockGetter.isSolid`: the empty getter has no blocks, so nothing is solid.
+  @override
+  bool isSolid((int, int, int) p) => false;
+
   @override
   bool hasTag((int, int, int) p, String tag) => false;
 

@@ -15,10 +15,11 @@ import 'package:create/src/kinetics/behaviours.dart' show ScrollValueBehaviour;
 import 'package:create/src/kinetics/kinetic_block_entity.dart' show GeneratingKineticBlockEntity;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../compat/computercraft/peripherals/torsion_spring_peripheral.dart';
 import 'torsion_spring_logic.dart';
 
 /// `TorsionSpringBlockEntity`.
-final class TorsionSpringBlockEntity extends GeneratingKineticBlockEntity {
+final class TorsionSpringBlockEntity extends GeneratingKineticBlockEntity implements SimTorsionSpringSource {
   /// The block entity type key.
   static const String type = 'simulated:torsion_spring';
 
@@ -42,12 +43,22 @@ final class TorsionSpringBlockEntity extends GeneratingKineticBlockEntity {
   double get generatedSpeed => output.generatedSpeed;
 
   /// `getAngle()`.
+  @override
   double get angle => output.angle;
+
+  /// `angleInput.getValue()`: the limit, in degrees.
+  @override
+  int get angleLimit => angleInput.value;
+
+  /// `angleInput.setValue(limit)`.
+  @override
+  void setAngleLimit(int limit) => angleInput.value = limit;
 
   /// `setAngle(angle)`.
   void setAngle(double angle) => output.angle = angle;
 
   /// `isSpringStatic()`.
+  @override
   bool get isSpringStatic => output.isStatic;
 
   /// `interpolatedSpring(pt)`.

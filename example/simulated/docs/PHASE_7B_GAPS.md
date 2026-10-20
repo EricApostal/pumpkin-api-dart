@@ -40,7 +40,20 @@ Not started, in the order of the ticket:
 - **diagrams** — `contraption_diagram` item and its GUI (the item key is registered, the behaviour is not).
 - **end sea** — the end dimension overrides.
 - **misc content** — `handle`, `nameplate`, `portable_engine`, `merging_glue`, `physics_staff`, `plunger_launcher`, `absorbed` blocks.
-- **`compat/` (25)** — deliberately out of scope (other mods).
+- **`compat/` (25)** — mostly out of scope (other mods), except the CC: Tweaked
+  peripherals, which are ported under `lib/src/compat/computercraft/`: the twelve
+  peripherals of `simulated/common/.../compat/computercraft`, their registry and
+  the `AttachedComputerHandler`, over the seam in `api/sim_peripheral.dart`.
+  `simulated` imports no computer mod; `example/cc_tweaked` holds the adapter
+  (`lib/src/compat/simulated_peripherals.dart`) and the world driver
+  (`lib/src/compat/simulated_driver.dart`). Each peripheral is written against a
+  small source interface, and the block entity that implements it is only ported
+  for the swivel bearing and the torsion spring; the other ten wait for their
+  block (`altitude_sensor`, `gimbal_sensor`, `nav_table`, `linked_typewriter`,
+  `optical_sensor`, `velocity_sensor`, `directional_receiver`,
+  `modulating_receiver`, `docking_connector`, `nameplate`). The docking
+  connector's wired element is the noop one, because the Dart CC plugin has no
+  wired network.
 - **`ponder/` (48)** — client only, out of scope.
 
 ## Host gaps that block the slice from being playable

@@ -182,7 +182,14 @@ final class _RecordingHandle implements RigidBodyHandle {
       pipeline.calls.add('handle.addVelocity');
 
   @override
-  void applyForcesAndReset(Vector3d force) => pipeline.calls.add('handle.forces');
+  void applyForcesAndReset(ForceTotal forceTotal) => pipeline.calls.add('handle.forces');
+
+  @override
+  void applyImpulseAtPoint(Vector3d position, Vector3d force) =>
+      pipeline.calls.add('handle.impulseAtPoint');
+
+  @override
+  bool get isValid => true;
 
   @override
   void applyLinearAndAngularImpulse(Vector3d linear, Vector3d angular, bool wakeUp) =>

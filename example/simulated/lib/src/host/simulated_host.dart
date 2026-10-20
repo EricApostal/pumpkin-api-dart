@@ -59,6 +59,13 @@ abstract interface class SimulatedHost {
   /// The block entity of the plugin at [pos], if it is a `T`.
   T? blockEntityAt<T>(String worldId, Pos pos);
 
+  /// The type key of the block entity at [pos] (`CreateBlockEntity.typeKey`),
+  /// or `null` when there is none.
+  ///
+  /// The CC compat keys its registry by type, as Java's capability
+  /// registration does.
+  String? blockEntityTypeAt(String worldId, Pos pos) => null;
+
   /// Sends a status message to the player [playerId] (a clientbound payload).
   void sendStatusMessage(String playerId, String translationKey, List<Object?> args) {}
 
@@ -111,6 +118,9 @@ final class NoSimulatedHost implements SimulatedHost {
 
   @override
   T? blockEntityAt<T>(String worldId, Pos pos) => null;
+
+  @override
+  String? blockEntityTypeAt(String worldId, Pos pos) => null;
 
   @override
   int gameTime(String worldId) => 0;

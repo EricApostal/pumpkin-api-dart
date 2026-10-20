@@ -8,6 +8,7 @@ import '../../../api/block_state.dart';
 import '../../../api/blocks.dart' show setBlockState;
 import '../../../common/common.dart';
 import '../../../common/host_bridge.dart';
+import '../../core/level.dart';
 import '../../core/movement.dart';
 import '../actor_runtime.dart';
 import '../block_breaking_movement_behaviour.dart' show collectOrDropHost;
@@ -49,8 +50,8 @@ final class HarvesterMovementBehaviour extends MovementBehaviour {
       return;
 
     var notCropButCuttable = false;
-    if (!isValidCrop(context, stateVisited)) {
-      if (isValidOther(context, pos, stateVisited)) {
+    if (!isValidCrop(context.level, stateVisited)) {
+      if (isValidOther(context.level, pos, stateVisited)) {
         notCropButCuttable = true;
       } else {
         return;
@@ -90,18 +91,19 @@ final class HarvesterMovementBehaviour extends MovementBehaviour {
     await setBlockState(world, pos, cut);
   }
 
-  /// `isValidCrop`.
-  bool isValidCrop(MovementContext context, BState state) {
+  /// `isValidCrop(world, pos, state)`: the contraption collider asks this of a moving block
+  /// before the actor ticks, so it takes the level rather than the context.
+  bool isValidCrop(ContraptionLevel level, BState state) {
     final harvestPartial = actors?.harvestPartiallyGrown ?? false;
     final replant = actors?.harvesterReplants ?? true;
     final maxAge = maxAgeOf(state.key);
 
-    if (context.level.stateHasTag(state, 'minecraft:crops')) {
+    if (level.stateHasTag(state, 'minecraft:crops')) {
       if (harvestPartial) return state.intValue('age') != 0 || !replant;
       return state.intValue('age') == maxAge;
     }
 
-    if (context.level.stateCollisionEmpty(state) ||
+    if (level.stateCollisionEmpty(state) ||
         state.key == 'minecraft:cocoa') {
       if (!state.has('age')) return false;
       final age = state.intValue('age');
@@ -114,15 +116,15 @@ final class HarvesterMovementBehaviour extends MovementBehaviour {
     return false;
   }
 
-  /// `isValidOther`.
-  bool isValidOther(MovementContext context, Pos pos, BState state) {
-    if (context.level.stateHasTag(state, 'minecraft:crops')) return false;
+  /// `isValidOther(world, pos, state)`.
+  bool isValidOther(ContraptionLevel level, Pos pos, BState state) {
+    if (level.stateHasTag(state, 'minecraft:crops')) return false;
     if (state.key == 'minecraft:sugar_cane') return true;
-    if (context.level.stateHasTag(state, 'minecraft:leaves')) return true;
+    if (level.stateHasTag(state, 'minecraft:leaves')) return true;
     if (state.key == 'minecraft:cocoa')
       return state.intValue('age') == maxAgeOf(state.key);
 
-    if (context.level.stateCollisionEmpty(state)) {
+    if (level.stateCollisionEmpty(state)) {
       if (growingPlants.contains(state.key)) return true;
       if (state.has('age')) return false;
       // `BushBlock` / `SpecialPlantable`: every other plant without growth stages.

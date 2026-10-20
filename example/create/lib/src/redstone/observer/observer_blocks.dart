@@ -14,6 +14,7 @@ import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../display/display_core.dart' show ObservedFluid, ObservedItem, ObserverView;
 import '../display/display_link_block.dart';
+import '../power_face.dart';
 import '../support/level.dart';
 import '../support/manifest_block.dart';
 import '../support/placement.dart';
@@ -304,7 +305,7 @@ final class SmartObserverBlock {
           final p = block.stateOf(e.stateIndex);
           if (p['powered'] != 'true') return 0;
           // `getSignal`: nothing towards the side opposite the observed block; 15 everywhere else.
-          return e.face.toDirection() != targetDirectionOf(p).opposite ? 15 : 0;
+          return powerEventSide(e.face.toDirection()) != targetDirectionOf(p).opposite ? 15 : 0;
         },
         canConnectRedstone: (server, e) {
           final side = e.direction?.toDirection();
@@ -615,7 +616,7 @@ final class ThresholdSwitchBlock {
         onWeakPower: (server, e) {
           final p = block.stateOf(e.stateIndex);
           // `getSignal`: nothing towards the side opposite the observed block.
-          if (e.face.toDirection() == targetDirectionOf(p).opposite) return 0;
+          if (powerEventSide(e.face.toDirection()) == targetDirectionOf(p).opposite) return 0;
           return Rs.i.be<ThresholdSwitchBlockEntity>(e.targetWorld, e.pos)?.isPowered == true ? 15 : 0;
         },
         canConnectRedstone: (server, e) {

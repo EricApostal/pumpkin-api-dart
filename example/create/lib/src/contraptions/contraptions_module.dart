@@ -24,6 +24,7 @@ import 'entity/contraption_packets.dart';
 import 'entity/translating_contraption.dart';
 import 'entity/host_contraption_entities.dart';
 import 'storage/host_mounted_storage.dart';
+import 'storage/mounted_storage.dart';
 import 'storage/storage_manager.dart';
 
 /// The contraption entity types the base module registers.
@@ -111,6 +112,11 @@ final class ContraptionsModule extends CreateModule {
     };
 
     ContraptionPackets.install(ctx, host);
+
+    // `Create.java`: `AllMountedStorageTypes.register()` — without this every
+    // `decodeItem`/`itemTypeOf` falls through to the fallback and no chest, barrel, depot,
+    // vault, toolbox or tank ever mounts on a contraption.
+    MountedStorages.installDefaults();
 
     // The menu of a mounted storage (Java `MountedItemStorage.handleInteraction`).
     final storageHost = MountedStorageHost(host, ctx);

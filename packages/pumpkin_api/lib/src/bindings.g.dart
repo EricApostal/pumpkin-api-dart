@@ -49028,7 +49028,7 @@ final class BlockEntry {
 /// The id of the first state, the states follow in state order.
   final int baseStateId;
   final int stateCount;
-/// The item linked with `set-block-item`.
+/// The first item linked with `set-block-item`; other items may place the block too.
   final int? itemId;
   const BlockEntry({required this.key, required this.id, required this.baseStateId, required this.stateCount, required this.itemId, });
   BlockEntry copyWith({String? key, int? id, int? baseStateId, int? stateCount, int? itemId, bool clearItemId = false, }) => BlockEntry(key: key ?? this.key, id: id ?? this.id, baseStateId: baseStateId ?? this.baseStateId, stateCount: stateCount ?? this.stateCount, itemId: clearItemId ? null : (itemId ?? this.itemId), );
@@ -49053,8 +49053,10 @@ i1.Result<int, String> registerBlock({required BlockDefinition definition, });
 /// Adds entries (block keys or `#tag` references) to a block tag, creating it if needed. Used
 /// by the server for tool checks and sent to clients.
 i1.Result<void, String> registerBlockTag({required String tag, required List<String> entries, });
-/// Makes `item-key` the item of a custom block: it places the block and `self-item` drops give
-/// it. Both must be registered. Repeating a link is fine.
+/// Makes `item-key` an item that places a custom block. Both must be registered. Repeating a
+/// link is fine. Several items may place one block (Java's `VerticalGearboxItem` places the
+/// gearbox): the first link becomes the block's item and what `self-item` drops, later links
+/// only place the block. One item places the first block it was linked with.
 i1.Result<void, String> setBlockItem({required String itemKey, required String blockKey, });
 /// Returns the id of a block by key, vanilla (`minecraft:` prefix optional) or custom.
 int? getBlockId({required String key, });
@@ -49719,6 +49721,213 @@ _import1288(i0.WasmI32.fromInt(taskId));
 }
 }
 const scheduler = _Imported$Scheduler();
+/// Keeps chunks of a world loaded for a plugin.
+/// 
+/// The host loads a chunk while a player watches it (view and simulation distance), while the
+/// `forceload` command keeps it, or while a plugin holds a ticket. A plugin that owns blocks far
+/// away from every player — a plot yard, a copy of a structure at a spare position, a machine room
+/// outside the map — needs a ticket for those chunks, otherwise they unload and their block
+/// entities stop ticking.
+/// 
+/// A ticketed chunk is generated, loaded and ticked like a chunk a player watches, so the block,
+/// block entity and scheduled tick calls of `world` work on it. The ticket is not a player view:
+/// the chunk is not sent to any client by the host, use `chunk-streaming` for that.
+abstract interface class ChunkTickets {
+/// Force-loads the chunk at the chunk coordinates `x`, `z` of `world-ref` and returns the
+/// handle of the ticket.
+/// 
+/// The call returns once the chunk is loaded, so block and block entity calls on it work
+/// immediately. It fails when the chunk cannot be loaded (for example because the chunk
+/// system is shut down), and then no ticket is left behind.
+/// 
+/// The chunk stays loaded and ticks (block entities, random ticks, scheduled block and fluid
+/// ticks) until the ticket is released, the plugin unloads, or the world unloads. Two tickets
+/// for the same chunk are independent: the chunk unloads when the last one is gone. A handle
+/// belongs to the calling plugin; releasing a handle of another plugin fails.
+Future<i1.Result<int, String>> forceLoadChunk({required World worldRef, required int x, required int z, });
+/// Releases a ticket from `force-load-chunk` and returns whether it was released.
+/// 
+/// False for an unknown handle, a handle that was already released, or a handle of another
+/// plugin. The chunk unloads once no ticket, no `forceload` command and no player keeps it.
+bool releaseChunkTicket({required int ticket, });
+/// Returns whether the calling plugin still holds the ticket `ticket`.
+bool hasChunkTicket({required int ticket, });
+/// Releases every ticket the calling plugin holds, in every world. The host calls this when the
+/// plugin unloads; a plugin can call it to drop all of its tickets at once.
+void releaseAllChunkTickets();
+}
+@pragma("wasm:import", r"component._import1289")
+external i0.WasmI32 _import1289(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1290")
+external i0.WasmI32 _import1290(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1291")
+external i0.WasmI32 _import1291(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1292")
+external i0.WasmVoid _import1292();
+final class _Imported$ChunkTickets implements ChunkTickets {
+  const _Imported$ChunkTickets();
+@override
+Future<i1.Result<int, String>> forceLoadChunk({required World worldRef, required int x, required int z, }){
+final _cleanups = <void Function()>[];
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+final tmp1 = _import1289(i0.WasmI32.fromInt(worldRef.resourceHandle), i0.WasmI32.fromInt(x), i0.WasmI32.fromInt(z), tmp0);
+return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<int, String> tmp6;
+if (tmp2.toIntUnsigned() == 0) {
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+
+tmp6 = i1.Result.ok(tmp3.toIntUnsigned());
+} else {
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp5 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp6 = i1.Result.error(i1.AllocatedString.read(tmp4, tmp5));
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp6;
+});
+
+}
+@override
+bool releaseChunkTicket({required int ticket, }){
+final tmp0 = _import1290(i0.WasmI32.fromInt(ticket));
+return tmp0.toBool();
+
+}
+@override
+bool hasChunkTicket({required int ticket, }){
+final tmp0 = _import1291(i0.WasmI32.fromInt(ticket));
+return tmp0.toBool();
+
+}
+@override
+void releaseAllChunkTickets(){
+_import1292();
+
+}
+}
+const chunkTickets = _Imported$ChunkTickets();
+/// Sends and removes single chunks of a player's world at arbitrary positions.
+/// 
+/// The host sends the chunks around a player by its view distance. A plugin that shows chunk data
+/// elsewhere than the host does — a copy of a build at a distant position, a plot yard, a preview
+/// area — needs to send those chunks itself. This interface does that with the same chunk packet
+/// (blocks, block entities, biomes and light) the host uses for the player's view, so a plugin does
+/// not have to encode chunk data.
+abstract interface class ChunkStreaming {
+/// Sends the chunk that contains `pos` to `player`, using the world of the player.
+/// 
+/// The chunk does not have to be inside the player's view distance. It must be loaded in the
+/// world; keep it loaded with `chunk-tickets` first, otherwise the call fails. It also fails
+/// for a player without a connection.
+/// 
+/// The host records the chunk as sent to this player, so `unload-chunk-at` removes it again and
+/// the host does not resend it as part of the view distance. Sending a chunk the player already
+/// holds sends it again and replaces it on the client.
+Future<i1.Result<void, String>> sendChunkAt({required Player player, required BlockPos pos, });
+/// Tells `player` to drop the chunk that contains `pos` (`unload chunk` packet).
+/// 
+/// Does nothing when the host has not sent that chunk to the player. The chunk stays loaded in
+/// the world; release its `chunk-tickets` ticket to unload it.
+void unloadChunkAt({required Player player, required BlockPos pos, });
+}
+@pragma("wasm:import", r"component._import1293")
+external i0.WasmI32 _import1293(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1294")
+external i0.WasmVoid _import1294(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+final class _Imported$ChunkStreaming implements ChunkStreaming {
+  const _Imported$ChunkStreaming();
+@override
+Future<i1.Result<void, String>> sendChunkAt({required Player player, required BlockPos pos, }){
+final _cleanups = <void Function()>[];
+var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+final tmp1 = _import1293(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
+return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+late final i1.Result<void, String> tmp5;
+if (tmp2.toIntUnsigned() == 0) {
+
+tmp5 = i1.Result.ok(null);
+} else {
+final tmp3 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
+final tmp4 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 8);
+
+tmp5 = i1.Result.error(i1.AllocatedString.read(tmp3, tmp4));
+}
+i1.dartFree(tmp0, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp5;
+});
+
+}
+@override
+void unloadChunkAt({required Player player, required BlockPos pos, }){
+_import1294(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z));
+
+}
+}
+const chunkStreaming = _Imported$ChunkStreaming();
+/// Collision boxes that host entities collide with, in addition to the blocks of the world.
+/// 
+/// The host stops its own entities (mobs, items, projectiles) and corrects player movement against
+/// the blocks of the world. A plugin whose geometry is not a block of the world — a moving
+/// structure whose blocks live at a distant position, a hull, a platform — has no way to make host
+/// entities collide with it. This interface adds boxes to the collision test.
+/// 
+/// The boxes are axis aligned and are given in world space, already transformed by the plugin: the
+/// host never rotates a box, so a rotated shape is represented by its world aligned bounds. They
+/// collide in addition to the blocks, never instead of them.
+/// 
+/// Call `set-entity-collision-boxes` every tick (or whenever the geometry moves) with the boxes
+/// that are currently relevant. The host replaces the boxes of the calling plugin on every call, so
+/// a plugin that stops calling leaves its last boxes behind until it calls
+/// `clear-entity-collision-boxes` or unloads.
+abstract interface class EntityCollision {
+/// Replaces the collision boxes of the calling plugin in `world-ref`.
+/// 
+/// An empty list removes them, like `clear-entity-collision-boxes`. The boxes of every plugin
+/// are combined. Host moved entities are clipped by the boxes exactly like by blocks; a player
+/// whose movement packet ends inside a box is pushed back out along the axis of the smallest
+/// overlap and teleported there, because the client owns player movement.
+void setEntityCollisionBoxes({required World worldRef, required List<BoundingBox> boxes, });
+/// Removes the collision boxes of the calling plugin in `world-ref`.
+void clearEntityCollisionBoxes({required World worldRef, });
+}
+@pragma("wasm:import", r"component._import1295")
+external i0.WasmVoid _import1295(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1296")
+external i0.WasmVoid _import1296(i0.WasmI32 p0);
+final class _Imported$EntityCollision implements EntityCollision {
+  const _Imported$EntityCollision();
+@override
+void setEntityCollisionBoxes({required World worldRef, required List<BoundingBox> boxes, }){
+final _cleanups = <void Function()>[];
+final tmp0 = boxes.length;
+final tmp1 = i1.mallocAligned(i0.WasmI32.fromInt(8), i0.WasmI32.fromInt(48 * tmp0));
+for (var i = 0; i < tmp0; i++) {
+final tmp2 = boxes[i];
+final elementPtr = i0.WasmI32.fromInt(tmp1.toIntUnsigned() + i * 48);
+i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp2.min.$1), offset: 0);
+i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp2.min.$2), offset: 8);
+i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp2.min.$3), offset: 16);
+i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp2.max.$1), offset: 24);
+i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp2.max.$2), offset: 32);
+i1.memory.storeFloat64(elementPtr.toIntUnsigned(), i0.WasmF64.fromDouble(tmp2.max.$3), offset: 40);
+
+}
+final tmp3 = i0.WasmI32.fromInt(tmp0);
+_cleanups.add(() { i1.dartFree(tmp1, i0.WasmI32.fromInt(48 * tmp0), const i0.WasmI32(8)); });
+_import1295(i0.WasmI32.fromInt(worldRef.resourceHandle), tmp1, tmp3);
+for (final cleanup in _cleanups) { cleanup(); }
+
+}
+@override
+void clearEntityCollisionBoxes({required World worldRef, }){
+_import1296(i0.WasmI32.fromInt(worldRef.resourceHandle));
+
+}
+}
+const entityCollision = _Imported$EntityCollision();
 abstract interface class EntityInterface {
 }
 final class _Imported$EntityInterface implements EntityInterface {
@@ -49738,8 +49947,8 @@ abstract interface class Ipc {
 /// recipient runs or waits on host work.
 Future<i1.Result<i1.Result<List<int>, String>, void>> sendIpcMessage({required String recipient, required List<int> message, });
 }
-@pragma("wasm:import", r"component._import1289")
-external i0.WasmI32 _import1289(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1297")
+external i0.WasmI32 _import1297(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$Ipc implements Ipc {
   const _Imported$Ipc();
 @override
@@ -49758,7 +49967,7 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp3), o
 final tmp4 = i0.WasmI32.fromInt(tmp1);
 _cleanups.add(() { i1.dartFree(tmp2, i0.WasmI32.fromInt(1 * tmp1), const i0.WasmI32(1)); });
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(16));
-final tmp6 = _import1289(tmp0.ptr, tmp0.packedLength, tmp2, tmp4, tmp5);
+final tmp6 = _import1297(tmp0.ptr, tmp0.packedLength, tmp2, tmp4, tmp5);
 return i1.awaitSubtask(tmp6.toIntUnsigned(), _cleanups, () {
 final tmp7 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<i1.Result<List<int>, String>, void> tmp16;
@@ -49834,12 +50043,12 @@ i1.Result<void, String> registerPluginInventory({required World targetWorld, req
 /// an empty list.
 i1.Result<List<ItemStack>, String> unregisterPluginInventory({required World targetWorld, required BlockPos pos, });
 }
-@pragma("wasm:import", r"component._import1290")
-external i0.WasmVoid _import1290(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
-@pragma("wasm:import", r"component._import1291")
-external i0.WasmVoid _import1291(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
-@pragma("wasm:import", r"component._import1292")
-external i0.WasmVoid _import1292(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1298")
+external i0.WasmVoid _import1298(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import1299")
+external i0.WasmVoid _import1299(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import1300")
+external i0.WasmVoid _import1300(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$ItemHandlerInterface implements ItemHandlerInterface {
   const _Imported$ItemHandlerInterface();
 @override
@@ -49858,7 +50067,7 @@ tmp2 = const i0.WasmI32(0);
 tmp3 = i0.WasmI32.fromInt(0);
 }
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1290(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp2, tmp3, tmp5);
+_import1298(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp2, tmp3, tmp5);
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 ItemHandler? tmp8;
 if (tmp6.toBool()) {
@@ -49876,7 +50085,7 @@ return tmp8;
 @override
 i1.Result<void, String> registerPluginInventory({required World targetWorld, required BlockPos pos, required int slotCount, required int slotLimit, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1291(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.fromInt(slotCount), i0.WasmI32.uint8FromInt(slotLimit), tmp0);
+_import1299(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.fromInt(slotCount), i0.WasmI32.uint8FromInt(slotLimit), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -49895,7 +50104,7 @@ return tmp4;
 @override
 i1.Result<List<ItemStack>, String> unregisterPluginInventory({required World targetWorld, required BlockPos pos, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1292(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
+_import1300(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<List<ItemStack>, String> tmp8;
 if (tmp1.toIntUnsigned() == 0) {
@@ -49969,16 +50178,16 @@ i1.Result<List<FluidStack>, String> unregisterPluginTank({required World targetW
 /// definition. Fails for an unknown item or fluid or a capacity of 0.
 i1.Result<void, String> registerFluidContainerItem({required String itemKey, required int capacity, required List<String> allowedFluids, });
 }
-@pragma("wasm:import", r"component._import1293")
-external i0.WasmVoid _import1293(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
-@pragma("wasm:import", r"component._import1294")
-external i0.WasmVoid _import1294(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1295")
-external i0.WasmVoid _import1295(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
-@pragma("wasm:import", r"component._import1296")
-external i0.WasmVoid _import1296(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1297")
-external i0.WasmVoid _import1297(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import1301")
+external i0.WasmVoid _import1301(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import1302")
+external i0.WasmVoid _import1302(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1303")
+external i0.WasmVoid _import1303(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import1304")
+external i0.WasmVoid _import1304(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1305")
+external i0.WasmVoid _import1305(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
 final class _Imported$FluidHandlerInterface implements FluidHandlerInterface {
   const _Imported$FluidHandlerInterface();
 @override
@@ -49997,7 +50206,7 @@ tmp2 = const i0.WasmI32(0);
 tmp3 = i0.WasmI32.fromInt(0);
 }
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1293(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp2, tmp3, tmp5);
+_import1301(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp2, tmp3, tmp5);
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 FluidHandler? tmp8;
 if (tmp6.toBool()) {
@@ -50015,7 +50224,7 @@ return tmp8;
 @override
 ItemFluidHandler? getItemFluidHandler({required ItemStack stack, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1294(i0.WasmI32.fromInt(stack.resourceHandle), tmp0);
+_import1302(i0.WasmI32.fromInt(stack.resourceHandle), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 ItemFluidHandler? tmp3;
 if (tmp1.toBool()) {
@@ -50033,7 +50242,7 @@ return tmp3;
 @override
 i1.Result<void, String> registerPluginTank({required World targetWorld, required BlockPos pos, required int tankCount, required int capacityPerTank, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1295(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.fromInt(tankCount), i0.WasmI32.fromInt(capacityPerTank), tmp0);
+_import1303(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), i0.WasmI32.fromInt(tankCount), i0.WasmI32.fromInt(capacityPerTank), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -50052,7 +50261,7 @@ return tmp4;
 @override
 i1.Result<List<FluidStack>, String> unregisterPluginTank({required World targetWorld, required BlockPos pos, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1296(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
+_import1304(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<List<FluidStack>, String> tmp17;
 if (tmp1.toIntUnsigned() == 0) {
@@ -50117,7 +50326,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.ptr, offset: 0);
 final tmp5 = i0.WasmI32.fromInt(tmp2);
 _cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(8 * tmp2), const i0.WasmI32(4)); });
 var tmp6 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1297(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(capacity), tmp3, tmp5, tmp6);
+_import1305(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(capacity), tmp3, tmp5, tmp6);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp7 = i1.memory.loadUint8(tmp6.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp10;
@@ -50182,20 +50391,20 @@ List<ItemEntry> getVanillaItems();
 /// Returns all custom items in id order.
 List<ItemEntry> getRegisteredItems();
 }
-@pragma("wasm:import", r"component._import1298")
-external i0.WasmVoid _import1298(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
-@pragma("wasm:import", r"component._import1299")
-external i0.WasmVoid _import1299(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1300")
-external i0.WasmVoid _import1300(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1301")
-external i0.WasmVoid _import1301(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1302")
-external i0.WasmI32 _import1302();
-@pragma("wasm:import", r"component._import1303")
-external i0.WasmVoid _import1303(i0.WasmI32 p0);
-@pragma("wasm:import", r"component._import1304")
-external i0.WasmVoid _import1304(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1306")
+external i0.WasmVoid _import1306(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import1307")
+external i0.WasmVoid _import1307(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1308")
+external i0.WasmVoid _import1308(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1309")
+external i0.WasmVoid _import1309(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1310")
+external i0.WasmI32 _import1310();
+@pragma("wasm:import", r"component._import1311")
+external i0.WasmVoid _import1311(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1312")
+external i0.WasmVoid _import1312(i0.WasmI32 p0);
 final class _Imported$ItemRegistry implements ItemRegistry {
   const _Imported$ItemRegistry();
 @override
@@ -50239,7 +50448,7 @@ tmp11 = const i0.WasmI32(0);
 tmp12 = i0.WasmI32.fromInt(0);
 }
 var tmp14 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1298(tmp0.ptr, tmp0.packedLength, tmp6, tmp8, tmp11, tmp12, tmp14);
+_import1306(tmp0.ptr, tmp0.packedLength, tmp6, tmp8, tmp11, tmp12, tmp14);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp15 = i1.memory.loadUint8(tmp14.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp19;
@@ -50276,7 +50485,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.ptr, offset: 0);
 final tmp5 = i0.WasmI32.fromInt(tmp2);
 _cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(8 * tmp2), const i0.WasmI32(4)); });
 var tmp6 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1299(tmp0.ptr, tmp0.packedLength, tmp3, tmp5, tmp6);
+_import1307(tmp0.ptr, tmp0.packedLength, tmp3, tmp5, tmp6);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp7 = i1.memory.loadUint8(tmp6.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp10;
@@ -50299,7 +50508,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1300(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1308(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -50318,7 +50527,7 @@ return tmp4;
 @override
 String? getItemKey({required int id, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1301(i0.WasmI32.fromInt(id), tmp0);
+_import1309(i0.WasmI32.fromInt(id), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 String? tmp4;
 if (tmp1.toBool()) {
@@ -50336,14 +50545,14 @@ return tmp4;
 }
 @override
 int getVanillaItemCount(){
-final tmp0 = _import1302();
+final tmp0 = _import1310();
 return tmp0.toIntUnsigned();
 
 }
 @override
 List<ItemEntry> getVanillaItems(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1303(tmp0);
+_import1311(tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp7 = <ItemEntry>[];
@@ -50363,7 +50572,7 @@ return tmp7;
 @override
 List<ItemEntry> getRegisteredItems(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1304(tmp0);
+_import1312(tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp7 = <ItemEntry>[];
@@ -50473,16 +50682,16 @@ int? getEntityTypeId({required String key, });
 /// Returns the number of vanilla entity types. This is also the id of the first custom type.
 int getVanillaEntityTypeCount();
 }
-@pragma("wasm:import", r"component._import1305")
-external i0.WasmVoid _import1305(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1306")
-external i0.WasmVoid _import1306(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1307")
-external i0.WasmVoid _import1307(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1308")
-external i0.WasmVoid _import1308(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1309")
-external i0.WasmI32 _import1309();
+@pragma("wasm:import", r"component._import1313")
+external i0.WasmVoid _import1313(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1314")
+external i0.WasmVoid _import1314(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1315")
+external i0.WasmVoid _import1315(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1316")
+external i0.WasmVoid _import1316(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1317")
+external i0.WasmI32 _import1317();
 final class _Imported$EntityRegistry implements EntityRegistry {
   const _Imported$EntityRegistry();
 @override
@@ -50542,7 +50751,7 @@ i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 56);
 
 }
 var tmp13 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1305(tmp0, tmp13);
+_import1313(tmp0, tmp13);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp14 = i1.memory.loadUint8(tmp13.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp18;
@@ -50567,7 +50776,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1306(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1314(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp6;
@@ -50604,7 +50813,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.ptr, offset: 0);
 final tmp5 = i0.WasmI32.fromInt(tmp2);
 _cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(8 * tmp2), const i0.WasmI32(4)); });
 var tmp6 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1307(tmp0.ptr, tmp0.packedLength, tmp3, tmp5, tmp6);
+_import1315(tmp0.ptr, tmp0.packedLength, tmp3, tmp5, tmp6);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp7 = i1.memory.loadUint8(tmp6.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp10;
@@ -50627,7 +50836,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1308(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1316(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -50645,7 +50854,7 @@ return tmp4;
 }
 @override
 int getVanillaEntityTypeCount(){
-final tmp0 = _import1309();
+final tmp0 = _import1317();
 return tmp0.toIntUnsigned();
 
 }
@@ -50808,16 +51017,16 @@ i1.Result<void, String> declareSyncedRecipeTypes({required List<String> types, }
 /// handshake. Needs the `neoforge` permission and a declaration with that mod id.
 i1.Result<void, String> updateConfigFile({required String modId, required String fileName, required List<int> content, });
 }
-@pragma("wasm:import", r"component._import1310")
-external i0.WasmVoid _import1310(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1311")
-external i0.WasmVoid _import1311();
-@pragma("wasm:import", r"component._import1312")
-external i0.WasmI32 _import1312(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1313")
-external i0.WasmVoid _import1313(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1314")
-external i0.WasmVoid _import1314(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import1318")
+external i0.WasmVoid _import1318(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1319")
+external i0.WasmVoid _import1319();
+@pragma("wasm:import", r"component._import1320")
+external i0.WasmI32 _import1320(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1321")
+external i0.WasmVoid _import1321(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1322")
+external i0.WasmVoid _import1322(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
 final class _Imported$Neoforge implements Neoforge {
   const _Imported$Neoforge();
 @override
@@ -51025,7 +51234,7 @@ i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 80);
 
 }
 var tmp64 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1310(tmp0, tmp64);
+_import1318(tmp0, tmp64);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp65 = i1.memory.loadUint8(tmp64.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp68;
@@ -51045,7 +51254,7 @@ return tmp68;
 }
 @override
 void withdraw(){
-_import1311();
+_import1319();
 
 }
 @override
@@ -51053,7 +51262,7 @@ bool isNeoforgePlayer({required String playerUuid, }){
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(playerUuid);
 _cleanups.add(tmp0.free);
-final tmp1 = _import1312(tmp0.ptr, tmp0.packedLength);
+final tmp1 = _import1320(tmp0.ptr, tmp0.packedLength);
 for (final cleanup in _cleanups) { cleanup(); }
 return tmp1.toBool();
 
@@ -51075,7 +51284,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp0.ptr, offset: 0);
 final tmp4 = i0.WasmI32.fromInt(tmp1);
 _cleanups.add(() { i1.dartFree(tmp2, i0.WasmI32.fromInt(8 * tmp1), const i0.WasmI32(4)); });
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1313(tmp2, tmp4, tmp5);
+_import1321(tmp2, tmp4, tmp5);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp9;
@@ -51110,7 +51319,7 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp4), o
 final tmp5 = i0.WasmI32.fromInt(tmp2);
 _cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(1 * tmp2), const i0.WasmI32(1)); });
 var tmp6 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1314(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp3, tmp5, tmp6);
+_import1322(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp3, tmp5, tmp6);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp7 = i1.memory.loadUint8(tmp6.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp10;
@@ -51176,12 +51385,12 @@ Future<i1.Result<List<int>, String>> saveStructureFromWorld({required World targ
 /// number of blocks that changed.
 Future<i1.Result<int, String>> placeStructure({required StructureTemplate template, required World target, required BlockPos origin, required Rotation rotation, required Mirror mirror, required Set<BlockFlagsFlag> updateFlags, required bool ignoreAir, required double? integrity, });
 }
-@pragma("wasm:import", r"component._import1315")
-external i0.WasmVoid _import1315(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1316")
-external i0.WasmI32 _import1316(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1317")
-external i0.WasmI32 _import1317(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1323")
+external i0.WasmVoid _import1323(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1324")
+external i0.WasmI32 _import1324(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1325")
+external i0.WasmI32 _import1325(i0.WasmI32 p0, i0.WasmI32 p1);
 final class _Imported$Structures implements Structures {
   const _Imported$Structures();
 @override
@@ -51198,7 +51407,7 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp2), o
 final tmp3 = i0.WasmI32.fromInt(tmp0);
 _cleanups.add(() { i1.dartFree(tmp1, i0.WasmI32.fromInt(1 * tmp0), const i0.WasmI32(1)); });
 var tmp4 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1315(tmp1, tmp3, tmp4);
+_import1323(tmp1, tmp3, tmp4);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp5 = i1.memory.loadUint8(tmp4.toIntUnsigned(), offset: 0);
 late final i1.Result<StructureTemplate, String> tmp9;
@@ -51229,7 +51438,7 @@ i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(max.y), offset: 20
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(max.z), offset: 24);
 i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromBool(includeEntities), offset: 28);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp2 = _import1316(tmp0, tmp1);
+final tmp2 = _import1324(tmp0, tmp1);
 return i1.awaitSubtask(tmp2.toIntUnsigned(), _cleanups, () {
 final tmp3 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<List<int>, String> tmp10;
@@ -51282,7 +51491,7 @@ i1.memory.storeInt8(tmp0.toIntUnsigned(), const i0.WasmI32(0), offset: 28);
 
 }
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp6 = _import1317(tmp0, tmp5);
+final tmp6 = _import1325(tmp0, tmp5);
 return i1.awaitSubtask(tmp6.toIntUnsigned(), _cleanups, () {
 final tmp7 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp11;
@@ -51441,8 +51650,8 @@ abstract interface class BlockPlacement {
 /// than before, or when registration is closed.
 i1.Result<void, String> setBlockPlacementRules({required String blockKey, required List<PlacementRule> rules, });
 }
-@pragma("wasm:import", r"component._import1318")
-external i0.WasmVoid _import1318(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1326")
+external i0.WasmVoid _import1326(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$BlockPlacement implements BlockPlacement {
   const _Imported$BlockPlacement();
 @override
@@ -51450,16 +51659,16 @@ i1.Result<void, String> setBlockPlacementRules({required String blockKey, requir
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(blockKey);
 _cleanups.add(tmp0.free);
-final tmp24 = rules.length;
-final tmp25 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(24 * tmp24));
-for (var i = 0; i < tmp24; i++) {
-final tmp26 = rules[i];
-final elementPtr = i0.WasmI32.fromInt(tmp25.toIntUnsigned() + i * 24);
-final tmp1 = i1.AllocatedString.allocateUtf16(tmp26.property);
+final tmp25 = rules.length;
+final tmp26 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(24 * tmp25));
+for (var i = 0; i < tmp25; i++) {
+final tmp27 = rules[i];
+final elementPtr = i0.WasmI32.fromInt(tmp26.toIntUnsigned() + i * 24);
+final tmp1 = i1.AllocatedString.allocateUtf16(tmp27.property);
 _cleanups.add(tmp1.free);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.packedLength, offset: 4);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.ptr, offset: 0);
-switch (tmp26.source) {
+switch (tmp27.source) {
 case PlacementSourceHorizontalFacing():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(0), offset: 8);
 
@@ -51517,20 +51726,20 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp16, offset: 12);
 case PlacementSourceTrackShape():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(11), offset: 8);
 
-case PlacementSourceConstant(value: final tmp19):
+case PlacementSourceConstant(value: final tmp20):
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(12), offset: 8);
-final tmp20 = i1.AllocatedString.allocateUtf16(tmp19);
-_cleanups.add(tmp20.free);
-i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp20.packedLength, offset: 16);
-i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp20.ptr, offset: 12);
+final tmp21 = i1.AllocatedString.allocateUtf16(tmp20);
+_cleanups.add(tmp21.free);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp21.packedLength, offset: 16);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp21.ptr, offset: 12);
 
 }
-i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp26.opposite), offset: 20);
-final tmp23 = tmp26.whenSneaking;
-if (tmp23 != null) {
-final tmp22 = tmp23;
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp27.opposite), offset: 20);
+final tmp24 = tmp27.whenSneaking;
+if (tmp24 != null) {
+final tmp23 = tmp24;
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(1), offset: 21);
-i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp22), offset: 22);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp23), offset: 22);
 
 } else {
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(0), offset: 21);
@@ -51538,24 +51747,24 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(0), offset: 21)
 }
 
 }
-final tmp27 = i0.WasmI32.fromInt(tmp24);
-_cleanups.add(() { i1.dartFree(tmp25, i0.WasmI32.fromInt(24 * tmp24), const i0.WasmI32(4)); });
-var tmp28 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1318(tmp0.ptr, tmp0.packedLength, tmp25, tmp27, tmp28);
+final tmp28 = i0.WasmI32.fromInt(tmp25);
+_cleanups.add(() { i1.dartFree(tmp26, i0.WasmI32.fromInt(24 * tmp25), const i0.WasmI32(4)); });
+var tmp29 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import1326(tmp0.ptr, tmp0.packedLength, tmp26, tmp28, tmp29);
 for (final cleanup in _cleanups) { cleanup(); }
-final tmp29 = i1.memory.loadUint8(tmp28.toIntUnsigned(), offset: 0);
-late final i1.Result<void, String> tmp32;
-if (tmp29.toIntUnsigned() == 0) {
+final tmp30 = i1.memory.loadUint8(tmp29.toIntUnsigned(), offset: 0);
+late final i1.Result<void, String> tmp33;
+if (tmp30.toIntUnsigned() == 0) {
 
-tmp32 = i1.Result.ok(null);
+tmp33 = i1.Result.ok(null);
 } else {
-final tmp30 = i1.memory.loadInt32(tmp28.toIntUnsigned(), offset: 4);
-final tmp31 = i1.memory.loadInt32(tmp28.toIntUnsigned(), offset: 8);
+final tmp31 = i1.memory.loadInt32(tmp29.toIntUnsigned(), offset: 4);
+final tmp32 = i1.memory.loadInt32(tmp29.toIntUnsigned(), offset: 8);
 
-tmp32 = i1.Result.error(i1.AllocatedString.read(tmp30, tmp31));
+tmp33 = i1.Result.error(i1.AllocatedString.read(tmp31, tmp32));
 }
-i1.dartFree(tmp28, const i0.WasmI32(12), const i0.WasmI32(4));
-return tmp32;
+i1.dartFree(tmp29, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp33;
 
 }
 }
@@ -51687,8 +51896,8 @@ abstract interface class BlockCallbacks {
 /// an unknown block, other callbacks than before, or when registration is closed.
 i1.Result<void, String> setBlockCallbacks({required String blockKey, required Set<BlockCallbackFlagsFlag> callbacks, });
 }
-@pragma("wasm:import", r"component._import1319")
-external i0.WasmVoid _import1319(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1327")
+external i0.WasmVoid _import1327(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
 final class _Imported$BlockCallbacks implements BlockCallbacks {
   const _Imported$BlockCallbacks();
 @override
@@ -51698,7 +51907,7 @@ final tmp0 = i1.AllocatedString.allocateUtf16(blockKey);
 _cleanups.add(tmp0.free);
 final tmp1 = i0.WasmI32.fromInt((callbacks.contains(BlockCallbackFlagsFlag.neighborUpdate) ? 1 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.placed) ? 2 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.playerPlaced) ? 4 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.stateReplaced) ? 8 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.broken) ? 16 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.scheduledTick) ? 32 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.randomTick) ? 64 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.entityCollision) ? 128 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.entityStep) ? 256 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.canPlace) ? 512 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.updateShape) ? 1024 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.redstoneOutput) ? 2048 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.weakPower) ? 4096 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.strongPower) ? 8192 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.comparatorOutput) ? 16384 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.dynamicShape) ? 32768 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.useWithoutItem) ? 65536 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.useWithItem) ? 131072 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.attack) ? 262144 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.getCloneItem) ? 524288 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.playerWillDestroy) ? 1048576 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.getFriction) ? 2097152 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.getSpeedFactor) ? 4194304 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.getJumpFactor) ? 8388608 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.canEntityDestroy) ? 16777216 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.onLandedUpon) ? 33554432 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.getSoundType) ? 67108864 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.isPathfindable) ? 134217728 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.canConnectRedstone) ? 268435456 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.getFireSpread) ? 536870912 : 0) | (callbacks.contains(BlockCallbackFlagsFlag.entityCollisionShape) ? 1073741824 : 0));
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1319(tmp0.ptr, tmp0.packedLength, tmp1, tmp2);
+_import1327(tmp0.ptr, tmp0.packedLength, tmp1, tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp6;
@@ -51785,11 +51994,13 @@ final class PluginBlockEntityData {
 abstract interface class PluginBlockEntity {
 /// Registers a block entity type and returns its id. `key` is a full resource location,
 /// `namespace:path`, lowercase, `a-z 0-9 _ - .` (and `/` in the path); the `minecraft`
-/// namespace is reserved. `valid-block-keys` names the blocks the type is for (`minecraft:` is
-/// optional for vanilla blocks), the server uses it to warn when data is set at a block that is
-/// not listed. Registering the same definition again returns the same id (a reloaded plugin), a
-/// different definition for a known key fails. Fails for an invalid key, or when registration is
-/// closed.
+/// namespace is reserved. `valid-block-keys` names the blocks the type is for; a vanilla block
+/// may omit `minecraft:`, a custom block has to name its namespace (an unqualified
+/// `funnel` would never match `create:funnel`). Fails for an unqualified custom block instead
+/// of accepting a key that can never match. The server uses the list to warn when data is set
+/// at a block that is not listed. Registering the same definition again returns the same id (a
+/// reloaded plugin), a different definition for a known key fails. Fails for an invalid key, or
+/// when registration is closed.
 i1.Result<int, String> registerBlockEntityType({required String key, required List<String> validBlockKeys, });
 /// Returns the id of a plugin block entity type by key.
 int? getBlockEntityTypeId({required String key, });
@@ -51822,24 +52033,24 @@ i1.Result<void, String> syncBlockEntity({required World targetWorld, required Bl
 /// plugin, and a callback can only be serviced while the calling guest call is suspended.
 Future<bool> removeBlockEntity({required World targetWorld, required BlockPos pos, });
 }
-@pragma("wasm:import", r"component._import1320")
-external i0.WasmVoid _import1320(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1321")
-external i0.WasmVoid _import1321(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1322")
-external i0.WasmI32 _import1322();
-@pragma("wasm:import", r"component._import1323")
-external i0.WasmVoid _import1323(i0.WasmI32 p0);
-@pragma("wasm:import", r"component._import1324")
-external i0.WasmVoid _import1324(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import1325")
-external i0.WasmVoid _import1325(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1326")
-external i0.WasmVoid _import1326(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13);
-@pragma("wasm:import", r"component._import1327")
-external i0.WasmVoid _import1327(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 @pragma("wasm:import", r"component._import1328")
-external i0.WasmI32 _import1328(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+external i0.WasmVoid _import1328(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1329")
+external i0.WasmVoid _import1329(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1330")
+external i0.WasmI32 _import1330();
+@pragma("wasm:import", r"component._import1331")
+external i0.WasmVoid _import1331(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1332")
+external i0.WasmVoid _import1332(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1333")
+external i0.WasmVoid _import1333(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1334")
+external i0.WasmVoid _import1334(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13);
+@pragma("wasm:import", r"component._import1335")
+external i0.WasmVoid _import1335(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1336")
+external i0.WasmI32 _import1336(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$PluginBlockEntity implements PluginBlockEntity {
   const _Imported$PluginBlockEntity();
 @override
@@ -51861,7 +52072,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.ptr, offset: 0);
 final tmp5 = i0.WasmI32.fromInt(tmp2);
 _cleanups.add(() { i1.dartFree(tmp3, i0.WasmI32.fromInt(8 * tmp2), const i0.WasmI32(4)); });
 var tmp6 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1320(tmp0.ptr, tmp0.packedLength, tmp3, tmp5, tmp6);
+_import1328(tmp0.ptr, tmp0.packedLength, tmp3, tmp5, tmp6);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp7 = i1.memory.loadUint8(tmp6.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp11;
@@ -51885,7 +52096,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1321(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1329(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -51903,14 +52114,14 @@ return tmp4;
 }
 @override
 int getVanillaBlockEntityTypeCount(){
-final tmp0 = _import1322();
+final tmp0 = _import1330();
 return tmp0.toIntUnsigned();
 
 }
 @override
 List<BlockEntityTypeEntry> getRegisteredBlockEntityTypes(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1323(tmp0);
+_import1331(tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp12 = <BlockEntityTypeEntry>[];
@@ -51943,7 +52154,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(typeKey);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1324(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(interval), tmp1);
+_import1332(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(interval), tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -51963,7 +52174,7 @@ return tmp5;
 @override
 PluginBlockEntityData? getBlockEntityData({required World targetWorld, required BlockPos pos, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(40));
-_import1325(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
+_import1333(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 PluginBlockEntityData? tmp83;
 if (tmp1.toBool()) {
@@ -52494,7 +52705,7 @@ tmp81 = i0.WasmI32.fromInt(0);
 tmp82 = i0.WasmI32.fromInt(0);
 }
 var tmp84 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1326(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(saveData.root), tmp36, tmp38, tmp79, tmp80, tmp81, tmp82, tmp84);
+_import1334(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(saveData.root), tmp36, tmp38, tmp79, tmp80, tmp81, tmp82, tmp84);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp85 = i1.memory.loadUint8(tmp84.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp88;
@@ -52514,7 +52725,7 @@ return tmp88;
 @override
 i1.Result<void, String> syncBlockEntity({required World targetWorld, required BlockPos pos, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1327(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
+_import1335(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -52534,7 +52745,7 @@ return tmp4;
 Future<bool> removeBlockEntity({required World targetWorld, required BlockPos pos, }){
 final _cleanups = <void Function()>[];
 var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(1));
-final tmp1 = _import1328(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
+final tmp1 = _import1336(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
 return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
 final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 i1.dartFree(tmp0, const i0.WasmI32(1), const i0.WasmI32(1));
@@ -52559,15 +52770,15 @@ void setEntityTicking({required EntityType entityType, required int interval, })
 /// key. Returns false when no type has the key.
 bool setPluginEntityTicking({required String key, required int interval, });
 }
-@pragma("wasm:import", r"component._import1329")
-external i0.WasmVoid _import1329(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1330")
-external i0.WasmI32 _import1330(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1337")
+external i0.WasmVoid _import1337(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1338")
+external i0.WasmI32 _import1338(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 final class _Imported$EntityTicking implements EntityTicking {
   const _Imported$EntityTicking();
 @override
 void setEntityTicking({required EntityType entityType, required int interval, }){
-_import1329(i0.WasmI32.fromInt(entityType.index), i0.WasmI32.fromInt(interval));
+_import1337(i0.WasmI32.fromInt(entityType.index), i0.WasmI32.fromInt(interval));
 
 }
 @override
@@ -52575,7 +52786,7 @@ bool setPluginEntityTicking({required String key, required int interval, }){
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
-final tmp1 = _import1330(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(interval));
+final tmp1 = _import1338(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(interval));
 for (final cleanup in _cleanups) { cleanup(); }
 return tmp1.toBool();
 
@@ -52625,22 +52836,22 @@ i1.Result<void, String> setPoseOverride({required Entity entity, required Entity
 /// Returns false when no item has the key.
 bool setItemEntityTicking({required String itemKey, required int interval, });
 }
-@pragma("wasm:import", r"component._import1331")
-external i0.WasmVoid _import1331(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1332")
-external i0.WasmVoid _import1332(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import1333")
-external i0.WasmVoid _import1333(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1334")
-external i0.WasmVoid _import1334(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import1335")
-external i0.WasmVoid _import1335(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmF32 p2, i0.WasmF32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1336")
-external i0.WasmVoid _import1336(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmF64 p2, i0.WasmF64 p3, i0.WasmF64 p4, i0.WasmI32 p5);
-@pragma("wasm:import", r"component._import1337")
-external i0.WasmVoid _import1337(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import1338")
-external i0.WasmI32 _import1338(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1339")
+external i0.WasmVoid _import1339(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1340")
+external i0.WasmVoid _import1340(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1341")
+external i0.WasmVoid _import1341(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1342")
+external i0.WasmVoid _import1342(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1343")
+external i0.WasmVoid _import1343(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmF32 p2, i0.WasmF32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1344")
+external i0.WasmVoid _import1344(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmF64 p2, i0.WasmF64 p3, i0.WasmF64 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import1345")
+external i0.WasmVoid _import1345(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1346")
+external i0.WasmI32 _import1346(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 final class _Imported$EntityFlags implements EntityFlags {
   const _Imported$EntityFlags();
 @override
@@ -52649,7 +52860,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1331(i0.WasmI32.fromInt(entity.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(value), tmp1);
+_import1339(i0.WasmI32.fromInt(entity.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(value), tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -52672,7 +52883,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1332(i0.WasmI32.fromInt(entity.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+_import1340(i0.WasmI32.fromInt(entity.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<bool, String> tmp6;
@@ -52696,7 +52907,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1333(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(value), tmp1);
+_import1341(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(value), tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -52719,7 +52930,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1334(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+_import1342(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<bool, String> tmp6;
@@ -52756,7 +52967,7 @@ tmp3 = i0.WasmF32.fromDouble(0);
 tmp4 = i0.WasmF32.fromDouble(0);
 }
 var tmp6 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1335(i0.WasmI32.fromInt(entity.resourceHandle), tmp2, tmp3, tmp4, tmp6);
+_import1343(i0.WasmI32.fromInt(entity.resourceHandle), tmp2, tmp3, tmp4, tmp6);
 final tmp7 = i1.memory.loadUint8(tmp6.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp10;
 if (tmp7.toIntUnsigned() == 0) {
@@ -52794,7 +53005,7 @@ tmp4 = i0.WasmF64.fromDouble(0);
 tmp5 = i0.WasmF64.fromDouble(0);
 }
 var tmp7 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1336(i0.WasmI32.fromInt(player.resourceHandle), tmp2, tmp3, tmp4, tmp5, tmp7);
+_import1344(i0.WasmI32.fromInt(player.resourceHandle), tmp2, tmp3, tmp4, tmp5, tmp7);
 final tmp8 = i1.memory.loadUint8(tmp7.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp11;
 if (tmp8.toIntUnsigned() == 0) {
@@ -52826,7 +53037,7 @@ tmp2 = const i0.WasmI32(0);
 tmp3 = i0.WasmI32.fromInt(0);
 }
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1337(i0.WasmI32.fromInt(entity.resourceHandle), tmp2, tmp3, tmp5);
+_import1345(i0.WasmI32.fromInt(entity.resourceHandle), tmp2, tmp3, tmp5);
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp9;
 if (tmp6.toIntUnsigned() == 0) {
@@ -52847,7 +53058,7 @@ bool setItemEntityTicking({required String itemKey, required int interval, }){
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(itemKey);
 _cleanups.add(tmp0.free);
-final tmp1 = _import1338(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(interval));
+final tmp1 = _import1346(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(interval));
 for (final cleanup in _cleanups) { cleanup(); }
 return tmp1.toBool();
 
@@ -53050,36 +53261,36 @@ ItemStack? getMenuCursor({required Player player, });
 /// never synchronised, so it has no cursor).
 i1.Result<void, String> setMenuCursor({required Player player, required ItemStack? stack, });
 }
-@pragma("wasm:import", r"component._import1339")
-external i0.WasmVoid _import1339(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1340")
-external i0.WasmVoid _import1340(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1341")
-external i0.WasmI32 _import1341();
-@pragma("wasm:import", r"component._import1342")
-external i0.WasmVoid _import1342(i0.WasmI32 p0);
-@pragma("wasm:import", r"component._import1343")
-external i0.WasmVoid _import1343(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
-@pragma("wasm:import", r"component._import1344")
-external i0.WasmVoid _import1344(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8);
-@pragma("wasm:import", r"component._import1345")
-external i0.WasmVoid _import1345(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13, i0.WasmI32 p14);
-@pragma("wasm:import", r"component._import1346")
-external i0.WasmI32 _import1346(i0.WasmI32 p0);
 @pragma("wasm:import", r"component._import1347")
-external i0.WasmVoid _import1347(i0.WasmI32 p0, i0.WasmI32 p1);
+external i0.WasmVoid _import1347(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import1348")
-external i0.WasmVoid _import1348(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+external i0.WasmVoid _import1348(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import1349")
-external i0.WasmVoid _import1349(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+external i0.WasmI32 _import1349();
 @pragma("wasm:import", r"component._import1350")
-external i0.WasmVoid _import1350(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+external i0.WasmVoid _import1350(i0.WasmI32 p0);
 @pragma("wasm:import", r"component._import1351")
-external i0.WasmVoid _import1351(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+external i0.WasmVoid _import1351(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
 @pragma("wasm:import", r"component._import1352")
-external i0.WasmVoid _import1352(i0.WasmI32 p0, i0.WasmI32 p1);
+external i0.WasmVoid _import1352(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8);
 @pragma("wasm:import", r"component._import1353")
-external i0.WasmVoid _import1353(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+external i0.WasmVoid _import1353(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8, i0.WasmI32 p9, i0.WasmI32 p10, i0.WasmI32 p11, i0.WasmI32 p12, i0.WasmI32 p13, i0.WasmI32 p14);
+@pragma("wasm:import", r"component._import1354")
+external i0.WasmI32 _import1354(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1355")
+external i0.WasmVoid _import1355(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1356")
+external i0.WasmVoid _import1356(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1357")
+external i0.WasmVoid _import1357(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1358")
+external i0.WasmVoid _import1358(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1359")
+external i0.WasmVoid _import1359(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import1360")
+external i0.WasmVoid _import1360(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1361")
+external i0.WasmVoid _import1361(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
 final class _Imported$Menus implements Menus {
   const _Imported$Menus();
 @override
@@ -53088,7 +53299,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1339(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1347(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp6;
@@ -53112,7 +53323,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1340(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1348(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -53130,14 +53341,14 @@ return tmp4;
 }
 @override
 int getVanillaMenuTypeCount(){
-final tmp0 = _import1341();
+final tmp0 = _import1349();
 return tmp0.toIntUnsigned();
 
 }
 @override
 List<MenuTypeEntry> getRegisteredMenuTypes(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1342(tmp0);
+_import1350(tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp7 = <MenuTypeEntry>[];
@@ -53186,7 +53397,7 @@ tmp8 = i0.WasmI32.fromInt(0);
 tmp9 = i0.WasmI32.fromInt(0);
 }
 var tmp11 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1343(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(title.takeHandle()), tmp7, tmp8, tmp9, tmp11);
+_import1351(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(title.takeHandle()), tmp7, tmp8, tmp9, tmp11);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp12 = i1.memory.loadUint8(tmp11.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp16;
@@ -53236,7 +53447,7 @@ tmp8 = i0.WasmI32.fromInt(0);
 tmp9 = i0.WasmI32.fromInt(0);
 }
 var tmp11 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1344(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(title.takeHandle()), tmp7, tmp8, tmp9, i0.WasmI32.fromInt(slotCount), tmp11);
+_import1352(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(title.takeHandle()), tmp7, tmp8, tmp9, i0.WasmI32.fromInt(slotCount), tmp11);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp12 = i1.memory.loadUint8(tmp11.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp16;
@@ -53349,7 +53560,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp30.end), 
 final tmp31 = i0.WasmI32.fromInt(tmp28);
 _cleanups.add(() { i1.dartFree(tmp29, i0.WasmI32.fromInt(8 * tmp28), const i0.WasmI32(4)); });
 var tmp32 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1345(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(title.takeHandle()), tmp7, tmp8, tmp9, i0.WasmI32.fromInt(slotCount), i0.WasmI32.fromBool(options.applyVanillaClicks), i0.WasmI32.fromBool(options.playerInventory), tmp25, tmp27, tmp29, tmp31, tmp32);
+_import1353(i0.WasmI32.fromInt(player.resourceHandle), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(title.takeHandle()), tmp7, tmp8, tmp9, i0.WasmI32.fromInt(slotCount), i0.WasmI32.fromBool(options.applyVanillaClicks), i0.WasmI32.fromBool(options.playerInventory), tmp25, tmp27, tmp29, tmp31, tmp32);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp33 = i1.memory.loadUint8(tmp32.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp37;
@@ -53369,14 +53580,14 @@ return tmp37;
 }
 @override
 bool closeMenu({required Player player, }){
-final tmp0 = _import1346(i0.WasmI32.fromInt(player.resourceHandle));
+final tmp0 = _import1354(i0.WasmI32.fromInt(player.resourceHandle));
 return tmp0.toBool();
 
 }
 @override
 OpenMenuInfo? getOpenMenu({required Player player, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(20));
-_import1347(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
+_import1355(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 OpenMenuInfo? tmp7;
 if (tmp1.toBool()) {
@@ -53398,7 +53609,7 @@ return tmp7;
 @override
 i1.Result<void, String> setMenuSlot({required Player player, required int slot, required ItemStack stack, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1348(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(slot), i0.WasmI32.fromInt(stack.resourceHandle), tmp0);
+_import1356(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(slot), i0.WasmI32.fromInt(stack.resourceHandle), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -53417,7 +53628,7 @@ return tmp4;
 @override
 i1.Result<void, String> clearMenuSlot({required Player player, required int slot, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1349(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(slot), tmp0);
+_import1357(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(slot), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -53436,7 +53647,7 @@ return tmp4;
 @override
 i1.Result<void, String> setMenuData({required Player player, required int id, required int value, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1350(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(id), i0.WasmI32.int16FromInt(value), tmp0);
+_import1358(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(id), i0.WasmI32.int16FromInt(value), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -53519,7 +53730,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp19.end), 
 final tmp20 = i0.WasmI32.fromInt(tmp17);
 _cleanups.add(() { i1.dartFree(tmp18, i0.WasmI32.fromInt(8 * tmp17), const i0.WasmI32(4)); });
 var tmp21 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1351(i0.WasmI32.fromInt(player.resourceHandle), tmp14, tmp16, tmp18, tmp20, tmp21);
+_import1359(i0.WasmI32.fromInt(player.resourceHandle), tmp14, tmp16, tmp18, tmp20, tmp21);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp22 = i1.memory.loadUint8(tmp21.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp25;
@@ -53539,7 +53750,7 @@ return tmp25;
 @override
 ItemStack? getMenuCursor({required Player player, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1352(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
+_import1360(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 ItemStack? tmp3;
 if (tmp1.toBool()) {
@@ -53570,7 +53781,7 @@ tmp2 = const i0.WasmI32(0);
 tmp3 = i0.WasmI32.fromInt(0);
 }
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1353(i0.WasmI32.fromInt(player.resourceHandle), tmp2, tmp3, tmp5);
+_import1361(i0.WasmI32.fromInt(player.resourceHandle), tmp2, tmp3, tmp5);
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp9;
 if (tmp6.toIntUnsigned() == 0) {
@@ -53753,20 +53964,20 @@ List<int>? getCustomComponent({required ItemStack stack, required String key, })
 /// Removes a custom component from an item stack. Fails if the type is not registered.
 i1.Result<void, String> removeCustomComponent({required ItemStack stack, required String key, });
 }
-@pragma("wasm:import", r"component._import1354")
-external i0.WasmVoid _import1354(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
-@pragma("wasm:import", r"component._import1355")
-external i0.WasmVoid _import1355(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1356")
-external i0.WasmI32 _import1356();
-@pragma("wasm:import", r"component._import1357")
-external i0.WasmVoid _import1357(i0.WasmI32 p0);
-@pragma("wasm:import", r"component._import1358")
-external i0.WasmVoid _import1358(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
-@pragma("wasm:import", r"component._import1359")
-external i0.WasmVoid _import1359(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import1360")
-external i0.WasmVoid _import1360(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1362")
+external i0.WasmVoid _import1362(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import1363")
+external i0.WasmVoid _import1363(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1364")
+external i0.WasmI32 _import1364();
+@pragma("wasm:import", r"component._import1365")
+external i0.WasmVoid _import1365(i0.WasmI32 p0);
+@pragma("wasm:import", r"component._import1366")
+external i0.WasmVoid _import1366(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import1367")
+external i0.WasmVoid _import1367(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1368")
+external i0.WasmVoid _import1368(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
 final class _Imported$CustomComponents implements CustomComponents {
   const _Imported$CustomComponents();
 @override
@@ -53845,7 +54056,7 @@ i1.memory.storeInt32(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp19), offs
 final tmp23 = i0.WasmI32.fromInt(tmp20);
 _cleanups.add(() { i1.dartFree(tmp21, i0.WasmI32.fromInt(8 * tmp20), const i0.WasmI32(4)); });
 var tmp24 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1354(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(persistent), tmp21, tmp23, tmp24);
+_import1362(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(persistent), tmp21, tmp23, tmp24);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp25 = i1.memory.loadUint8(tmp24.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp29;
@@ -53869,7 +54080,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1355(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1363(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -53887,14 +54098,14 @@ return tmp4;
 }
 @override
 int getVanillaDataComponentTypeCount(){
-final tmp0 = _import1356();
+final tmp0 = _import1364();
 return tmp0.toIntUnsigned();
 
 }
 @override
 List<ComponentTypeEntry> getRegisteredDataComponentTypes(){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1357(tmp0);
+_import1365(tmp0);
 final tmp1 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 0);
 final tmp2 = i1.memory.loadInt32(tmp0.toIntUnsigned(), offset: 4);
 final tmp8 = <ComponentTypeEntry>[];
@@ -53928,7 +54139,7 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.uint8FromInt(tmp3), o
 final tmp4 = i0.WasmI32.fromInt(tmp1);
 _cleanups.add(() { i1.dartFree(tmp2, i0.WasmI32.fromInt(1 * tmp1), const i0.WasmI32(1)); });
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1358(i0.WasmI32.fromInt(stack.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp2, tmp4, tmp5);
+_import1366(i0.WasmI32.fromInt(stack.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp2, tmp4, tmp5);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp9;
@@ -53951,7 +54162,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1359(i0.WasmI32.fromInt(stack.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+_import1367(i0.WasmI32.fromInt(stack.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 List<int>? tmp7;
@@ -53981,7 +54192,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1360(i0.WasmI32.fromInt(stack.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
+_import1368(i0.WasmI32.fromInt(stack.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -54113,32 +54324,32 @@ i1.Result<int, String> addSyncedRegistryEntry({required String registry, require
 /// Returns the id of an entry of a plugin owned registry.
 int? getSyncedRegistryEntryId({required String registry, required String entry, });
 }
-@pragma("wasm:import", r"component._import1361")
-external i0.WasmVoid _import1361(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmF32 p3, i0.WasmI32 p4);
-@pragma("wasm:import", r"component._import1362")
-external i0.WasmVoid _import1362(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1363")
-external i0.WasmVoid _import1363(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
-@pragma("wasm:import", r"component._import1364")
-external i0.WasmVoid _import1364(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1365")
-external i0.WasmVoid _import1365(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
-@pragma("wasm:import", r"component._import1366")
-external i0.WasmVoid _import1366(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1367")
-external i0.WasmVoid _import1367(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8);
-@pragma("wasm:import", r"component._import1368")
-external i0.WasmVoid _import1368(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import1369")
-external i0.WasmVoid _import1369(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+external i0.WasmVoid _import1369(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmF32 p3, i0.WasmI32 p4);
 @pragma("wasm:import", r"component._import1370")
-external i0.WasmVoid _import1370(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
+external i0.WasmVoid _import1370(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import1371")
-external i0.WasmVoid _import1371(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+external i0.WasmVoid _import1371(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
 @pragma("wasm:import", r"component._import1372")
-external i0.WasmVoid _import1372(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+external i0.WasmVoid _import1372(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import1373")
-external i0.WasmVoid _import1373(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+external i0.WasmVoid _import1373(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6);
+@pragma("wasm:import", r"component._import1374")
+external i0.WasmVoid _import1374(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1375")
+external i0.WasmVoid _import1375(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7, i0.WasmI32 p8);
+@pragma("wasm:import", r"component._import1376")
+external i0.WasmVoid _import1376(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1377")
+external i0.WasmVoid _import1377(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1378")
+external i0.WasmVoid _import1378(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
+@pragma("wasm:import", r"component._import1379")
+external i0.WasmVoid _import1379(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1380")
+external i0.WasmVoid _import1380(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
+@pragma("wasm:import", r"component._import1381")
+external i0.WasmVoid _import1381(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$ExtraRegistries implements ExtraRegistries {
   const _Imported$ExtraRegistries();
 @override
@@ -54160,7 +54371,7 @@ tmp3 = const i0.WasmI32(0);
 tmp4 = i0.WasmF32.fromDouble(0);
 }
 var tmp6 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1361(tmp0.ptr, tmp0.packedLength, tmp3, tmp4, tmp6);
+_import1369(tmp0.ptr, tmp0.packedLength, tmp3, tmp4, tmp6);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp7 = i1.memory.loadUint8(tmp6.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp11;
@@ -54184,7 +54395,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1362(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1370(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -54208,7 +54419,7 @@ _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(definition.optionsFormat);
 _cleanups.add(tmp1.free);
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1363(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(definition.overrideLimiter), tmp1.ptr, tmp1.packedLength, tmp2);
+_import1371(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromBool(definition.overrideLimiter), tmp1.ptr, tmp1.packedLength, tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp7;
@@ -54232,7 +54443,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1364(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1372(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -54273,7 +54484,7 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp5.operatio
 final tmp6 = i0.WasmI32.fromInt(tmp3);
 _cleanups.add(() { i1.dartFree(tmp4, i0.WasmI32.fromInt(32 * tmp3), const i0.WasmI32(8)); });
 var tmp7 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1365(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(definition.category.index), i0.WasmI32.fromInt(definition.color), tmp4, tmp6, tmp7);
+_import1373(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(definition.category.index), i0.WasmI32.fromInt(definition.color), tmp4, tmp6, tmp7);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp8 = i1.memory.loadUint8(tmp7.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp12;
@@ -54297,7 +54508,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1366(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1374(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -54321,7 +54532,7 @@ _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(definition.assetName);
 _cleanups.add(tmp1.free);
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1367(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromBool(definition.showOnItemFrame), i0.WasmI32.fromInt(definition.mapColor), i0.WasmI32.fromBool(definition.explorationMapElement), i0.WasmI32.fromBool(definition.trackCount), tmp2);
+_import1375(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromBool(definition.showOnItemFrame), i0.WasmI32.fromInt(definition.mapColor), i0.WasmI32.fromBool(definition.explorationMapElement), i0.WasmI32.fromBool(definition.trackCount), tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp7;
@@ -54345,7 +54556,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1368(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1376(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 int? tmp4;
@@ -54369,7 +54580,7 @@ _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(kind);
 _cleanups.add(tmp1.free);
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1369(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp2);
+_import1377(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp6;
@@ -54420,7 +54631,7 @@ tmp9 = i0.WasmI32.fromInt(0);
 tmp10 = i0.WasmI32.fromInt(0);
 }
 var tmp12 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1370(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp8, tmp9, tmp10, tmp12);
+_import1378(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp8, tmp9, tmp10, tmp12);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp13 = i1.memory.loadUint8(tmp12.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp16;
@@ -54443,7 +54654,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(key);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1371(tmp0.ptr, tmp0.packedLength, tmp1);
+_import1379(tmp0.ptr, tmp0.packedLength, tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -54468,7 +54679,7 @@ _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(entry);
 _cleanups.add(tmp1.free);
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1372(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp2);
+_import1380(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 late final i1.Result<int, String> tmp7;
@@ -54494,7 +54705,7 @@ _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(entry);
 _cleanups.add(tmp1.free);
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(8));
-_import1373(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp2);
+_import1381(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 int? tmp5;
@@ -54595,28 +54806,28 @@ Future<i1.Result<BreakProgress, String>> continueBreakBlock({required Player pla
 /// Stops breaking the current block, the damage on it goes away.
 Future<i1.Result<void, String>> stopBreakBlock({required Player player, });
 }
-@pragma("wasm:import", r"component._import1374")
-external i0.WasmVoid _import1374(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI64 p4, i0.WasmI64 p5, i0.WasmI32 p6);
-@pragma("wasm:import", r"component._import1375")
-external i0.WasmVoid _import1375(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1376")
-external i0.WasmVoid _import1376(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmF64 p3, i0.WasmF64 p4, i0.WasmF64 p5, i0.WasmF32 p6, i0.WasmF32 p7, i0.WasmI32 p8);
-@pragma("wasm:import", r"component._import1377")
-external i0.WasmVoid _import1377(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1378")
-external i0.WasmI32 _import1378(i0.WasmI32 p0, i0.WasmI32 p1);
-@pragma("wasm:import", r"component._import1379")
-external i0.WasmI32 _import1379(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1380")
-external i0.WasmI32 _import1380(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
-@pragma("wasm:import", r"component._import1381")
-external i0.WasmI32 _import1381(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
 @pragma("wasm:import", r"component._import1382")
-external i0.WasmI32 _import1382(i0.WasmI32 p0, i0.WasmI32 p1);
+external i0.WasmVoid _import1382(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI64 p4, i0.WasmI64 p5, i0.WasmI32 p6);
 @pragma("wasm:import", r"component._import1383")
-external i0.WasmI32 _import1383(i0.WasmI32 p0, i0.WasmI32 p1);
+external i0.WasmVoid _import1383(i0.WasmI32 p0, i0.WasmI32 p1);
 @pragma("wasm:import", r"component._import1384")
-external i0.WasmI32 _import1384(i0.WasmI32 p0, i0.WasmI32 p1);
+external i0.WasmVoid _import1384(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmF64 p3, i0.WasmF64 p4, i0.WasmF64 p5, i0.WasmF32 p6, i0.WasmF32 p7, i0.WasmI32 p8);
+@pragma("wasm:import", r"component._import1385")
+external i0.WasmVoid _import1385(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1386")
+external i0.WasmI32 _import1386(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1387")
+external i0.WasmI32 _import1387(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1388")
+external i0.WasmI32 _import1388(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1389")
+external i0.WasmI32 _import1389(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2);
+@pragma("wasm:import", r"component._import1390")
+external i0.WasmI32 _import1390(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1391")
+external i0.WasmI32 _import1391(i0.WasmI32 p0, i0.WasmI32 p1);
+@pragma("wasm:import", r"component._import1392")
+external i0.WasmI32 _import1392(i0.WasmI32 p0, i0.WasmI32 p1);
 final class _Imported$FakePlayer implements FakePlayer {
   const _Imported$FakePlayer();
 @override
@@ -54641,7 +54852,7 @@ tmp4 = i0.WasmI64.fromInt(0);
 tmp5 = i0.WasmI64.fromInt(0);
 }
 var tmp7 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1374(i0.WasmI32.fromInt(worldRef.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp3, tmp4, tmp5, tmp7);
+_import1382(i0.WasmI32.fromInt(worldRef.resourceHandle), tmp0.ptr, tmp0.packedLength, tmp3, tmp4, tmp5, tmp7);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp8 = i1.memory.loadUint8(tmp7.toIntUnsigned(), offset: 0);
 late final i1.Result<Player, String> tmp12;
@@ -54662,7 +54873,7 @@ return tmp12;
 @override
 i1.Result<void, String> removeFakePlayer({required Player player, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1375(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
+_import1383(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -54694,7 +54905,7 @@ tmp2 = const i0.WasmI32(0);
 tmp3 = i0.WasmI32.fromInt(0);
 }
 var tmp5 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1376(i0.WasmI32.fromInt(player.resourceHandle), tmp2, tmp3, i0.WasmF64.fromDouble(pos.$1), i0.WasmF64.fromDouble(pos.$2), i0.WasmF64.fromDouble(pos.$3), i0.WasmF32.fromDouble(yaw), i0.WasmF32.fromDouble(pitch), tmp5);
+_import1384(i0.WasmI32.fromInt(player.resourceHandle), tmp2, tmp3, i0.WasmF64.fromDouble(pos.$1), i0.WasmF64.fromDouble(pos.$2), i0.WasmF64.fromDouble(pos.$3), i0.WasmF32.fromDouble(yaw), i0.WasmF32.fromDouble(pitch), tmp5);
 final tmp6 = i1.memory.loadUint8(tmp5.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp9;
 if (tmp6.toIntUnsigned() == 0) {
@@ -54713,7 +54924,7 @@ return tmp9;
 @override
 i1.Result<void, String> setFakePlayerSneaking({required Player player, required bool sneaking, }){
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1377(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromBool(sneaking), tmp0);
+_import1385(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromBool(sneaking), tmp0);
 final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp4;
 if (tmp1.toIntUnsigned() == 0) {
@@ -54743,7 +54954,7 @@ i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(cursor.$1), o
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(cursor.$2), offset: 24);
 i1.memory.storeFloat32(tmp0.toIntUnsigned(), i0.WasmF32.fromDouble(cursor.$3), offset: 28);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp2 = _import1378(tmp0, tmp1);
+final tmp2 = _import1386(tmp0, tmp1);
 return i1.awaitSubtask(tmp2.toIntUnsigned(), _cleanups, () {
 final tmp3 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<bool, String> tmp7;
@@ -54767,7 +54978,7 @@ return tmp7;
 Future<i1.Result<void, String>> useItem({required Player player, required Hand hand, }){
 final _cleanups = <void Function()>[];
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp1 = _import1379(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(hand.index), tmp0);
+final tmp1 = _import1387(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(hand.index), tmp0);
 return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
 final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -54789,7 +55000,7 @@ return tmp5;
 Future<i1.Result<void, String>> attackEntity({required Player player, required Entity target, }){
 final _cleanups = <void Function()>[];
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp1 = _import1380(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(target.resourceHandle), tmp0);
+final tmp1 = _import1388(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(target.resourceHandle), tmp0);
 return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
 final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -54811,7 +55022,7 @@ return tmp5;
 Future<i1.Result<void, String>> interactEntity({required Player player, required Entity target, }){
 final _cleanups = <void Function()>[];
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp1 = _import1381(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(target.resourceHandle), tmp0);
+final tmp1 = _import1389(i0.WasmI32.fromInt(player.resourceHandle), i0.WasmI32.fromInt(target.resourceHandle), tmp0);
 return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
 final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -54839,7 +55050,7 @@ i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.y), offset: 8)
 i1.memory.storeInt32(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(pos.z), offset: 12);
 i1.memory.storeInt8(tmp0.toIntUnsigned(), i0.WasmI32.fromInt(face.index), offset: 16);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp2 = _import1382(tmp0, tmp1);
+final tmp2 = _import1390(tmp0, tmp1);
 return i1.awaitSubtask(tmp2.toIntUnsigned(), _cleanups, () {
 final tmp3 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<BreakProgress, String> tmp9;
@@ -54880,7 +55091,7 @@ return tmp9;
 Future<i1.Result<BreakProgress, String>> continueBreakBlock({required Player player, }){
 final _cleanups = <void Function()>[];
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp1 = _import1383(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
+final tmp1 = _import1391(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
 return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
 final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<BreakProgress, String> tmp8;
@@ -54920,7 +55131,7 @@ return tmp8;
 Future<i1.Result<void, String>> stopBreakBlock({required Player player, }){
 final _cleanups = <void Function()>[];
 var tmp0 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-final tmp1 = _import1384(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
+final tmp1 = _import1392(i0.WasmI32.fromInt(player.resourceHandle), tmp0);
 return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
 final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -54969,16 +55180,16 @@ i1.Result<void, String> setAfterBatchCallback({required String batchName, requir
 i1.Result<void, String> setBeforeBatchCallback({required String batchName, required VoidCallbackId batchCallback, });
 i1.Result<SimulatedPlayer, String> spawnSimulatedPlayer({required DimensionLocation location, required String name, required GameMode gameMode, });
 }
-@pragma("wasm:import", r"component._import1385")
-external i0.WasmVoid _import1385(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
-@pragma("wasm:import", r"component._import1386")
-external i0.WasmVoid _import1386(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
-@pragma("wasm:import", r"component._import1387")
-external i0.WasmVoid _import1387(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import1388")
-external i0.WasmVoid _import1388(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
-@pragma("wasm:import", r"component._import1389")
-external i0.WasmVoid _import1389(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmF64 p2, i0.WasmF64 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
+@pragma("wasm:import", r"component._import1393")
+external i0.WasmVoid _import1393(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import1394")
+external i0.WasmVoid _import1394(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4, i0.WasmI32 p5);
+@pragma("wasm:import", r"component._import1395")
+external i0.WasmVoid _import1395(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1396")
+external i0.WasmVoid _import1396(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+@pragma("wasm:import", r"component._import1397")
+external i0.WasmVoid _import1397(i0.WasmI32 p0, i0.WasmF64 p1, i0.WasmF64 p2, i0.WasmF64 p3, i0.WasmI32 p4, i0.WasmI32 p5, i0.WasmI32 p6, i0.WasmI32 p7);
 final class _Imported$Gametest implements Gametest {
   const _Imported$Gametest();
 @override
@@ -54989,7 +55200,7 @@ _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(testName);
 _cleanups.add(tmp1.free);
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1385(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromInt(testFunction.id), tmp2);
+_import1393(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromInt(testFunction.id), tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 late final i1.Result<RegistrationBuilder, String> tmp7;
@@ -55015,7 +55226,7 @@ _cleanups.add(tmp0.free);
 final tmp1 = i1.AllocatedString.allocateUtf16(testName);
 _cleanups.add(tmp1.free);
 var tmp2 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1386(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromInt(testFunction.id), tmp2);
+_import1394(tmp0.ptr, tmp0.packedLength, tmp1.ptr, tmp1.packedLength, i0.WasmI32.fromInt(testFunction.id), tmp2);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp3 = i1.memory.loadUint8(tmp2.toIntUnsigned(), offset: 0);
 late final i1.Result<RegistrationBuilder, String> tmp7;
@@ -55039,7 +55250,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(batchName);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1387(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(batchCallback.id), tmp1);
+_import1395(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(batchCallback.id), tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -55062,7 +55273,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(batchName);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1388(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(batchCallback.id), tmp1);
+_import1396(tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(batchCallback.id), tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<void, String> tmp5;
@@ -55085,7 +55296,7 @@ final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(name);
 _cleanups.add(tmp0.free);
 var tmp1 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1389(i0.WasmI32.fromInt(location.dimension.takeHandle()), i0.WasmF64.fromDouble(location.x), i0.WasmF64.fromDouble(location.y), i0.WasmF64.fromDouble(location.z), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(gameMode.index), tmp1);
+_import1397(i0.WasmI32.fromInt(location.dimension.takeHandle()), i0.WasmF64.fromDouble(location.x), i0.WasmF64.fromDouble(location.y), i0.WasmF64.fromDouble(location.z), tmp0.ptr, tmp0.packedLength, i0.WasmI32.fromInt(gameMode.index), tmp1);
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp2 = i1.memory.loadUint8(tmp1.toIntUnsigned(), offset: 0);
 late final i1.Result<SimulatedPlayer, String> tmp6;

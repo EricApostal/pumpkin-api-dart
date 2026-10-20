@@ -26,6 +26,8 @@
 //   content/contraptions/bearing/SailBlock.java:67-71                 sail frame, dyed sails
 //   foundation/block/WrenchableDirectionalBlock.java:42-44            sail (super)
 //   content/contraptions/bearing/BearingBlock.java                    bearings (no placement override)
+import 'dart:math' as math;
+
 import 'package:create/src/contraptions/bearing/bearing_placement.dart';
 import 'package:create/src/contraptions/bearing/sail.dart';
 import 'package:create/src/kinetics/block_data.dart'
@@ -38,6 +40,8 @@ import 'package:create/src/kinetics/block_data.dart'
         shaftTag;
 import 'package:create/src/kinetics/block_defs.dart';
 import 'package:create/src/kinetics/geometry.dart';
+import 'package:create/src/trains/track/track_placement_rules.dart'
+    show trackPlacementRules;
 import 'package:create/src/kinetics/node.dart';
 import 'package:create/src/kinetics/placement.dart';
 import 'package:create/src/manifest/manifest.dart';
@@ -429,6 +433,12 @@ KState _largeCog(Dir along) =>
 KState _facing(String block, Dir facing) =>
     KState(block, {'facing': facing.name});
 
+/// A block whose top is sturdy and whose bottom is sturdy (`minecraft:stone`).
+const KState _solid = KState('minecraft:stone');
+
+/// `BlockState.isFaceSturdy(level, pos, face)` for the harness's blocks: only [_solid] is.
+bool _sturdy(KState state) => state.block == _solid.block;
+
 Map<KPos, KState> _noNeighbours(KPos pos, Dir face) => const {};
 
 final List<_Layout> _layouts = [
@@ -481,6 +491,24 @@ final List<_Layout> _layouts = [
       pos.below(): const KState('create:rotation_speed_controller', {
         'axis': 'z',
       }),
+    },
+  ),
+  // For the track's ascending shapes: a solid block on one side, with and without a block above
+  // it (`isFaceSturdy(UP)` / `isFaceSturdy(DOWN)` of `TrackBlock.getStateForPlacement`).
+  _Layout('solid+x', (pos, _) => {pos.relative(Dir.east): _solid}),
+  _Layout('solid+z', (pos, _) => {pos.relative(Dir.south): _solid}),
+  _Layout(
+    'solid+z-covered',
+    (pos, _) => {
+      pos.relative(Dir.south): _solid,
+      pos.relative(Dir.south).above(): _solid,
+    },
+  ),
+  _Layout(
+    'solid-x-z',
+    (pos, _) => {
+      pos.relative(Dir.west): _solid,
+      pos.relative(Dir.south): _solid,
     },
   ),
 ];
@@ -585,6 +613,16 @@ List<_Target> _targets() => [
       actual: (p, _) => _applyHostRules(_declaredRules(key), _HostInput.of(p)),
       expected: (p) => {'facing': _javaSailFacing(p).name},
     ),
+  // The track is placed by the host too: `TrackBlock.getStateForPlacement` becomes the
+  // `PlacementRule.trackShape('shape')` rule of `track_registration.dart`.
+  _Target(
+    'track',
+    'TrackBlock.getStateForPlacement (shape)',
+    actual: (p, _) => {
+      'shape': _applyHostRules(trackPlacementRules, _HostInput.of(p))['shape']!,
+    },
+    expected: (p) => {'shape': _javaTrackShape(p)},
+  ),
 ];
 
 /// The sail rule, as the plugin declares it (`sail_block.dart`).
@@ -631,6 +669,9 @@ final class _HostInput {
   final double pitch;
   final bool sneaking;
 
+  /// `PlacementContext.yaw`: the yaw of [look], `0` looks south.
+  final double yaw;
+
   /// `PlacementContext.neighbours`: what is next to the placed block.
   final KState Function(KPos pos) stateAt;
 
@@ -641,6 +682,7 @@ final class _HostInput {
     required this.pitch,
     required this.sneaking,
     required this.stateAt,
+    this.yaw = 0,
   });
 
   factory _HostInput.of(_Placement p) => _HostInput(
@@ -650,6 +692,7 @@ final class _HostInput {
     pitch: p.pitch,
     sneaking: p.sneaking,
     stateAt: p.stateAt,
+    yaw: _lookAngles[p.look]!.$1,
   );
 }
 
@@ -747,9 +790,76 @@ String? _hostValue(PlacementRule rule, _HostInput input) {
       final direction = _hostShaftNeighbourDirection(rule.shafts, input);
       if (direction == null) return null;
       return _pick(direction, opposite);
+    case PlacementSourceKind.trackShape:
+      return _hostTrackShape(input);
     case PlacementSourceKind.constant:
       return rule.constantValue;
   }
+}
+
+/// `PlacementSource::TrackShape`: Create's `TrackBlock.getStateForPlacement`, the nearest of the
+/// eight track axes to the look, ascending when the neighbour on that side has a solid top and no
+/// block above it. A yaw of `0` looks south (`+z`).
+String _hostTrackShape(_HostInput input) {
+  const axes = [
+    (0.0, 0.0, 1.0),
+    (1.0, 0.0, 0.0),
+    (1.0, 0.0, 1.0),
+    (-1.0, 0.0, 1.0),
+    (0.0, 1.0, -1.0),
+    (0.0, 1.0, 1.0),
+    (1.0, 1.0, 0.0),
+    (-1.0, 1.0, 0.0),
+  ];
+  const names = ['zo', 'xo', 'pd', 'nd', 'an', 'as', 'ae', 'aw'];
+  final radians = input.yaw * math.pi / 180;
+  final look = (-math.sin(radians), 0.0, math.cos(radians));
+  double distance((double, double, double) a) =>
+      math.pow(a.$1 - look.$1, 2).toDouble() +
+      math.pow(a.$2 - look.$2, 2).toDouble() +
+      math.pow(a.$3 - look.$3, 2).toDouble();
+
+  var best = 0;
+  var bestDistance = double.maxFinite;
+  for (var i = 0; i < axes.length; i++) {
+    final axis = axes[i];
+    final length = math.sqrt(
+      axis.$1 * axis.$1 + axis.$2 * axis.$2 + axis.$3 * axis.$3,
+    );
+    final negative = (
+      -axis.$1 / length,
+      -axis.$2 / length,
+      -axis.$3 / length,
+    );
+    final d = math.min(distance(axis), distance(negative));
+    if (d > bestDistance) continue;
+    bestDistance = d;
+    best = i;
+  }
+  // Only the two straight shapes have an axis of length one, and only they ascend.
+  final Dir? direction = switch (best) {
+    0 => Dir.south,
+    1 => Dir.east,
+    _ => null,
+  };
+  if (direction == null) return names[best];
+
+  var shape = best;
+  for (final negative in const [true, false]) {
+    final side = negative ? direction.opposite : direction;
+    final beside = input.stateAt(KPos.zero.relative(side));
+    final above = input.stateAt(KPos.zero.relative(side).relative(Dir.up));
+    // `isFaceSturdy(level, offset, UP)` and `!isFaceSturdy(level, offset.above(), DOWN)`.
+    final ascend = _sturdy(beside) && !_sturdy(above);
+    if (!ascend) continue;
+    shape = switch ((best, negative)) {
+      (0, true) => 4,
+      (0, false) => 5,
+      (_, true) => 7,
+      (_, false) => 6,
+    };
+  }
+  return names[shape];
 }
 
 String _pick(Dir d, bool opposite) => (opposite ? d.opposite : d).name;
@@ -1002,8 +1112,77 @@ bool _prefersConnectionTo(_Placement c, Dir facing, {required bool shaftAxis}) {
   return (facing: facing, alongFirst: alongFirst);
 }
 
-// -- Comparison ------------------------------------------------------------------------------
+/// `TrackBlock.getStateForPlacement` (`TrackBlock.java:128-170`): the shape whose axis is nearest
+/// to the horizontal look, ascending when the neighbour on that side has a solid top and no solid
+/// bottom above it. Ties go to the later shape, as Java's `distance > bestValue` does.
+String _javaTrackShape(_Placement c) {
+  final (yaw, _) = _lookAngles[c.look]!;
+  var look = (c.look.dx.toDouble(), 0.0, c.look.dz.toDouble());
+  if (look.$1 == 0 && look.$3 == 0) {
+    // `VecHelper.rotate(new Vec3(0, 0, 1), -yRot, Axis.Y)`.
+    final radians = -yaw * math.pi / 180;
+    look = (-math.sin(radians), 0.0, math.cos(radians));
+  }
+  final length = math.sqrt(look.$1 * look.$1 + look.$3 * look.$3);
+  look = (look.$1 / length, 0.0, look.$3 / length);
 
+  // `TrackShape.values()`, junctions and portals left out, with the first axis of each.
+  const shapes = [
+    ('none', (0.0, 0.0, 0.0)),
+    ('zo', (0.0, 0.0, 1.0)),
+    ('xo', (1.0, 0.0, 0.0)),
+    ('pd', (1.0, 0.0, 1.0)),
+    ('nd', (-1.0, 0.0, 1.0)),
+    ('an', (0.0, 1.0, -1.0)),
+    ('as', (0.0, 1.0, 1.0)),
+    ('ae', (1.0, 1.0, 0.0)),
+    ('aw', (-1.0, 1.0, 0.0)),
+  ];
+  double toLook((double, double, double) axis) =>
+      math.pow(axis.$1 - look.$1, 2).toDouble() +
+      math.pow(axis.$2 - look.$2, 2).toDouble() +
+      math.pow(axis.$3 - look.$3, 2).toDouble();
+
+  var best = 'zo';
+  var bestAxis = (0.0, 0.0, 1.0);
+  var bestValue = double.maxFinite;
+  for (final (name, axis) in shapes) {
+    final axisLength = math.sqrt(
+      axis.$1 * axis.$1 + axis.$2 * axis.$2 + axis.$3 * axis.$3,
+    );
+    final normalizedAxis = axisLength < 1.0E-4
+        ? (0.0, 0.0, 0.0)
+        : (axis.$1 / axisLength, axis.$2 / axisLength, axis.$3 / axisLength);
+    final negated = (
+      -normalizedAxis.$1,
+      -normalizedAxis.$2,
+      -normalizedAxis.$3,
+    );
+    final distance = math.min(toLook(axis), toLook(negated));
+    if (distance > bestValue) continue;
+    bestValue = distance;
+    best = name;
+    bestAxis = axis;
+  }
+
+  // `if (bestAxis.lengthSqr() == 1)`: only the straight shapes ascend.
+  if (bestAxis.$1.abs() + bestAxis.$2.abs() + bestAxis.$3.abs() != 1) return best;
+  for (final negative in const [true, false]) {
+    final side = negative ? -1 : 1;
+    final offset = c.pos.offset(
+      (bestAxis.$1 * side).round(),
+      (bestAxis.$2 * side).round(),
+      (bestAxis.$3 * side).round(),
+    );
+    if (_sturdy(c.stateAt(offset)) && !_sturdy(c.stateAt(offset.above()))) {
+      if (best == 'xo') best = negative ? 'aw' : 'ae';
+      if (best == 'zo') best = negative ? 'an' : 'as';
+    }
+  }
+  return best;
+}
+
+// -- Comparison ------------------------------------------------------------------------------
 bool _sameProps(Map<String, String> a, Map<String, String> b) {
   if (a.length != b.length) return false;
   for (final e in a.entries) {

@@ -42,7 +42,7 @@ BlockBehavior cartAssemblerBehavior() => BlockBehavior(
   // player collision shape, every other entity collides with the full block. The registered
   // collision shape stays the full cube; this hook replaces it per entity.
   onEntityCollisionShape: (server, e) => cartAssemblerCollisionForEntity(
-    HostBlockGetter.stateOfId(e.stateIndex)['shape'],
+    _stateAt(e.targetWorld, e.pos)['shape'],
     e.entityType,
   ),
   onEntityCollision: (server, e) async {
@@ -50,15 +50,21 @@ BlockBehavior cartAssemblerBehavior() => BlockBehavior(
     final level = ActuatorHosts.levelOf(e.targetWorld.getId());
     if (level == null) return;
     final cart = _cartAt(level, pos, e.entityId);
+    logger.info('CA-DEBUG collision ${pos.$1},${pos.$2},${pos.$3} entity=${e.entityId} cart=${cart?.id} canAssemble=${cart?.canAssemble}');
     if (cart == null || !cart.canAssemble) return;
     final be = ActuatorRuntime.maybe?.store.at(e.targetWorld.getId(), e.pos);
     if (be is CartAssemblerBlockEntity) be.queueAssembly(cart);
   },
   // `neighborChanged`: follow the redstone signal.
   onNeighborUpdate: (server, e) async {
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
-    if (state.key != cartAssemblerKey) return;
+    // The event's `stateIndex` counts within the block's states; the state at the position is
+    // the same state, so read it back (see `docs/block-callbacks.md`).
+    final state = _stateAt(e.targetWorld, e.pos);
     final powered = await e.targetWorld.hasNeighborSignal(pos: e.pos);
+    logger.info('CA-DEBUG neighbor ${e.pos.x},${e.pos.y},${e.pos.z} stateIndex=${e.stateIndex} '
+        'decoded=${HostBlockGetter.stateOfId(e.stateIndex).key} world=${state.key} '
+        'powered=${state.flag('powered')} signal=$powered');
+    if (state.key != cartAssemblerKey) return;
     if (state.flag('powered') == powered) return;
     await setBlockState(
       e.targetWorld,
@@ -66,10 +72,11 @@ BlockBehavior cartAssemblerBehavior() => BlockBehavior(
       state.setFlag('powered', powered),
       flags: {BlockFlagsFlag.notifyListeners},
     );
+    logger.info('CA-DEBUG wrote powered=$powered readback=${_stateAt(e.targetWorld, e.pos).props}');
   },
   // `useItemOn`: the held rail item becomes the assembler's rail type.
   onUseWithItem: (server, e) async {
-    final state = HostBlockGetter.stateOfId(e.stateIndex);
+    final state = _stateAt(e.targetWorld, e.pos);
     if (state.key != cartAssemblerKey) return BlockUseResult.pass;
     final current = CartAssembleRailType.byName(state['rail_type']);
 
@@ -121,6 +128,11 @@ MinecartRef? _cartAt(ContraptionLevel level, Pos pos, int entityId) {
   }
   return null;
 }
+
+/// The state at a block event's position. The event's `stateIndex` counts within the block's
+/// states, not globally (`docs/block-callbacks.md`), so the state is read back from the world.
+BState _stateAt(World world, BlockPos pos) =>
+    HostBlockGetter(world).stateAt((pos.x, pos.y, pos.z));
 
 /// `CartAssemblerBlockItem.tryPlaceAssembler`: placing the item on a straight rail replaces the
 /// rail with the assembler, keeping the rail's type and shape.

@@ -17,6 +17,7 @@ import 'track_block_item.dart';
 import 'track_host.dart';
 import 'track_level.dart';
 import 'track_material.dart';
+import 'track_placement_rules.dart';
 import 'track_voxel_shapes.dart';
 
 /// Phase 1: the two blocks and their block entity types. The `track` item is registered with the
@@ -28,13 +29,7 @@ void registerTrack(CreateRegistry registry) {
     manifestBlock(
       'track',
       blockEntityType: TrackBlockEntityHost.type,
-      // `TrackBlock.getStateForPlacement`: the shape follows the player's look (the nearest of the
-      // eight track axes), ascending when the neighbour along it has a solid top and nothing solid
-      // above it. The host computes it from the look, like the block's own method.
-      placement: const [
-        PlacementRule.trackShape('shape'),
-        PlacementRule.inWater('waterlogged'),
-      ],
+      placement: trackPlacementRules,
       shapeRules: trackShapeRules(),
       behavior: _trackBehavior(track),
     ),

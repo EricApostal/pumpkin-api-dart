@@ -275,20 +275,13 @@ Future<void> _entityCollision(
       // (`BeltBlockEntity.java:130`, `if (!isController()) return;`), so a passenger remembered
       // by the segment would never move.
       final controller = belt.controllerBE;
-      if (controller == null) {
-        rt.log.error('CV01DBG collision pos=$pos id=${e.entityId} no-controller');
-        return;
-      }
+      if (controller == null) return;
       final (x, y, z) = entity.getPosition();
       final added = controller.entityEntered(
         e.entityId,
         pos,
         KState('create:belt', state.props),
         (x.floor(), y.floor(), z.floor()),
-      );
-      rt.log.error(
-        'CV01DBG collision pos=$pos id=${e.entityId} controller=${controller.p} '
-        'added=$added passengers=${controller.passengers.length}',
       );
       if (added) entity.setOnGround(onGround: true);
     }

@@ -9,6 +9,37 @@ works.** `set-plugin-synced-entry` reaches every tracking client
 (`wit/v0.2/world.wit:585-602`, `crates/pumpkin-wasm-host-v0_2/src/entity.rs:770-800`).
 Only `set-plugin-spawn-data` is spawn-time-only, which matches NeoForge.
 
+## Re-entrant world writes from a plugin event (deadlock)
+
+**Any `NOTIFY_ALL` world write from inside a host-initiated guest call deadlocks the
+plugin permanently.** Three variants were tried plugin-side and all are unsafe; there
+is no execution point in a plugin that is outside a host-initiated guest call.
+
+```
+host → guest (sync export, pumpkin-plugin-runtime/src/executor.rs:673 call_guest)
+  → plugin does a NOTIFY_ALL write
+  → pumpkin-wasm-host-v0_2/src/world.rs:857 (try_pickup_fluid) or any setBlockState
+  → pumpkin-core/src/block/fluid/plugin_fluid.rs:57
+        world.set_block_state(&pos, AIR, BlockFlags::NOTIFY_ALL)
+  → neighbour updates re-enter the plugin while the outer guest call is still on the stack
+  → the nested call_guest never gets an admission
+  → the guest never returns: ticks stop, flows freeze, shutdown never completes
+```
+
+Measured: with the write inline the tank never fills; deferred to a microtask the
+microtask is never drained (no event loop outside a guest call); deferred to the world
+tick it deadlocks identically, because the world tick is *also* a guest call. Deferring
+only `updateComparators` let the first 8 mB reach the tank and then froze.
+
+Concrete victim: fluid transfer out of a world source
+(`open_ended_pipe.dart:131` → `fluid_host.dart:376` → `world.rs:857`). Same class as the
+`setBlockState`-inside-`onPlaced` deadlock, so the fix should cover the general
+plugin-initiated write path, not one call: either do not fire plugin events re-entrantly
+from a plugin-initiated write, or make the nested admission succeed.
+
+The Dart side is already faithful to Java here — no plugin change is needed once the
+host is fixed.
+
 ## Entity effects
 
 *(cardboard sword: Java gives a hit mob Slowness X for 3s)*
@@ -123,6 +154,13 @@ carries the full WIT shapes)*
   `create:belt[part=middle]` is rejected by the parser
   (`pumpkin-command/src/argument_types/block.rs:126-131`) because those are not vanilla
   properties. A plain `setblock <pos> create:belt` resolves to the default state.
+- **`data merge block` reports success but does not reach a live container.** It answers
+  `Modified block data of <pos>`, yet a container's `Items` stays `[]` — two agents hit
+  this independently, on both a vanilla chest and a `create:item_vault`, and the host
+  writes plugin block-entity NBT into `pending_block_entities`
+  (`crates/pumpkin-core/src/world/mod.rs:6498`) which the plugin's `read` never sees
+  during the run. So a scenario cannot populate a container to test an observer pulse
+  or a threshold switch; that half of those features has to rest on unit tests.
 - **`fill` places plugin blocks but creates no plugin block entities.** A filled belt
   run is therefore inert (`initBelt` never runs), and since every segment is
   `part=start`, a run built one `setblock` per tick is destroyed as it is built. The

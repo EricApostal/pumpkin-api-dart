@@ -13,6 +13,8 @@ import '../api/wrenchable.dart';
 import '../common/common.dart';
 import '../common/host_bridge.dart' show PosToHost;
 import '../conveyance/belt/belt_geometry.dart' show nextSegmentPosition;
+import '../conveyance/chain/chain_conveyor_block_entity.dart'
+    show ChainConveyorBlockEntity;
 import '../core/block_entity.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
@@ -202,6 +204,14 @@ void loadActuatorContent(CreateContext ctx) {
   ContraptionHostHooks.disassembleWindmillBearing = (worldId, pos) {
     final be = ctx.blockEntities.at(worldId, pos.toBlockPos());
     if (be is WindmillBearingBlockEntity) be.disassembleForMovement();
+  };
+
+  // `Contraption.moveBlock` -> `ChainConveyorBlockEntity.notifyConnectedToValidate()`: a
+  // conveyor moved by a contraption must revalidate its chained neighbours, or a stale
+  // connection keeps routing packages to a conveyor that is no longer there.
+  ContraptionHostHooks.notifyChainConveyor = (worldId, pos) {
+    final be = ctx.blockEntities.at(worldId, pos.toBlockPos());
+    if (be is ChainConveyorBlockEntity) be.notifyConnectedToValidate();
   };
 
   // `Contraption.moveChassis`: the chassis block entity's connected group and its range.

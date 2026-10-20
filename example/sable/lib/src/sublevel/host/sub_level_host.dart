@@ -46,6 +46,13 @@ abstract interface class PlotChunk {
   /// `LevelChunkSection.hasOnlyAir()` for every section.
   bool get hasOnlyAir;
 
+  /// `LevelChunkSection.hasOnlyAir()` for the section at [index].
+  bool sectionHasOnlyAir(int index);
+
+  /// `LevelChunk.getSectionYFromSectionIndex(index) << 4`: the lowest block y
+  /// of the section.
+  int sectionMinY(int index);
+
   /// `LevelChunk.getBlockEntityNbtForSaving`-style data for one block, or `null`.
   Map<String, Object?>? blockEntityData(int x, int y, int z);
 
@@ -87,6 +94,29 @@ abstract interface class PlotChunkHost {
   /// Whether the chunk is loaded "enough" for physics (Java
   /// `PhysicsChunkTicketManager.isChunkLoadedEnough`).
   bool isChunkLoadedEnough(int x, int z);
+
+  /// Serializes one plot chunk for `ServerLevelPlot.save` (sections, block
+  /// entities, ticks, heightmaps and light).
+  ///
+  /// HOST GAP: the host must be able to serialize a plugin-created chunk. The
+  /// Pumpkin API has no chunk-serialization entry point; the implementation is
+  /// in `host/pumpkin_level.dart`.
+  Map<String, Object?> serializeChunk(PlotChunk chunk);
+
+  /// Rebuilds a plot chunk from [tag] (`ServerLevelPlot.load`).
+  ///
+  /// HOST GAP: the inverse of [serializeChunk].
+  PlotChunk deserializeChunk(int x, int z, Map<String, Object?> tag);
+
+  /// Sets the block at a global position inside the plot yard
+  /// (`LevelPlot.destroyAllBlocks` / `expandIfNecessary`).
+  void setBlock(int x, int y, int z, String block);
+
+  /// `ServerLevel.startTickingChunk`.
+  void startTickingChunk(PlotChunk chunk);
+
+  /// Removes every entity inside [chunk] (`ServerLevelPlot.kickAllEntities`).
+  void kickEntitiesIn(PlotChunk chunk);
 }
 
 /// A player of the server, as far as tracking needs them.

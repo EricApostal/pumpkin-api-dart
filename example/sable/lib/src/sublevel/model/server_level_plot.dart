@@ -1,0 +1,237 @@
+// `dev.ryanhcode.sable.sublevel.plot.ServerLevelPlot`: the server-side plot.
+//
+// It owns the plot's chunks, the biome of the whole plot, its light engine and
+// the contraptions and lift providers inside it, and it saves/loads the chunk
+// grid as one NBT compound (`plot_x`, `plot_z`, `log_size`, `biome`,
+// `data_version`, `chunks`).
+//
+// Chunk serialization itself is host work (`PlotChunkHost.serializeChunk`): the
+// Pumpkin API has no paletted-container access, so the host stores the chunk
+// blob opaquely and the plot only lays out the compound.
+//
+// Pure: no host imports (chunk access goes through `PlotChunkHost`).
+import '../../common/pos.dart' show Pos;
+import '../../math/bounding_box.dart';
+import '../api/physics.dart';
+import '../host/sub_level_host.dart';
+import 'level_plot.dart';
+import 'plot_chunk_holder.dart';
+import 'server_sub_level.dart';
+import 'sub_level_container.dart';
+
+/// A plot of a server sub-level.
+final class ServerLevelPlot extends LevelPlot {
+  /// The current save format version (Java `DATA_VERSION`).
+  static const int dataVersion = 1;
+
+  /// The plot's light engine, when the host provides one.
+  ///
+  /// HOST GAP: Pumpkin does not expose a per-plot `LevelLightEngine`, so this is
+  /// `null` and every lighting call below is a no-op with a precise gap note.
+  Object? lightEngine;
+
+  /// The contraptions inside this plot.
+  final Set<KinematicContraption> contraptions = {};
+
+  /// The lift providers inside this plot, by packed block position.
+  final Map<int, LiftProviderContext> liftProviders = {};
+
+  ServerLevelPlot(SubLevelContainer container, int x, int z, int logSize, ServerSubLevel subLevel)
+    : super(container, x, z, logSize, subLevel);
+
+  /// Adds a contraption to this plot.
+  void addContraption(KinematicContraption contraption) => contraptions.add(contraption);
+
+  /// Removes a contraption from this plot.
+  void removeContraption(KinematicContraption contraption) => contraptions.remove(contraption);
+
+  /// The contraptions of this plot.
+  Iterable<KinematicContraption> getContraptions() => contraptions;
+
+  @override
+  void tick() {}
+
+  @override
+  Object? getLightEngine() => lightEngine;
+
+  @override
+  void onRemoveChunkHolder(PlotChunk chunk) {
+    // Java unloads the chunk from the chunk map here (and fires the chunk
+    // unload event). The host owns chunk lifetime for plot chunks.
+    chunkHost.setChunkLoaded(chunk.pos.$1, chunk.pos.$2, false);
+  }
+
+  /// Sets the biome of the whole plot.
+  void setBiome(String biome) => this.biome = biome;
+
+  /// Initializes lighting for a freshly loaded chunk.
+  ///
+  /// HOST GAP: needs a plot light engine (`LevelLightEngine.initializeLight`).
+  void initializeLight(PlotChunk chunk) {}
+
+  /// Corrects the lighting of a chunk after loading.
+  ///
+  /// HOST GAP: needs a plot light engine (`correctLight`).
+  void correctLight(PlotChunk chunk) {}
+
+  /// Queues a lighting update for a chunk.
+  ///
+  /// HOST GAP: needs a plot light engine (`lightChunk`).
+  void lightChunk(PlotChunk chunk) {}
+
+  @override
+  void addChunkHolder((int, int) localChunkPos, PlotChunkHolder holder, bool initializeLighting) {
+    super.addChunkHolder(localChunkPos, holder, initializeLighting);
+    if (initializeLighting) {
+      initializeLight(holder.chunk);
+      lightChunk(holder.chunk);
+    }
+  }
+
+  /// Removes every entity inside the plot.
+  ///
+  /// HOST GAP: the model has no entity index for plot chunks; the host
+  /// implementation (`PlotChunkHost.kickEntitiesIn`) does the work.
+  void kickAllEntities() {
+    for (final holder in loadedChunks) {
+      chunkHost.kickEntitiesIn(holder.chunk);
+    }
+  }
+
+  /// Removes every block of the plot (used when a sub-level is deleted).
+  void destroyAllBlocks() {
+    for (final holder in loadedChunks) {
+      final chunk = holder.chunk;
+      for (var i = 0; i < chunk.sectionsCount; i++) {
+        if (chunk.sectionHasOnlyAir(i)) continue;
+        final minY = chunk.sectionMinY(i);
+        for (var x = 0; x < 16; x++) {
+          for (var y = 0; y < 16; y++) {
+            for (var z = 0; z < 16; z++) {
+              if (chunk.blockAt(x, y + minY, z) == 'minecraft:air') continue;
+              chunkHost.setBlock(
+                (chunk.pos.$1 << 4) + x,
+                minY + y,
+                (chunk.pos.$2 << 4) + z,
+                'minecraft:air',
+              );
+            }
+          }
+        }
+      }
+    }
+    updateBoundingBox();
+  }
+
+  /// Creates a chunk without lighting it (the load path initializes lighting in
+  /// one batch afterwards).
+  void newNonLitChunk((int, int) pos) {
+    final chunk = chunkHost.createEmptyChunk(pos.$1, pos.$2);
+    newChunk(pos, chunk, false);
+  }
+
+  /// Serializes the plot to the NBT-shaped map `SubLevelSerializer` stores.
+  Map<String, Object?> save() {
+    final tag = <String, Object?>{
+      'plot_x': plotPos.$1 - container.getOrigin().$1,
+      'plot_z': plotPos.$2 - container.getOrigin().$2,
+      'log_size': logSize,
+      'biome': biome,
+      'data_version': dataVersion,
+    };
+
+    final chunks = <String, Object?>{};
+    for (final holder in loadedChunks) {
+      final global = holder.pos;
+      final local = toLocal(global);
+      chunks['${local.$1},${local.$2}'] = chunkHost.serializeChunk(holder.chunk);
+    }
+    tag['chunks'] = chunks;
+    return tag;
+  }
+
+  /// Deserializes a plot from the map produced by [save].
+  ///
+  /// Throws [ArgumentError] for a log-size mismatch or an unsupported version,
+  /// like the Java method.
+  void load(Map<String, Object?> tag) {
+    final savedLogSize = (tag['log_size'] as num?)?.toInt() ?? 0;
+    if (savedLogSize != logSize) {
+      throw ArgumentError('Log size mismatch: plot is $logSize, data is $savedLogSize');
+    }
+
+    final version = (tag['data_version'] as num?)?.toInt() ?? 0;
+    if (version < 0 || version > dataVersion) {
+      throw ArgumentError('Unsupported version: $version');
+    }
+
+    final biomeName = tag['biome'];
+    if (biomeName is String && biomeName.isNotEmpty) {
+      biome = biomeName;
+    }
+
+    final chunks = tag['chunks'];
+    if (chunks is! Map) return;
+
+    for (final entry in chunks.entries) {
+      final key = entry.key as String;
+      final parts = key.split(',');
+      if (parts.length != 2) continue;
+      final local = (int.tryParse(parts[0]) ?? 0, int.tryParse(parts[1]) ?? 0);
+      final global = toGlobal(local);
+      final chunkTag = entry.value;
+      if (chunkTag is! Map) continue;
+
+      final chunk = chunkHost.deserializeChunk(global.$1, global.$2, Map<String, Object?>.from(chunkTag));
+      addChunkHolder(local, PlotChunkHolder.create(chunk, global), false);
+      lightChunk(chunk);
+      chunkHost.startTickingChunk(chunk);
+    }
+
+    updateBoundingBox();
+  }
+
+  @override
+  void onBlockChange(Pos pos, String state) {
+    super.onBlockChange(pos, state);
+
+    final packed = packBlockPos(pos);
+    liftProviders.remove(packed);
+
+    final context = liftProviderAt(pos, state);
+    if (context != null) liftProviders[packed] = context;
+  }
+
+  /// The lift provider context of the block at [pos], when the block is a lift
+  /// provider.
+  ///
+  /// The Create blocks implement `BlockSubLevelLiftProvider`; the compat layer
+  /// supplies this lookup.
+  LiftProviderContext? liftProviderAt(Pos pos, String state) => null;
+
+  /// All lift providers of this plot.
+  Iterable<LiftProviderContext> getLiftProviders() => liftProviders.values;
+
+  @override
+  ServerSubLevel getSubLevel() => super.getSubLevel() as ServerSubLevel;
+}
+
+/// `BlockSubLevelLiftProvider.LiftProviderContext`: a lift provider block and
+/// the normal of the face it lifts along.
+final class LiftProviderContext {
+  final Pos pos;
+  final String state;
+
+  /// The direction the block lifts along (`Vec3` of the direction's step).
+  final (double, double, double) dir;
+
+  const LiftProviderContext(this.pos, this.state, this.dir);
+
+  @override
+  String toString() => 'LiftProviderContext[$pos, $state, $dir]';
+}
+
+/// Packs a block position the way `BlockPos.asLong` does (x 26 bits, z 26 bits,
+/// y 12 bits), matching `create`'s `packPos`.
+int packBlockPos(Pos pos) =>
+    ((pos.$1 & 0x3FFFFFF) << 38) | ((pos.$3 & 0x3FFFFFF) << 12) | (pos.$2 & 0xFFF);

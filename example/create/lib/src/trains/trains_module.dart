@@ -22,6 +22,7 @@ import 'station/station_edit_packet.dart';
 import 'station/station_registration.dart';
 import 'support/runtime.dart';
 import 'track/curved_track_packets.dart';
+import 'track/all_portal_tracks.dart';
 import 'track/track_registration.dart';
 
 final class TrainsModule extends CreateModule {
@@ -51,6 +52,9 @@ final class TrainsModule extends CreateModule {
     loadObserver(ctx);
     loadSignal(ctx);
     loadDisplay(ctx);
+    // `AllPortalTracks.registerDefaults()`: without this the portal-track registry is empty,
+    // so tracks beside a nether portal never connect and any portal track turns to air.
+    AllPortalTracks.registerDefaults();
     loadTrack(ctx);
     loadStation(ctx);
     loadEntity(ctx);

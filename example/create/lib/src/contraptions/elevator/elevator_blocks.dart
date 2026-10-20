@@ -23,7 +23,8 @@ List<CreateBlock> buildElevatorBlocks() => [
   manifestBlock(
     'elevator_pulley',
     blockEntityType: elevatorPulleyKey,
-    placement: const [PlacementRule.horizontalFacing('facing')],
+    // `ElevatorPulleyBlock extends HorizontalKineticBlock`: opposite of the look direction.
+    placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
     behavior: BlockBehavior(
       // `useItemOn` with a non-empty stack returns TRY_WITH_EMPTY_HAND, so any click toggles the
       // elevator (a sneaking click is refused).
@@ -44,7 +45,8 @@ List<CreateBlock> buildElevatorBlocks() => [
   manifestBlock(
     'elevator_contact',
     blockEntityType: elevatorContactKey,
-    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
+    // `ElevatorContactBlock extends WrenchableDirectionalBlock`: `getNearestLookingDirection()`.
+    placement: const [PlacementRule.lookingDirection('facing')],
     behavior: elevatorContactBehavior(),
   ),
 ];

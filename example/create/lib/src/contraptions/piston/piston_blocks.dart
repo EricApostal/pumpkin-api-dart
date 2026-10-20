@@ -38,7 +38,7 @@ List<CreateBlock> buildPistonBlocks() => [
   manifestBlock(
     'piston_extension_pole',
     placement: const [
-      PlacementRule.clickedFace('facing'),
+      PlacementRule.clickedFace('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
     behavior: null,
@@ -46,7 +46,7 @@ List<CreateBlock> buildPistonBlocks() => [
   manifestBlock(
     'mechanical_piston_head',
     placement: const [
-      PlacementRule.clickedFace('facing'),
+      PlacementRule.clickedFace('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
     behavior: pistonHeadBehavior(),

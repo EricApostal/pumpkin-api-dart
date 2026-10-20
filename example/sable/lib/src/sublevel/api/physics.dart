@@ -86,6 +86,11 @@ final class QueuedForceGroup {
   void reset() => _forceTotal.zero();
 }
 
+/// The splitting heat map of a sub-level (`SubLevelHeatMapManager`, W4).
+abstract interface class SubLevelHeatMap {
+  void tick();
+}
+
 /// A kinematic contraption inside a plot (`api.sublevel.KinematicContraption`).
 ///
 /// The Create contraption types implement this in the compat layer; the model

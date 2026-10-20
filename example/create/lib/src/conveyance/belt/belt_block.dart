@@ -28,7 +28,8 @@ CreateBlock buildBeltBlock() {
     'belt',
     blockEntityType: 'create:belt',
     placement: [
-      PlacementRule.horizontalFacing('facing'),
+      // `BeltBlock extends HorizontalKineticBlock`: `getHorizontalDirection().getOpposite()`.
+      PlacementRule.horizontalFacing('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
     shapeRules: const [],

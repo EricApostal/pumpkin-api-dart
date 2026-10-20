@@ -175,6 +175,9 @@ abstract class LevelPlot {
   /// The chunk at the local position in the plot, or `null`.
   PlotChunk? getChunk((int, int) local) => getChunkHolder(local)?.chunk;
 
+  /// All loaded chunk holders in this plot.
+  Iterable<PlotChunkHolder> getLoadedChunks() => loadedChunks;
+
   /// The chunk at the global position in the center of the plot.
   (int, int) getCenterChunk() =>
       ((plotPos.$1 << logSize) + (1 << (logSize - 1)), (plotPos.$2 << logSize) + (1 << (logSize - 1)));
@@ -190,7 +193,12 @@ abstract class LevelPlot {
       final chunkLocalBounds = holder.getBoundingBox();
       if (chunkLocalBounds == null) continue;
 
-      final chunkBounds = chunkLocalBounds.move(holder.pos.$1 << 4, 0, holder.pos.$2 << 4);
+      final chunkBounds = chunkLocalBounds.move(
+        holder.pos.$1 << 4,
+        0,
+        holder.pos.$2 << 4,
+        BoundingBox3i(),
+      );
       final bounds = localBounds;
       if (bounds == null) {
         localBounds = BoundingBox3i.copy(chunkBounds);

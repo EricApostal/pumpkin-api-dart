@@ -39,7 +39,8 @@ void registerDepot(CreateRegistry registry) {
     selectionShape: depotShape,
     behavior: _ejectorBehavior(),
     placement: const [
-      PlacementRule.horizontalFacing('facing'),
+      // `EjectorBlock extends HorizontalKineticBlock`: `getHorizontalDirection().getOpposite()`.
+      PlacementRule.horizontalFacing('facing', opposite: true),
       PlacementRule.inWater('waterlogged'),
     ],
   );

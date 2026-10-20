@@ -12,6 +12,7 @@ import '../storage/holding/saved_pointer.dart';
 import '../storage/holding/sub_level_holding_chunk_map.dart';
 import '../storage/sub_level_removal_reason.dart';
 import '../storage/sub_level_saved_data.dart';
+import '../storage/serialization/sub_level_storage.dart';
 import 'sub_level_container.dart';
 import '../api/sub_level_ticket.dart';
 import '../api/sub_level_ticket_loading_system.dart';
@@ -25,8 +26,20 @@ final class ServerSubLevelContainer extends SubLevelContainer {
   /// The tracking system of this container; `null` until attached.
   Object? tracking;
 
-  /// The holding chunk map of this container.
-  late final SubLevelHoldingChunkMap holdingChunkMap;
+  /// The holding chunk map of this container; set by [initialize] or
+  /// [initializeWithStorage].
+  SubLevelHoldingChunkMap? _holdingChunkMap;
+
+  /// The holding chunk map; throws when the container was not initialized.
+  SubLevelHoldingChunkMap get holdingChunkMap =>
+      _holdingChunkMap ??
+      (throw StateError(
+        'ServerSubLevelContainer.holdingChunkMap: call initialize() or '
+        'initializeWithStorage() before using the container.',
+      ));
+
+  /// The holding chunk map, or `null` when the container is not initialized.
+  SubLevelHoldingChunkMap? get holdingChunkMapOrNull => _holdingChunkMap;
 
   /// All active sub-level loading tickets.
   final Map<ServerSubLevel, Set<SubLevelLoadingTicket<Object?>>> activeTickets = {};
@@ -50,7 +63,15 @@ final class ServerSubLevelContainer extends SubLevelContainer {
   /// Initializes the parts that need the container to exist: the holding chunk
   /// map and the force-loaded sub-levels.
   void initialize(SubLevelHoldingChunkMap Function(ServerSubLevelContainer container) createHoldingMap) {
-    holdingChunkMap = createHoldingMap(this);
+    _holdingChunkMap = createHoldingMap(this);
+    addObserver(SubLevelTicketLoadingSystem(this));
+    loadForceLoadedSubLevels();
+  }
+
+  /// Initializes with [storage] (the usual case: the plugin opens the level's
+  /// `sublevels` folder and passes the storage in).
+  void initializeWithStorage(SubLevelStorage storage) {
+    _holdingChunkMap = SubLevelHoldingChunkMap(this, chunkHost, storage);
     addObserver(SubLevelTicketLoadingSystem(this));
     loadForceLoadedSubLevels();
   }
@@ -58,7 +79,7 @@ final class ServerSubLevelContainer extends SubLevelContainer {
   @override
   void tick() {
     super.tick();
-    holdingChunkMap.processChanges();
+    _holdingChunkMap?.processChanges();
   }
 
   /// Sets the physics system.
@@ -94,7 +115,7 @@ final class ServerSubLevelContainer extends SubLevelContainer {
 
     if (reason == SubLevelRemovalReason.removed) {
       markOccupancyDirty();
-      holdingChunkMap.queueDeletion(subLevel);
+      _holdingChunkMap?.queueDeletion(subLevel);
     }
   }
 
@@ -207,7 +228,7 @@ final class ServerSubLevelContainer extends SubLevelContainer {
     for (final entry in allTickets.entries) {
       final pointer = entry.value.pointer;
       if (pointer != null) {
-        holdingChunkMap.snatchAndLoad(pointer, entry.key);
+        _holdingChunkMap?.snatchAndLoad(pointer, entry.key);
       }
       // A ticket without a pointer cannot be loaded (Java logs an error).
     }
@@ -218,7 +239,7 @@ final class ServerSubLevelContainer extends SubLevelContainer {
     for (final subLevel in serverSubLevels()) {
       removeSubLevelAt(subLevel, SubLevelRemovalReason.unloaded);
     }
-    holdingChunkMap.close();
+    _holdingChunkMap?.close();
   }
 
   @override

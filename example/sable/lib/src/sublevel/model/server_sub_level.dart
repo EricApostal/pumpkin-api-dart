@@ -16,6 +16,7 @@
 // ignore_for_file: implementation_imports
 import 'package:create/src/common/pos.dart' show Pos;
 import '../api/physics.dart';
+import '../config/sable_config.dart';
 import '../math/bounding_box.dart';
 import '../math/pose.dart';
 import '../math/vector.dart';
@@ -140,6 +141,12 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
         (bounds.minY < limits.subLevelRemoveMin || bounds.maxY > limits.subLevelRemoveMax)) {
       markRemoved();
       return;
+    }
+
+    if (limits?.subLevelSplitting ?? false) {
+      // DEPENDS ON W4: the heat map manager drives sub-level splitting.
+      final heat = heatMapManager;
+      if (heat is SubLevelHeatMap) heat.tick();
     }
   }
 
@@ -293,13 +300,4 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
 
   @override
   String toString() => 'ServerSubLevel${super.toString()}';
-}
-
-/// The subset of `SableConfig` a sub-level reads (keeps the model independent of
-/// the config class in tests).
-abstract interface class SableConfigLike {
-  double get subLevelRemoveMin;
-  double get subLevelRemoveMax;
-  bool get subLevelSplitting;
-  bool get verboseSerializationLogging;
 }

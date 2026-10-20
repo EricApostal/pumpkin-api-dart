@@ -56,7 +56,7 @@ final class FakeChunk implements PlotChunk {
   Map<String, Object?>? blockEntityData(int x, int y, int z) => null;
 }
 
-final class FakeChunkHost implements PlotChunkHost, PlayerLookupHost {
+class FakeChunkHost implements PlotChunkHost, PlayerLookupHost {
   @override
   final SableLevel level;
 

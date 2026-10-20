@@ -127,7 +127,7 @@ abstract final class SubLevelSerializer {
 
     final bounds = plot.getBoundingBox();
     if (identical(bounds, BoundingBox3i.empty) || bounds.volume() <= 0) {
-      container.removeSubLevel(plotX, plotZ, SubLevelRemovalReason.removed);
+      container.removeSubLevelAt(subLevel, SubLevelRemovalReason.removed);
       return null;
     }
 

@@ -43,7 +43,8 @@ void main() {
       expect(plot.getChunkMin(), (10000 << 4, 10000 << 4));
       expect(plot.getChunkMax(), ((10001 << 4) - 1, (10001 << 4) - 1));
       expect(plot.getCenterChunk(), ((10000 << 4) + 8, (10000 << 4) + 8));
-      expect(plot.getCenterBlock(), ((10000 << 4) + 8) * 16 + 8);
+      expect(plot.getCenterBlock().$1, ((10000 << 4) + 8) * 16 + 8);
+      expect(plot.getCenterBlock().$2, (-64 + 320) ~/ 2);
     });
 
     test('contains uses block coordinates of the plot', () {
@@ -100,7 +101,8 @@ void main() {
       expect(container.getLoadedCount(), 1);
 
       final second = container.allocateNewSubLevel(Pose3d());
-      expect(second.getPlot().plotPos, (10001, 10000));
+      // x is the outer loop, z the inner one, like the Java allocator.
+      expect(second.getPlot().plotPos, (10000, 10001));
       expect(container.getIndex(1, 0), 1);
     });
 

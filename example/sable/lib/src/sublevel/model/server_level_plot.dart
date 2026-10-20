@@ -68,23 +68,48 @@ final class ServerLevelPlot extends LevelPlot {
 
   /// Initializes lighting for a freshly loaded chunk.
   ///
-  /// HOST GAP: needs a plot light engine (`LevelLightEngine.initializeLight`).
-  void initializeLight(PlotChunk chunk) {}
+  /// HOST GAP: needs a per-plot `LevelLightEngine`. The host guards on
+  /// [lightEngine] being present; calling this without one is an error rather
+  /// than a silent no-op.
+  void initializeLight(PlotChunk chunk) {
+    if (lightEngine == null) {
+      throw UnimplementedError(
+        'HOST GAP: ServerLevelPlot.initializeLight needs a per-plot light engine; '
+        'set ServerLevelPlot.lightEngine once the host provides one.',
+      );
+    }
+  }
 
   /// Corrects the lighting of a chunk after loading.
   ///
   /// HOST GAP: needs a plot light engine (`correctLight`).
-  void correctLight(PlotChunk chunk) {}
+  void correctLight(PlotChunk chunk) {
+    if (lightEngine == null) {
+      throw UnimplementedError(
+        'HOST GAP: ServerLevelPlot.correctLight needs a per-plot light engine; '
+        'set ServerLevelPlot.lightEngine once the host provides one.',
+      );
+    }
+  }
 
   /// Queues a lighting update for a chunk.
   ///
   /// HOST GAP: needs a plot light engine (`lightChunk`).
-  void lightChunk(PlotChunk chunk) {}
+  void lightChunk(PlotChunk chunk) {
+    if (lightEngine == null) {
+      throw UnimplementedError(
+        'HOST GAP: ServerLevelPlot.lightChunk needs a per-plot light engine; '
+        'set ServerLevelPlot.lightEngine once the host provides one.',
+      );
+    }
+  }
 
   @override
   void addChunkHolder((int, int) localChunkPos, PlotChunkHolder holder, bool initializeLighting) {
     super.addChunkHolder(localChunkPos, holder, initializeLighting);
-    if (initializeLighting) {
+    // Without a host light engine the chunks stay unlit; that is the explicit
+    // signal the host could not provide one (see [lightEngine]).
+    if (initializeLighting && lightEngine != null) {
       initializeLight(holder.chunk);
       lightChunk(holder.chunk);
     }
@@ -186,7 +211,7 @@ final class ServerLevelPlot extends LevelPlot {
 
       final chunk = chunkHost.deserializeChunk(global.$1, global.$2, Map<String, Object?>.from(chunkTag));
       addChunkHolder(local, PlotChunkHolder.create(chunk, global), false);
-      lightChunk(chunk);
+      if (lightEngine != null) lightChunk(chunk);
       chunkHost.startTickingChunk(chunk);
     }
 

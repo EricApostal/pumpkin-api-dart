@@ -7,9 +7,19 @@
 //
 // Pure: no host imports.
 
+/// The subset of the settings the sub-level model reads (keeps the model
+/// independent of the config class in tests).
+abstract interface class SableConfigLike {
+  double get subLevelRemoveMin;
+  double get subLevelRemoveMax;
+  bool get subLevelSplitting;
+  bool get verboseSerializationLogging;
+}
+
 /// The server-side settings of Sable.
-final class SableConfig {
+final class SableConfig implements SableConfigLike {
   /// Whether sub-levels can split when parts are separated.
+  @override
   bool subLevelSplitting;
 
   /// Sub-level splitting heatmap steps that take place per tick.
@@ -22,9 +32,11 @@ final class SableConfig {
   bool subLevelsWithPlayersCannotUnload;
 
   /// The minimum y coordinate sub-levels can exist at.
+  @override
   double subLevelRemoveMin;
 
   /// The maximum y coordinate sub-levels can exist at.
+  @override
   double subLevelRemoveMax;
 
   /// The fraction of velocity retained when a sub-level is loaded in.
@@ -49,6 +61,7 @@ final class SableConfig {
   bool subLevelSavingLogMessage;
 
   /// Whether Sable logs verbosely about serialization and the holding chunk map.
+  @override
   bool verboseSerializationLogging;
 
   SableConfig({

@@ -266,6 +266,15 @@ class BlockBreakingMovementBehaviour extends MovementBehaviour {
     return true;
   }
 
+  /// The contraption collider asks this before the actor ticks (see
+  /// `MovementBehaviour.passesThroughCollision`).
+  @override
+  bool? passesThroughCollision(
+    ContraptionLevel level,
+    Pos colliderPos,
+    BState collidedState,
+  ) => canBreak(level, colliderPos, collidedState);
+
   /// `onBlockBroken`: falling blocks above the broken block are broken after a pause.
   Future<void> onBlockBroken(
     MovementContext context,

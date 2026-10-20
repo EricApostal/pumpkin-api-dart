@@ -133,6 +133,17 @@ final class HarvesterMovementBehaviour extends MovementBehaviour {
     return false;
   }
 
+  /// The contraption collider asks this before the actor ticks (see
+  /// `MovementBehaviour.passesThroughCollision`).
+  @override
+  bool? passesThroughCollision(
+    ContraptionLevel level,
+    Pos colliderPos,
+    BState collidedState,
+  ) =>
+      isValidCrop(level, collidedState) ||
+      isValidOther(level, colliderPos, collidedState);
+
   /// `cutCrop`: what is left after harvesting.
   BState cutCrop(MovementContext context, Pos pos, BState state) {
     final replant = actors?.harvesterReplants ?? true;

@@ -216,17 +216,3 @@ abstract class FluidWorld extends BlockGetter {
   /// `Level.getRandom().nextInt(bound)`.
   int nextInt(int bound);
 }
-
-/// A [FluidWorld] that can move a world write out of the current call.
-///
-/// A host write with `NOTIFY_ALL` (`tryPickupFluid`'s `setBlockState(air)`, an un-waterlogging
-/// `setBlock`) runs the neighbours' updates at once, and those fire back into the plugin. Done
-/// from inside a host call (a block-entity tick is one) that is a nested guest call while the
-/// outer one is still running, and the executor's admission gate never lets it through: the
-/// server stops ticking and never finishes shutting down. A world that implements this defers
-/// the write to a later task instead, so the current guest call returns first.
-abstract interface class DeferredFluidMutations {
-  /// Runs [apply] in a later task, outside the current host call. The world may have changed by
-  /// then; the caller's next simulation is what corrects the difference.
-  void deferFluidMutation(void Function() apply);
-}

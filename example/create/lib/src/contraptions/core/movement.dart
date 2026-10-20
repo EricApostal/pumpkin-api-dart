@@ -187,6 +187,23 @@ abstract class MovementBehaviour {
   /// Whether this actor breaks blocks in the world (`BlockBreakingMovementBehaviour` or
   /// `HarvesterMovementBehaviour`); used to decide whether a contraption can be picked up.
   bool breaksBlocks() => false;
+
+  /// `ContraptionCollider.isCollidingWithWorld`: whether the block the contraption moves into at
+  /// [colliderPos] lets it pass because this actor handles that block.
+  ///
+  /// `null` when the actor has no say and the collider falls through to its generic rules
+  /// (`stateReplaceable`, empty collider, ...). A block breaking actor answers its own
+  /// `canBreak` (`BlockBreakingMovementBehaviour`, narrowed by the drill, saw, plough and
+  /// roller), the harvester its crop rules; otherwise the collider would block on every solid
+  /// block.
+  ///
+  /// Inverted from the concrete type tests, so this API stays pure and the collider does not
+  /// import the world-touching actor implementations (they override this instead).
+  bool? passesThroughCollision(
+    ContraptionLevel level,
+    Pos colliderPos,
+    BState collidedState,
+  ) => breaksBlocks() ? false : null;
 }
 
 /// Hooks the contraption controls actor installs so the core can apply its filters without

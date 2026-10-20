@@ -4,8 +4,6 @@
 import 'dart:math' as math;
 
 import '../../common/common.dart';
-import '../actors/block_breaking_movement_behaviour.dart';
-import '../actors/harvester/harvester_movement_behaviour.dart';
 import '../core/collision.dart';
 import '../core/contraption.dart';
 import '../core/movement.dart';
@@ -492,20 +490,16 @@ abstract final class ContraptionCollider {
 
       if (blockInfo != null) {
         final movementBehaviour = MovementBehaviours.of(blockInfo.state, level);
-        if (movementBehaviour is BlockBreakingMovementBehaviour) {
-          // `BlockBreakingMovementBehaviour.canBreak(world, colliderPos, collidedState)`: the
-          // drill, saw, plough and roller each narrow it, so a gantry-mounted drill is not
-          // blocked by every solid block.
-          if (!movementBehaviour.canBreak(level, colliderPos, collidedState) &&
-              !emptyCollider) {
-            return true;
-          }
-          continue;
-        }
-        if (movementBehaviour is HarvesterMovementBehaviour) {
-          if (!movementBehaviour.isValidCrop(level, collidedState) &&
-              !movementBehaviour.isValidOther(level, colliderPos, collidedState) &&
-              !emptyCollider) {
+        // `canBreak(world, colliderPos, collidedState)`: the drill, saw, plough and roller each
+        // narrow it, so a gantry-mounted drill is not blocked by every solid block; the harvester
+        // answers with its crop rules. Both override `passesThroughCollision`.
+        final passes = movementBehaviour?.passesThroughCollision(
+          level,
+          colliderPos,
+          collidedState,
+        );
+        if (passes != null) {
+          if (!passes && !emptyCollider) {
             return true;
           }
           continue;

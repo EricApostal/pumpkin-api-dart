@@ -118,25 +118,17 @@ class OpenEndedPipe extends FlowSource {
 
     if (FluidHelper.isWater(stack.fluid)) world.award(pos, 'water_supply');
 
-    // The write asks the neighbours to update, and those updates come back into the plugin: done
-    // from here (a block-entity tick, i.e. inside the host's call) the guest call would never
-    // return. A world that can defer the write does it after the tick; the pure worlds and the
-    // tests write directly. The view is built from `fluidState` read before the write, so the
-    // returned stack stays what was actually taken.
-    void takeSource() {
-      if (waterlog) {
-        world.setBlock(outputPos, state.setFlag('waterlogged', false));
-        world.scheduleFluidTick(outputPos, FluidKeys.water, 1);
-      } else {
-        world.pickupFluidSource(outputPos);
-      }
-    }
-
-    final deferring = world is DeferredFluidMutations ? world as DeferredFluidMutations : null;
-    if (deferring != null) {
-      deferring.deferFluidMutation(takeSource);
+    // The write asks the neighbours to update, and those updates come back into the plugin. From
+    // inside a block-entity tick that nested guest call is never admitted, so the server stops
+    // ticking: the host must not re-enter the plugin from a plugin-initiated write
+    // (`docs/host-gaps.md`, "setBlockState(NOTIFY_ALL) from inside a plugin event"). Deferring it
+    // does not help — a microtask never runs outside a host call, and from the world tick the
+    // write deadlocks the same way (measured).
+    if (waterlog) {
+      world.setBlock(outputPos, state.setFlag('waterlogged', false));
+      world.scheduleFluidTick(outputPos, FluidKeys.water, 1);
     } else {
-      takeSource();
+      world.pickupFluidSource(outputPos);
     }
     return stack;
   }

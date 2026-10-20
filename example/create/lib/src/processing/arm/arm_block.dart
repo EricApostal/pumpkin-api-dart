@@ -22,6 +22,12 @@ class ArmKineticDef extends KineticBlockDef {
 
   @override
   bool hasShaftTowards(KState state, Dir face) => false;
+
+  // `ArmBlock implements ICogWheel`, and `ICogWheel.isSmallCog()` defaults to
+  // `!isLargeCog()` = true. With no shaft faces this is the ONLY way it receives rotation
+  // (`connectedByGears` / large-to-small in the propagator); without it the arm is inert.
+  @override
+  bool get isSmallCog => true;
 }
 
 /// `ArmBlock.getStateForPlacement`: a ceiling arm is placed on the underside of a block.

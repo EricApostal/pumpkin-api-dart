@@ -31,6 +31,11 @@ class CrafterKineticDef extends KineticBlockDef {
 
   @override
   bool hasShaftTowards(KState state, Dir face) => false;
+
+  // `MechanicalCrafterBlock implements ICogWheel` (`isSmallCog()` default true). It has no
+  // shaft faces, so without this flag nothing can drive the crafter and it stays inert.
+  @override
+  bool get isSmallCog => true;
 }
 
 Direction _direction(Dir dir) => Direction.byName(dir.name) ?? Direction.north;

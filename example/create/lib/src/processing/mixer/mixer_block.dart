@@ -51,4 +51,9 @@ final class MixerBlockDef extends KineticBlockDef {
 
   @override
   SpeedLevel get minimumRequiredSpeedLevel => SpeedLevel.medium;
+
+  // `MechanicalMixerBlock implements ICogWheel` (`isSmallCog()` default true); with no shaft
+  // faces it is the only path that can drive the mixer.
+  @override
+  bool get isSmallCog => true;
 }

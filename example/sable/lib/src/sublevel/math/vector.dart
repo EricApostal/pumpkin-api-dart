@@ -136,12 +136,14 @@ final class Vector3d {
 
   double distance(Vector3d other) => math.sqrt(distanceSquared(other));
 
+  /// Normalizes this vector in place.
   Vector3d normalize() {
     final len = length;
     return len == 0.0 ? zero() : div(len);
   }
 
-  Vector3d normalize(Vector3d dest) => dest.setFrom(this)..normalize();
+  /// `normalize(Vector3d dest)`: writes the normalized vector into [dest].
+  Vector3d normalizeInto(Vector3d dest) => dest.setFrom(this)..normalize();
 
   bool get isFinite => x.isFinite && y.isFinite && z.isFinite;
 

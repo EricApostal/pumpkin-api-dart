@@ -1,0 +1,8 @@
+targets:
+  $default:
+    builders:
+      dart_mappable_builder:
+        options:
+          # Minecraft / Sable JSON keys are snake_case; override per class
+          # (@MappableClass(caseStyle: ...)) only when a wire format needs another.
+          caseStyle: snakeCase

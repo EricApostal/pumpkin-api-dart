@@ -15,6 +15,7 @@ workspace:
   - example/modbridge
   - example/lonsdaleite
   - example/create
+  - example/sable
   - tool/runtime_check
 
 dev_dependencies:

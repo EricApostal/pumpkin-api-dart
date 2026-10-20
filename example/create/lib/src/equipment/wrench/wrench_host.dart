@@ -108,7 +108,7 @@ final class WrenchHost {
     final target = world.getEntityById(id: e.entityId);
     if (target == null) return;
     final type = target.getType();
-    if (!type.wireName.contains('minecart')) return;
+    if (type == null || !type.wireName.contains('minecart')) return;
     final living = target.asLiving();
     if (living != null) {
       await living.damage(amount: 100, damageType: DamageType.playerAttack);

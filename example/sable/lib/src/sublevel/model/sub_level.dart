@@ -78,6 +78,18 @@ abstract class SubLevel implements SubLevelAccess {
   void updateBoundingBox() {
     final plotBounds = plot.getBoundingBox();
     lastGlobalBounds.set(globalBounds);
+
+    // `BoundingBox3i.empty` is inverted (min at INT_MAX, max at INT_MIN); a plot
+    // with no solid blocks has no global bounds, so the box collapses onto the
+    // pose position instead of becoming a 268-million-chunk span.
+    if (plotBounds.maxX < plotBounds.minX ||
+        plotBounds.maxY < plotBounds.minY ||
+        plotBounds.maxZ < plotBounds.minZ) {
+      final position = _pose.position();
+      globalBounds.setValues(position.x, position.y, position.z, position.x, position.y, position.z);
+      return;
+    }
+
     globalBounds.setValues(
       plotBounds.minX.toDouble(),
       plotBounds.minY.toDouble(),

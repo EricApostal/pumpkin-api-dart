@@ -167,7 +167,13 @@ final class StockPart extends LogisticsPart {
       if (target == null) return e;
       final vehicle = target.getVehicle();
       if (vehicle == null) return e;
-      final vehicleKey = 'create:${vehicle.getType().wireName.replaceAll('-', '_')}';
+      // A seat is a plugin entity: its key is the registered one, `getType()` is null for it.
+      final vehicleType = vehicle.getType();
+      final vehicleKey =
+          vehicle.getPluginTypeKey() ??
+          (vehicleType == null
+              ? null
+              : 'minecraft:${vehicleType.wireName.replaceAll('-', '_')}');
       if (vehicleKey != _seatEntityKey) return e;
       if (target.asLiving() == null) return e;
       // `getStockTickerPosition`: the seat's block, the four horizontal sides and the two heights.

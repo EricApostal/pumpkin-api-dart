@@ -41,6 +41,12 @@ enum PlacementSourceKind {
   /// axes.
   neighbourShaft,
 
+  /// The shape a track gets from the player's look, like Create's
+  /// `TrackBlock.getStateForPlacement`: `zo`, `xo`, `pd`, `nd`, `an`, `as`,
+  /// `ae` or `aw` — the straight shape of the nearest track axis, ascending
+  /// when the neighbour along that axis has a solid top and no block above it.
+  trackShape,
+
   /// Always [PlacementRule.constant]'s value.
   constant,
 }
@@ -262,6 +268,18 @@ final class PlacementRule {
          constantValue: value,
          whenSneaking: whenSneaking,
        );
+
+  /// The track shape for the player's look: the straight shape of the nearest
+  /// track axis (`zo`, `xo`, `pd` or `nd`), ascending (`an`, `as`, `ae`, `aw`)
+  /// when the neighbour along that axis has a solid top and nothing solid above
+  /// it. Create's `TrackBlock.getStateForPlacement`.
+  const PlacementRule.trackShape(String property, {bool? whenSneaking})
+    : this._(
+        property,
+        PlacementSourceKind.trackShape,
+        false,
+        whenSneaking: whenSneaking,
+      );
 
   @override
   String toString() {

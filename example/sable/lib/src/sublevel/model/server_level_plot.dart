@@ -15,7 +15,8 @@
 // `src/` deliberately.
 // ignore_for_file: implementation_imports
 import 'package:create/src/common/pos.dart' show Pos;
-import '../api/block_entity_hooks.dart';
+import '../api/block/block_entity_sub_level_actor.dart';
+import '../api/block/block_entity_sub_level_reaction_wheel.dart';
 import '../api/physics.dart';
 import '../host/sub_level_host.dart';
 import 'level_plot.dart';

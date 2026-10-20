@@ -186,7 +186,7 @@ class EjectorBlockEntity extends KineticBlockEntity {
     final world = this.world;
     if (world == null) return;
     for (final snapshot in _entitiesOnEjector(world)) {
-      if (snapshot.entityType == EntityType.player) continue;
+      if (snapshot.entityTypeKey == 'minecraft:player') continue;
       final entity = world.getEntityById(id: snapshot.id);
       entity?.moveBy((0, .125, 0));
     }
@@ -200,8 +200,8 @@ class EjectorBlockEntity extends KineticBlockEntity {
     if (world == null) return;
     final facing = getFacing();
     for (final snapshot in _entitiesOnEjector(world)) {
-      if (snapshot.entityType == EntityType.item ||
-          snapshot.entityType == EntityType.player)
+      if (snapshot.entityTypeKey == 'minecraft:item' ||
+          snapshot.entityTypeKey == 'minecraft:player')
         continue;
       final entity = world.getEntityById(id: snapshot.id);
       if (entity == null || entity.pluginTypeKey == 'create:package') continue;

@@ -76,8 +76,8 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
   /// The config this sub-level uses for its y limits.
   final SableConfigLike? config;
 
-  /// The heat map manager hook (W4 splitting); `null` when splitting is off.
-  Object? heatMapManager;
+  /// The splitting heat map of this sub-level; `null` when splitting is off.
+  SubLevelHeatMap? heatMapManager;
 
   /// Creates a new sub-level with the given parent level and pose.
   ///
@@ -144,9 +144,7 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
     }
 
     if (limits?.subLevelSplitting ?? false) {
-      // DEPENDS ON W4: the heat map manager drives sub-level splitting.
-      final heat = heatMapManager;
-      if (heat is SubLevelHeatMap) heat.tick();
+      heatMapManager?.tick();
     }
   }
 
@@ -259,11 +257,23 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
   ///
   /// DEPENDS ON W3: `MassTracker.build(LevelAccelerator, BoundingBox3ic)` is a
   /// physics-pipeline service.
+  /// Installs the mass tracker of a sub-level, or `null` while the physics
+  /// workstream has not installed one.
+  ///
+  /// `MassTracker.build(plot bounds)` is a pipeline service, so the factory is
+  /// injected rather than implemented here; the plugin sets it once at load.
+  static MassData Function(ServerSubLevel subLevel)? massTrackerFactory;
+
   void buildMassTracker() {
-    throw UnimplementedError(
-      'DEPENDS ON W3: ServerSubLevel.buildMassTracker needs MassTracker.build over '
-      'the plot bounds (physics workstream).',
-    );
+    final factory = massTrackerFactory;
+    if (factory == null) {
+      throw StateError(
+        'ServerSubLevel.buildMassTracker: no mass tracker factory is installed. '
+        'Set ServerSubLevel.massTrackerFactory (the physics pipeline builds the '
+        'tracker from the plot bounds).',
+      );
+    }
+    massTracker = factory(this);
   }
 
   /// The mass tracker for just this sub-level, not including merged masses.

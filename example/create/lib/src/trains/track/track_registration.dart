@@ -28,7 +28,13 @@ void registerTrack(CreateRegistry registry) {
     manifestBlock(
       'track',
       blockEntityType: TrackBlockEntityHost.type,
-      placement: const [PlacementRule.inWater('waterlogged')],
+      // `TrackBlock.getStateForPlacement`: the shape follows the player's look (the nearest of the
+      // eight track axes), ascending when the neighbour along it has a solid top and nothing solid
+      // above it. The host computes it from the look, like the block's own method.
+      placement: const [
+        PlacementRule.trackShape('shape'),
+        PlacementRule.inWater('waterlogged'),
+      ],
       shapeRules: trackShapeRules(),
       behavior: _trackBehavior(track),
     ),

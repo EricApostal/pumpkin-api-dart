@@ -255,8 +255,11 @@ final class BlueprintHost {
     );
     for (final s in hangings) {
       if (self != null && s.id == self.getId()) continue;
-      final type = s.entityType;
-      if (type == EntityType.itemFrame || type == EntityType.glowItemFrame || type == EntityType.painting) return false;
+      if (const {
+        'minecraft:item_frame',
+        'minecraft:glow_item_frame',
+        'minecraft:painting',
+      }.contains(s.entityTypeKey)) return false;
     }
     final others = world.getEntities();
     for (final o in others) {

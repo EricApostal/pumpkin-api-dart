@@ -514,4 +514,64 @@ void main() {
       expect(stack.connectingFrom, isNull);
     });
   });
+
+  group('getStateForPlacement', () {
+    // `TrackBlock.getStateForPlacement`: the ordinary placement of the block (the host's
+    // placement rule `PlacementRule.trackShape`) has to give the same shape as this method, so
+    // the client's prediction and the server's state agree.
+    BState shapeFor(BlockGetter level, Vec3 look, {double yRot = 0}) => block.getStateForPlacement(
+      level,
+      (0, 0, 0),
+      block.defaultState,
+      lookAngle: look,
+      yRot: yRot,
+    );
+
+    test('the four horizontal look directions give the two straight shapes', () {
+      final level = MemoryTrackLevel();
+      // `Vec3(0, 0, 1)` is south, `(1, 0, 0)` east.
+      expect(trackShapeOf(shapeFor(level, (0.0, 0.0, 1.0))), TrackShape.zo);
+      expect(trackShapeOf(shapeFor(level, (0.0, 0.0, -1.0))), TrackShape.zo);
+      expect(trackShapeOf(shapeFor(level, (1.0, 0.0, 0.0))), TrackShape.xo);
+      expect(trackShapeOf(shapeFor(level, (-1.0, 0.0, 0.0))), TrackShape.xo);
+    });
+
+    test('a diagonal look gives a diagonal shape', () {
+      final level = MemoryTrackLevel();
+      expect(trackShapeOf(shapeFor(level, (1.0, 0.0, 1.0))), TrackShape.pd);
+      expect(trackShapeOf(shapeFor(level, (-1.0, 0.0, 1.0))), TrackShape.nd);
+    });
+
+    test('a look straight up or down uses the yaw', () {
+      final level = MemoryTrackLevel();
+      expect(trackShapeOf(shapeFor(level, (0.0, -1.0, 0.0))), TrackShape.zo);
+      expect(trackShapeOf(shapeFor(level, (0.0, 1.0, 0.0), yRot: 90)), TrackShape.xo);
+    });
+
+    test('a solid neighbour on one side makes the track ascend into it', () {
+      // Looking south: the positive side of the `zo` axis is south, `as` ascends that way.
+      final up = MapBlockGetter(blocks: {(0, 0, 1): const BState('minecraft:stone')});
+      expect(trackShapeOf(shapeFor(up, (0.0, 0.0, 1.0))), TrackShape.as_);
+
+      // The other side: `an`.
+      final down = MapBlockGetter(blocks: {(0, 0, -1): const BState('minecraft:stone')});
+      expect(trackShapeOf(shapeFor(down, (0.0, 0.0, 1.0))), TrackShape.an);
+
+      // A block on top of the neighbour: no room to ascend, the shape stays straight.
+      final covered = MapBlockGetter(
+        blocks: {
+          (0, 0, 1): const BState('minecraft:stone'),
+          (0, 1, 1): const BState('minecraft:stone'),
+        },
+      );
+      expect(trackShapeOf(shapeFor(covered, (0.0, 0.0, 1.0))), TrackShape.zo);
+    });
+
+    test('water at the placed position makes the state waterlogged', () {
+      final level = MapBlockGetter(water: {(0, 0, 0)});
+      final state = shapeFor(level, (0.0, 0.0, 1.0));
+      expect(state.key, 'create:track');
+      expect(state.flag('waterlogged'), isTrue);
+    });
+  });
 }

@@ -1,0 +1,35 @@
+diff --git a/Jolt/Core/Mutex.h b/Jolt/Core/Mutex.h
+index aff501b..60be753 100644
+--- a/Jolt/Core/Mutex.h
++++ b/Jolt/Core/Mutex.h
+@@ -108,6 +108,30 @@ private:
+ 	JPH_PLATFORM_BLUE_RWLOCK	mRWLock;
+ };
+ 
++#elif defined(JPH_CPU_WASM)
++
++// Single-threaded wasm build: locks are no-ops. Using std::mutex here would
++// pull libc++'s thread implementation, which references WASI imports the
++// component linker does not provide (a core module may only import `host`).
++class MutexBase : public NonCopyable
++{
++public:
++	inline bool		try_lock()		{ return true; }
++	inline void		lock()			{ }
++	inline void		unlock()		{ }
++};
++
++class SharedMutexBase : public NonCopyable
++{
++public:
++	inline bool		try_lock()		{ return true; }
++	inline bool		try_lock_shared()	{ return true; }
++	inline void		lock()			{ }
++	inline void		unlock()		{ }
++	inline void		lock_shared()		{ }
++	inline void		unlock_shared()		{ }
++};
++
+ #else
+ 
+ // On other platforms just use the STL implementation

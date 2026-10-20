@@ -41,7 +41,7 @@ const Map<String, EntityType> minecartContraptionTypes = {
 };
 
 /// The item for a cart type, `null` for any other entity.
-String? minecartContraptionItemFor(EntityType type) => switch (type) {
+String? minecartContraptionItemFor(EntityType? type) => switch (type) {
   EntityType.minecart => minecartContraptionItemKey,
   EntityType.furnaceMinecart => furnaceMinecartContraptionItemKey,
   EntityType.chestMinecart => chestMinecartContraptionItemKey,

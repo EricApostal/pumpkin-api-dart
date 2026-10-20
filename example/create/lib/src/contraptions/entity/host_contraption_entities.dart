@@ -61,8 +61,16 @@ abstract final class ContraptionHostHooks {
 /// A plugin type keeps its registered key. A vanilla type only has the host's kebab-case
 /// [EntityType.wireName] (`chest-minecart`), which is neither namespaced nor the key the
 /// contraption code compares against (`minecraft:chest_minecart`), so it is mapped here once.
-String hostEntityTypeKey(Entity entity) =>
-    entityTypeKey(pluginKey: entity.getPluginTypeKey(), wireName: entity.getType().wireName);
+///
+/// The plugin key is checked first on purpose: `getType()` returns `null` for a plugin entity
+/// (its type is registered at runtime and has no [EntityType] variant), so asking for it first
+/// would throw for exactly the entities this is called with — contraptions, seats, packages.
+String hostEntityTypeKey(Entity entity) {
+  final pluginKey = entity.getPluginTypeKey();
+  if (pluginKey != null) return pluginKey;
+  // Only a vanilla entity reaches `getType()`: a plugin entity reported its key above.
+  return hostTypeKey(wireName: entity.getType()?.wireName) ?? 'minecraft:unknown';
+}
 
 /// A [ContraptionLevel] over a host [World].
 final class HostContraptionLevel extends ContraptionLevel {
@@ -1223,7 +1231,13 @@ final class ContraptionHost {
 
     final data = NbtMap();
     entity.writeAdditional(data, spawnPacket: true);
-    final spawnData = BinaryNbt.write(data.toValue());
+    // The spawn payload must be *network* NBT: NeoForge writes it with
+    // `FriendlyByteBuf.writeNbt` -> `NbtIo.writeAnyTag`, which is a tag id followed by the
+    // payload with NO name (`NbtIo.java:150-155`). `BinaryNbt.write` adds a u16 name length
+    // (the disk format), which the client reads as the first compound entry's tag type — a
+    // `TAG_End` — so it decodes an EMPTY compound, `readAdditional` returns early and the
+    // contraption stays null (nothing renders).
+    final spawnData = NetworkNbt.encode(data.toValue());
 
     final spawned = await world.spawnPlugin(
       typeKey,

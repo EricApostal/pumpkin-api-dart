@@ -413,8 +413,8 @@ Future<(World, int, int)> _twoCarts(CommandContext ctx, String k1, String k2) as
 }
 
 bool _isMinecart(Entity e) {
-  final key = e.getType().name;
-  return key.toLowerCase().contains('minecart');
+  final key = e.getType()?.name;
+  return key != null && key.toLowerCase().contains('minecart');
 }
 
 Future<void> _couplingAdd(CommandContext ctx, InfraCommandState st) async {

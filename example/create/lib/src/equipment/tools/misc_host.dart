@@ -414,8 +414,14 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     final target = world.getEntityById(id: e.entityId);
     final living = target?.asLiving();
     if (target == null || living == null) return e;
-    final targetKey = 'minecraft:${target.getType().wireName.replaceAll('-', '_')}';
-    if (Tags.entityType(targetKey, 'minecraft:arthropod')) return e;
+    // A plugin entity (a Create seat, a contraption) has no `EntityType`, `getType()` is null.
+    final targetType = target.getType();
+    final targetKey =
+        target.getPluginTypeKey() ??
+        (targetType == null
+            ? null
+            : 'minecraft:${targetType.wireName.replaceAll('-', '_')}');
+    if (targetKey != null && Tags.entityType(targetKey, 'minecraft:arthropod')) return e;
 
     env.playSound(world, attacker.getPosition(), 'cardboard_sword', volume: 0.75, pitch: 1.85);
     final attackerLiving = attacker.asEntity().asLiving();

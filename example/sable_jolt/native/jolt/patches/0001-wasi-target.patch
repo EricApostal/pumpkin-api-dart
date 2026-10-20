@@ -1,0 +1,14 @@
+diff --git a/Jolt/Core/Core.h b/Jolt/Core/Core.h
+index c748650..1c80004 100644
+--- a/Jolt/Core/Core.h
++++ b/Jolt/Core/Core.h
+@@ -109,7 +109,8 @@
+ 	#else
+ 		#define JPH_PLATFORM_IOS
+ 	#endif
+-#elif defined(__EMSCRIPTEN__)
++#elif defined(__EMSCRIPTEN__) || defined(__wasi__)
++	// Emscripten and wasi-sdk (wasm32-wasip1) both use the wasm CPU paths.
+ 	#define JPH_PLATFORM_WASM
+ #endif
+ 

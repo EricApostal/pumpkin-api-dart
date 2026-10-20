@@ -1,0 +1,18 @@
+diff --git a/Jolt/Physics/Body/BodyManager.cpp b/Jolt/Physics/Body/BodyManager.cpp
+index 76d23a5..873ed39 100644
+--- a/Jolt/Physics/Body/BodyManager.cpp
++++ b/Jolt/Physics/Body/BodyManager.cpp
+@@ -108,7 +108,13 @@ void BodyManager::Init(uint inMaxBodies, uint inNumBodyMutexes, const BroadPhase
+ 	UniqueLock lock(mBodiesMutex JPH_IF_ENABLE_ASSERTS(, this, EPhysicsLockTypes::BodiesList));
+ 
+ 	// Num body mutexes must be a power of two and not bigger than our MutexMask
++#ifdef JPH_CPU_WASM
++	// wasm has no threads in this build; avoid pulling std::thread (and the WASI
++	// imports its libc++ implementation references) just to size the mutex array.
++	uint num_body_mutexes = Clamp<uint>(GetNextPowerOf2(inNumBodyMutexes == 0? 4 : inNumBodyMutexes), 1, sizeof(MutexMask) * 8);
++#else
+ 	uint num_body_mutexes = Clamp<uint>(GetNextPowerOf2(inNumBodyMutexes == 0? 2 * thread::hardware_concurrency() : inNumBodyMutexes), 1, sizeof(MutexMask) * 8);
++#endif
+ #ifdef JPH_TSAN_ENABLED
+ 	num_body_mutexes = min(num_body_mutexes, 32U); // TSAN errors out when locking too many mutexes on the same thread, see: https://github.com/google/sanitizers/issues/950
+ #endif

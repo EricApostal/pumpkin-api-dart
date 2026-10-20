@@ -85,8 +85,11 @@ const Set<String> _fireImmune = {
   'sulfur-cube',
 };
 
-bool _fireImmuneEntity(Entity entity) =>
-    _fireImmune.contains(entity.getType().wireName);
+bool _fireImmuneEntity(Entity entity) {
+  // A plugin entity (a Create contraption, seat, package) has no vanilla type: not immune.
+  final type = entity.getType();
+  return type != null && _fireImmune.contains(type.wireName);
+}
 
 // -- The four types --------------------------------------------------------------------------
 

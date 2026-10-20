@@ -18,7 +18,8 @@
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/pos.dart';
 import '../math/bounding_box.dart';
-import '../api/block_entity_hooks.dart';
+import '../api/block/block_entity_sub_level_actor.dart';
+import '../api/block/block_entity_sub_level_reaction_wheel.dart';
 import '../host/sub_level_host.dart';
 import 'plot_chunk_holder.dart';
 import 'sub_level.dart';
@@ -256,7 +257,7 @@ abstract class LevelPlot {
   ///
   /// The actor and reaction wheel are resolved by the subclass (the Java
   /// version asks the level for the block entity, which the port cannot do for
-  /// plot chunks; see `api/block_entity_hooks.dart`).
+  /// plot chunks; see `api/block/block_entity_sub_level_actor.dart`).
   void onBlockChange(Pos pos, String state) {
     final actor = actorAt(pos);
     if (actor != null) {

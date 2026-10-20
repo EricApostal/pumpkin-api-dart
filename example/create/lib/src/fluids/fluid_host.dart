@@ -359,7 +359,10 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
       case OpenPipeEffect.lava:
         // `LavaEffectHandler`: everything that is not fire immune burns for 3 s.
         for (final snapshot in _entitiesIn(area)) {
-          if (_fireImmune.contains(snapshot.entityType.wireName)) continue;
+          if (_fireImmune.contains(
+            snapshot.entityTypeKey.replaceFirst('minecraft:', '').replaceAll('_', '-'),
+          ))
+            continue;
           final entity = world.getEntityById(id: snapshot.id);
           if (entity == null) continue;
           entity.setFireTicks(ticks: 300);

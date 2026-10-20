@@ -16,6 +16,7 @@ workspace:
   - example/lonsdaleite
   - example/create
   - example/sable
+  - example/sable_jolt
   - tool/runtime_check
 
 dev_dependencies:

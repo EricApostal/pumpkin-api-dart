@@ -7858,7 +7858,7 @@ enum EntityType {
   static final Map<String, EntityType> _byWireName = {for (final value in values) value.wireName: value};
 }
 @pragma("wasm:import", r"component._import338")
-external i0.WasmI32 _import338(i0.WasmI32 p0);
+external i0.WasmVoid _import338(i0.WasmI32 p0, i0.WasmI32 p1);
 @pragma("wasm:import", r"component._import339")
 external i0.WasmVoid _import339(i0.WasmI32 p0, i0.WasmI32 p1);
 @pragma("wasm:import", r"component._import340")
@@ -8144,10 +8144,25 @@ i1.dartFree(tmp0, const i0.WasmI32(16), const i0.WasmI32(8));
 return tmp3;
 
 }
-EntityType getType() {
+/// Returns the vanilla type of this entity, or none for an entity of a plugin type:
+/// plugin types are registered at runtime, so they have no `entity-type` variant. Use
+/// `get-plugin-type-key` for the registry key of such an entity.
+EntityType? getType() {
 final self = this;
-final tmp0 = _import338(i0.WasmI32.fromInt(self.resourceHandle));
-return EntityType.values[tmp0.toIntUnsigned()];
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(2));
+_import338(i0.WasmI32.fromInt(self.resourceHandle), tmp0);
+final tmp1 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+EntityType? tmp3;
+if (tmp1.toBool()) {
+  final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 1);
+
+  tmp3 = EntityType.values[tmp2.toIntUnsigned()];
+} else {
+  
+  tmp3 = null;
+}
+i1.dartFree(tmp0, const i0.WasmI32(2), const i0.WasmI32(1));
+return tmp3;
 
 }
 (double, double, double, ) getPosition() {
@@ -9401,7 +9416,10 @@ _import429(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmF64.fromDouble(pos.$1
 }
 int get id => getId();
 Uuid get uuid => getUuid();
-EntityType get type => getType();
+/// Returns the vanilla type of this entity, or none for an entity of a plugin type:
+/// plugin types are registered at runtime, so they have no `entity-type` variant. Use
+/// `get-plugin-type-key` for the registry key of such an entity.
+EntityType? get type => getType();
 (double, double, double, ) get position => getPosition();
 World get world => getWorld();
 double get yaw => getYaw();
@@ -15163,14 +15181,17 @@ final class ItemSummary {
 final class EntitySnapshot {
   final int id;
   final Uuid uuid;
-  final EntityType entityType;
+/// The registry key of the type: `minecraft:cow` for a vanilla type, `namespace:path`
+/// for a plugin type. A plugin type has no `entity-type` variant, so the key is what
+/// identifies the type here.
+  final String entityTypeKey;
   final (double, double, double, ) position;
   final BoundingBox boundingBox;
   final (double, double, double, ) velocity;
 /// The stack of the entity if it is a dropped item.
   final ItemSummary? item;
-  const EntitySnapshot({required this.id, required this.uuid, required this.entityType, required this.position, required this.boundingBox, required this.velocity, required this.item, });
-  EntitySnapshot copyWith({int? id, Uuid? uuid, EntityType? entityType, (double, double, double, )? position, BoundingBox? boundingBox, (double, double, double, )? velocity, ItemSummary? item, bool clearItem = false, }) => EntitySnapshot(id: id ?? this.id, uuid: uuid ?? this.uuid, entityType: entityType ?? this.entityType, position: position ?? this.position, boundingBox: boundingBox ?? this.boundingBox, velocity: velocity ?? this.velocity, item: clearItem ? null : (item ?? this.item), );
+  const EntitySnapshot({required this.id, required this.uuid, required this.entityTypeKey, required this.position, required this.boundingBox, required this.velocity, required this.item, });
+  EntitySnapshot copyWith({int? id, Uuid? uuid, String? entityTypeKey, (double, double, double, )? position, BoundingBox? boundingBox, (double, double, double, )? velocity, ItemSummary? item, bool clearItem = false, }) => EntitySnapshot(id: id ?? this.id, uuid: uuid ?? this.uuid, entityTypeKey: entityTypeKey ?? this.entityTypeKey, position: position ?? this.position, boundingBox: boundingBox ?? this.boundingBox, velocity: velocity ?? this.velocity, item: clearItem ? null : (item ?? this.item), );
 }
 /// Selects which entities `get-entities-in-box` returns.
 sealed class EntityFilter {
@@ -17003,50 +17024,51 @@ _import598(i0.WasmI32.fromInt(self.resourceHandle), i0.WasmF64.fromDouble(min.$1
 for (final cleanup in _cleanups) { cleanup(); }
 final tmp13 = i1.memory.loadInt32(tmp12.toIntUnsigned(), offset: 0);
 final tmp14 = i1.memory.loadInt32(tmp12.toIntUnsigned(), offset: 4);
-final tmp44 = <EntitySnapshot>[];
+final tmp45 = <EntitySnapshot>[];
 for (var i = 0; i < tmp14.toIntUnsigned(); i++) {
 final elementPtr = i0.WasmI32.fromInt(tmp13.toIntUnsigned() + i * 144);
 final tmp15 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 0);
 final tmp16 = i1.memory.loadInt64(elementPtr.toIntUnsigned(), offset: 8);
 final tmp17 = i1.memory.loadInt64(elementPtr.toIntUnsigned(), offset: 16);
   final tmp18 = Uuid(high: tmp16.toInt(), low: tmp17.toInt(), );
-final tmp19 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 24);
-final tmp20 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 32);
-final tmp21 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 40);
-final tmp22 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 48);
-final tmp23 = (tmp20.toDouble(), tmp21.toDouble(), tmp22.toDouble(), );
-final tmp24 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 56);
-final tmp25 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 64);
-final tmp26 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 72);
-final tmp27 = (tmp24.toDouble(), tmp25.toDouble(), tmp26.toDouble(), );
-final tmp28 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 80);
-final tmp29 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 88);
-final tmp30 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 96);
-final tmp31 = (tmp28.toDouble(), tmp29.toDouble(), tmp30.toDouble(), );
-  final tmp32 = BoundingBox(min: tmp27, max: tmp31, );
-final tmp33 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 104);
-final tmp34 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 112);
-final tmp35 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 120);
-final tmp36 = (tmp33.toDouble(), tmp34.toDouble(), tmp35.toDouble(), );
-final tmp37 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 128);
-ItemSummary? tmp42;
-if (tmp37.toBool()) {
-  final tmp38 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 132);
-final tmp39 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 136);
-final tmp40 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 140);
-  final tmp41 = ItemSummary(registryKey: i1.AllocatedString.read(tmp38, tmp39), count: tmp40.toIntUnsigned(), );
+final tmp19 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 24);
+final tmp20 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 28);
+final tmp21 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 32);
+final tmp22 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 40);
+final tmp23 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 48);
+final tmp24 = (tmp21.toDouble(), tmp22.toDouble(), tmp23.toDouble(), );
+final tmp25 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 56);
+final tmp26 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 64);
+final tmp27 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 72);
+final tmp28 = (tmp25.toDouble(), tmp26.toDouble(), tmp27.toDouble(), );
+final tmp29 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 80);
+final tmp30 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 88);
+final tmp31 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 96);
+final tmp32 = (tmp29.toDouble(), tmp30.toDouble(), tmp31.toDouble(), );
+  final tmp33 = BoundingBox(min: tmp28, max: tmp32, );
+final tmp34 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 104);
+final tmp35 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 112);
+final tmp36 = i1.memory.loadFloat64(elementPtr.toIntUnsigned(), offset: 120);
+final tmp37 = (tmp34.toDouble(), tmp35.toDouble(), tmp36.toDouble(), );
+final tmp38 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 128);
+ItemSummary? tmp43;
+if (tmp38.toBool()) {
+  final tmp39 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 132);
+final tmp40 = i1.memory.loadInt32(elementPtr.toIntUnsigned(), offset: 136);
+final tmp41 = i1.memory.loadUint8(elementPtr.toIntUnsigned(), offset: 140);
+  final tmp42 = ItemSummary(registryKey: i1.AllocatedString.read(tmp39, tmp40), count: tmp41.toIntUnsigned(), );
 
-  tmp42 = tmp41;
+  tmp43 = tmp42;
 } else {
   
-  tmp42 = null;
+  tmp43 = null;
 }
-  final tmp43 = EntitySnapshot(id: tmp15.toIntUnsigned(), uuid: tmp18, entityType: EntityType.values[tmp19.toIntUnsigned()], position: tmp23, boundingBox: tmp32, velocity: tmp36, item: tmp42, );
+  final tmp44 = EntitySnapshot(id: tmp15.toIntUnsigned(), uuid: tmp18, entityTypeKey: i1.AllocatedString.read(tmp19, tmp20), position: tmp24, boundingBox: tmp33, velocity: tmp37, item: tmp43, );
 
-tmp44.add(tmp43);
+tmp45.add(tmp44);
 }
 i1.dartFree(tmp12, const i0.WasmI32(8), const i0.WasmI32(4));
-return tmp44;
+return tmp45;
 
 }
 /// Returns a handle to every dropped item whose bounding box intersects the box between `min` and `max`.
@@ -51375,6 +51397,14 @@ final class PlacementSourceNeighbourShaft extends PlacementSource {
   final List<ShaftNeighbour> value;
   const PlacementSourceNeighbourShaft(this.value);
 }
+/// The shape a track gets from the player's look, like `TrackBlock.getStateForPlacement`:
+/// `zo`, `xo`, `pd`, `nd`, `an`, `as`, `ae` or `aw`. The axis of the look nearest to one of
+/// the eight track axes gives the straight shape (`zo`, `xo`, `pd`, `nd`); when the
+/// neighbour along that axis has a solid top and the block above it has no solid bottom,
+/// the track ascends (`an`, `as`, `ae`, `aw`). `opposite` is not allowed.
+final class PlacementSourceTrackShape extends PlacementSource {
+  const PlacementSourceTrackShape();
+}
 /// Always this value, useful as the last rule of a fallback.
 final class PlacementSourceConstant extends PlacementSource {
   final String value;
@@ -51484,8 +51514,11 @@ _cleanups.add(() { i1.dartFree(tmp16, i0.WasmI32.fromInt(20 * tmp15), const i0.W
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp18, offset: 16);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp16, offset: 12);
 
-case PlacementSourceConstant(value: final tmp19):
+case PlacementSourceTrackShape():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(11), offset: 8);
+
+case PlacementSourceConstant(value: final tmp19):
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(12), offset: 8);
 final tmp20 = i1.AllocatedString.allocateUtf16(tmp19);
 _cleanups.add(tmp20.free);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp20.packedLength, offset: 16);

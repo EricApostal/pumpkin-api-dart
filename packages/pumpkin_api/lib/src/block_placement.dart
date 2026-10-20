@@ -61,6 +61,7 @@ final class HostBlockPlacement implements BlockPlacementBackend {
             },
           ),
       ]),
+      PlacementSourceKind.trackShape => const generated.PlacementSourceTrackShape(),
       PlacementSourceKind.constant => generated.PlacementSourceConstant(rule.constantValue ?? ''),
     },
   );

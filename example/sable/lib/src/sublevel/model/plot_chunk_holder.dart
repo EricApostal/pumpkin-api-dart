@@ -9,6 +9,7 @@
 // Pure: no host imports.
 import '../math/bounding_box.dart';
 import '../host/sub_level_host.dart';
+import '../plot/heat/heat_data_chunk_section.dart';
 
 /// A chunk holder for chunks that live inside a `LevelPlot`.
 final class PlotChunkHolder {
@@ -19,6 +20,10 @@ final class PlotChunkHolder {
   final (int, int) pos;
 
   BoundingBox3i? _boundingBox;
+
+  /// The splitting heat map of each section, by section y
+  /// (`PlotChunkHolder.getHeatSection`).
+  final Map<int, HeatDataChunkSection> heatSections = {};
 
   /// Wraps [chunk]; builds the bounding box when the chunk is not empty.
   PlotChunkHolder(this.chunk, this.pos) {
@@ -92,6 +97,14 @@ final class PlotChunkHolder {
       }
     }
   }
+
+  /// The heat map of the section at [sectionY], or `null` when the section has
+  /// none yet.
+  HeatDataChunkSection? getHeatSection(int sectionY) => heatSections[sectionY];
+
+  /// Sets the heat map of the section at [sectionY].
+  void setHeatSection(int sectionY, HeatDataChunkSection section) =>
+      heatSections[sectionY] = section;
 
   @override
   String toString() => 'PlotChunkHolder[${pos.$1}, ${pos.$2}, bounds=$_boundingBox]';

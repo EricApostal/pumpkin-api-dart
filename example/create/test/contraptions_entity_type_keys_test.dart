@@ -22,6 +22,20 @@ void main() {
     });
   });
 
+  group('hostTypeKey', () {
+    test('a plugin entity needs no wire name: get-type is null for it', () {
+      // The host reports a plugin type only through `get-plugin-type-key`; `Entity.getType()`
+      // returns `null` for it (the type is registered at runtime, the WIT enum has no variant).
+      expect(hostTypeKey(pluginKey: 'create:contraption', wireName: null), 'create:contraption');
+      expect(hostTypeKey(pluginKey: 'create:seat', wireName: null), 'create:seat');
+    });
+
+    test('a vanilla entity maps its wire name, a host that reports neither yields null', () {
+      expect(hostTypeKey(wireName: 'chest-minecart'), 'minecraft:chest_minecart');
+      expect(hostTypeKey(pluginKey: null, wireName: null), isNull);
+    });
+  });
+
   group('isMinecartEntityType', () {
     test('every minecart variant is one, with its namespaced key', () {
       for (final key in [

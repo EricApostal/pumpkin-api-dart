@@ -49,14 +49,31 @@ abstract interface class MassData {
   BoundingBox3ic? getBounds();
 }
 
+/// `PhysicsPipelineBody`'s single-axis impulses, as the `/sable physics
+/// impulse` command applies them.
+extension RigidBodyImpulses on RigidBodyHandle {
+  /// `applyLinearImpulse(impulse)`.
+  void applyLinearImpulse(Vector3d impulse) =>
+      applyLinearAndAngularImpulse(impulse, Vector3d(), true);
+
+  /// `applyAngularImpulse(impulse)`.
+  void applyAngularImpulse(Vector3d impulse) =>
+      applyLinearAndAngularImpulse(Vector3d(), impulse, true);
+}
+
 /// A named force group (`dev.ryanhcode.sable.api.physics.force.ForceGroup`).
 final class ForceGroup {
   final String name;
 
   const ForceGroup(this.name);
 
-  static const ForceGroup lift = ForceGroup('sable:lift');
+  static const ForceGroup gravity = ForceGroup('sable:gravity');
   static const ForceGroup drag = ForceGroup('sable:drag');
+  static const ForceGroup levitation = ForceGroup('sable:levitation');
+  static const ForceGroup balloonLift = ForceGroup('sable:balloon_lift');
+  static const ForceGroup propulsion = ForceGroup('sable:propulsion');
+  static const ForceGroup lift = ForceGroup('sable:lift');
+  static const ForceGroup magneticForce = ForceGroup('sable:magnetic_force');
 
   @override
   bool operator ==(Object other) => other is ForceGroup && other.name == name;
@@ -78,6 +95,10 @@ final class QueuedForceGroup {
 
   /// `recordPointForce(position, force)`.
   void recordPointForce(Vector3d position, Vector3d force) => _forceTotal.add(force);
+
+  /// `applyAndRecordPointForce(position, force)`.
+  void applyAndRecordPointForce(Vector3d position, Vector3d force) =>
+      recordPointForce(position, force);
 
   /// `getForceTotal()`.
   Vector3d getForceTotal() => _forceTotal;

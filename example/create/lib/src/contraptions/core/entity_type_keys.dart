@@ -11,6 +11,18 @@
 String entityTypeKey({String? pluginKey, required String wireName}) =>
     pluginKey ?? 'minecraft:${wireName.replaceAll('-', '_')}';
 
+/// The key of an entity type from what the host reports: a plugin key, a vanilla wire name, or
+/// neither (an inconsistent host). [pluginKey] wins, and `null` means "no type".
+///
+/// The plugin key is checked first: `Entity.getType()` returns `null` for a plugin entity (its
+/// type is registered at runtime and has no `EntityType` variant), so a caller must never read the
+/// wire name before it knows the entity is vanilla.
+String? hostTypeKey({String? pluginKey, String? wireName}) {
+  if (pluginKey != null) return pluginKey;
+  if (wireName == null) return null;
+  return entityTypeKey(wireName: wireName);
+}
+
 /// `AbstractMinecart` variants: `MinecartRef.canAssemble` and the collision/riding checks of the
 /// contraption code (`_isMinecartType`).
 const Set<String> minecartEntityTypeKeys = {

@@ -125,6 +125,14 @@ final class Vector3d {
     return set(nx, ny, nz);
   }
 
+  /// `cross(other, dest)`: this × [other], stored in [dest].
+  Vector3d crossInto(Vector3d other, Vector3d dest) {
+    final nx = y * other.z - z * other.y;
+    final ny = z * other.x - x * other.z;
+    final nz = x * other.y - y * other.x;
+    return dest.set(nx, ny, nz);
+  }
+
   double get lengthSquared => x * x + y * y + z * z;
 
   double get length => math.sqrt(lengthSquared);
@@ -219,6 +227,31 @@ final class Vector3i {
   String toString() => '($x, $y, $z)';
 }
 
+/// `org.joml.Vector2d`: a mutable double 2-vector, used by the OBB SAT code.
+final class Vector2d {
+  double x;
+  double y;
+
+  Vector2d([this.x = 0.0, this.y = 0.0]);
+
+  Vector2d set(double x, double y) {
+    this.x = x;
+    this.y = y;
+    return this;
+  }
+
+  Vector2d setFrom(Vector2d other) => set(other.x, other.y);
+
+  @override
+  bool operator ==(Object other) => other is Vector2d && other.x == x && other.y == y;
+
+  @override
+  int get hashCode => Object.hash(x, y);
+
+  @override
+  String toString() => '($x, $y)';
+}
+
 /// `org.joml.Quaterniond`: a mutable double quaternion (`x`, `y`, `z`, `w`).
 final class Quaterniond {
   double x;
@@ -276,6 +309,47 @@ final class Quaterniond {
     final nw = w * other.w - x * other.x - y * other.y - z * other.z;
     return set(nx, ny, nz, nw);
   }
+
+  /// `this = other * this` (`Quaterniondc.premul`).
+  Quaterniond premul(Quaterniond other) {
+    final nx = other.w * x + other.x * w + other.y * z - other.z * y;
+    final ny = other.w * y - other.x * z + other.y * w + other.z * x;
+    final nz = other.w * z + other.x * y - other.y * x + other.z * w;
+    final nw = other.w * w - other.x * x - other.y * y - other.z * z;
+    return set(nx, ny, nz, nw);
+  }
+
+  /// `rotateX(angle)`: post-multiplies by a rotation around the local X axis.
+  Quaterniond rotateX(double angle) {
+    final half = angle * 0.5;
+    return mul(Quaterniond(math.sin(half), 0.0, 0.0, math.cos(half)));
+  }
+
+  /// `rotateY(angle)`: post-multiplies by a rotation around the local Y axis.
+  Quaterniond rotateY(double angle) {
+    final half = angle * 0.5;
+    return mul(Quaterniond(0.0, math.sin(half), 0.0, math.cos(half)));
+  }
+
+  /// `rotateZ(angle)`: post-multiplies by a rotation around the local Z axis.
+  Quaterniond rotateZ(double angle) {
+    final half = angle * 0.5;
+    return mul(Quaterniond(0.0, 0.0, math.sin(half), math.cos(half)));
+  }
+
+  /// `fromAxisAngle(axis, angle)`: sets this to the rotation of [angle] radians
+  /// around [axis].
+  Quaterniond fromAxisAngle(Vector3d axis, double angle) {
+    final length = axis.length;
+    if (length == 0.0) return identity();
+    final half = angle * 0.5;
+    final s = math.sin(half) / length;
+    return set(axis.x * s, axis.y * s, axis.z * s, math.cos(half));
+  }
+
+  /// `fromAxisAngleDeg(axis, degrees)`.
+  Quaterniond fromAxisAngleDeg(Vector3d axis, double degrees) =>
+      fromAxisAngle(axis, degrees * math.pi / 180.0);
 
   /// `mul(double)`.
   Quaterniond mulScalar(double scalar) {

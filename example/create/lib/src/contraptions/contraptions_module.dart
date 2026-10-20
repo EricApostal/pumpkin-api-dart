@@ -57,6 +57,12 @@ final class ContraptionsModule extends CreateModule {
           updateInterval: def.updateInterval,
           trackDeltas: def.sendVelocity,
           summonable: def.summonable,
+          // `IEntityWithComplexSpawn`: the client rebuilds the contraption from the spawn data
+          // carried in `neoforge:advanced_add_entity`. Without this the client receives the
+          // entity but no contraption, so nothing is rendered.
+          spawnDataChannel: def.complexSpawnData
+              ? 'neoforge:advanced_add_entity'
+              : null,
         ),
       );
     }

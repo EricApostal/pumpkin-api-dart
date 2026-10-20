@@ -47,47 +47,6 @@ List<CreateBlock> buildBearingBlocks() => [
   ),
 ];
 
-/// `DirectionalKineticBlock.getStateForPlacement` for a bearing, applied after the host placed it
-/// with [bearingPlacementRules].
-///
-/// The host cannot express `getPreferredFacing` (a neighbouring shaft) nor the sneaking branch,
-/// so the placed state is corrected here: a shaft decides `facing`, otherwise the player's look
-/// does, as in Java.
-Future<void> _bearingOnPlaced(
-  Server server,
-  CustomBlockPlacedEventData e,
-) async {
-  final playerId = e.player;
-  final player = playerId == null
-      ? null
-      : server.getPlayerByUuid(id: playerId);
-  final world = e.targetWorld;
-  final pos = (e.pos.x, e.pos.y, e.pos.z);
-  final entity = player?.asEntity();
-  final sneaking = entity?.isSneaking() ?? false;
-  final look = entity == null
-      ? null
-      : nearestLookingFromLook(entity.getYaw(), entity.getPitch());
-  final level = HostBlockGetter(world);
-  final preferred = bearingPreferredFacing(
-    pos,
-    (neighbour, side) => prefersShaftConnection(level, neighbour, side),
-  );
-  final facing = bearingFacingForPlacement(
-    nearestLooking: look ?? Direction.north,
-    sneaking: sneaking,
-    hasPlayer: player != null,
-    preferred: preferred,
-  );
-  final current = HostBlockGetter.stateOfId(e.stateIndex);
-  if (current.dir('facing') == facing) return;
-  await setBlockState(
-    world,
-    pos,
-    current.setValue('facing', facing.serializedName),
-  );
-}
-
 /// `ClockworkBearingBlock.useItemOn` / `WindmillBearingBlock.useItemOn`: sneak clicks fail, a
 /// running bearing disassembles, an idle one assembles on the next tick.
 ///
@@ -97,7 +56,6 @@ Future<void> _bearingOnPlaced(
 /// which is what lets the held block be placed against the bearing; returning `success` here
 /// consumed the click and swallowed the placement.
 BlockBehavior bearingBehavior(String blockKey) => BlockBehavior(
-  onPlaced: _bearingOnPlaced,
   onUseWithoutItem: (server, e) async {
     // `stack.isEmpty()`; the copy the host handed over is released with the callback.
     final holdingItem = await e.item.getCount() > 0;

@@ -29,6 +29,7 @@ import '../util/uuid.dart';
 import 'bezier_track_point_location.dart';
 import 'i_track_block.dart';
 import 'track_host.dart';
+import 'track_targeting_data.dart';
 
 class TrackTargetingBehaviour<T extends TrackEdgePoint>
     extends BlockEntityBehaviour {
@@ -271,7 +272,7 @@ class TrackTargetingBehaviour<T extends TrackEdgePoint>
   BState getTrackBlockState() =>
       _trackLevel?.stateAt(getGlobalPosition()) ?? BState.air;
 
-  Pos getGlobalPosition() => targetTrack + _pos;
+  Pos getGlobalPosition() => resolvedTarget(_pos, targetTrack);
 
   /// `getPositionForMapMarker()`: the block position of the marker on the targeted curve.
   Pos getPositionForMapMarker() {

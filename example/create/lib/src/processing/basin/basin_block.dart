@@ -7,6 +7,9 @@ import '../../api/blocks.dart';
 import '../../common/direction.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
+import '../../fluids/fluid_processing_bridge.dart';
+import '../../fluids/fluid_runtime.dart';
+import '../../fluids/generic_item_fluid.dart';
 import '../common/stack.dart';
 import '../common/storage.dart';
 import '../../core/block_entity.dart';
@@ -79,8 +82,9 @@ abstract final class BasinBlock {
     ),
   );
 
-  /// `useItemOn`: an empty hand takes the input items back, a held item is left to the
-  /// fluids module (`GenericItemEmptying` / `GenericItemFilling` are not ported).
+  /// `useItemOn`: an empty hand takes the input items back; a held item empties its fluid into
+  /// the basin or takes the basin's fluid (`FluidHelper.tryEmptyItemIntoBE` /
+  /// `tryFillItemFromBE`), and a sponge soaks the basin's fluid up.
   static Future<BlockUseResult> _onUse(
     Server server,
     CustomBlockUseEventData e,
@@ -90,8 +94,45 @@ abstract final class BasinBlock {
     if (be == null) return BlockUseResult.tryEmptyHand;
 
     if (e.withItem) {
-      // Fluid containers (buckets, bottles) empty into and fill from the basin in Java through
-      // the fluids module; that module is not loaded here.
+      // `FluidHelper.tryEmptyItemIntoBE` / `tryFillItemFromBE`: the basin's fluid capability is
+      // the combined output + input tanks (`BasinBlockEntity.fluidCapability`), which is what
+      // the basin's own storage offers here too.
+      final storage = be.fluidStorage(null);
+      if (storage == null) return BlockUseResult.tryEmptyHand;
+      if (!FluidsRuntime.isLoaded) return BlockUseResult.tryEmptyHand;
+
+      final runtime = FluidsRuntime.instance;
+      final emptying = GenericItemEmptying(runtime.rules, runtime.recipes);
+      final filling = GenericItemFilling(runtime.rules);
+      final held = await HostStacks.read(e.item);
+      if (held.isEmpty) return BlockUseResult.tryEmptyHand;
+      final item = FluidItemSpec(held.key, held.count);
+
+      if (await _emptyItemIntoBasin(
+        e,
+        storage,
+        emptying,
+        item,
+        be,
+      )) {
+        return BlockUseResult.success;
+      }
+      if (await _fillItemFromBasin(e, storage, filling, item, be)) {
+        return BlockUseResult.success;
+      }
+
+      // A recognised item is consumed without an exchange (`InteractionResult.SUCCESS`).
+      if (emptying.canItemBeEmptied(item) || filling.canItemBeFilled(item)) {
+        return BlockUseResult.success;
+      }
+      // `stack.getItem().equals(Items.SPONGE)`: a sponge takes the basin's fluid, nothing back.
+      if (held.key == 'minecraft:sponge') {
+        final drained = storage.drainAny(0x7fffffff);
+        if (drained.isNotEmpty) {
+          be.sendData();
+          return BlockUseResult.success;
+        }
+      }
       return BlockUseResult.tryEmptyHand;
     }
 
@@ -106,6 +147,99 @@ abstract final class BasinBlock {
     }
     be.onEmptied();
     return success ? BlockUseResult.success : BlockUseResult.tryEmptyHand;
+  }
+
+  /// `FluidHelper.tryEmptyItemIntoBE`: whether the held item was emptied into the basin.
+  static Future<bool> _emptyItemIntoBasin(
+    CustomBlockUseEventData e,
+    FluidStorage storage,
+    GenericItemEmptying emptying,
+    FluidItemSpec item,
+    BasinBlockEntity be,
+  ) async {
+    if (!emptying.canItemBeEmptied(item)) return false;
+    final (fluid, _, _) = emptying.emptyItem(item, simulate: true);
+    final available = pFluidOf(fluid);
+    if (available.isEmpty ||
+        storage.fill(available, simulate: true) != available.amount) {
+      return false;
+    }
+
+    final (emptied, remainder, newStack) = emptying.emptyItem(
+      item,
+      simulate: false,
+    );
+    storage.fill(pFluidOf(emptied));
+    // The held item is consumed: the last item of the stack becomes its container in the hand,
+    // an item of a bigger stack leaves the container in the inventory.
+    if (!e.player.isCreative) {
+      if (newStack.isEmpty) {
+        await _setHand(e.player, e.hand, remainder);
+      } else {
+        await _setHand(e.player, e.hand, newStack);
+        await _giveOrDrop(
+          e.player,
+          e.targetWorld,
+          posContaining(e.player.getPosition()),
+          PStack(remainder.key, remainder.count),
+        );
+      }
+    }
+    be.sendData();
+    return true;
+  }
+
+  /// `FluidHelper.tryFillItemFromBE`: whether the held item took the basin's fluid.
+  static Future<bool> _fillItemFromBasin(
+    CustomBlockUseEventData e,
+    FluidStorage storage,
+    GenericItemFilling filling,
+    FluidItemSpec item,
+    BasinBlockEntity be,
+  ) async {
+    if (!filling.canItemBeFilled(item)) return false;
+    for (var tank = 0; tank < storage.tanks; tank++) {
+      final fluid = fStackOf(storage.fluidIn(tank));
+      if (fluid.isEmpty) continue;
+      final required = filling.getRequiredAmountForItem(
+        item.withCount(1),
+        fluid,
+      );
+      if (required == -1 || required > fluid.amount) continue;
+
+      final (result, remaining, _) = filling.fillItem(required, item, fluid);
+      if (result.isEmpty) continue;
+      storage.drainFluid(storage.fluidIn(tank).withAmount(required));
+      // `FluidHelper.tryFillItemFromBE`: the hand keeps its item for a creative player, a
+      // survival player loses one and gets the filled container in the inventory.
+      if (!e.player.isCreative) {
+        await _setHand(e.player, e.hand, remaining);
+        await _giveOrDrop(
+          e.player,
+          e.targetWorld,
+          posContaining(e.player.getPosition()),
+          PStack(result.key, result.count),
+        );
+      }
+      be.sendData();
+      return true;
+    }
+    return false;
+  }
+
+  /// `player.setItemInHand(hand, stack)`.
+  static Future<void> _setHand(
+    Player player,
+    Hand hand,
+    FluidItemSpec spec,
+  ) async {
+    if (spec.isEmpty) {
+      await player.setItemInHand(hand: hand, stack: null);
+      return;
+    }
+    final stack = await HostStacks.write(PStack(spec.key, spec.count));
+    if (stack == null) return;
+    await player.setItemInHand(hand: hand, stack: stack);
   }
 
   /// `ItemHelper.calcRedstoneFromInventory(inputInventory)`.

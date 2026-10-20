@@ -51,9 +51,6 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     // cardboard sword
     ctx.host.intercept(Events.playerInteract, _onInteract);
     ctx.host.intercept(Events.playerInteractEntity, _onInteractEntity);
-
-    // builder's tea
-    ctx.listen(Events.playerItemConsume, _onConsume);
   }
 
   // ===================================================================================
@@ -323,8 +320,31 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
   }
 
   /// Every tick of use; the use ends after 32 ticks (`getUseDuration`).
+  ///
+  /// The host never fires this for sand paper: it starts a use only for an item with a
+  /// `minecraft:consumable` or `minecraft:blocks_attacks` component
+  /// (`pumpkin-core/src/net/java/play/use_item.rs:113-131` through `ItemStack::get_max_use_time`,
+  /// `pumpkin-data/src/item_stack/mod.rs:428`), and the sand paper has neither, so `item_use_time`
+  /// stays 0 and `pumpkin-core/src/entity/living.rs:3643` never reaches the `ItemUseTickEvent`
+  /// it fires. Polishing therefore ends through [_onPlayerTick] once the (never arriving) ticks
+  /// stop, which returns the item unpolished.
+  ///
+  /// Declaring the item `minecraft:consumable` would start the use, but the host consumes one item
+  /// of the stack when a use finishes, and Java's non-edible `SandPaperItem.finishUsingItem` only
+  /// hurts the paper. What the host needs is `use-duration: option<u32>` on
+  /// `item-registry`'s `item-definition` (Java `getUseDuration`, 32 here) for
+  /// `ItemStack::get_max_use_time` to count down without a component, plus `use-animation:
+  /// option<consume-animation>` (Java `UseAnimation.EAT`) and a finish that does not shrink the
+  /// stack.
   Future<void> _onUseTick(Server server, ItemUseTickEventData e) async {
     final key = await stackKey(e.stack);
+    if (key == EqItems.buildersTea) {
+      // `BuildersTeaItem.finishUsingItem`: the last tick of the 42-tick drink leaves a glass
+      // bottle. The item's haste is not here: it is the `on_consume_effects` of its
+      // `minecraft:consumable` component, which the host applies itself.
+      if (e.remainingTicks <= 1) await _leaveGlassBottle(server, e.player);
+      return;
+    }
     if (!EqItems.isSandPaper(key)) return;
     final player = e.player;
     final uuid = player.getId().asString;
@@ -439,6 +459,14 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     final v = attacker.asEntity().getVelocity();
     attacker.setVelocity(velocity: (v.$1 * 0.6, v.$2, v.$3 * 0.6));
     attacker.asEntity().setSprinting(sprinting: false);
+    // `CardboardSwordItem` also slows the target (`SLOWNESS`, 60 ticks, amplifier 9, ambient
+    // without particles, for the `MISC` and `CREATURE` `MobCategory` and never for a player).
+    // That cannot be ported: `world.wit`'s `living-entity` (658-698) has no effect function, and
+    // `player.wit:1010`'s `add-effect` is the only one the host exposes, so a mob target cannot be
+    // given a status effect. It needs `living-entity.add-effect: func(effect:
+    // status-effect-instance)` (with `remove-effect`/`has-effect`/`get-effect`, as on `player`)
+    // backed by `LivingEntity::add_effect`; the gate would be the target's `MobCategory`, which
+    // the host does not expose either (`Entity::get_type` drops it).
     return e.cancel();
   }
 
@@ -461,20 +489,12 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
   // Builder's tea
   // ===================================================================================
 
-  /// `BuildersTeaItem.finishUsingItem` + the food's haste effect: a glass bottle is left.
-  void _onConsume(Server server, PlayerItemConsumeEventData e) {
-    if (e.itemName != EqItems.buildersTea && e.itemName != 'builders_tea') return;
-    final player = e.player;
-    unawaited(player.addEffect(
-      effect: StatusEffectInstance(
-        effectType: StatusEffectType.haste,
-        duration: 3 * 60 * 20,
-        amplifier: 0,
-        ambient: false,
-        showParticles: false,
-        showIcon: false,
-      ),
-    ));
+  /// `BuildersTeaItem.finishUsingItem`: the bottle a drunk tea leaves behind.
+  ///
+  /// Java returns it from `finishUsingItem` when the stack ran out, so a single tea is replaced by
+  /// the bottle in the hand and the bottle of a larger stack goes to the inventory. One tick later,
+  /// because the host consumes the tea itself right after this tick; creative players get nothing.
+  Future<void> _leaveGlassBottle(Server server, Player player) async {
     if (player.isCreative) return;
     final uuid = player.getId().asString;
     server.runLater(1, (s) async {

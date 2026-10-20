@@ -12,6 +12,7 @@ import 'package:create/src/decoration/girder.dart';
 import 'package:create/src/decoration/misc_blocks.dart';
 import 'package:create/src/decoration/vanilla_blocks.dart';
 import 'package:create/src/decoration/whistle.dart';
+import 'package:create/src/manifest/blocks.g.dart';
 
 const pillar = 'create:granite_pillar';
 
@@ -746,6 +747,90 @@ void main() {
       expect(copperWeatherAge('create:waxed_copper_tiles'), isNull);
       expect(copperWeatherAge('minecraft:stone'), isNull);
       expect(copperWeatherAge('minecraft:copper_ore'), isNull);
+      // The `copper_block` family is the one that drops the prefix from `copper_block` to
+      // `exposed_copper` (`BlockItemIds.java:789-793`); a key without a namespace is vanilla.
+      expect(copperWeatherAge('copper_block'), 0);
+      expect(copperWeatherAge('minecraft:exposed_copper'), 1);
+      expect(copperWeatherAge('minecraft:oxidized_copper_golem_statue'), 3);
+      expect(copperWeatherAge('minecraft:waxed_exposed_copper'), isNull);
+      // Weathering in 26.3 although the name is not `<state>_copper...`: the lightning rod and the
+      // other copper blocks that take part in the oxidation are `Weathering*Block`s there
+      // (`WeatheringLightningRodBlock`, `WeatheringCopperBarsBlock`, `WeatheringCopperBulbBlock`,
+      // `WeatheringCopperChestBlock`, ...; `Blocks.java:2521`, `:5293`, `:5331`, `:5374`, `:5391`).
+      expect(copperWeatherAge('minecraft:lightning_rod'), 0);
+      expect(copperWeatherAge('minecraft:exposed_lightning_rod'), 1);
+      expect(copperWeatherAge('minecraft:copper_bulb'), 0);
+      expect(copperWeatherAge('minecraft:copper_bars'), 0);
+      expect(copperWeatherAge('minecraft:copper_chest'), 0);
+      expect(copperWeatherAge('minecraft:copper_trapdoor'), 0);
+      expect(copperWeatherAge('minecraft:exposed_copper_lantern'), 1);
+    });
+
+    test('the block class decides what weathers, not the name (DEC-01)', () {
+      // Keyed off the name, the old classifier counted every one of these as an unaffected (age 0)
+      // weathering copper block. Their classes are not `ChangeOverTimeBlock`s: Create's bars
+      // (`IronBarsBlock`), ladder (`MetalLadderBlock`), scaffolding (`MetalScaffoldingBlock`),
+      // casing (`CasingBlock`), sliding door (`SlidingDoorBlock`), table cloth (`TableClothBlock`),
+      // valve handle (`ValveHandleBlock`) and backtank (`BacktankBlock`), and vanilla ores, the raw
+      // block and the copper torches.
+      const notWeathering = [
+        'create:copper_bars',
+        'create:copper_ladder',
+        'create:copper_scaffolding',
+        'create:copper_casing',
+        'create:copper_door',
+        'create:copper_table_cloth',
+        'create:copper_valve_handle',
+        'create:copper_backtank',
+        'minecraft:copper_ore',
+        'minecraft:deepslate_copper_ore',
+        'minecraft:raw_copper_block',
+        'minecraft:copper_torch',
+        'minecraft:copper_wall_torch',
+      ];
+      for (final key in notWeathering) {
+        expect(copperWeatherAge(key), isNull, reason: key);
+      }
+      // `create:copper_bars` is Create's `IronBarsBlock`, `minecraft:copper_bars` vanilla's
+      // `WeatheringCopperBarsBlock`: same name, different class, leading to a different answer.
+      expect(copperWeatherAge('minecraft:copper_bars'), 0);
+    });
+
+    test('the Create weathering set is the manifest\'s weathering classes', () {
+      const stages = ['', 'exposed_', 'weathered_', 'oxidized_'];
+      const families = [
+        'copper_shingles',
+        'copper_shingle_slab',
+        'copper_shingle_stairs',
+        'copper_tiles',
+        'copper_tile_slab',
+        'copper_tile_stairs',
+      ];
+      final expected = {for (final f in families) for (final s in stages) '$s$f'};
+      final fromClasses = {for (final m in kBlocks) if (m.javaClass.contains('Weathering')) m.key};
+      expect(fromClasses, expected);
+      for (final m in kBlocks) {
+        expect(
+          copperWeatherAge('create:${m.key}'),
+          expected.contains(m.key) ? isNotNull : isNull,
+          reason: '${m.key} is a ${m.javaClass}',
+        );
+      }
+    });
+
+    test('weathered copper advances past neighbours that only look like copper (DEC-01)', () {
+      // Counted as an unaffected copper block, a `create:copper_bars` neighbour used to abort the
+      // scan (`age < ownAge`) for every weathered block within Manhattan 4.
+      final bars = MapBlockGetter(blocks: {(1, 64, 0): const BState('create:copper_bars')});
+      expect(copperShouldAdvance(bars, (0, 64, 0), 1, 0.99), isTrue);
+      expect(copperShouldAdvance(bars, (0, 64, 0), 3, 0.99), isTrue);
+      // and it does not inflate `sameAge` for an unaffected block: the chance stays 0.75.
+      expect(copperShouldAdvance(bars, (0, 64, 0), 0, 0.74), isTrue);
+      expect(copperShouldAdvance(bars, (0, 64, 0), 0, 0.76), isFalse);
+      // A real weathering copper neighbour still blocks it: `minecraft:copper_bulb` is an
+      // unaffected `WeatheringCopperBulbBlock` (`Blocks.java:5331`).
+      final bulb = MapBlockGetter(blocks: {(1, 64, 0): const BState('minecraft:copper_bulb')});
+      expect(copperShouldAdvance(bulb, (0, 64, 0), 1, 0.0), isFalse);
     });
 
     test('names of the next, previous and waxed variants', () {

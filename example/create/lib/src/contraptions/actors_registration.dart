@@ -35,6 +35,7 @@ import 'actors/train_controls/controls_behaviour.dart';
 import 'actors/train_controls/controls_block.dart';
 import 'bearing/stabilized_bearing_movement_behaviour.dart';
 import 'behaviours/all_movement_behaviours.dart';
+import 'behaviours/funnel_movement_behaviour.dart';
 import 'core/movement.dart';
 import 'entity/host_contraption_entities.dart';
 
@@ -260,6 +261,17 @@ void _registerBehaviours() {
   MovementBehaviours.register(
     'create:mechanical_roller',
     const RollerMovementBehaviour(),
+  );
+
+  // `AllBlocks`: the andesite funnel has no filter, the brass funnel has one. The belt funnels
+  // get no movement behaviour.
+  MovementBehaviours.register(
+    'create:andesite_funnel',
+    FunnelMovementBehaviour.andesite(),
+  );
+  MovementBehaviours.register(
+    'create:brass_funnel',
+    FunnelMovementBehaviour.brass(),
   );
 
   for (final key in seatBlockKeys) {

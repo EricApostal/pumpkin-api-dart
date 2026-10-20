@@ -94,6 +94,86 @@ class PotionFluidData with PotionFluidDataMappable {
   /// `PotionFluid.of(amount, contents, bottleType)`.
   FStack toStack(int amount) => FStack(FluidKeys.potion, amount, encode());
 
+  /// The components of the fluid as the processing module's `PFluid.comps` pairs, the form a
+  /// recipe's `neoforge:components` fluid ingredient is compared against
+  /// (`FluidIngredient.testFluid`).
+  ///
+  /// The host's `FluidStack` has no component codec (it carries only plugin `data`), so the
+  /// value of every entry is the UTF-8 JSON of the component's codec form — the form
+  /// Create's own recipes write.
+  List<(String, List<int>)> componentEntries() => [
+    ('minecraft:potion_contents', utf8.encode(jsonEncode(contentsJson))),
+    (
+      'create:potion_fluid_bottle_type',
+      utf8.encode(jsonEncode(bottle.name)),
+    ),
+  ];
+
+  /// `PotionContents.CODEC` form: `{potion, custom_effects?}`.
+  Map<String, Object?> get contentsJson => {
+    'potion': potion,
+    if (customEffects.isNotEmpty)
+      'custom_effects': [
+        for (final e in customEffects)
+          {
+            'id': e.effect,
+            'duration': e.duration,
+            'amplifier': e.amplifier,
+            'ambient': e.ambient,
+            'show_particles': e.visible,
+          },
+      ],
+  };
+
+  /// The data of the potion fluid of [comps] (`componentEntries`), `null` when they are not a
+  /// potion's components.
+  static PotionFluidData? fromComponentEntries(
+    List<(String, List<int>)> comps,
+  ) {
+    Map<String, Object?>? contents;
+    String? bottle;
+    for (final (name, bytes) in comps) {
+      try {
+        final value = jsonDecode(utf8.decode(bytes));
+        if (name == 'minecraft:potion_contents' && value is Map) {
+          contents = value.cast<String, Object?>();
+        } else if (name == 'create:potion_fluid_bottle_type' &&
+            value is String) {
+          bottle = value;
+        }
+      } on Object {
+        // a component the plugin did not write as JSON
+      }
+    }
+    final potion = contents?['potion'];
+    if (potion is! String) return null;
+    return PotionFluidData(
+      potion,
+      bottle: BottleType.parse(bottle),
+      customEffects: _effectsOf(contents!['custom_effects']),
+    );
+  }
+
+  static List<PotionEffectData> _effectsOf(Object? raw) {
+    if (raw is! List) return const [];
+    final effects = <PotionEffectData>[];
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final id = e['id'];
+      if (id is! String) continue;
+      effects.add(
+        PotionEffectData(
+          id,
+          duration: (e['duration'] as num?)?.toInt() ?? 0,
+          amplifier: (e['amplifier'] as num?)?.toInt() ?? 0,
+          ambient: e['ambient'] == true,
+          visible: e['show_particles'] != false,
+        ),
+      );
+    }
+    return effects;
+  }
+
   /// The component map Create's client reads from a fluid stack.
   Map<String, NbtValue> toComponents() {
     final contents = <String, NbtValue>{'potion': NbtValue.string(potion)};

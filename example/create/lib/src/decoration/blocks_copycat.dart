@@ -173,6 +173,22 @@ BlockBehavior copycatBehavior(DecorationRuntime rt, {required bool panel}) {
       if (key.endsWith('_bed')) return 0.5;
       return e.damageMultiplier;
     },
+    canEntityDestroy: (server, e) async {
+      // `CopycatBlock.canEntityDestroy` -> the material's own answer. No vanilla block overrides it
+      // (`BlockBehaviour` has none), so the material answers through the default of
+      // `IBlockExtension.canEntityDestroy` (NeoForge 26.3): the ender dragon is kept off
+      // `minecraft:dragon_immune` blocks and the wither off `minecraft:wither_immune` ones
+      // (`WitherBoss.canDestroy`, `WitherBoss.java:359-361`). Every other entity gets `true`.
+      final type = e.entityType;
+      if (type != 'minecraft:ender_dragon' && type != 'minecraft:wither' && type != 'minecraft:wither_skull') {
+        return true;
+      }
+      final stateId = stateIdOf(be(e.targetWorld, e.pos.toPos())?.material ?? const BState(copycatBaseKey));
+      if (stateId == null) return true;
+      if (type == 'minecraft:ender_dragon') return !BlockStates.isTag(stateId, 'minecraft:dragon_immune');
+      // `WitherBoss.canDestroy` also wants the block not to be air, which a material never is.
+      return !BlockStates.isTag(stateId, 'minecraft:wither_immune');
+    },
     onUpdateShape: (server, e) async {
       final state = rt.stateOf(e.block, e.stateIndex);
       if (state.flag('waterlogged')) updateWater(e.targetWorld, e.pos.toPos(), state);

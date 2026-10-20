@@ -418,8 +418,10 @@ final class ClipboardHost {
       }
     }
     if (be is ClipboardBlockEntity) {
-      // A right click copies the entries of the placed clipboard into the item.
-      if (paste) return false;
+      // A click with a clipboard on a placed clipboard copies the entries of the placed one into
+      // the held item and cancels the click, for a right click (copy) and a left click (paste)
+      // alike: `ClipboardValueSettingsHandler.interact` never lets a left click reach the block,
+      // so the placed clipboard is not broken.
       final from = be.content?.pages ?? const <List<ClipboardEntryData>>[];
       final pages = mergeClipboardPages(content.pages, from);
       var next = content.setPages(pages);

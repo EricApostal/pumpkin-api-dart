@@ -7,6 +7,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../api/util.dart' hide pos;
 import '../host/lg_block_entity.dart';
 import '../host/lvl.dart';
+import '../host/state_props.dart';
 import '../packager/packager_block_entity.dart';
 import '../packager/repackager/repackager_block_entity.dart';
 import 'factory_panel_behaviour.dart';
@@ -82,19 +83,10 @@ class FactoryPanelBlockEntity extends LgBlockEntity {
   /// This block entity's position as a [Pos].
   Pos get _pos => pos.toPos();
 
-  /// `FactoryPanelBlock.connectedDirection(state)`.
-  Direction get connectedDirection {
-    final info = _lvl?.info(_pos);
-    final props = info?.properties ?? const <String, String>{};
-    final face = props['face'] ?? 'floor';
-    final facing =
-        Direction.byName(props['facing'] ?? 'north') ?? Direction.north;
-    return switch (face) {
-      'ceiling' => Direction.up,
-      'floor' => Direction.down,
-      _ => facing,
-    };
-  }
+  /// `FactoryPanelBlock.connectedDirection(state)`:
+  /// `FaceAttachedHorizontalDirectionalBlock.getConnectedDirection`.
+  Direction get connectedDirection =>
+      faceConnectedDirection(_lvl?.info(_pos)?.properties ?? const {});
 
   @override
   void lazyTick() {

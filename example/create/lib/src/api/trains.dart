@@ -37,6 +37,8 @@ export '../trains/entity/train_level.dart';
 export '../trains/entity/train_relocator.dart';
 export '../trains/entity/train_status.dart';
 export '../trains/entity/travelling_point.dart';
+export '../trains/schedule/schedule_level.dart'
+    show SchedulePortInventories;
 export '../trains/schedule/schedule_services.dart'
     show ConductorSeatLookup, ScheduleCarriagePassenger;
 export '../trains/station/global_station.dart';

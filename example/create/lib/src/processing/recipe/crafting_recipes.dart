@@ -88,10 +88,14 @@ final class CraftingRecipeCache {
   List<CraftingRecipeEntry> shaped = const [];
   List<CraftingRecipeEntry> shapeless = const [];
 
-  /// The shaped recipes that are compressible squares (the press, when
-  /// `allowShapedSquareInPress` is set).
+  /// The recipes that `canCompress` accepts (the press, when `allowShapedSquareInPress` is
+  /// set): a 2x2 or 3x3 square of one ingredient. Java asks the *placement* ingredients, so a
+  /// shapeless recipe of four equal items is compressible too; the mixer then leaves it to the
+  /// press (`MechanicalMixerBlockEntity.matchStaticFilters` rejects it).
   List<CraftingRecipeEntry> get compressibleSquares => [
     for (final entry in shaped)
+      if (entry.isCompressibleSquare) entry,
+    for (final entry in shapeless)
       if (entry.isCompressibleSquare) entry,
   ];
 

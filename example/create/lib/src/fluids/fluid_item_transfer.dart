@@ -10,6 +10,7 @@ import '../processing/recipe/recipe.dart';
 import '../processing/recipe/recipe_book.dart';
 import '../processing/recipe/recipe_type.dart';
 import 'fluid_host.dart';
+import 'fluid_processing_bridge.dart';
 import 'fluid_stack.dart';
 import 'generic_item_fluid.dart';
 
@@ -43,9 +44,6 @@ final class RecipeFluidItemRecipes implements FluidItemRecipes {
       ? FluidItemSpec.empty
       : FluidItemSpec(stack.key, stack.count);
 
-  static FStack _fluid(PFluid fluid) =>
-      fluid.isEmpty ? FStack.empty : FStack(fluid.key, fluid.amount);
-
   @override
   EmptyingResult? findEmptying(FluidItemSpec item) {
     final stack = _stack(item.withCount(1));
@@ -54,7 +52,7 @@ final class RecipeFluidItemRecipes implements FluidItemRecipes {
       if (!recipe.matchesSingle(stack, _tags)) continue;
       if (recipe.fluidResults.isEmpty) continue;
       return EmptyingResult(
-        _fluid(recipe.fluidResults.first),
+        fStackOf(recipe.fluidResults.first),
         _item(recipe.resultItem),
       );
     }
@@ -65,7 +63,7 @@ final class RecipeFluidItemRecipes implements FluidItemRecipes {
   ProcessingRecipe? _fillingRecipe(FluidItemSpec item, FStack available) {
     final stack = _stack(item.withCount(1));
     if (stack.isEmpty || available.isEmpty) return null;
-    final fluid = PFluid(available.fluid, available.amount);
+    final fluid = pFluidOf(available);
     bool accepts(ProcessingRecipe recipe) =>
         recipe.fluidIngredients.isNotEmpty &&
         recipe.fluidIngredients.first.testFluid(fluid, _tags);

@@ -10,9 +10,6 @@ import 'fluid_storage.dart';
 import 'fluid_world.dart';
 import 'pipe_connection.dart';
 
-// DEBUG-FLUID
-int _dbgNet = 0;
-
 class FluidNetwork {
   static const int cyclesPerTick = 16;
 
@@ -135,13 +132,6 @@ class FluidNetwork {
 
     // `if (source == null) source = sourceSupplier.get()`: the handler is kept once found.
     source ??= sourceSupplier(world);
-    // DEBUG-FLUID
-    _dbgNet++;
-    if (_dbgNet % 40 == 0) {
-      print('DEBUGFLUID net start=${start.pos}$start.face src=${source.runtimeType} '
-          'targets=[${targets.map((t) => '${t.face.pos}${t.face.face}:${t.source.runtimeType}').join(' ')}] '
-          'fluid=${fluid.fluid}:${fluid.amount} speed=$transferSpeed');
-    }
     if (source == null) return;
 
     _keepPortableFluidInterfaceEngaged();
@@ -208,12 +198,6 @@ class FluidNetwork {
 
           final divided = transfer.withAmount(simulatedTransfer);
           var fill = targetHandler.fill(divided, simulate: simulate);
-
-          // DEBUG-FLUID
-          if (_dbgNet % 40 == 0) {
-            print('DEBUGFLUID fill pos=${out.face.pos}${out.face.face} '
-                'handler=${targetHandler.runtimeType} sim=$simulate amount=$simulatedTransfer -> $fill');
-          }
 
           if (simulate) {
             accumulatedFill[targetHandler] = fill;

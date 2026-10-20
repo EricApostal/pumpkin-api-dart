@@ -86,19 +86,47 @@ const Set<String> materialItemKeys = {
 
 /// The registrations of the material items, in manifest order.
 ///
-/// The host has no network reader for `minecraft:food`, so the four food items are registered
-/// without it (they exist for recipes and storage but cannot be eaten yet); the blaze cakes'
-/// `minecraft:cooking_fuel` is skipped for the same reason.
+/// The four food items get the `minecraft:food` component of their `AllItems` entry and the
+/// `minecraft:consumable` that `Item.Properties#food` adds beside it; the blaze cakes'
+/// `minecraft:cooking_fuel` is skipped (the host has no reader for it).
 List<ItemRegistration> createMaterialItems() => [
   for (final m in kItems)
     if (materialItemKeys.contains(m.key)) materialItem(m),
 ];
 
-/// The registration of one material item: its stack size and its rarity.
+/// Nutrition and saturation modifier of the food items (`FoodProperties` of the `AllItems`
+/// entry). The manifest records the unchanged builder source, not the numbers.
+const Map<String, (int, double)> _materialFoods = {
+  'bar_of_chocolate': (6, 0.3), // AllItems.java:138 BAR_OF_CHOCOLATE
+  'sweet_roll': (6, 0.8), // AllItems.java:146 SWEET_ROLL
+  'chocolate_glazed_berries': (7, 0.8), // AllItems.java:153 CHOCOLATE_BERRIES
+  'honeyed_apple': (8, 0.8), // AllItems.java:160 HONEYED_APPLE
+};
+
+/// Vanilla's `Consumables.DEFAULT_FOOD`, the consumable `Item.Properties#food` attaches: 1.6 s
+/// (32 ticks) of eating with the eat sound and particles.
+const Map<String, Object?> _defaultFoodConsumable = {
+  'consume_seconds': 1.6,
+  'animation': 'eat',
+  'sound': 'minecraft:entity.generic.eat',
+  'has_consume_particles': true,
+};
+
+/// The registration of one material item: its stack size, its rarity and, for food, what makes
+/// it edible.
 ItemRegistration materialItem(ManifestItem m) {
   final components = <String, Object?>{};
   if (m.rarity != 'COMMON') {
     components['minecraft:rarity'] = m.rarity.toLowerCase();
+  }
+  final food = _materialFoods[m.key];
+  if (food != null) {
+    components['minecraft:food'] = {
+      'nutrition': food.$1,
+      'saturation': food.$2,
+      'can_always_eat': false,
+    };
+    components['minecraft:consumable'] = _defaultFoodConsumable;
   }
   final encoded = DataComponentCodec.encodeAll(components);
   return ItemRegistration(

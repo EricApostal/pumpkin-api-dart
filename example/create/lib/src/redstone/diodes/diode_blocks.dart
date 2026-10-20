@@ -111,7 +111,7 @@ final class LatchBlock {
         onScheduledTick: _onTick,
         onCanPlace: (server, e) => e.canPlace && diodeCanSurvive(Lvl(e.targetWorld), _pos(e.pos)),
         onWeakPower: (server, e) => _signal(e.stateIndex, e.face),
-        onStrongPower: (server, e) => _signal(e.stateIndex, e.face),
+        onStrongPower: (server, e) => _strongSignal(e.stateIndex, e.face),
         canConnectRedstone: (server, e) {
           final s = diodeStateOf(block.stateOf(e.stateIndex));
           return LatchLogic.wireConnects(kind, s, e.direction?.toDirection());
@@ -124,6 +124,11 @@ final class LatchBlock {
 
   int _signal(int stateIndex, BlockDirection face) =>
       LatchLogic.signal(diodeStateOf(block.stateOf(stateIndex)), face.toDirection().opposite);
+
+  /// `DiodeBlock.getDirectSignal`: strong power only while the input is on (`POWERED`), so a
+  /// latched output does not pass through a solid block in front of it.
+  int _strongSignal(int stateIndex, BlockDirection face) =>
+      LatchLogic.directSignal(diodeStateOf(block.stateOf(stateIndex)), face.toDirection().opposite);
 
   Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
     final lvl = Lvl(e.targetWorld);
@@ -291,7 +296,7 @@ final class BrassDiodeBlock {
         onScheduledTick: _onTick,
         onCanPlace: (server, e) => e.canPlace && diodeCanSurvive(Lvl(e.targetWorld), e.pos.toPos()),
         onWeakPower: (server, e) => _signal(e.stateIndex, e.face),
-        onStrongPower: (server, e) => _signal(e.stateIndex, e.face),
+        onStrongPower: (server, e) => _strongSignal(e.stateIndex, e.face),
         canConnectRedstone: (server, e) {
           final side = e.direction?.toDirection();
           if (side == null) return false;
@@ -312,8 +317,26 @@ final class BrassDiodeBlock {
 
   int _signal(int stateIndex, BlockDirection face) {
     final s = diodeStateOf(block.stateOf(stateIndex));
-    if (s.facing != face.toDirection().opposite) return 0;
-    return BrassDiodeMachine.outputSignal(powering: s.powering, inverted: s.inverted);
+    return BrassDiodeMachine.signal(
+      powering: s.powering,
+      inverted: s.inverted,
+      // `e.face` touches the reader; vanilla `side` points back at it.
+      facing: s.facing,
+      side: face.toDirection().opposite,
+    );
+  }
+
+  /// `DiodeBlock.getDirectSignal`: strong power only while the input is on (`POWERED`), so an
+  /// inverted diode holding its output does not pass through a solid block in front of it.
+  int _strongSignal(int stateIndex, BlockDirection face) {
+    final s = diodeStateOf(block.stateOf(stateIndex));
+    return BrassDiodeMachine.directSignal(
+      powered: s.powered,
+      powering: s.powering,
+      inverted: s.inverted,
+      facing: s.facing,
+      side: face.toDirection().opposite,
+    );
   }
 
   /// `AbstractDiodeBlock`/`DiodeBlock` behaviour shared with the latches: the brass diodes

@@ -24,15 +24,21 @@ final class PortableStorageInterfaceMovement extends MovementBehaviour {
   @override
   bool disableBlockEntityRendering() => true;
 
+  /// `context.contraption instanceof CarriageContraption`: only a train carriage skips the PSI work
+  /// while it moves faster than a quarter block per tick (`PortableStorageInterfaceMovement.java:66-68`).
+  static bool _onCarriage(MovementContext context) =>
+      context.contraption.typeId == 'create:carriage';
+
   @override
   Future<void> visitNewPosition(MovementContext context, Pos pos) async {
-    if (context.motion.length > 1 / 4) return;
+    if (_onCarriage(context) && context.motion.length > 1 / 4) return;
     if (!findInterface(context, pos)) context.data.remove(workingPos);
   }
 
   @override
   Future<void> tick(MovementContext context) async {
-    if (context.motion.length > 1 / 4) return;
+    final onCarriage = _onCarriage(context);
+    if (onCarriage && context.motion.length > 1 / 4) return;
 
     if (!context.data.contains(workingPos)) {
       if (context.stall) cancelStall(context);
@@ -43,6 +49,7 @@ final class PortableStorageInterfaceMovement extends MovementBehaviour {
     final target = pos.center;
     final position = context.position;
     if (!context.stall &&
+        !onCarriage &&
         position != null &&
         (target - position).length <
             (target - (position + context.motion)).length) {

@@ -501,17 +501,11 @@ class BeltBlockEntity extends KineticBlockEntity
     if (inv == null) return inserted;
 
     // A brass tunnel above the belt distributes the item instead of letting it ride on
-    // (`BeltBlockEntity.tryInsertingFromSide`, `BeltBlockEntity.java:498-510`).
-    final tunnel = tunnelOnSegment(index);
-    if (tunnel != null && tunnel.isBrass && tunnel.hasDistributionBehaviour) {
-      if (tunnel.getStackToDistribute().isNotEmpty) return inserted;
-      if (!tunnel.testFlapFilter(side.opposite, inserted)) return inserted;
-      if (!simulate) {
-        flapTunnel(this, index, side.opposite, true);
-        tunnel.setStackToDistribute(inserted, side.opposite);
-      }
+    // (`BeltBlockEntity.tryInsertingFromSide`, `BeltBlockEntity.java:497-515`). Java flaps
+    // through the controller's inventory (`nextInventory`), so its slope, not this segment's,
+    // decides whether the belt has tunnels on its segments.
+    if (tunnelTakesInsertion(controller, index, side, inserted, simulate: simulate))
       return ItemValue.empty;
-    }
 
     if (isOccupied(side)) return inserted;
     if (simulate) return ItemValue.empty;

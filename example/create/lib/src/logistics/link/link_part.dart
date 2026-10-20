@@ -3,12 +3,15 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart';
+import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
 import '../host/link_keys.dart';
 import '../host/runtime.dart';
+import '../host/state_props.dart';
 import '../logistics_part.dart';
 import '../stock/stock_ticker_block_entity.dart';
 import 'linked_item.dart';
@@ -101,12 +104,69 @@ CreateBlock stockLinkBlock() => CreateBlock(
   blastResistance: 6,
   requiresCorrectTool: true,
   soundType: 'netherite_block',
+  // `PackagerLinkBlock.getStateForPlacement` needs the clicked face and the look, which a
+  // placement rule cannot map to `face`/`facing`: [onCanPlace] computes the real state. The rule
+  // is the fallback for a placement the hook does not see (like the factory gauge's).
+  placement: const [PlacementRule.horizontalFacing('facing')],
   blockEntityType: PackagerLinkBlockEntity.type,
   behavior: BlockBehavior(
     onNeighborUpdate: _onNeighborUpdate,
+    onCanPlace: _onCanPlace,
     onPlaced: _onPlaced,
   ),
 );
+
+/// A stock link placement computed from the clicked face, kept until the `player-placed` event
+/// (the host has no state-for-placement hook).
+final Map<String, _LinkPlacement> _pendingLinkPlacements = {};
+
+final class _LinkPlacement {
+  final BState state;
+  final String player;
+
+  const _LinkPlacement(this.state, this.player);
+}
+
+String _linkPlacementKey(World world, Pos pos) =>
+    '${world.getId()}:${pos.$1},${pos.$2},${pos.$3}';
+
+Direction _dirOf(BlockDirection d) => Direction.values[d.index];
+
+/// `PackagerLinkBlock.getStateForPlacement`: `FaceAttachedHorizontalDirectionalBlock`'s first
+/// nearest-looking direction (the direction towards the clicked block first), `FACING` turned
+/// around for a link hanging from a ceiling. `canSurvive` is always true for the link, so the
+/// first candidate always wins; `POWERED` is added by [refreshPower] once the block is there.
+BState _linkStateForPlacement(
+  World world,
+  Pos pos,
+  Player player,
+  Direction support,
+) =>
+    faceAttachedStateForPlacement(
+      'create:stock_link',
+      look: player.lookDirection,
+      yaw: player.getYaw(),
+      towardsClicked: support,
+      // `PackagerLinkBlock.canSurvive` accepts every position.
+      canAttach: (_) => true,
+      waterlogged: replacesWater(world, pos),
+      adjust: (state) => state['face'] == 'ceiling'
+          ? state.setDir('facing', state.dir('facing')!.opposite)
+          : state,
+    )!;
+
+Future<bool> _onCanPlace(Server server, CustomBlockCanPlaceEventData e) async {
+  if (!e.canPlace || e.player == null || e.face == null) return e.canPlace;
+  final player = Lg.i.player(e.player!.asString);
+  if (player == null) return true;
+  final world = e.targetWorld;
+  final pos = e.pos.toPos();
+  _pendingLinkPlacements[_linkPlacementKey(world, pos)] = _LinkPlacement(
+    _linkStateForPlacement(world, pos, player, _dirOf(e.face!)),
+    e.player!.asString,
+  );
+  return true;
+}
 
 Future<void> _onNeighborUpdate(
   Server server,
@@ -120,16 +180,33 @@ Future<void> _onNeighborUpdate(
   await be.refreshPower();
 }
 
+/// `PackagerLinkBlock.setPlacedBy`: remembers the placer and fixes the state the host placed
+/// (which the stock link's placement rules cannot express).
 Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
   final uuid = e.player?.asString;
   if (uuid == null) return;
-  final be = Lg.i.store.typed<PackagerLinkBlockEntity>(
-    e.targetWorld.getId(),
-    e.pos,
-  );
+  final world = e.targetWorld;
+  final pos = e.pos.toPos();
+  final be = Lg.i.store.typed<PackagerLinkBlockEntity>(world.getId(), e.pos);
   if (be == null) return;
+
+  final pending = _pendingLinkPlacements.remove(_linkPlacementKey(world, pos));
+  if (pending != null && pending.player == uuid) {
+    final info = BlockStates.info(world.getBlockStateId(pos: e.pos));
+    if (info?.key == 'create:stock_link') {
+      final current = BState('create:stock_link', info!.properties);
+      final differs =
+          current.props.length != pending.state.props.length ||
+          current.props.entries.any(
+            (entry) => pending.state.props[entry.key] != entry.value,
+          );
+      if (differs) await setBlockState(world, pos, pending.state);
+    }
+  }
+
   be.placedBy = uuid;
   be.notifyUpdate();
+  await be.refreshPower();
 }
 
 /// The `packager_link` part.

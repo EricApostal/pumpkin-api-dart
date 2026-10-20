@@ -1374,15 +1374,6 @@ final class ContraptionHost {
     if (entity == null) return;
     if (!entity.host.isAlive) return;
     await entity.tick();
-    final p = entity.host.position;
-    final angle = entity is ControlledContraptionEntity
-        ? ' angle=${entity.angle.toStringAsFixed(2)}'
-        : '';
-    log.info(
-      'DBG contraption $entityId ${entity.runtimeType} '
-      'pos=(${p.$1.toStringAsFixed(3)},${p.$2.toStringAsFixed(3)},'
-      '${p.$3.toStringAsFixed(3)})$angle',
-    );
   }
 
   void forgetWorld(String worldId) {

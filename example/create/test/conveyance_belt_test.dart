@@ -6,6 +6,7 @@ import 'package:create/src/conveyance/behaviours/belt_interfaces.dart';
 import 'package:create/src/conveyance/behaviours/item_forms.dart';
 import 'package:create/src/conveyance/belt/belt_block_def.dart';
 import 'package:create/src/conveyance/belt/belt_geometry.dart';
+import 'package:create/src/conveyance/belt/belt_handlers.dart';
 import 'package:create/src/conveyance/belt/belt_inventory.dart';
 import 'package:create/src/conveyance/belt/belt_ports.dart';
 import 'package:create/src/conveyance/belt/transported_item.dart';
@@ -164,6 +165,47 @@ void main() {
       expect(fields['Pos'], closeTo(0.5 + 2 * 32 / 480, 1e-6));
       expect(fields['PrevPos'], closeTo(0.5 + 32 / 480, 1e-6));
       expect(fields['Pos'], isNot(fields['PrevPos']));
+    });
+
+    test('two samples ten ticks apart read the way the client lerps them', () async {
+      // The animation ticket's decisive check, at the level of the update tag: sample the
+      // serialized fields, run ten ticks, sample again. An item that does not move serializes
+      // the same `Pos` twice; an item the client cannot interpolate serializes `PrevPos == Pos`
+      // (`BeltRenderer.renderItem` lerps `PrevPos` -> `Pos`).
+      final env = FakeBelt();
+      final inv = BeltInventory(env);
+      inv.addItem(stackAt(0.5));
+      await inv.tick(); // inserts, and moves the item one step
+
+      final before = transportedItemPositionFields(inv.items.single);
+      final updatesBefore = env.updates;
+      for (var i = 0; i < 10; i++) {
+        await inv.tick();
+      }
+      final after = transportedItemPositionFields(inv.items.single);
+      const step = 32 / 480;
+      final beforePos = before['Pos']!;
+      final afterPos = after['Pos']!;
+      final afterPrevPos = after['PrevPos']!;
+
+      expect(afterPos, closeTo(0.5 + 11 * step, 1e-6));
+      expect(beforePos, closeTo(0.5 + step, 1e-6));
+      expect(afterPos, greaterThan(beforePos), reason: 'the item has to move');
+      expect(
+        afterPrevPos,
+        isNot(afterPos),
+        reason: 'equal values render the item still',
+      );
+      expect(
+        afterPrevPos,
+        closeTo(beforePos + 9 * step, 1e-6),
+        reason: 'PrevPos is the previous tick\'s Pos: the pair the client lerps',
+      );
+      expect(
+        env.updates,
+        updatesBefore + 10,
+        reason: 'ten moving ticks push ten tags, or the client keeps the old pair',
+      );
     });
 
     test('a re-centering item serializes with a distinct Offset and PrevOffset', () async {
@@ -352,6 +394,33 @@ void main() {
       expect(t.processingTime, 25);
     });
 
+    test('a fan over a depot finishes its timer on the live item', () {
+      // CV-02: `DepotBehaviour.applyToAllItems` runs the fan callback on the live `heldItem`
+      // (`DepotBehaviour.java:394-403`). The fan's timer lives on the item
+      // (`FanProcessing.applyProcessingTransported` restarts it whenever `processedBy` does not
+      // match), so an item the depot only kept as a conversion copy would be re-timed on every
+      // tick and never finish.
+      final held = TransportedItemStack(ItemValue('minecraft:wet_sponge', 1))
+        ..beltPosition = .5;
+      pt.TransportedResult? finished;
+      for (var tick = 0; tick < 400 && finished == null; tick++) {
+        // The body of `DepotBehaviour.applyToAllItems` around its callback.
+        final processing = toProcessing(held);
+        final stackBefore = processing.stack;
+        final result = live(() => _fanTick(processing));
+        copyBack(processing, held);
+        if (result.didntChangeFrom(stackBefore)) continue;
+        finished = result;
+      }
+
+      expect(
+        finished,
+        isNotNull,
+        reason: 'the fan has to finish: the timer must survive the bridge',
+      );
+      expect(finished!.outputs.single.stack.key, 'minecraft:sponge');
+    });
+
     test('the bridge keeps one processing form per belt item', () {
       final t = TransportedItemStack(ItemValue('minecraft:stone', 1));
       final first = toProcessing(t);
@@ -385,6 +454,109 @@ void main() {
         await flatInv.tick();
       }
       expect(flatTunnel.flaps, isNotEmpty);
+    });
+  });
+
+  group('tunnel insertion', () {
+    // `BeltBlockEntity.tryInsertingFromSide` (`BeltBlockEntity.java:497-515`): an insert that
+    // reaches a belt with a distributing brass tunnel above it goes to the tunnel, not the belt.
+    ItemValue ingot() => ItemValue('minecraft:iron_ingot', 1);
+
+    test('a distributing brass tunnel takes the inserted stack', () {
+      final belt = FakeBelt(length: 4);
+      final tunnel = _TunnelPort(
+        isBrass: true,
+        hasDistributionBehaviour: true,
+      );
+      belt.tunnels[1] = tunnel;
+
+      final took = tunnelTakesInsertion(
+        belt,
+        1,
+        Direction.north,
+        ingot(),
+        simulate: false,
+      );
+
+      expect(took, isTrue);
+      expect(tunnel.distributed.single.$1.key, 'minecraft:iron_ingot');
+      expect(
+        tunnel.distributed.single.$2,
+        Direction.south,
+        reason: 'the stack entered from the side it was inserted at',
+      );
+      expect(tunnel.flaps, [(Direction.south, true)]);
+    });
+
+    test('a simulation takes the stack without touching the tunnel', () {
+      final belt = FakeBelt(length: 4);
+      final tunnel = _TunnelPort(
+        isBrass: true,
+        hasDistributionBehaviour: true,
+      );
+      belt.tunnels[1] = tunnel;
+
+      expect(
+        tunnelTakesInsertion(belt, 1, Direction.north, ingot(), simulate: true),
+        isTrue,
+      );
+      expect(tunnel.distributed, isEmpty);
+      expect(tunnel.flaps, isEmpty);
+    });
+
+    test('a tunnel that cannot distribute leaves the stack to the belt', () {
+      final belt = FakeBelt(length: 4);
+      // An andesite tunnel, a brass one without a distribution behaviour, one already holding a
+      // stack and one whose filter rejects the stack all let it ride on.
+      final cases = {
+        'andesite': _TunnelPort(
+          isBrass: false,
+          hasDistributionBehaviour: true,
+        ),
+        'no distribution': _TunnelPort(
+          isBrass: true,
+          hasDistributionBehaviour: false,
+        ),
+        'busy': _TunnelPort(
+          isBrass: true,
+          hasDistributionBehaviour: true,
+          distributing: true,
+        ),
+        'filtered': _TunnelPort(
+          isBrass: true,
+          hasDistributionBehaviour: true,
+          accepts: false,
+        ),
+      };
+      for (final MapEntry(key: name, value: tunnel) in cases.entries) {
+        belt.tunnels[1] = tunnel;
+        expect(
+          tunnelTakesInsertion(
+            belt,
+            1,
+            Direction.north,
+            ingot(),
+            simulate: false,
+          ),
+          isFalse,
+          reason: name,
+        );
+        expect(tunnel.distributed, isEmpty, reason: name);
+        expect(tunnel.flaps, isEmpty, reason: name);
+      }
+
+      belt.tunnels.clear();
+      expect(
+        tunnelTakesInsertion(
+          belt,
+          1,
+          Direction.north,
+          ingot(),
+          simulate: false,
+        ),
+        isFalse,
+        reason: 'no tunnel above the segment',
+      );
     });
   });
 
@@ -844,28 +1016,60 @@ class _InventoryHandler implements TransportedItemStackHandler {
   Vec3 getWorldPositionOf(TransportedItemStack transported) => (0, 0, 0);
 }
 
+/// `FanProcessing.applyProcessingTransported`'s shape: the timer is the item's own
+/// `processedBy` / `processingTime`, restarted whenever the type does not match, and the result is
+/// the washed stack once it runs out. (`fan_processing.dart` is a wasm-only module, so the test
+/// spells the fan's behaviour out instead of importing it.)
+pt.TransportedResult _fanTick(pt.TransportedItemStack t) {
+  const type = 'create:splashing';
+  if (t.processedBy != type) {
+    t.processedBy = type;
+    t.processingTime = 150;
+    return pt.TransportedResult.doNothing();
+  }
+  if (t.processingTime-- > 0) return pt.TransportedResult.doNothing();
+  return pt.TransportedResult.convertTo(
+    pt.TransportedItemStack(const PStack('minecraft:sponge', 1))
+      ..beltPosition = t.beltPosition,
+  );
+}
+
 /// A belt tunnel above a segment that records what the belt does with it.
 class _TunnelPort implements BeltTunnelPort {
+  _TunnelPort({
+    this.isBrass = false,
+    this.hasDistributionBehaviour = false,
+    this.distributing = false,
+    this.accepts = true,
+  });
+
   final flaps = <(Direction, bool)>[];
   final distributed = <(ItemValue, Direction?)>[];
+
+  @override
+  final bool isBrass;
+
+  @override
+  final bool hasDistributionBehaviour;
+
+  /// Whether the tunnel already holds a stack (`getStackToDistribute` is not empty).
+  final bool distributing;
+
+  /// What `testFlapFilter` answers.
+  final bool accepts;
 
   @override
   Pos get position => (1, 1, 0);
 
   @override
-  bool get isBrass => false;
-
-  @override
-  bool get hasDistributionBehaviour => false;
-
-  @override
   bool get canTakeItems => true;
 
   @override
-  ItemValue getStackToDistribute() => ItemValue.empty;
+  ItemValue getStackToDistribute() =>
+      distributing ? ItemValue('minecraft:stone', 1) : ItemValue.empty;
 
   @override
-  bool testFlapFilter(Direction side, ItemValue stack) => true;
+  bool testFlapFilter(Direction side, ItemValue stack) => accepts;
 
   @override
   bool canInsert(Direction side, ItemValue stack) => true;

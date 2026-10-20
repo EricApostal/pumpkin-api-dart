@@ -1,6 +1,9 @@
 import 'package:create/src/common/common.dart';
+import 'package:create/src/conveyance/items/inventory.dart';
+import 'package:create/src/conveyance/items/item_data.dart';
 import 'package:create/src/redstone/link/frequency.dart';
 import 'package:create/src/redstone/link/link_network.dart';
+import 'package:create/src/redstone/observer/observed_container.dart';
 import 'package:create/src/redstone/observer/threshold_logic.dart';
 import 'package:create/src/redstone/support/placement.dart';
 import 'package:test/test.dart';
@@ -139,6 +142,82 @@ void main() {
     test('the unsupported target check skips stock tickers', () {
       expect(thresholdTargetSupported('minecraft:chest'), isTrue);
       expect(thresholdTargetSupported('create:stock_ticker'), isFalse);
+    });
+  });
+
+  group('observed containers', () {
+    // A single block vault: `vaultCapacity` (20) slots of 64 items each, answered by the vault's
+    // `ItemInventoryProvider` (`ItemVaultBlockEntity.itemInventory`). The observer and the
+    // threshold switch read it through [PluginInventoryContainer]: the host's `ItemHandlers`
+    // never sees a plugin inventory (the block does not register one).
+    ListInventory vault({int slotLimit = 64}) => ListInventory(20, slotLimit: slotLimit);
+
+    test('a plugin inventory is read slot by slot like the item handler capability', () async {
+      final inventory = vault()
+        ..setStack(0, const ItemValue('minecraft:iron_ingot', 3))
+        ..setStack(19, const ItemValue('minecraft:gold_ingot', 64));
+      final container = PluginInventoryContainer(inventory);
+
+      expect(container.slots, 20);
+      final first = await container.slot(0, detail: true);
+      expect(first.key, 'minecraft:iron_ingot');
+      expect(first.count, 3);
+      expect(first.limit, 64);
+      expect(first.isEmpty, isFalse);
+      expect((await container.slot(1)).isEmpty, isTrue, reason: 'an empty slot has no item');
+      expect((await container.slot(1)).key, 'minecraft:air');
+      // The scans that run every tick read the key and the count only.
+      final cheap = await container.slot(0);
+      expect(cheap.key, 'minecraft:iron_ingot');
+      expect(cheap.count, 3);
+    });
+
+    test('the threshold switch counts the stock and the capacity of a vault', () async {
+      final container = PluginInventoryContainer(
+        vault()
+          ..setStack(0, const ItemValue('minecraft:iron_ingot', 3))
+          ..setStack(19, const ItemValue('minecraft:gold_ingot', 64)),
+      );
+
+      final filtered = await thresholdItemLevels(container, test: (key) => key == 'minecraft:iron_ingot');
+      expect(filtered.current, 3, reason: 'only the filtered item is counted');
+      expect(filtered.max, 20 * 64, reason: 'every slot gives min(64, slotLimit)');
+
+      final unfiltered = await thresholdItemLevels(container, test: (_) => true);
+      expect(unfiltered.current, 67);
+      expect(unfiltered.max, 20 * 64);
+    });
+
+    test('a slot limit below the stack size caps the space of the slot', () async {
+      final container = PluginInventoryContainer(
+        vault(slotLimit: 1)..setStack(0, const ItemValue('minecraft:iron_ingot', 1)),
+      );
+      final levels = await thresholdItemLevels(container, test: (_) => true);
+      expect(levels.current, 1);
+      expect(levels.max, 20, reason: 'min(stack size, slot limit) per slot');
+    });
+
+    test('the address of a package in a plugin inventory is read', () async {
+      final container = PluginInventoryContainer(
+        vault()
+          ..setStack(
+            0,
+            ItemValue(
+              'create:cardboard_package_12x12',
+              1,
+              comps: [(packageAddressComponent, encodePackageAddress('Home'))],
+            ),
+          ),
+      );
+      expect((await container.slot(0, detail: true)).address, 'Home');
+      expect((await container.slot(1, detail: true)).address, isNull, reason: 'an empty slot has no package');
+      expect(
+        (await PluginInventoryContainer(vault()..setStack(0, const ItemValue('minecraft:iron_ingot', 1)))
+                .slot(0, detail: true))
+            .address,
+        isNull,
+        reason: 'a plain item carries no address',
+      );
     });
   });
 

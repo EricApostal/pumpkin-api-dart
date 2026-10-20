@@ -25,11 +25,27 @@ import 'piston_contraption.dart';
 
 /// `LinearActuatorBlockEntity`: the common part of the piston and the gantry.
 abstract class LinearActuatorBlockEntity extends KineticBlockEntity
-    implements IControlContraption, ValueSettingsHost, AssemblyExceptionHolding {
-  LinearActuatorBlockEntity(super.worldId, super.pos);
+    implements
+        IControlContraption,
+        ValueSettingsHost,
+        RunningActuator,
+        AssemblyExceptionHolding {
+  LinearActuatorBlockEntity(super.worldId, super.pos) {
+    // `addBehaviours`: added at construction so `read` restores the saved `ScrollValue`.
+    _movementMode = addBehaviour(
+      ScrollValueBehaviour()
+        ..between(0, 2)
+        ..withCallback((_) => waitingForSpeedChange = false),
+    );
+  }
 
   double offset = 0;
   bool running = false;
+
+  /// `PulleyBlockEntity.running` for [RunningActuator]: the pulley tells movement checks whether
+  /// it is moving its contraption.
+  @override
+  bool get isRunning => running;
   bool assembleNextTick = false;
   bool needsContraption = true;
   AbstractContraptionEntity? movedContraption;
@@ -54,11 +70,6 @@ abstract class LinearActuatorBlockEntity extends KineticBlockEntity
   @override
   void onLoad() {
     lazyTickRate = 3;
-    _movementMode = addBehaviour(
-      ScrollValueBehaviour()
-        ..between(0, 2)
-        ..withCallback((_) => waitingForSpeedChange = false),
-    );
     super.onLoad();
   }
 

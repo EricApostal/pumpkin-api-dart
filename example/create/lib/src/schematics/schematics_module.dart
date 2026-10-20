@@ -227,6 +227,11 @@ final class SchematicsModule extends CreateModule {
           ? ItemRequirement.none
           : ItemRequirement(required);
     };
+    // The blocks that have no item of their own (`GlassFluidPipeBlock`, `BeltFunnelBlock`,
+    // `GirderEncasedShaftBlock`, `LecternControllerBlock`, `CopycatBlockEntity`) and the block
+    // entity data the generic paths cannot filter (`CopycatBlockEntity.writeSafe`).
+    registerSpecialBlockRequirements(hooks.requirements);
+    registerCreateSafeNbtWriters(hooks);
     // `SchematicPrinter.loadSchematic` applies a `StructureTransform` to the block entities of
     // the loaded schematic (mechanical arms, crafters, tracks, ... rotate their saved data with
     // the schematic).

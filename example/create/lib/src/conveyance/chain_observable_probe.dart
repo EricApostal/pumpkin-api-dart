@@ -11,8 +11,15 @@ import 'runtime.dart';
 final class ChainConveyorObservableProbe implements ObservableProbe {
   const ChainConveyorObservableProbe();
 
-  static ChainConveyorBlockEntity? _be(String worldId, Pos pos) =>
-      ConveyanceRuntime.loaded ? ConveyanceRuntime.i.beAt(worldId, pos) as ChainConveyorBlockEntity? : null;
+  /// `level.getBlockEntity(targetPos) instanceof ChainConveyorBlockEntity`: the lookup answers
+  /// for **every** Create block entity (a vault, a basin, a spout, ...), so the result has to be
+  /// tested, never cast — a cast threw a `TypeError` for all of those and killed the observer's
+  /// whole scan before it reached the inventory and tank branches.
+  static ChainConveyorBlockEntity? _be(String worldId, Pos pos) {
+    if (!ConveyanceRuntime.loaded) return null;
+    final be = ConveyanceRuntime.i.beAt(worldId, pos);
+    return be is ChainConveyorBlockEntity ? be : null;
+  }
 
   @override
   bool canObserve(String worldId, Pos pos) => _be(worldId, pos) != null;

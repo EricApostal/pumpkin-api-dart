@@ -11,12 +11,12 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../core/nbt.dart';
 import '../model/package.dart';
 import '../model/stack.dart';
+import '../model/stack_tags.dart' show customDataComponent, privateDataKey;
 import '../model/stack_wire.dart';
 
-/// The key inside `minecraft:custom_data` of the private copy of the package data.
-const String privateDataKey = 'CreateLogistics';
-
-const String _customData = 'minecraft:custom_data';
+/// The component the private copy rides in (`model/stack_tags.dart` keeps the key the contraption
+/// storages read it back through as well).
+const String _customData = customDataComponent;
 
 class StackIo {
   final StackWire wire;

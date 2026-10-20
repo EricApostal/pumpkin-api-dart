@@ -191,7 +191,33 @@ final class ArmorHost implements GogglesApi, CardboardArmorApi {
           }
       }
     }
-    if (const {'head', 'chest', 'legs', 'feet'}.contains(e.slot)) await _refreshNetherite(entity, g);
+    if (const {'head', 'chest', 'legs', 'feet'}.contains(e.slot)) {
+      await _refreshNetherite(entity, g);
+      await _refreshCardboardBox(server, entity, g);
+    }
+  }
+
+  /// `CardboardArmorHandler.playerChangesEquipment`: the game only recomputes the hitbox when the
+  /// pose changes, so putting on the last cardboard piece (or taking off the first) while already
+  /// crouched would keep the standing box until the player stands up again. Java toggles the pose
+  /// to crouching and back; the host has no plain pose setter, so forcing the standing pose
+  /// recomputes the box and clearing the override hands the pose back to the player's own
+  /// sneaking, which is crouching again on the next tick and recomputes it a second time.
+  Future<void> _refreshCardboardBox(Server server, Entity entity, WornGear g) async {
+    if (entity.getPose() != EntityPose.crouching) return;
+    if (!EqItems.isCardboardArmor(g.head) &&
+        !EqItems.isCardboardArmor(g.chest) &&
+        !EqItems.isCardboardArmor(g.legs) &&
+        !EqItems.isCardboardArmor(g.feet)) {
+      return;
+    }
+    if (server.getPlayerByUuid(id: entity.getUuid()) == null) return;
+    try {
+      entity.overridePose(EntityPose.standing);
+      entity.overridePose(null);
+    } on Object {
+      // permission `entity-flags` missing: the box stays stale until the next pose change
+    }
   }
 
   /// `NetheriteDivingHandler`: the full netherite set (diving helmet, netherite backtank with

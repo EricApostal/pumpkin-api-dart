@@ -1,6 +1,7 @@
 import 'package:create/src/content/material_content.dart';
 import 'package:create/src/decoration/roles.dart';
 import 'package:create/src/manifest/manifest.dart';
+import 'package:pumpkin_api/pumpkin_api_core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -56,7 +57,7 @@ void main() {
   });
 
   test(
-    'the food items exist but carry no food component the host cannot read',
+    'the food items are edible and only they are',
     () {
       final food = [
         for (final k in materialItemKeys)
@@ -68,14 +69,38 @@ void main() {
         'chocolate_glazed_berries',
         'honeyed_apple',
       });
-      // `DataComponentCodec` has no encoder for `minecraft:food`; a registration that included it
-      // would throw and abort the id-bearing registries.
+      // `Item.Properties#food` sets `minecraft:food` and `minecraft:consumable`; without them the
+      // host never lets the item be eaten (`prepare_hand_item_for_use` in `use_item.rs`).
+      const nutrition = {
+        'bar_of_chocolate': (6, 0.3), // AllItems.java:138
+        'sweet_roll': (6, 0.8), // AllItems.java:146
+        'chocolate_glazed_berries': (7, 0.8), // AllItems.java:153
+        'honeyed_apple': (8, 0.8), // AllItems.java:160
+      };
       for (final r in createMaterialItems()) {
+        final byName = {for (final c in r.components) c.name: c.bytes};
+        final expected = nutrition[r.key.replaceFirst('create:', '')];
+        if (expected == null) {
+          expect(byName, isNot(contains('minecraft:food')), reason: r.key);
+          expect(byName, isNot(contains('minecraft:consumable')), reason: r.key);
+          continue;
+        }
+        final f = PacketReader(byName['minecraft:food']!);
+        expect(f.readVarInt(), expected.$1, reason: r.key);
+        expect(f.readFloat(), closeTo(expected.$2, 1e-6), reason: r.key);
+        expect(f.readBool(), isFalse, reason: '${r.key} is not always edible');
+        f.expectEnd();
+        final c = PacketReader(byName['minecraft:consumable']!);
+        expect(c.readFloat(), closeTo(1.6, 1e-6), reason: '${r.key}: 32 ticks');
+        expect(c.readVarInt(), 1, reason: '${r.key}: UseAnimation.EAT');
         expect(
-          r.components.where((c) => c.name == 'minecraft:food'),
-          isEmpty,
-          reason: r.key,
+          c.readVarInt(),
+          VanillaIds.sounds.idOf('entity.generic.eat')! + 1,
+          reason: '${r.key}: the default food sound',
         );
+        expect(c.readBool(), isTrue, reason: '${r.key}: consume particles');
+        expect(c.readVarInt(), 0, reason: '${r.key}: no consume effects');
+        c.expectEnd();
       }
     },
   );

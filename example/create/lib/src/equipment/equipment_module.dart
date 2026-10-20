@@ -12,6 +12,7 @@ import '../api/wrenchable.dart';
 import '../core/block_entity.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
+import '../manifest/manifest.dart';
 import 'armor/armor_host.dart';
 import 'armor/backtank_block.dart';
 import 'armor/backtank_host.dart';
@@ -280,4 +281,24 @@ final class EquipmentModule extends CreateModule {
   void onUnload() {
     if (EquipmentRuntime.isLoaded) EquipmentRuntime.instance.dispose();
   }
+}
+
+/// The entity type spec of `create:<path>` from the manifest.
+///
+/// `EntityTypeSpec` is host-side (it carries `EntityCategory`), so this stays out of the
+/// item registration data in `equipment_items.dart`, which is unit tested on the plain VM.
+EntityTypeSpec equipmentEntityType(String path) {
+  final d = kEntityTypes.firstWhere((e) => e.key == path);
+  return EntityTypeSpec(
+    key: 'create:${d.key}',
+    width: d.width,
+    height: d.height,
+    eyeHeight: d.eyeHeight,
+    fireImmune: d.fireImmune,
+    trackingRange: d.trackingRange,
+    updateInterval: d.updateInterval.clamp(1, 1000),
+    trackDeltas: d.sendVelocity,
+    summonable: d.summonable,
+    spawnDataChannel: d.complexSpawnData ? 'neoforge:advanced_add_entity' : null,
+  );
 }

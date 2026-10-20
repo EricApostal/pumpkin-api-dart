@@ -12,6 +12,7 @@ import '../../../common/host_bridge.dart';
 import '../../core/level.dart';
 import '../../core/movement.dart';
 import '../../core/nbt_map.dart';
+import '../../pulley/pulley_contraption.dart';
 import '../../storage/stacks.dart';
 import '../actor_runtime.dart';
 import '../block_breaking_movement_behaviour.dart';
@@ -28,7 +29,10 @@ final class RollerMovementBehaviour extends BlockBreakingMovementBehaviour {
   @override
   bool isActive(MovementContext context) {
     final facing = context.state.dir('facing') ?? Direction.north;
+    // `!(context.contraption instanceof PulleyContraption)`: a rope pulley drags the roller
+    // through the blocks it hangs in, so it must not break them (`RollerMovementBehaviour.java:69-72`).
     return super.isActive(context) &&
+        context.contraption is! PulleyContraption &&
         VecHelper.isVecPointingTowards(context.relativeMotion, facing);
   }
 

@@ -6,7 +6,8 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../api/trains.dart' show StationPackagePorts;
+import '../../api/trains.dart'
+    show GlobalStation, SchedulePortInventories, StationPackagePorts;
 import '../../api/util.dart' hide pos;
 import '../../conveyance/chain/chain_conveyor_block_entity.dart';
 import '../../core/block_entity.dart';
@@ -16,8 +17,10 @@ import '../../core/registry.dart';
 import '../host/link_keys.dart';
 import '../host/runtime.dart';
 import '../logistics_part.dart';
+import 'mail_transfer_hooks.dart';
 import 'package_port_block_entity.dart';
 import 'package_port_target.dart';
+import 'port_inventories.dart';
 import 'station_ports.dart';
 
 /// The postbox colours (`AllBlocks.PACKAGE_POSTBOXES`).
@@ -170,8 +173,26 @@ final class PortPart extends LogisticsPart {
 
   @override
   void onLoad(CreateContext ctx, LgRuntime rt) {
+    // `GlobalStation.runMailTransfer` moves the packages between a train at the station and the
+    // connected postboxes: `PackageItem`, the postbox lookup and the carriages' item storage are
+    // this module's, so it provides the hooks the trains module leaves unset.
+    GlobalStation.mailHooks = PortMailTransferHooks(rt);
     // `StationBlockEntity.attachPackagePort`: the station keeps the postbox' offline buffer.
     ctx.services.provide<StationPackagePorts>(PostboxStationPorts());
+    // `FetchPackagesInstruction.start` reads the packages of a station's ports through this
+    // (`TrainHost.ports`); without it every station looks package-free.
+    ctx.services.provide<SchedulePortInventories>(
+      PortPackageInventories(
+        inventoryAt: (dimension, pos) {
+          final postbox = rt.store.typed<PostboxBlockEntity>(
+            dimension,
+            pos.toBlockPos(),
+          );
+          return postbox == null ? null : PostboxPackageInventory(postbox);
+        },
+        hasDimension: (dimension) => rt.world(dimension) != null,
+      ),
+    );
 
     // `PackagePortConfigurationPacket`.
     rt.bus.onServerbound('create:package_port_configuration', (player, fields) {
@@ -228,6 +249,12 @@ final class PortPart extends LogisticsPart {
       // `ppbe.use(player)`: the port opens its screen right after it was pointed at a target.
       unawaited(be.use(player));
     });
+  }
+
+  @override
+  void onUnload() {
+    // The runtime the hooks read is going away with this module.
+    GlobalStation.mailHooks = null;
   }
 }
 

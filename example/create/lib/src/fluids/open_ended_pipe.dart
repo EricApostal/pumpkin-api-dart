@@ -118,11 +118,25 @@ class OpenEndedPipe extends FlowSource {
 
     if (FluidHelper.isWater(stack.fluid)) world.award(pos, 'water_supply');
 
-    if (waterlog) {
-      world.setBlock(outputPos, state.setFlag('waterlogged', false));
-      world.scheduleFluidTick(outputPos, FluidKeys.water, 1);
+    // The write asks the neighbours to update, and those updates come back into the plugin: done
+    // from here (a block-entity tick, i.e. inside the host's call) the guest call would never
+    // return. A world that can defer the write does it after the tick; the pure worlds and the
+    // tests write directly. The view is built from `fluidState` read before the write, so the
+    // returned stack stays what was actually taken.
+    void takeSource() {
+      if (waterlog) {
+        world.setBlock(outputPos, state.setFlag('waterlogged', false));
+        world.scheduleFluidTick(outputPos, FluidKeys.water, 1);
+      } else {
+        world.pickupFluidSource(outputPos);
+      }
+    }
+
+    final deferring = world is DeferredFluidMutations ? world as DeferredFluidMutations : null;
+    if (deferring != null) {
+      deferring.deferFluidMutation(takeSource);
     } else {
-      world.pickupFluidSource(outputPos);
+      takeSource();
     }
     return stack;
   }

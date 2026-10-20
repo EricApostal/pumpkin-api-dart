@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
+import '../../common/stack_tag.dart';
 import '../../contraptions/core/movement.dart';
 import '../../contraptions/core/nbt_map.dart';
 import '../../core/nbt.dart';
@@ -168,43 +169,23 @@ void saveActorHeld(MovementContext context, PStack held) {
 /// A stack as the pure NBT of the contraption data (`StackNbt.write` on `NbtMap`).
 NbtMap actorStackNbt(PStack stack) => _stackToMap(stack);
 
-/// `StackNbt.write` on a pure [NbtMap] (the contraption data format).
-NbtMap _stackToMap(PStack stack) {
-  final map = NbtMap()
-    ..putString('id', stack.key)
-    ..putInt('count', stack.count);
-  if (stack.maxStack != 64) map.putInt('Max', stack.maxStack);
-  if (stack.comps.isNotEmpty) {
-    map.putList('Comps', [
-      for (final (name, bytes) in stack.comps)
-        _componentMap(name, bytes).toValue(),
-    ]);
-  }
-  return map;
-}
-
-/// One component entry of a saved stack.
-NbtMap _componentMap(String name, List<int> bytes) {
-  final map = NbtMap()..putString('N', name);
-  map['V'] = NbtValue.byteArray(bytes);
-  return map;
-}
+/// `StackNbt.write` on a pure [NbtMap] (the contraption data format): the Java
+/// `ItemStack.CODEC` shape with the plugin's extras (`common/stack_tag.dart`).
+NbtMap _stackToMap(PStack stack) => NbtMap.of(
+  JavaStackTag.write(
+    id: stack.key,
+    count: stack.count,
+    comps: stack.comps,
+    maxStack: stack.maxStack == 64 ? null : stack.maxStack,
+  ),
+);
 
 /// `StackNbt.read` on a pure [NbtMap].
 PStack _stackFromMap(NbtMap? map) {
   if (map == null) return PStack.empty;
-  final key = map.getString('id');
-  final count = map.getInt('count');
-  if (key.isEmpty || count <= 0) return PStack.empty;
-  final comps = <(String, List<int>)>[];
-  for (final value in map.getList('Comps')) {
-    final entry = NbtMap.of(value);
-    final name = entry.getString('N');
-    final bytes = entry.getIntArray('V');
-    if (name.isNotEmpty && bytes.isNotEmpty) comps.add((name, bytes));
-  }
-  comps.sort((a, b) => a.$1.compareTo(b.$1));
-  return PStack(key, count, maxStack: map.getInt('Max', 64), comps: comps);
+  final t = JavaStackTag.read(map.toValue());
+  if (t == null) return PStack.empty;
+  return PStack(t.id, t.count, maxStack: t.maxStack ?? 64, comps: t.comps);
 }
 
 /// The vanilla `Inventory` list of the fake player: one `{Slot, ...stack}` entry per non-empty

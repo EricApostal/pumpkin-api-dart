@@ -6,38 +6,9 @@ import '../../common/host_bridge.dart';
 import '../../trains/station/global_package_port.dart' show GlobalPackagePort;
 import '../../trains/station/mail_transfer.dart' show PackageInventory;
 import '../../trains/util/ctag.dart';
-import '../host/nbt_util.dart' show pluginStackKey;
 import '../model/inventory.dart';
-import '../model/stack.dart';
+import '../model/stack_tags.dart' show stackFromCTag, stackToCTag;
 import 'package_port_block_entity.dart';
-
-/// [stack] as the compound of a package inventory (`CreateItemStackHandler`: `{id, count}`), with
-/// the lossless private form next to it so a box keeps its address and contents. `null` for an
-/// empty slot.
-CTag? stackToCTag(LStack stack) {
-  if (stack.isEmpty) return null;
-  return CTag()
-    ..putString('id', stack.key)
-    ..putInt('count', stack.count)
-    ..putString(pluginStackKey, stack.toJson());
-}
-
-/// The inverse of [stackToCTag].
-LStack stackFromCTag(CTag? tag) {
-  if (tag == null) return LStack.empty;
-  final json = tag.getString(pluginStackKey);
-  if (json.isNotEmpty) {
-    try {
-      return LStackMapper.fromJson(json);
-    } on Object {
-      // fall through to the plain form
-    }
-  }
-  final id = tag.getString('id');
-  final count = tag.getInt('count');
-  if (id.isEmpty || count <= 0) return LStack.empty;
-  return LStack(id, count);
-}
 
 /// A postbox' eighteen package slots as the station's mail transfer sees them.
 final class PostboxPackageInventory implements PackageInventory {

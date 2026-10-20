@@ -111,8 +111,6 @@ and an interim workaround) is `example/sable/lib/src/sublevel/vanilla/host_gap.d
   events remain the protection hook.
 - Break particles are client-only.
 - `CarriagePassenger.saveAsPassenger` returns `null` (no entity serialiser).
-- `GlobalStation.mailHooks` is null: the logistics module has no postbox block
-  entity or package inventory to implement `MailTransferHooks` against.
 - `in_item_group` item attribute is always empty: the plugin API exposes neither
   creative tabs nor their contents.
 - Attribute selection for logistics filters is stored in `custom_data` rather

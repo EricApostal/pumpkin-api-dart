@@ -138,3 +138,13 @@ abstract final class ContraptionCollision {
 abstract interface class AssemblyExceptionHolding {
   AssemblyException? get lastAssemblyException;
 }
+
+/// An actuator whose contraption must not be moved while it runs: a mechanical or clockwork
+/// bearing, a rope pulley (`BlockMovementChecksImpl.isMovementAllowedFallback`, which reads the
+/// bearing's `isRunning()` and the pulley's `running`). The core's
+/// [ContraptionLevel.isActuatorRunning] reads it through this interface instead of reflecting on
+/// the field.
+abstract interface class RunningActuator {
+  /// `isRunning()`: whether the actuator is moving its contraption.
+  bool get isRunning;
+}

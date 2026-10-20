@@ -4,6 +4,7 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../model/stack.dart';
+import '../requester/auto_request_data.dart';
 import 'runtime.dart';
 
 /// The generic 36 slot inventory of [player], with the owned [PlayerInventory] handle released.
@@ -77,4 +78,24 @@ Future<void> consumeOneInHand(Player player, Hand hand) async {
   } finally {
     inventory.dispose();
   }
+}
+
+/// The `create:auto_request_data` component of the item in the hands of [player]
+/// (`AutoRequestData.readFromItem`'s stack): a redstone requester or a table cloth programmed at a
+/// stock keeper carries the order and the address of the keeper.
+Future<AutoRequestData?> heldRequestData(Player player) async {
+  final inventory = player.getInventory();
+  try {
+    for (final hand in [Hand.right, Hand.left]) {
+      final held = inventory.getItemInHand(hand: hand);
+      if (held == null) continue;
+      final stack = await Lg.i.read(held);
+      final bytes = stack.compBytes('create:auto_request_data');
+      if (bytes == null) continue;
+      return AutoRequestData.decode(bytes, Lg.i.wire);
+    }
+  } finally {
+    inventory.dispose();
+  }
+  return null;
 }

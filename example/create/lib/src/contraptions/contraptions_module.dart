@@ -136,15 +136,11 @@ final class ContraptionsModule extends CreateModule {
             );
 
     // Bearings, clockwork bearings and pulleys cannot be moved while they run.
-    ContraptionHostHooks.isActuatorRunning = (worldId, pos) {
-      final be = ctx.blockEntities.at(worldId, pos.toBlockPos());
-      if (be == null) return false;
-      try {
-        return (be as dynamic).isRunning as bool;
-      } on Object {
-        return false;
-      }
-    };
+    ContraptionHostHooks.isActuatorRunning = (worldId, pos) =>
+        switch (ctx.blockEntities.at(worldId, pos.toBlockPos())) {
+          final RunningActuator actuator => actuator.isRunning,
+          _ => false,
+        };
 
     ContraptionPackets.install(ctx, host);
 

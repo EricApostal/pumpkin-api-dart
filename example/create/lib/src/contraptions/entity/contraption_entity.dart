@@ -497,11 +497,9 @@ abstract class AbstractContraptionEntity implements ContraptionEntityHandle {
     }
 
     final leashed = ContraptionEntityHooks.leashedMob?.call(host.level, player);
-    final rider =
-        leashed ??
-        (player.hostPlayer is ContraptionPassengerRef
-            ? player.hostPlayer as ContraptionPassengerRef
-            : null);
+    // `SeatBlock.getLeashed(level, player).or(player)`: the player itself is the rider; the
+    // `InteractingPlayer` only carries the host handle, which the host wraps as a passenger.
+    final rider = leashed ?? host.passengerFromHost(player.hostPlayer);
     if (rider != null) addSittingPassenger(rider, indexOfSeat);
     return true;
   }

@@ -7,6 +7,8 @@
 // filters, ...). Components that are not registered with the host are dropped.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../common/nbt_convert.dart';
+import '../../common/stack_tag.dart';
 import '../../content/components.dart' show createComponents;
 import '../common/stack.dart';
 
@@ -96,30 +98,23 @@ abstract final class HostStacks {
   }
 }
 
-/// Persistence of stacks in block entity NBT.
+/// Persistence of stacks in block entity NBT: the one shape of `common/stack_tag.dart` (Java's
+/// `ItemStack.CODEC` with the plugin's extras), wrapped for the host's [NbtCompound].
 abstract final class StackNbt {
-  /// The private persistence form (`id`, `count`, `max`, and `Comps` with the component bytes).
+  /// The private persistence form (`id`, `count`, `Max`, and `Comps` with the component bytes).
   /// `id` / `count` are also what the Create client reads from an update tag.
-  static NbtCompound write(PStack s) {
-    final c = NbtCompound()
-      ..putString('id', s.key)
-      ..putInt('count', s.count);
-    if (s.maxStack != 64) c.putInt('Max', s.maxStack);
-    if (s.comps.isNotEmpty) {
-      c.putList('Comps', <Object>[
-        for (final (name, bytes) in s.comps)
-          NbtCompound()
-            ..putString('N', name)
-            ..putByteArray('V', bytes),
-      ]);
-    }
-    return c;
-  }
+  static NbtCompound write(PStack s) => compoundOf(
+    JavaStackTag.write(
+      id: s.key,
+      count: s.count,
+      comps: s.comps,
+      maxStack: s.maxStack == 64 ? null : s.maxStack,
+    ),
+  );
 
   /// The client form: `{id, count}` only.
-  static NbtCompound writeClient(PStack s) => NbtCompound()
-    ..putString('id', s.key)
-    ..putInt('count', s.count);
+  static NbtCompound writeClient(PStack s) =>
+      compoundOf(JavaStackTag.writeClient(id: s.key, count: s.count));
 
   /// `TransferUtil.saveItem` for a possibly empty stack: an empty compound, not
   /// `{id: minecraft:air}` (the Create client and `FilteringBehaviour` expect that).
@@ -128,19 +123,9 @@ abstract final class StackNbt {
 
   static PStack read(NbtCompound? c) {
     if (c == null) return PStack.empty;
-    final key = c.getString('id');
-    final count = c.getInt('count') ?? 0;
-    if (key == null || count <= 0) return PStack.empty;
-    final comps = <(String, List<int>)>[];
-    for (final e in c.getList('Comps') ?? const <Object>[]) {
-      if (e is NbtCompound) {
-        final n = e.getString('N');
-        final v = e.getByteArray('V');
-        if (n != null && v != null) comps.add((n, v));
-      }
-    }
-    comps.sort((a, b) => a.$1.compareTo(b.$1));
-    return PStack(key, count, maxStack: c.getInt('Max') ?? 64, comps: comps);
+    final t = JavaStackTag.read(valueOfCompound(c));
+    if (t == null) return PStack.empty;
+    return PStack(t.id, t.count, maxStack: t.maxStack ?? 64, comps: t.comps);
   }
 
   /// A list of stacks as `{Items: [{Slot, ...stack}], Size}` (`ItemStackHandler.serializeNBT`).

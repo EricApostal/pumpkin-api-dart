@@ -7,7 +7,6 @@ import '../host/nbt_codecs.dart';
 import '../host/runtime.dart';
 import '../model/manager.dart';
 import '../model/orders.dart';
-import '../model/stack.dart';
 import '../stock/stock_ticker_block_entity.dart';
 import 'auto_request_data.dart';
 
@@ -145,42 +144,11 @@ class RedstoneRequesterBlockEntity extends StockCheckingBlockEntity {
     });
   }
 
-  /// The order of the requester, as `AutoRequestData` (used when it is picked up).
-  AutoRequestData get requestData => AutoRequestData(
-    encodedRequest,
-    encodedTargetAdress,
-    (0, 0, 0),
-    worldId,
-    true,
-  );
-
+  /// `setRequestData`: the order a requester placed from a programmed item keeps
+  /// (`RedstoneRequesterBlock.setPlacedBy`).
   void setRequestData(AutoRequestData data) {
     encodedRequest = data.encodedRequest;
     encodedTargetAdress = data.encodedTargetAddress;
     sendData();
   }
-}
-
-/// `RedstoneRequesterBlockItem`: a requester item carries the programmed order and the network.
-/// Reading and writing item components is left to the item's data component codecs; this keeps
-/// the values for the block entity state.
-final class RequesterProgram {
-  final PackageOrderWithCrafts order;
-  final String address;
-  final String network;
-
-  const RequesterProgram(this.order, this.address, this.network);
-}
-
-/// Helpers shared with the stock keeper screen (`RedstoneRequesterBlock.programRequester`).
-abstract final class RedstoneRequesterBlock {
-  /// The data written to the item: the order, the address and the keeper position.
-  static AutoRequestData programRequester(
-    PackageOrderWithCrafts order,
-    String address,
-    (int, int, int) keeperPos,
-    String dimension,
-  ) => AutoRequestData(order, address, keeperPos, dimension, false);
-
-  static LStack withProgram(LStack stack, AutoRequestData data) => stack;
 }

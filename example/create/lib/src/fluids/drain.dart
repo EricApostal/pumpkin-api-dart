@@ -331,9 +331,19 @@ class ItemDrainBlockEntity extends CreateBlockEntity
   }
 }
 
-/// `ItemDrainItemHandler`: the one slot item view of the drain seen from [side]. The host API
-/// only exposes fixed plugin inventories, so this view is not attached as a block capability;
-/// it keeps the exact insert / extract semantics of the Java handler for the drain's own code.
+/// `ItemDrainItemHandler`: the one slot item view of the drain seen from [side]
+/// (`ItemDrainItemHandler.java:18-100`; `ItemDrainBlockEntity.registerCapabilities` offers it
+/// for the horizontal sides only, with the custom insert / extract semantics below).
+///
+/// **Host gap**: the handler is not attached as a block capability, so hoppers, belts and
+/// funnels cannot feed the drain. The host can give a plugin block entity a *fixed* inventory
+/// (`PluginInventories.register`, `item-handler.wit`) and nothing else: such a slot takes a
+/// whole stack, while this handler accepts one item of an emptyable stack and hands the rest
+/// back (`insertItem`), and its extract removes the item being processed. Attaching a fixed
+/// inventory would silently change those semantics rather than port them, so the drain keeps
+/// the handler for its own code (the belt insertion goes through
+/// [ItemDrainBlockEntity.tryInsertingFromSide]) and the item side of the drain stays
+/// player-only until the host can carry a custom handler.
 final class ItemDrainItemHandler {
   final ItemDrainBlockEntity blockEntity;
   final Direction side;

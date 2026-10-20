@@ -19,18 +19,15 @@ import '../blocks/actuator_runtime.dart';
 
 final class ChassisBlockEntity extends CreateBlockEntity
     implements ValueSettingsHost {
-  ChassisBlockEntity(super.worldId, super.pos);
-
-  ScrollValueBehaviour? _range;
-
-  @override
-  void onLoad() {
+  ChassisBlockEntity(super.worldId, super.pos) {
+    // `addBehaviours`: added at construction so `read` restores the saved `ScrollValue`.
     final max = ActuatorRuntime.instance.settings.maxChassisRange;
     final range = ScrollValueBehaviour().between(1, max);
     range.value = max ~/ 2;
     _range = addBehaviour(range);
-    super.onLoad();
   }
+
+  ScrollValueBehaviour? _range;
 
   /// The position as a [Pos]; the inherited `pos` is a host `BlockPos` and the `pos` of
   /// `common/pos.dart` shadows it in this library.

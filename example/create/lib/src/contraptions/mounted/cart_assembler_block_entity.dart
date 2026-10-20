@@ -31,7 +31,10 @@ const int cartAssemblerCooldown = 8;
 
 final class CartAssemblerBlockEntity extends CreateBlockEntity
     implements ValueSettingsHost, AssemblyExceptionHolding {
-  CartAssemblerBlockEntity(super.worldId, super.pos);
+  CartAssemblerBlockEntity(super.worldId, super.pos) {
+    // `addBehaviours`: added at construction so `read` restores the saved `ScrollValue`.
+    _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
+  }
 
   int ticksSinceMinecartUpdate = cartAssemblerCooldown;
   AssemblyException? lastException;
@@ -45,12 +48,6 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
 
   BState get stateNow =>
       HostBlockGetter.stateOfId(world!.getBlockStateId(pos: this.pos));
-
-  @override
-  void onLoad() {
-    _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
-    super.onLoad();
-  }
 
   @override
   void tick() {

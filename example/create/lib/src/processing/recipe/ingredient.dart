@@ -1,6 +1,8 @@
 // Item and fluid ingredients (pure): the forms the recipe JSON of Create uses
 // (`{"item"}`, `{"tag"}`, NeoForge's `block_tag`, `components`, `difference`, ...), matched
 // against [PStack] / [PFluid] with a [TagLookup] for the tags.
+import 'dart:convert';
+
 import '../common/stack.dart';
 
 /// Tag membership, answered by the host (`Tags.item`, ...) or by a map in tests.
@@ -185,15 +187,20 @@ final class FluidIngredient {
 
   const FluidIngredient({this.fluids = const [], this.tag, required this.amount, this.components = const {}});
 
-  /// `FluidIngredient.test(stack)` (the amount is not compared).
+  /// `SizedFluidIngredient.test(stack)` (`FluidIngredient.test` plus the amount): the fluid (and
+  /// its [components]) match and there is enough of it.
+  bool test(PFluid fluid, TagLookup tags) => testFluid(fluid, tags) && fluid.amount >= amount;
+
+  /// `DataComponentFluidIngredient.test(stack)`: the fluid matches [test] and every required
+  /// component matches too. Create's three `create:filling` potion recipes differ only in
+  /// `minecraft:potion_contents`, so the component check decides which one applies
+  /// (`SizedFluidIngredient` in Java delegates to `DataComponentPredicate.test`).
   bool testFluid(PFluid fluid, TagLookup tags) {
     if (fluid.isEmpty) return false;
-    if (tag != null) return tags.fluidHasTag(fluid.key, tag!);
-    return fluids.contains(fluid.key);
+    if (tag != null && !tags.fluidHasTag(fluid.key, tag!)) return false;
+    if (tag == null && !fluids.contains(fluid.key)) return false;
+    return componentsMatch(components, fluid.comps);
   }
-
-  /// `SizedFluidIngredient.test(stack)`: the fluid matches and there is enough of it.
-  bool test(PFluid fluid, TagLookup tags) => testFluid(fluid, tags) && fluid.amount >= amount;
 
   /// `getFluids()`: the matching stacks for display, using [tagMembers] to expand a tag.
   List<PFluid> matching(Iterable<String> Function(String tag)? tagMembers) {
@@ -206,4 +213,62 @@ final class FluidIngredient {
 
   @override
   String toString() => 'fluid(${tag != null ? '#$tag' : fluids.join('|')} x$amount)';
+}
+
+/// `DataComponentPredicate.test(components)` for a fluid's [PFluid.comps]: every required
+/// component must be on the fluid and its codec value must contain the required fields (a
+/// partial match, as NeoForge's predicates are).
+///
+/// A fluid has no host component codec — the host's `FluidStack` carries only plugin `data`
+/// (`fluid-registry.wit`) — so the plugin stores a fluid's components as `(name, value)` pairs
+/// whose value is the UTF-8 JSON of the component's codec form, the form the recipe JSON writes
+/// (`PotionFluidData.componentEntries`). Components the plugin cannot decode as JSON never
+/// match, which is the same outcome as Java's predicate failing.
+bool componentsMatch(
+  Map<String, Object?> required,
+  List<(String, List<int>)> actual,
+) {
+  if (required.isEmpty) return true;
+  for (final entry in required.entries) {
+    List<int>? bytes;
+    for (final c in actual) {
+      if (c.$1 == entry.key) {
+        bytes = c.$2;
+        break;
+      }
+    }
+    if (bytes == null) return false;
+    if (!_componentMatches(entry.value, bytes)) return false;
+  }
+  return true;
+}
+
+bool _componentMatches(Object? required, List<int> bytes) {
+  Object? actual;
+  try {
+    actual = jsonDecode(utf8.decode(bytes));
+  } on Object {
+    return false;
+  }
+  return _valueMatches(required, actual);
+}
+
+bool _valueMatches(Object? required, Object? actual) {
+  if (required is Map) {
+    if (actual is! Map) return false;
+    for (final e in required.entries) {
+      if (!actual.containsKey(e.key)) return false;
+      if (!_valueMatches(e.value, actual[e.key])) return false;
+    }
+    return true;
+  }
+  if (required is List) {
+    if (actual is! List || actual.length != required.length) return false;
+    for (var i = 0; i < required.length; i++) {
+      if (!_valueMatches(required[i], actual[i])) return false;
+    }
+    return true;
+  }
+  if (required is num && actual is num) return required == actual;
+  return required == actual;
 }

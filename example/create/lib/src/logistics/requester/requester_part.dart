@@ -8,6 +8,7 @@ import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
+import '../host/player_items.dart';
 import '../host/runtime.dart';
 import '../logistics_part.dart';
 import '../model/orders.dart';
@@ -65,6 +66,30 @@ Future<void> _onNeighborUpdate(
 }
 
 Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
+  // `RedstoneRequesterBlock.setPlacedBy`: a requester placed from an item that was programmed at
+  // a stock keeper keeps the order and the address of the item.
+  final uuid = e.player?.asString;
+  final player = uuid == null ? null : Lg.i.player(uuid);
+  if (player != null) {
+    final be = Lg.i.store.typed<RedstoneRequesterBlockEntity>(
+      e.targetWorld.getId(),
+      e.pos,
+    );
+    final data = await heldRequestData(player);
+    if (be != null && data != null) {
+      final read = data.readFromItem(e.pos.toPos(), e.targetWorld.getId());
+      be.setRequestData(read);
+      player.showActionbar(
+        text: TextComponent.translate(
+          key: read.isValid
+              ? 'create.redstone_requester.keeper_connected'
+              : 'create.redstone_requester.keeper_too_far_away',
+          with_: const [],
+        ),
+      );
+    }
+  }
+
   // `RedstoneRequesterBlock.getStateForPlacement`: `POWERED` is the neighbour signal at the
   // placement position (the axis comes from the `horizontalAxis` placement rule).
   if (!await e.targetWorld.hasNeighborSignal(pos: e.pos)) return;

@@ -10,7 +10,10 @@ import '../../core/block_entity.dart';
 import 'elevator_column.dart';
 
 final class ElevatorContactBlockEntity extends CreateBlockEntity {
-  ElevatorContactBlockEntity(super.worldId, super.pos);
+  ElevatorContactBlockEntity(super.worldId, super.pos) {
+    // `addBehaviours`: added at construction so `read` restores the saved door control mode.
+    doorControls = addBehaviour(DoorControlBehaviour());
+  }
 
   DoorControlBehaviour? doorControls;
   ColumnCoords? columnCoords;
@@ -27,7 +30,6 @@ final class ElevatorContactBlockEntity extends CreateBlockEntity {
 
   @override
   void onLoad() {
-    doorControls = addBehaviour(DoorControlBehaviour());
     super.onLoad();
     columnCoords = ElevatorColumn.contactColumnCoords(
       HostBlockGetter.stateOfId(world!.getBlockStateId(pos: this.pos)),

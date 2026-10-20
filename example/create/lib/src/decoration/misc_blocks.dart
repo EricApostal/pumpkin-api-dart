@@ -4,6 +4,8 @@ import '../api/block_state.dart';
 import '../api/placement.dart';
 import '../common/direction.dart';
 import '../common/pos.dart';
+import '../manifest/blocks.g.dart';
+import 'roles.dart';
 
 // -- Ladders ---------------------------------------------------------------------------------
 
@@ -232,17 +234,76 @@ const int cardboardFlammability = 20;
 
 const List<String> copperStages = ['', 'exposed_', 'weathered_', 'oxidized_'];
 
-/// `WeatheringCopper.WeatherState` ordinal of a (vanilla or Create) weathering copper block key,
-/// or `null` if the block does not weather (waxed blocks, non copper blocks).
-int? copperWeatherAge(String key) {
-  var path = key.substring(key.indexOf(':') + 1);
-  if (path.startsWith('waxed_')) return null;
-  if (!path.contains('copper') && !path.contains('lightning_rod')) return null;
-  if (path.contains('ore') || path.startsWith('raw_') || path.contains('ingot') || path.contains('nugget')) return null;
-  for (var i = 1; i < copperStages.length; i++) {
-    if (path.startsWith(copperStages[i])) return i;
+/// The base names of the vanilla copper families whose names are `WeatherState` prefix + base
+/// (`cut_copper` -> `exposed_cut_copper`), in the order of `WeatheringCopper.NEXT_BY_BLOCK`
+/// (`WeatheringCopper.java:26-42`). Each one is a `WeatheringCopperCollection` whose weathering
+/// factory is a weathering copper class, which is what makes the block weather: `Blocks.java:5265`
+/// (CUT_COPPER, `WeatheringCopperFullBlock`), `:5272` (CHISELED_COPPER), `:5279`
+/// (`WeatheringCopperStairBlock`), `:5286` (`WeatheringCopperSlabBlock`), `:5293`
+/// (`WeatheringCopperDoorBlock`), `:5304` (`WeatheringCopperTrapDoorBlock`), `:2521`
+/// (`WeatheringCopperBarsBlock`), `:5316` (`WeatheringCopperGrateBlock`), `:5331`
+/// (`WeatheringCopperBulbBlock`), `:4562` (`WeatheringLanternBlock`), `:5351`
+/// (`WeatheringCopperChestBlock`), `:5362` (`WeatheringCopperGolemStatueBlock`), `:2533`
+/// (`WeatheringCopperChainBlock`) and `:5374` (`WeatheringLightningRodBlock`).
+const List<String> vanillaWeatheringCopperBases = [
+  'cut_copper',
+  'chiseled_copper',
+  'cut_copper_slab',
+  'cut_copper_stairs',
+  'copper_door',
+  'copper_trapdoor',
+  'copper_bars',
+  'copper_grate',
+  'copper_bulb',
+  'copper_lantern',
+  'copper_chest',
+  'copper_golem_statue',
+  'copper_chain',
+  'lightning_rod',
+];
+
+/// The `copper_block` family alone does not spell its states `prefix + base`: its unaffected state
+/// is `copper_block` and the others are `exposed_copper`, `weathered_copper`, `oxidized_copper`
+/// (`BlockItemIds.java:789-793`).
+const List<String> vanillaCopperBlockFamily = [
+  'copper_block',
+  'exposed_copper',
+  'weathered_copper',
+  'oxidized_copper',
+];
+
+/// The weathering copper blocks by key -> `WeatherState` ordinal (`UNAFFECTED` 0, `EXPOSED` 1,
+/// `WEATHERED` 2, `OXIDIZED` 3).
+///
+/// The block **class** decides whether a block weathers, never its name:
+/// `ChangeOverTimeBlock.getNextState` counts a neighbour only when it is a `ChangeOverTimeBlock`
+/// whose `getAge()` enum class matches its own (`net/minecraft/world/level/block/ChangeOverTimeBlock.java`
+/// `:27-62`, `isSameAgeingType` at `:59`). Waxed copper is a plain block, so it is absent here, and
+/// a name containing "copper" means nothing (see [isWeatheringCopper] for Create's blocks).
+final Map<String, int> _weatheringCopperAges = _buildWeatheringCopperAges();
+
+Map<String, int> _buildWeatheringCopperAges() {
+  final ages = <String, int>{};
+  for (var stage = 0; stage < copperStages.length; stage++) {
+    ages['minecraft:${vanillaCopperBlockFamily[stage]}'] = stage;
+    for (final base in vanillaWeatheringCopperBases) {
+      ages['minecraft:${copperStages[stage]}$base'] = stage;
+    }
   }
-  return 0;
+  // Create's `CopperBlockSet` sets: the manifest records the class of every block, and the
+  // weathering variants of the sets are the ones whose class is a weathering copper class.
+  for (final m in kBlocks) {
+    if (isWeatheringCopper(m)) ages['create:${m.key}'] = _stageOf(m.key);
+  }
+  return ages;
+}
+
+/// `WeatheringCopper.WeatherState` ordinal of the weathering copper block [key], or `null` when the
+/// block does not weather (waxed variants, `copper_ore`, `copper_bars` of Create, a copycat of
+/// copper, ...). A key without a namespace is a vanilla block.
+int? copperWeatherAge(String key) {
+  final colon = key.indexOf(':');
+  return _weatheringCopperAges[colon < 0 ? 'minecraft:$key' : key];
 }
 
 /// The Create copper sets (`CopperBlockSet`): name -> variant suffix handling.

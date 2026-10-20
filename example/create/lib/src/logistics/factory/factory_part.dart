@@ -17,6 +17,7 @@ import '../host/link_keys.dart';
 import '../host/player_items.dart';
 import '../host/runtime.dart';
 import '../host/shapes.dart';
+import '../host/state_props.dart';
 import '../link/linked_item.dart';
 import '../logistics_part.dart';
 import '../model/stack.dart';
@@ -70,53 +71,32 @@ Direction _dirOf(BlockDirection d) => Direction.values[d.index];
 
 /// `FactoryPanelBlock.canAttachLenient`: the neighbour behind the panel has a collision shape.
 bool _canAttachLenient(BlockGetter level, Pos pos, BState state) {
-  final connected = switch (state['face']) {
-    'ceiling' => Direction.down,
-    'floor' => Direction.up,
-    'wall' => state.dir('facing'),
-    _ => null,
-  };
-  if (connected == null) return false;
+  final connected = faceConnectedDirection(state.props);
   return !level.collisionShapeEmpty(pos.relative(connected.opposite));
 }
 
 /// `FaceAttachedHorizontalDirectionalBlock.getStateForPlacement` plus
 /// `FactoryPanelBlock.getStateForPlacement`'s floor flip: the first nearest-looking direction
-/// whose support has a collision shape (the clicked face's opposite first, like
+/// whose support has a collision shape (the direction towards the clicked block first, like
 /// `BlockPlaceContext.getNearestLookingDirections`).
 BState? _gaugeStateForPlacement(
   World world,
   Pos pos,
   Player player,
-  Direction clickedFace,
+  Direction support,
 ) {
   final level = HostBlockGetter(world);
-  final horizontal = Direction.fromYRot(player.getYaw());
-  final look = player.lookDirection;
-  final ordered = Direction.orderedByNearest(look.$1, look.$2, look.$3);
-  final directions = <Direction>[
-    clickedFace.opposite,
-    for (final d in ordered)
-      if (d != clickedFace.opposite) d,
-  ];
-  final water = level.isWater(pos);
-  for (final d in directions) {
-    final props = <String, String>{
-      'face': d.axis == Axis.y
-          ? (d == Direction.up ? 'ceiling' : 'floor')
-          : 'wall',
-      'facing': (d.axis == Axis.y ? horizontal : d.opposite).serializedName,
-      'powered': 'false',
-      'waterlogged': water ? 'true' : 'false',
-    };
-    var state = BState('create:factory_gauge', props);
-    if (!_canAttachLenient(level, pos, state)) continue;
-    if (state['face'] == 'floor') {
-      state = state.setDir('facing', state.dir('facing')!.opposite);
-    }
-    return state;
-  }
-  return null;
+  return faceAttachedStateForPlacement(
+    'create:factory_gauge',
+    look: player.lookDirection,
+    yaw: player.getYaw(),
+    towardsClicked: support,
+    canAttach: (state) => _canAttachLenient(level, pos, state),
+    waterlogged: level.isWater(pos),
+    adjust: (state) => state['face'] == 'floor'
+        ? state.setDir('facing', state.dir('facing')!.opposite)
+        : state,
+  );
 }
 
 Future<bool> _onCanPlace(Server server, CustomBlockCanPlaceEventData e) async {
@@ -221,15 +201,9 @@ Future<List<BlockBox>?> _onShape(
     e.pos,
   );
   if (be != null) return be.getShape();
-  final pos = e.pos.toPos();
   final info = BlockStates.info(e.targetWorld.getBlockStateId(pos: e.pos));
   final props = info?.properties ?? const <String, String>{};
-  final connected = switch (props['face']) {
-    'ceiling' => Direction.down,
-    'floor' => Direction.up,
-    'wall' => Direction.byName(props['facing'] ?? 'north') ?? Direction.north,
-    _ => Direction.down,
-  };
+  final connected = faceConnectedDirection(props);
   return rotateBoxes(
     const [BlockBox(0, 0, 0, 1, 2 / 16, 1)],
     Direction.up,

@@ -52,6 +52,21 @@ void main() {
       expect(reportedEntityTypeKey('minecraft:player'), 'minecraft:player');
       expect(reportedEntityTypeKey('create:contraption'), 'create:contraption');
     });
+
+    test('the entityTick type of a blueprint and a potato entity matches the plugin key', () {
+      // The bug this guards: a `Events.entityTick` handler that compares the raw host string
+      // (`minecraft:create:crafting_blueprint`) against the bare plugin key never fires, so the
+      // blueprint and the potato projectile never tick (`equipment/blueprint/blueprint_host.dart`
+      // and `equipment/potato/potato_host.dart`).
+      expect(
+        reportedEntityTypeKey('minecraft:create:crafting_blueprint'),
+        'create:crafting_blueprint',
+      );
+      expect(
+        reportedEntityTypeKey('minecraft:create:potato_projectile'),
+        'create:potato_projectile',
+      );
+    });
   });
 
   group('isMinecartEntityType', () {

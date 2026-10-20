@@ -36,6 +36,14 @@ String shortClass(String javaClass) => javaClass.substring(javaClass.lastIndexOf
 
 bool isCreateCopper(ManifestBlock m) => m.key.contains('copper_shingle') || m.key.contains('copper_tile');
 
+/// Whether [m] is a weathering copper block, decided by its block class: `CopperBlockSet` makes
+/// the weathering variants of its sets (`BlockVariant`, `SlabVariant`, `StairVariant`) instances of
+/// `WeatheringCopperFullBlock`, `WeatheringCopperSlabBlock` and `CreateWeatheringCopperStairBlock`,
+/// all of them `ChangeOverTimeBlock`s, while the waxed variants are plain blocks. The name says
+/// nothing: `create:copper_bars` is an `IronBarsBlock`, `copper_ladder` a `MetalLadderBlock` and
+/// so on.
+bool isWeatheringCopper(ManifestBlock m) => m.javaClass.contains('Weathering');
+
 /// Whether [m] belongs to the decoration module: the blocks of `content/decoration` (and the vanilla
 /// block families its palettes are made of), the copper sets, the bars, and the copycat base.
 bool ownsBlock(ManifestBlock m) {

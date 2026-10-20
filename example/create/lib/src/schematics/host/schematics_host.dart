@@ -768,7 +768,7 @@ final class _CannonEnvImpl implements CannonEnv {
       for (var slot = 0; slot < h.slotCount(); slot++) {
         final peek = h.take(slot, 1, simulate: true);
         if (peek == null) continue;
-        if (await peek.getRegistryKey() != required.item) continue;
+        if (!await _matchesRequirement(required, peek)) continue;
         if (required.usage == ItemUseType.damage) {
           final comps = await peek.getComponents();
           int? maxDamage;
@@ -975,6 +975,53 @@ List<int>? prepareBlockEntityData_(
   BState state,
   List<int>? nbt,
 ) => prepareBlockEntityData(hooks, state, nbt);
+
+/// `required.matches(stack)` of `SchematicannonBlockEntity.grabItemsFromAttachedInventories`
+/// (`SchematicannonBlockEntity.java:556,573`): the same item and, for a strict requirement
+/// (`StrictNbtStackRequirement`), the same components.
+Future<bool> _matchesRequirement(
+  StackRequirement required,
+  ItemStack stack,
+) async {
+  final key = await stack.getRegistryKey();
+  if (required.strictComponents == null) return required.matches(key);
+  // The components of a live stack are only readable as their network bytes
+  // (`ItemStack.getComponents`), keyed by `DataComponent.wireName`; [_encodeComponent] brings the
+  // requirement's NBT components into the same form.
+  final components = <String, List<int>>{
+    for (final c in await stack.getComponents()) c.component.wireName: c.value,
+  };
+  return required.matches(
+    key,
+    otherComponents: components,
+    encode: _encodeComponent,
+  );
+}
+
+/// One of [StackRequirement.strictComponents] as the bytes `ItemStack.getComponents` gives for it
+/// (`data-component-value.value`), or null when the plugin has no encoder for the component.
+List<int>? _encodeComponent(String name, NbtValue value) {
+  try {
+    return DataComponentCodec.encode(name, _componentJson(value));
+  } on Object {
+    // No encoder for the component, an unknown registry entry, or a value shape the encoder does
+    // not read: the component cannot be compared, so it is left out.
+    return null;
+  }
+}
+
+/// An NBT component as the vanilla-format JSON `DataComponentCodec` reads (the shape
+/// `contraptions/actors/contraption_controls/contraption_controls_behaviour.dart` builds too).
+Object? _componentJson(NbtValue v) => switch (v.kind) {
+  NbtKind.compound => <String, Object?>{
+    for (final e in v.asCompound.entries) e.key: _componentJson(e.value),
+  },
+  NbtKind.list => [for (final e in v.value as List<NbtValue>) _componentJson(e)],
+  NbtKind.string => v.value as String,
+  NbtKind.byte => (v.value as int) != 0,
+  NbtKind.byteArray || NbtKind.intArray || NbtKind.longArray => v.value,
+  _ => v.value,
+};
 
 // ============================================================================================
 // Menus and packets

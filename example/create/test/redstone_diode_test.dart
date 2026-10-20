@@ -150,6 +150,53 @@ void main() {
       expect(BrassDiodeMachine.outputSignal(powering: true, inverted: true), 0);
     });
 
+    test('an inverted brass diode gives 15 to weak power but 0 to strong power', () {
+      // The diode holds its output while the input is gone: POWERED == false, INVERTED == true.
+      expect(
+        BrassDiodeMachine.signal(
+          powering: false,
+          inverted: true,
+          facing: Direction.north,
+          side: Direction.north,
+        ),
+        15,
+        reason: 'BrassDiodeBlock.getSignal keeps the inverted output',
+      );
+      expect(
+        BrassDiodeMachine.directSignal(
+          powered: false,
+          powering: false,
+          inverted: true,
+          facing: Direction.north,
+          side: Direction.north,
+        ),
+        0,
+        reason: 'DiodeBlock.getDirectSignal needs POWERED',
+      );
+      // With the input on, the strong signal is the output.
+      expect(
+        BrassDiodeMachine.directSignal(
+          powered: true,
+          powering: false,
+          inverted: true,
+          facing: Direction.north,
+          side: Direction.north,
+        ),
+        15,
+      );
+      expect(
+        BrassDiodeMachine.directSignal(
+          powered: true,
+          powering: false,
+          inverted: true,
+          facing: Direction.north,
+          side: Direction.south,
+        ),
+        0,
+        reason: 'never towards the back',
+      );
+    });
+
     test('the delay change clamps the counter', () {
       final m = BrassDiodeMachine(BrassDiodeKind.timer, state: 15, maxState: 20);
       m.onMaxDelayChanged(5);
@@ -273,6 +320,33 @@ void main() {
       expect(LatchLogic.signal(on, Direction.north), 15);
       expect(LatchLogic.signal(on, Direction.south), 0);
       expect(LatchLogic.signal(const DiodeState(facing: Direction.north), Direction.north), 0);
+    });
+
+    test('a latched toggle answers 15 to weak power but 0 to strong power', () async {
+      final logic = LatchLogic(LatchKind.toggle, env);
+      var state = const DiodeState(facing: Direction.north);
+
+      // A rising edge latches the output on, then the input ends: the normal latched state,
+      // POWERED == false with POWERING == true.
+      env.signals[(pos, Direction.north)] = 15;
+      state = (await logic.tick(pos, state)).state;
+      env.signals.clear();
+      state = (await logic.tick(pos, state)).state;
+      expect(state.powered, isFalse);
+      expect(state.powering, isTrue);
+
+      // `ToggleLatchBlock.getSignal`: the held output still powers the block in front.
+      expect(LatchLogic.signal(state, Direction.north), 15);
+      // `DiodeBlock.getDirectSignal`, inherited: `POWERED && FACING == side`, so a solid block in
+      // front passes nothing on to a lamp or dust behind it.
+      expect(LatchLogic.directSignal(state, Direction.north), 0);
+      expect(LatchLogic.directSignal(state, Direction.south), 0, reason: 'never towards the back');
+
+      // While the input is on and the output is on, the strong signal follows the output
+      // (the edge above toggled the latch off, so the state is spelled out).
+      const attached = DiodeState(facing: Direction.north, powered: true, powering: true);
+      expect(LatchLogic.signal(attached, Direction.north), 15);
+      expect(LatchLogic.directSignal(attached, Direction.north), 15);
     });
 
     test('the powered latch only toggles by hand when idle', () {

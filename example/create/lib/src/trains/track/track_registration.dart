@@ -18,6 +18,7 @@ import 'track_host.dart';
 import 'track_level.dart';
 import 'track_material.dart';
 import 'track_placement_rules.dart';
+import 'track_targeting_block_item.dart';
 import 'track_voxel_shapes.dart';
 
 /// Phase 1: the two blocks and their block entity types. The `track` item is registered with the
@@ -153,6 +154,10 @@ void loadTrack(CreateContext ctx) {
     return result == null ? e : e.copyWith(useResult: result);
   });
 
+  // `TrackTargetingBlockItem.useOn`: the station, signal and observer items select a track
+  // position and the placed block is pointed at it.
+  installTrackTargeting(ctx);
+
   // `TrackBlockItem.use` in the air: a sneak-click with a stack that is connecting clears the
   // selection (`clearSelection`), otherwise the item is used normally.
   ctx.host.intercept(Events.playerUseItem, (server, e) async {
@@ -191,6 +196,7 @@ void serverTrackLoaded(CreateRuntime runtime) {}
 
 /// Plugin unload.
 void unloadTrack() {
+  uninstallTrackTargeting();
   TrackMaterial.onDeserializeFailure = null;
   TrackBlockRegistry.clear();
 }

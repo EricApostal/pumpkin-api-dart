@@ -7,6 +7,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 // ignore: implementation_imports
 import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 
+import '../../contraptions/core/entity_type_keys.dart' show reportedEntityTypeKey;
 import '../../core/module.dart';
 import '../../core/nbt.dart';
 import '../../protocol/item_stack.dart';
@@ -278,7 +279,7 @@ final class BlueprintHost {
 
   /// `HangingEntity.tick`: every few seconds the blueprint checks that it is still held.
   Future<void> _onEntityTick(Server server, EntityTickEventData e) async {
-    if (e.entityType != blueprintEntityKey) return;
+    if (reportedEntityTypeKey(e.entityType) != blueprintEntityKey) return;
     final entity = findEntity(server, e.entityId);
     if (entity == null) return;
     final st = stateOf(entity);

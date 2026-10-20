@@ -68,7 +68,6 @@ mixin PipeNodeMixin implements PipeNodeView {
     final connections = interfaces;
     if (connections == null) return;
     final values = connections.values.toList();
-
     // Do not provide a lone pipe connection with its own flow input
     PipeConnection? singleSource;
 

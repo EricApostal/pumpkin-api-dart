@@ -43,8 +43,17 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
         IControlContraption,
         IBearingBlockEntity,
         ValueSettingsHost,
+        RunningActuator,
         AssemblyExceptionHolding {
-  MechanicalBearingBlockEntity(super.worldId, super.pos);
+  MechanicalBearingBlockEntity(super.worldId, super.pos) {
+    // `addBehaviours` adds the movement mode at construction, before `read` restores `ScrollValue`
+    // (`WindmillBearingBlockEntity.addBehaviours` removes it again; both behaviours would write the
+    // same key otherwise). Adding it in `onLoad` is too late: `BlockEntityStore.install` calls
+    // `read` before `onLoad`.
+    if (!isWindmill) {
+      _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
+    }
+  }
 
   ControlledContraptionEntity? movedContraption;
   double angle = 0;
@@ -68,11 +77,6 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
   @override
   void onLoad() {
     lazyTickRate = 3;
-    // `WindmillBearingBlockEntity.addBehaviours` removes the movement mode again; both behaviours
-    // would write the same `ScrollValue` key otherwise.
-    if (!isWindmill) {
-      _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
-    }
     super.onLoad();
   }
 
@@ -319,6 +323,8 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
   bool isAttachedTo(AbstractContraptionEntity contraption) =>
       movedContraption == contraption;
 
+  /// `isRunning()` (`RunningActuator`): whether the bearing is moving its contraption.
+  @override
   bool get isRunning => running;
 
   @override
@@ -340,7 +346,14 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
 
 /// `WindmillBearingBlockEntity`.
 class WindmillBearingBlockEntity extends MechanicalBearingBlockEntity {
-  WindmillBearingBlockEntity(super.worldId, super.pos);
+  WindmillBearingBlockEntity(super.worldId, super.pos) {
+    // `addBehaviours`: added at construction so `read` restores the saved `ScrollValue`.
+    _movementDirection = addBehaviour(
+      ScrollValueBehaviour()
+          .between(0, 1)
+          .withCallback((_) => _onDirectionChanged()),
+    );
+  }
 
   double lastGeneratedSpeed = 0;
   bool queuedReassembly = false;
@@ -351,16 +364,6 @@ class WindmillBearingBlockEntity extends MechanicalBearingBlockEntity {
 
   @override
   bool get isWindmill => true;
-
-  @override
-  void onLoad() {
-    super.onLoad();
-    _movementDirection = addBehaviour(
-      ScrollValueBehaviour()
-          .between(0, 1)
-          .withCallback((_) => _onDirectionChanged()),
-    );
-  }
 
   /// `onDirectionChanged`: a running windmill reverses at once.
   void _onDirectionChanged() {
@@ -439,8 +442,12 @@ class ClockworkBearingBlockEntity extends KineticBlockEntity
         IControlContraption,
         IBearingBlockEntity,
         ValueSettingsHost,
+        RunningActuator,
         AssemblyExceptionHolding {
-  ClockworkBearingBlockEntity(super.worldId, super.pos);
+  ClockworkBearingBlockEntity(super.worldId, super.pos) {
+    // `addBehaviours`: added at construction so `read` restores the saved `ScrollValue`.
+    _operationMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
+  }
 
   ControlledContraptionEntity? hourHand;
   ControlledContraptionEntity? minuteHand;
@@ -468,7 +475,6 @@ class ClockworkBearingBlockEntity extends KineticBlockEntity
   @override
   void onLoad() {
     lazyTickRate = 3;
-    _operationMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
     super.onLoad();
   }
 
@@ -721,6 +727,8 @@ class ClockworkBearingBlockEntity extends KineticBlockEntity
         : minuteHand == contraption;
   }
 
+  /// `isRunning()` (`RunningActuator`): whether the bearing is moving its contraption.
+  @override
   bool get isRunning => running;
 
   @override

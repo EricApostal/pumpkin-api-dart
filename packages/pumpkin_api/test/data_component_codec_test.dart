@@ -426,6 +426,91 @@ void main() {
     });
   });
 
+  group('food and consumable', () {
+    test('food: vi(nutrition), f32 saturation, bool can_always_eat', () {
+      // Builder's Tea: `food(1, 0.6, alwaysEdible)`.
+      expectEncoded(
+        'minecraft:food',
+        {'nutrition': 1, 'saturation': 0.6, 'can_always_eat': true},
+        [1, ...h('3f19999a'), 1],
+      );
+      // Bar of Chocolate: 6 and 0.3, not always edible.
+      expectEncoded(
+        'minecraft:food',
+        {'nutrition': 6, 'saturation': 0.3},
+        [6, ...h('3e99999a'), 0],
+      );
+      expect(
+        () => DataComponentCodec.encode('minecraft:food', {'nutrition': 1}),
+        throwsA(
+          isA<ComponentEncodeException>().having(
+            (e) => e.message,
+            'message',
+            contains('saturation'),
+          ),
+        ),
+      );
+    });
+
+    test('consumable: the vanilla food default', () {
+      // ConsumableImpl: f32 consume_seconds, vi(animation), Holder<SoundEvent>
+      // (entity.generic.eat 702 -> 703 = 0xBF 0x05), bool
+      // has_consume_particles, vi(effect count).
+      expectEncoded(
+        'minecraft:consumable',
+        {'consume_seconds': 1.6},
+        [...h('3fcccccd'), 1, 0xBF, 0x05, 1, 0],
+      );
+    });
+
+    test("consumable of the Builder's Tea", () {
+      // 42 ticks (2.1 s), DRINK, the default eat sound, haste 3:00 as an
+      // `apply_effects` consume effect (registry id 0). A status effect is
+      // vi(effect id), vi(amplifier), vi(duration), ambient, show_particles,
+      // show_icon and the "no hidden effect" flag; the effect is followed by
+      // f32 probability 1.
+      expectEncoded(
+        'minecraft:consumable',
+        {
+          'consume_seconds': 2.1,
+          'animation': 'drink',
+          'on_consume_effects': [
+            {
+              'type': 'minecraft:apply_effects',
+              'effects': [
+                {
+                  'id': 'minecraft:haste',
+                  'duration': 6000,
+                  'ambient': false,
+                  'show_particles': false,
+                  'show_icon': false,
+                },
+              ],
+              'probability': 1.0,
+            },
+          ],
+        },
+        [
+          ...h('40066666'), 2, 0xBF, 0x05, 1,
+          1, 0, // one effect, `apply_effects`
+          1, 2, 0, 0xF0, 0x2E, 0, 0, 0, 0, // haste 2, amplifier 0, duration 6000
+          ...h('3f800000'),
+        ],
+      );
+    });
+
+    test('a consume effect without an encoder is an error', () {
+      expect(
+        () => DataComponentCodec.encode('minecraft:consumable', {
+          'on_consume_effects': [
+            {'type': 'minecraft:clear_all_effects'},
+          ],
+        }),
+        throwsA(isA<ComponentEncodeException>()),
+      );
+    });
+  });
+
   group('encodeAll', () {
     test('skips the components the host cannot read and says why', () {
       final result = DataComponentCodec.encodeAll({
@@ -444,7 +529,7 @@ void main() {
 
     test('a readable component without an encoder is an error', () {
       expect(
-        () => DataComponentCodec.encodeAll({'minecraft:food': <String, Object?>{}}),
+        () => DataComponentCodec.encodeAll({'minecraft:use_remainder': <String, Object?>{}}),
         throwsA(
           isA<ComponentEncodeException>().having(
             (e) => e.message,

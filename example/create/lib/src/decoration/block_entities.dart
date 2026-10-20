@@ -1,11 +1,16 @@
 // The block entities of the decoration module: copycat, placard, sliding door and steam whistle.
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../api/advancements.dart' show CreateAdvancements;
 import '../api/blocks.dart';
 import '../api/contraption/transformable.dart';
+import '../api/payloads.dart' show PayloadBus;
 import '../common/direction.dart' as d;
 import '../common/host_bridge.dart';
 import '../common/pos.dart';
+import '../content/advancement_ids.dart' show AllAdvancements;
 import '../contraptions/core/nbt_map.dart';
 import '../core/block_entity.dart';
 import 'copycat.dart';
@@ -359,6 +364,49 @@ final class WhistleBlockEntity extends CreateBlockEntity {
   /// `getPitchId`.
   int pitchId(String size) => whistlePitchId(pitch, size);
 
+  /// Whether the whistle block is powered (`WhistleBlock.POWERED`).
+  bool get isPowered {
+    final w = world;
+    if (w == null) return false;
+    return HostBlockGetter(w).stateAt(this.pos.toPos()).flag('powered');
+  }
+
+  /// Set while the whistle was powered on the previous tick, so the advancement is handed out
+  /// once per power-on rather than every tick.
+  bool _blowing = false;
+
+  @override
+  void tick() {
+    super.tick();
+    final blowing = isPowered;
+    if (blowing && !_blowing) _awardWhistle();
+    _blowing = blowing;
+  }
+
+  /// `SmartBlockEntity.award(AllAdvancements.STEAM_WHISTLE)`: the blowing whistle gives the
+  /// advancement. Java awards the block's owner (`AdvancementBehaviour`); the port has no per-block
+  /// owner, so — like the backtank — the players near the whistle are awarded.
+  void _awardWhistle() {
+    final rt = DecorationHost.rt;
+    final bus = rt.ctx.services.find<PayloadBus>();
+    final advancements = rt.ctx.services.find<CreateAdvancements>();
+    if (bus == null || advancements == null) return;
+    for (final p in bus.roster.players) {
+      try {
+        final w = p.getWorld();
+        final same = w.getId() == worldId;
+        w.dispose();
+        if (!same) continue;
+        final (x, y, z) = p.getPosition();
+        final dx = x - (this.pos.x + 0.5), dy = y - (this.pos.y + 0.5), dz = z - (this.pos.z + 0.5);
+        if (dx * dx + dy * dy + dz * dz > 16 * 16) continue;
+        unawaited(advancements.award(p, AllAdvancements.steamWhistle));
+      } on Object {
+        // a handle that went invalid: the player left
+      }
+    }
+  }
+
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
@@ -402,6 +450,6 @@ List<BlockEntityTypeSpec> decorationBlockEntityTypes() => [
     key: WhistleBlockEntity.type,
     validBlocks: const ['create:steam_whistle'],
     create: WhistleBlockEntity.new,
-    tickInterval: 0,
+    tickInterval: 1,
   ),
 ];

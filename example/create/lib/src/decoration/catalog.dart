@@ -27,7 +27,7 @@ CreateBlock buildDecorationBlock(ManifestBlock m, DecorationRuntime rt) {
     drops = lootTableOf(m.key);
   }
   final copper = isCreateCopper(m);
-  final weathering = copper && m.javaClass.contains('Weathering');
+  final weathering = isWeatheringCopper(m);
 
   CreateBlock make({
     BlockBehavior? behavior,

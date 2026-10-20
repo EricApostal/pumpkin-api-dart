@@ -12,6 +12,7 @@ import 'deployer_block.dart';
 import 'deployer_block_entity.dart';
 import 'deployer_movement_behaviour.dart';
 import 'deployer_moving_interaction.dart';
+import 'manual_application.dart';
 
 /// The deployer.
 final class DeployerPart extends ProcessingPart {
@@ -46,6 +47,9 @@ final class DeployerPart extends ProcessingPart {
       'create:deployer',
       const DeployerMovingInteraction(),
     );
+    // `ManualApplicationRecipe.manualApplicationRecipesApplyInWorld`: item application
+    // recipes also work when a player right-clicks a block with the tool.
+    ManualApplication.install(ctx);
   }
 
   @override

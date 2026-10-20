@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/damage.dart';
 import '../../api/util.dart';
+import '../../contraptions/core/entity_type_keys.dart' show reportedEntityTypeKey;
 import '../../core/module.dart';
 import '../../core/nbt.dart';
 import '../../manifest/manifest.dart';
@@ -206,7 +207,7 @@ final class PotatoHost {
   }
 
   Future<void> _onEntityTick(Server server, EntityTickEventData e) async {
-    if (e.entityType != potatoEntityKey) return;
+    if (reportedEntityTypeKey(e.entityType) != potatoEntityKey) return;
     final proj = _live[e.entityId];
     final entity = findEntity(server, e.entityId);
     if (entity == null) {

@@ -131,8 +131,9 @@ final class ConfigsFluidsConfig implements FluidsConfig {
 /// The [FluidWorld] over a host [World]: block reads through [HostBlockGetter],
 /// Create block entities through the [BlockEntityStore], and everything else
 /// through the host API. Writes are fire and forget, like the block entity ticks
-/// that issue them.
-final class HostFluidWorld extends BlockGetter implements FluidWorld {
+/// that issue them — except the writes that make the host call the plugin back
+/// (`NOTIFY_ALL` neighbours), which go through [deferFluidMutation].
+final class HostFluidWorld extends BlockGetter implements FluidWorld, DeferredFluidMutations {
   final World world;
   final String worldId;
   final BlockEntityStore store;
@@ -149,6 +150,10 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   final math.Random _random = math.Random();
   final HostBlockGetter _blocks;
   final Map<(int, int, int, int), HostFluidStorage> _handlers = {};
+
+  /// World writes waiting for the current host call to return, see [deferFluidMutation].
+  final List<void Function()> _deferredMutations = [];
+  bool _deferredFlushScheduled = false;
 
   HostFluidWorld(
     this.world,
@@ -370,6 +375,36 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   @override
   FStack pickupFluidSource(Pos p) =>
       fromHostFluid(world.tryPickupFluid(pos: p.toBlockPos()));
+
+  /// `HostFluidWorld.deferFluidMutation`: see [DeferredFluidMutations].
+  ///
+  /// The write is applied from a microtask, which runs only after the guest call that queued it
+  /// has returned: `tryPickupFluid` sets the block to air with `NOTIFY_ALL`, and the neighbour
+  /// updates that follow call back into the plugin — from inside a block-entity tick that is a
+  /// nested guest call the executor never admits, so the server stops ticking and never shuts
+  /// down. A queued write can find the world changed (the source was taken by something else, or
+  /// the fluid moved); it then does nothing, and the caller's next simulation pass sees the real
+  /// world and corrects the flow. No retry: a source that is gone stays gone.
+  @override
+  void deferFluidMutation(void Function() apply) {
+    _deferredMutations.add(apply);
+    if (_deferredFlushScheduled) return;
+    _deferredFlushScheduled = true;
+    scheduleMicrotask(_flushDeferredMutations);
+  }
+
+  void _flushDeferredMutations() {
+    _deferredFlushScheduled = false;
+    final due = List<void Function()>.of(_deferredMutations);
+    _deferredMutations.clear();
+    for (final apply in due) {
+      try {
+        apply();
+      } on HostException {
+        // The world refused the write (unloaded chunk, changed block); the simulation corrects it.
+      }
+    }
+  }
 
   @override
   void playSound(Pos p, String sound, {double volume = 1, double pitch = 1}) {

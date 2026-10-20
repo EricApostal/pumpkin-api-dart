@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../common/common.dart' hide pos;
+import '../../common/stack_tag.dart';
 import '../../contraptions/core/movement.dart';
 import '../../contraptions/core/nbt_map.dart';
 import '../../core/nbt.dart' show NbtKind, NbtValue;
@@ -98,20 +99,14 @@ class BasinMovementBehaviour extends MovementBehaviour {
     for (var slot = 0; slot < stacks.length; slot++) {
       final stack = stacks[slot];
       if (stack.isEmpty) continue;
-      final entry = NbtMap()
-        ..putString('id', stack.key)
-        ..putInt('count', stack.count)
-        ..putInt('Slot', slot);
-      if (stack.maxStack != 64) entry.putInt('Max', stack.maxStack);
-      if (stack.comps.isNotEmpty) {
-        entry.putList('Comps', [
-          for (final (name, bytes) in stack.comps)
-            (NbtMap()
-                  ..putString('N', name)
-                  ..map['V'] = NbtValue.byteArray(bytes))
-                .toValue(),
-        ]);
-      }
+      final entry = NbtMap.of(
+        JavaStackTag.write(
+          id: stack.key,
+          count: stack.count,
+          comps: stack.comps,
+          maxStack: stack.maxStack == 64 ? null : stack.maxStack,
+        ),
+      )..putInt('Slot', slot);
       items.add(entry.toValue());
     }
     return NbtMap()
@@ -133,21 +128,8 @@ class BasinMovementBehaviour extends MovementBehaviour {
   }
 
   static PStack _readStack(NbtMap entry) {
-    final key = entry.getString('id');
-    final count = entry.getInt('count');
-    if (key.isEmpty || count <= 0) return PStack.empty;
-
-    final comps = <(String, List<int>)>[];
-    for (final value in entry.getList('Comps')) {
-      if (value.kind != NbtKind.compound) continue;
-      final comp = NbtMap.of(value);
-      final name = comp.getString('N');
-      if (name.isEmpty) continue;
-      final bytes = comp.getIntArray('V');
-      if (bytes.isEmpty) continue;
-      comps.add((name, bytes));
-    }
-    comps.sort((a, b) => a.$1.compareTo(b.$1));
-    return PStack(key, count, maxStack: entry.getInt('Max', 64), comps: comps);
+    final t = JavaStackTag.read(entry.toValue());
+    if (t == null) return PStack.empty;
+    return PStack(t.id, t.count, maxStack: t.maxStack ?? 64, comps: t.comps);
   }
 }

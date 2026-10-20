@@ -34,9 +34,12 @@ final class MechanicalMixerBlockEntity extends BasinOperatingBlockEntity {
   /// `canCompress` answers with `allowShapedSquareInPress`, so a square is only kept here when
   /// that flag is off.
   ///
-  /// `allowBrewingInMixer` (`PotionMixingRecipes.sortRecipesByItem`) has no counterpart yet: the
-  /// host exposes no brewing recipes (`RecipeManager.findRecipes` covers the crafting, cooking,
-  /// stonecutting and smithing types only), so there is nothing to mirror as a mixing recipe.
+  /// `allowBrewingInMixer` (`PotionMixingRecipes.sortRecipesByItem`) has no counterpart: the host
+  /// keeps brewing recipes (`DynamicRecipe::Brewing`) but exposes them to no query —
+  /// `RecipeManager::find_recipes` answers the crafting, cooking, stonecutting and smithing
+  /// types only (`recipe_query.rs:387-463`) — so nothing can feed the pure
+  /// `PotionMixingRecipes.createRecipes` generator. The flag stays unread until the host can
+  /// hand over the brewing recipes, which is what the missing mirror needs.
   @override
   List<CraftingRecipeEntry> get matchingCraftingRecipes {
     final rt = ProcessingRuntime.instance;

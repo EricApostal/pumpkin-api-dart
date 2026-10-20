@@ -13,10 +13,6 @@ import 'flow_source.dart';
 import 'nbt_util.dart';
 import 'open_ended_pipe.dart';
 
-// DEBUG-FLUID
-int _dbgMf = 0;
-int _dbgW = 0;
-
 /// `PipeConnection.Flow`.
 class Flow {
   bool complete = false;
@@ -69,13 +65,6 @@ class PipeConnection {
 
   /// `manageFlows(world, pos, internalFluid, extractionPredicate)`; true when the data changed.
   bool manageFlows(FluidWorld world, Pos pos, FStack internalFluid, bool Function(FStack fluid) extractionPredicate) {
-    // DEBUG-FLUID
-    _dbgMf++;
-    if (_dbgMf % 40 == 0) {
-      print('DEBUGFLUID mf pos=${pos.$1},${pos.$2},${pos.$3} side=$side '
-          'flow=$hasFlow(${flow?.inbound}/${flow?.complete}) press=$hasPressure '
-          'src=${source.runtimeType} internal=${internalFluid.fluid}:${internalFluid.amount}');
-    }
     // Only keep the network if it is still valid.
     final retainedNetwork = network;
     network = null;
@@ -103,16 +92,6 @@ class PipeConnection {
     final f = flow!;
     final provided = f.inbound ? flowSource.provideFluid(world, extractionPredicate) : internalFluid;
 
-    // DEBUG-FLUID
-    if (pos.$1 == 1 && side == Direction.west) {
-      _dbgW++;
-      if (_dbgW % 20 == 0) {
-        print('DEBUGFLUID west in=${f.inbound} complete=${f.complete} press=$hasPressure '
-            'src=${flowSource.runtimeType} provided=${provided.fluid}:${provided.amount} '
-            'same=${provided.isSameFluid(f.fluid)} internal=${internalFluid.fluid}:${internalFluid.amount}');
-      }
-    }
-
     // Whether the flow is still valid
     if (!hasPressure || provided.isEmpty || !provided.isSameFluid(f.fluid)) {
       flow = null;
@@ -130,12 +109,6 @@ class PipeConnection {
     }
 
     flowSource.whileFlowPresent(world, f.inbound);
-
-    // DEBUG-FLUID
-    if (pos.$1 == 1 && side == Direction.west && _dbgW % 20 == 0) {
-      print('DEBUGFLUID west layer3 endpoint=${flowSource.isEndpoint} inbound=${f.inbound} '
-          'net=${retainedNetwork != null}');
-    }
 
     if (!flowSource.isEndpoint) return false;
     if (!f.inbound) return false;

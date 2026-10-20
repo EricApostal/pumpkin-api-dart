@@ -1,15 +1,19 @@
 // The smart observer (`content_observer`) and the threshold switch (`stockpile_switch`):
 // blocks that look at the container, belt or pipe they face and give a redstone signal.
-// Items and fluids in neighbouring containers are read through the host's item and fluid
-// handlers; belts, pipes and chain conveyors through the [ObservableProbe]s other modules
-// register.
+// Items and fluids in neighbouring containers are read through `Capabilities.ItemHandler.BLOCK`
+// as Java's `InvManipulationBehaviour` does: the item inventory of a plugin block entity of this
+// plugin (a vault, a belt, a depot, a chute, a crate, a tunnel — see `observed_container.dart`)
+// or a container of the host (chest, barrel, hopper, ...); belts, pipes and chain conveyors
+// through the [ObservableProbe]s other modules register.
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/redstone.dart';
 import '../../api/util.dart' hide pos;
+import '../../conveyance/items/item_data.dart' show airKey;
+import '../../conveyance/runtime.dart' show ConveyanceRuntime;
+import '../../conveyance/transport/transport_inventory_api.dart' show ItemInventoryProvider;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../display/display_core.dart' show ObservedFluid, ObservedItem, ObserverView;
@@ -21,6 +25,7 @@ import '../support/placement.dart';
 import '../support/placer.dart';
 import '../support/rs_runtime.dart';
 import 'filter_behaviour.dart';
+import 'observed_container.dart';
 import 'threshold_logic.dart';
 
 const String observerKey = 'create:content_observer';
@@ -49,19 +54,94 @@ String prettyItemName(String key) {
   return path.split('_').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
 }
 
-/// Item stacks of a handler seen by the filter, with the item key and count.
-Future<List<ObservedItem>> readHandlerItems(ItemHandler handler, FilterBehaviour? filter) async {
-  final result = <ObservedItem>[];
-  final slots = handler.slotCount();
-  for (var slot = 0; slot < slots; slot++) {
-    final stack = handler.getStack(slot: slot);
-    if (stack == null) continue;
+/// A host container (a chest, barrel, hopper, ...) as an [ObservedContainer].
+final class HostObservedContainer implements ObservedContainer {
+  final ItemHandler handler;
+
+  const HostObservedContainer(this.handler);
+
+  @override
+  int get slots => handler.slotCount();
+
+  @override
+  Future<ObservedSlot> slot(int index, {bool detail = false}) async {
+    final stack = handler.getStack(slot: index);
+    // `getCount`, `getRegistryKey`, `getSlotLimit`, `getHoverName` and `getMaxStackSize` are host
+    // calls: the scans that run every tick ask for the key and the count only.
+    if (stack == null) {
+      return ObservedSlot(key: airKey, count: 0, limit: detail ? handler.getSlotLimit(slot: index) : 64);
+    }
     final count = await stack.getCount();
-    if (count <= 0) continue;
+    if (count <= 0) {
+      return ObservedSlot(key: airKey, count: 0, limit: detail ? handler.getSlotLimit(slot: index) : 64);
+    }
     final key = await stack.getRegistryKey();
-    if (filter != null && !filter.testItem(key)) continue;
+    if (!detail) return ObservedSlot(key: key, count: count);
     final name = await stack.getCustomName();
-    result.add(ObservedItem(key, name?.getText() ?? prettyItemName(key), count));
+    return ObservedSlot(
+      key: key,
+      count: count,
+      limit: handler.getSlotLimit(slot: index),
+      maxStack: await stack.getMaxCount(),
+      name: name?.getText(),
+      address: _packageAddress(stack),
+    );
+  }
+}
+
+/// `PackageItem.getAddress` of a host package stack (`create:package_address`, a string).
+String? _packageAddress(ItemStack stack) {
+  final bytes = stack.customComponent('create:package_address');
+  if (bytes == null) return null;
+  try {
+    return PacketReader(bytes).readString();
+  } on Object {
+    return null;
+  }
+}
+
+/// The container at [pos] of world [worldId] (`Capabilities.ItemHandler.BLOCK` of the block the
+/// observer or the switch faces): the item inventory of a plugin block entity of this plugin
+/// (a vault, ...) when it owns one — the host does not see those — else a container of the host.
+/// `null` when the block has neither.
+ObservedContainer? observedContainerAt(World world, String worldId, Pos pos) {
+  final provider = _pluginInventoryProviderAt(worldId, pos);
+  if (provider != null) {
+    final inventory = provider.itemInventory(null);
+    if (inventory != null) return PluginInventoryContainer(inventory);
+  }
+  final handler = ItemHandlers.at(world, pos.toBlockPos());
+  return handler == null ? null : HostObservedContainer(handler);
+}
+
+/// The plugin block entity at [pos] when it owns an item inventory; the conveyance module owns
+/// every one of them, and without it there is none.
+ItemInventoryProvider? _pluginInventoryProviderAt(String worldId, Pos pos) {
+  if (!ConveyanceRuntime.loaded) return null;
+  final be = ConveyanceRuntime.i.store.at(worldId, pos.toBlockPos());
+  // An interface of the item-transport module, so no type promotion: the test is what makes
+  // the cast sound.
+  return be is ItemInventoryProvider ? be as ItemInventoryProvider : null;
+}
+
+/// The fluid handler at [pos] (`Capabilities.Fluid.BLOCK` of the block the observer or the switch
+/// faces), or `null`. Java's capability needs a block entity; the host answers every position
+/// with its "spot in the world" handler (capacity 1000, see `fluids/fluid_host.dart`), which no
+/// block entity backs and no tank should be counted or observed through.
+FluidHandler? observedTankAt(World world, Pos pos) {
+  final bp = pos.toBlockPos();
+  if (world.getBlockEntity(pos: bp) == null) return null;
+  return world.fluidHandlerAt(bp);
+}
+
+/// Items of [container] seen by the filter, with the item key and count.
+Future<List<ObservedItem>> readContainerItems(ObservedContainer container, FilterBehaviour? filter) async {
+  final result = <ObservedItem>[];
+  for (var slot = 0; slot < container.slots; slot++) {
+    final observed = await container.slot(slot, detail: true);
+    if (observed.isEmpty) continue;
+    if (filter != null && !filter.testItem(observed.key)) continue;
+    result.add(ObservedItem(observed.key, observed.name ?? prettyItemName(observed.key), observed.count));
   }
   return result;
 }
@@ -160,49 +240,45 @@ final class SmartObserverBlockEntity extends CreateBlockEntity {
     }
 
     // Containers (`observedInventory`): one six tick pulse per inventory change.
-    final handler = ItemHandlers.at(world, targetPos.toBlockPos());
-    if (handler != null) {
-      final version = await _inventoryVersionOf(handler);
+    final container = observedContainerAt(world, worldId, targetPos);
+    if (container != null) {
+      final version = await _inventoryVersionOf(container);
       // `stillWaiting`: nothing changed since the last `awaitNewVersion`.
       final skipInv = version == _inventoryVersion;
       _inventoryVersion = version;
       if (skipInv && sustainSignal) turnOffTicks = defaultDelay;
       if (!skipInv) {
         sustainSignal = false;
-        if (await _hasMatchingItem(handler)) {
+        if (await _hasMatchingItem(container)) {
           sustainSignal = true;
           await activate();
           return;
         }
       }
     }
-    final tank = world.fluidHandlerAt(targetPos.toBlockPos());
+    final tank = observedTankAt(world, targetPos);
     if (tank != null && readHandlerFluids(tank, filtering).isNotEmpty) {
       await activate();
     }
   }
 
-  /// The contents of [handler] as one comparable value: the version the tracker watches.
-  Future<String> _inventoryVersionOf(ItemHandler handler) async {
+  /// The contents of [container] as one comparable value: the version the tracker watches.
+  Future<String> _inventoryVersionOf(ObservedContainer container) async {
     final parts = <String>[];
-    final slots = handler.slotCount();
-    for (var slot = 0; slot < slots; slot++) {
-      final stack = handler.getStack(slot: slot);
-      if (stack == null) continue;
-      final count = await stack.getCount();
-      if (count <= 0) continue;
-      parts.add('$slot:${await stack.getRegistryKey()}:$count');
+    for (var slot = 0; slot < container.slots; slot++) {
+      final observed = await container.slot(slot);
+      if (observed.isEmpty) continue;
+      parts.add('$slot:${observed.key}:${observed.count}');
     }
     return parts.join('|');
   }
 
-  Future<bool> _hasMatchingItem(ItemHandler handler) async {
-    final slots = handler.slotCount();
-    for (var slot = 0; slot < slots; slot++) {
-      final stack = handler.getStack(slot: slot);
-      if (stack == null || await stack.getCount() <= 0) continue;
+  Future<bool> _hasMatchingItem(ObservedContainer container) async {
+    for (var slot = 0; slot < container.slots; slot++) {
+      final observed = await container.slot(slot);
+      if (observed.isEmpty) continue;
       if (filtering.isEmpty) return true;
-      if (filtering.testItem(await stack.getRegistryKey())) return true;
+      if (filtering.testItem(observed.key)) return true;
     }
     return false;
   }
@@ -227,19 +303,18 @@ final class SmartObserverBlockEntity extends CreateBlockEntity {
     final dir = _targetDirection(lvl);
     if (dir == null) return const ObserverView();
     final targetPos = _pos.relative(dir);
-    final handler = ItemHandlers.at(w, targetPos.toBlockPos());
-    final tank = w.fluidHandlerAt(targetPos.toBlockPos());
+    final container = observedContainerAt(w, worldId, targetPos);
+    final tank = observedTankAt(w, targetPos);
 
     var items = const <ObservedItem>[];
     String? address;
-    if (handler != null) {
-      items = await readHandlerItems(handler, filtering);
-      final slots = handler.slotCount();
-      for (var slot = 0; slot < slots && address == null; slot++) {
-        final stack = handler.getStack(slot: slot);
-        if (stack == null || await stack.getCount() <= 0) continue;
-        if (!filtering.testItem(await stack.getRegistryKey())) continue;
-        address = _packageAddress(stack);
+    if (container != null) {
+      items = await readContainerItems(container, filtering);
+      for (var slot = 0; slot < container.slots && address == null; slot++) {
+        final observed = await container.slot(slot, detail: true);
+        if (observed.isEmpty) continue;
+        if (!filtering.testItem(observed.key)) continue;
+        address = observed.address;
       }
     } else {
       final probes = Rs.i.ctx.services.find<ObservableRegistry>()?.probes ?? const <ObservableProbe>[];
@@ -255,20 +330,9 @@ final class SmartObserverBlockEntity extends CreateBlockEntity {
       items: items,
       fluids: tank == null ? const [] : readHandlerFluids(tank, filtering),
       packageAddress: address,
-      hasInventory: handler != null,
+      hasInventory: container != null,
       hasTank: tank != null,
     );
-  }
-
-  /// `PackageItem.getAddress` of a package stack (`create:package_address`, a string).
-  static String? _packageAddress(ItemStack stack) {
-    final bytes = stack.customComponent('create:package_address');
-    if (bytes == null) return null;
-    try {
-      return PacketReader(bytes).readString();
-    } on Object {
-      return null;
-    }
   }
 
   @override
@@ -449,33 +513,22 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
 
     final targetKey = lvl.blockKey(target);
     final supported = thresholdTargetSupported(targetKey);
-    final handler = supported ? ItemHandlers.at(w, tbp) : null;
-    final tank = supported ? w.fluidHandlerAt(tbp) : null;
+    final container = supported ? observedContainerAt(w, worldId, target) : null;
+    final tank = supported ? observedTankAt(w, target) : null;
 
     if (observed != null) {
       currentMinLevel = observed.min;
       currentLevel = observed.current;
       currentMaxLevel = observed.max;
-    } else if (handler != null || tank != null) {
+    } else if (container != null || tank != null) {
       currentMinLevel = 0;
       currentLevel = 0;
       currentMaxLevel = 0;
 
-      if (handler != null) {
-        final slots = handler.slotCount();
-        for (var slot = 0; slot < slots; slot++) {
-          final stack = handler.getStack(slot: slot);
-          final slotLimit = handler.getSlotLimit(slot: slot);
-          var space = math.min(64, slotLimit);
-          var count = 0;
-          if (stack != null) {
-            count = await stack.getCount();
-            if (count > 0) space = math.min(await stack.getMaxCount(), slotLimit);
-          }
-          if (space == 0) continue;
-          currentMaxLevel += space;
-          if (count > 0 && filtering.testItem(await stack!.getRegistryKey())) currentLevel += count;
-        }
+      if (container != null) {
+        final levels = await thresholdItemLevels(container, test: filtering.testItem);
+        currentLevel = levels.current;
+        currentMaxLevel = levels.max;
       }
 
       if (tank != null) {
@@ -559,8 +612,8 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
     final target = _pos.relative(targetDirectionOf(props));
     final targetPos = target.toBlockPos();
     final supported = thresholdTargetSupported(lvl.blockKey(target));
-    if (supported && ItemHandlers.at(w, targetPos) != null) return ThresholdType.item;
-    if (supported && w.fluidHandlerAt(targetPos) != null) return ThresholdType.fluid;
+    if (supported && observedContainerAt(w, worldId, target) != null) return ThresholdType.item;
+    if (supported && observedTankAt(w, target) != null) return ThresholdType.fluid;
     for (final probe in _probes) {
       if (probe.observation(worldId, target) != null) return ThresholdType.custom;
     }

@@ -222,9 +222,17 @@ final class LatchLogic {
   /// `ToggleLatchBlock.getOutputSignal`.
   static int outputSignal(DiodeState state) => state.powering ? 15 : 0;
 
-  /// `ToggleLatchBlock.getSignal` / `getDirectSignal`: output towards the front only.
+  /// `ToggleLatchBlock.getSignal`: output towards the front only, `POWERING` decides on its own
+  /// (a latch holds its output while the input is gone).
   /// [side] is the vanilla `side` (direction from the reader to the block).
   static int signal(DiodeState state, Direction side) => state.facing == side ? outputSignal(state) : 0;
+
+  /// `DiodeBlock.getDirectSignal`, which the latches inherit:
+  /// `POWERED && FACING == side ? getOutputSignal(...) : 0`. Strong power therefore needs the
+  /// input to be on as well, unlike [signal]: a latch holding its output with `POWERED == false`
+  /// answers 0, so a solid block in front of it does not pass the hold through.
+  static int directSignal(DiodeState state, Direction side) =>
+      state.powered && state.facing == side ? outputSignal(state) : 0;
 
   /// `activated` of the toggle latch (and the powered latch when [PoweredLatchBlock] allows it):
   /// whether a click flips `powering`.
@@ -331,6 +339,24 @@ final class BrassDiodeMachine {
 
   /// `BrassDiodeBlock.getOutputSignal`: `POWERING ^ INVERTED`.
   static int outputSignal({required bool powering, required bool inverted}) => (powering != inverted) ? 15 : 0;
+
+  /// `BrassDiodeBlock.getSignal`: the output towards the front only.
+  static int signal({
+    required bool powering,
+    required bool inverted,
+    required Direction facing,
+    required Direction side,
+  }) => facing == side ? outputSignal(powering: powering, inverted: inverted) : 0;
+
+  /// `DiodeBlock.getDirectSignal`, which the brass diodes inherit:
+  /// `POWERED && FACING == side ? getOutputSignal(...) : 0`.
+  static int directSignal({
+    required bool powered,
+    required bool powering,
+    required bool inverted,
+    required Direction facing,
+    required Direction side,
+  }) => powered && facing == side ? outputSignal(powering: powering, inverted: inverted) : 0;
 
   /// `BrassDiodeBlockEntity.format`: the interval as `Nt`, `Ns` or `Nm`.
   static String format(int value) {

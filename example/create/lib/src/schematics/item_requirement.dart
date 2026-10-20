@@ -14,8 +14,8 @@ final class StackRequirement {
   final int count;
   final ItemUseType usage;
 
-  /// Components that must match too (`StrictNbtStackRequirement`): compared with
-  /// [componentsMatch]; null means any components.
+  /// Components that must match too (`StrictNbtStackRequirement`), as a
+  /// `Map<String, NbtValue>` of component name to the component's NBT; null means any components.
   final Object? strictComponents;
 
   const StackRequirement(
@@ -25,11 +25,53 @@ final class StackRequirement {
     this.strictComponents,
   });
 
-  /// `matches(other)`: the same item (and the same components when strict).
-  bool matches(String otherItem, {Object? otherComponents}) {
+  /// `matches(other)`: the same item and, for a strict requirement (`StrictNbtStackRequirement`),
+  /// the same components.
+  ///
+  /// [otherComponents] are the candidate's components, keyed by component name: as saved NBT
+  /// (`Map<String, NbtValue>`, what a stack read from a schematic has) or as their network
+  /// encoding (`Map<String, List<int>>`, what `ItemStack.getComponents` gives). The encoded form
+  /// is compared through [encode], which turns one of [strictComponents] into those bytes and
+  /// returns null for a component the caller cannot encode; such a component is not compared.
+  /// Null [otherComponents] (or nothing to compare) pins the item only.
+  bool matches(
+    String otherItem, {
+    Object? otherComponents,
+    List<int>? Function(String name, NbtValue value)? encode,
+  }) {
     if (item != otherItem) return false;
-    if (strictComponents == null) return true;
-    return componentsMatch(strictComponents, otherComponents);
+    final strict = strictComponents;
+    if (strict == null || otherComponents == null) return true;
+    if (otherComponents is Map<String, List<int>>) {
+      if (encode == null || strict is! Map<String, NbtValue>) return true;
+      for (final entry in strict.entries) {
+        final bytes = encode(entry.key, entry.value);
+        if (bytes == null) continue;
+        final have = otherComponents[wireComponentName(entry.key)];
+        if (have == null || !_sameBytes(have, bytes)) return false;
+      }
+      return true;
+    }
+    return componentsMatch(strict, otherComponents);
+  }
+
+  /// The name a component has in the network form (`DataComponent.wireName`, the key
+  /// `ItemStack.getComponents` returns it under): `minecraft:max_stack_size` is
+  /// `max-stack-size`. The pure model cannot import the API's `DataComponentCodec`, so the
+  /// transform is spelled out here.
+  static String wireComponentName(String name) {
+    final bare = name.startsWith('minecraft:')
+        ? name.substring('minecraft:'.length)
+        : name;
+    return bare.replaceAll('_', '-').replaceAll('/', '-');
+  }
+
+  static bool _sameBytes(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   static bool componentsMatch(Object? a, Object? b) {
@@ -275,9 +317,64 @@ final class SchematicRequirements {
           }
         }
         return ItemRequirement(requirements);
+      // `SuperGlueEntity.getRequiredItems` (`SuperGlueEntity.java:296-298`): the glue item, worn
+      // down by a point of damage instead of being used up (`AllItems.SUPER_GLUE`).
+      case 'create:super_glue':
+        return ItemRequirement.of1(ItemUseType.damage, 'create:super_glue');
+      // `BlueprintEntity.getRequiredItems` (`BlueprintEntity.java:347-349`): a crafting blueprint.
+      case 'create:crafting_blueprint':
+        return ItemRequirement.of1(
+          ItemUseType.consume,
+          'create:crafting_blueprint',
+        );
     }
     return ItemRequirement.invalid;
   }
+}
+
+/// The requirements of the Create blocks that have no item of their own: the Java block classes
+/// that implement `SpecialBlockItemRequirement` / `SpecialBlockEntityItemRequirement`, which
+/// `SchematicRequirements.defaultOf` cannot resolve (`Block.asItem()` is air for them).
+///
+/// Registers into [r] the same entries Java's `SchematicRequirementRegistries.BLOCKS` /
+/// `BLOCK_ENTITIES` would hold for these blocks. The caller wires [SchematicRequirements.
+/// itemOfBlock] and [SchematicRequirements.blockEntityTypeOf] to the host registries first or
+/// after; both are only read when a requirement is looked up.
+void registerSpecialBlockRequirements(SchematicRequirements r) {
+  // `GlassFluidPipeBlock.getRequiredItems` (`GlassFluidPipeBlock.java:74-76`) and
+  // `EncasedPipeBlock.getRequiredItems` (`EncasedPipeBlock.java:158-160`): a plain fluid pipe.
+  // `create:encased_fluid_pipe` resolves through its `fluid_pipe` block item already and needs no
+  // entry; the glass pipe has none.
+  r.blocks['create:glass_fluid_pipe'] = (state, nbt) =>
+      r.defaultOf(const BState('create:fluid_pipe'), nbt);
+  // `BeltFunnelBlock.getRequiredItems` (`BeltFunnelBlock.java:208-210`): `parent.asItem()`, the
+  // funnel the belt funnel was made from.
+  r.blocks['create:andesite_belt_funnel'] = (state, nbt) =>
+      ItemRequirement.of1(ItemUseType.consume, 'create:andesite_funnel');
+  r.blocks['create:brass_belt_funnel'] = (state, nbt) =>
+      ItemRequirement.of1(ItemUseType.consume, 'create:brass_funnel');
+  // `GirderEncasedShaftBlock.getRequiredItems` (`GirderEncasedShaftBlock.java:137-140`): a shaft
+  // and a girder.
+  r.blocks['create:metal_girder_encased_shaft'] = (state, nbt) =>
+      r
+          .defaultOf(const BState('create:shaft'), nbt)
+          .union(r.defaultOf(const BState('create:metal_girder'), nbt));
+  // `LecternControllerBlock.getRequiredItems` (`LecternControllerBlock.java:102-107`): a vanilla
+  // lectern and a linked controller.
+  r.blocks['create:lectern_controller'] = (state, nbt) =>
+      const ItemRequirement([
+        StackRequirement('minecraft:lectern', 1, ItemUseType.consume),
+        StackRequirement('create:linked_controller', 1, ItemUseType.consume),
+      ]);
+  // `CopycatBlockEntity.getRequiredItems` (`CopycatBlockEntity.java:140-144`): the item the
+  // copycat was made from (`Item` in its data), none while it has no material.
+  r.blockEntities['create:copycat'] = (state, nbt) {
+    final item = _readStack(_readCompound(nbt)?['Item']);
+    if (item == null) return ItemRequirement.none;
+    return ItemRequirement([
+      StackRequirement(item.$1, item.$2, ItemUseType.consume),
+    ]);
+  };
 }
 
 Map<String, NbtValue>? _readEntity(List<int> nbt) => _readCompound(nbt);

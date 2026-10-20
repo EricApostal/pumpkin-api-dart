@@ -6,6 +6,7 @@ import '../api/infra.dart';
 import '../api/payloads.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
+import 'commands/belt_dbg_command.dart';
 import 'commands/command_parsing.dart';
 import 'commands/create_commands.dart';
 import 'config/config_service.dart';
@@ -26,7 +27,10 @@ final class InfrastructureModule extends CreateModule {
   String get name => 'infrastructure';
 
   @override
-  void register(CreateRegistry registry) => registerInfrastructureCommands(registry, _state);
+  void register(CreateRegistry registry) {
+    registerInfrastructureCommands(registry, _state);
+    registerBeltDbgCommands(registry, _state); // TEMPORARY (belt animation investigation)
+  }
 
   @override
   void onLoad(CreateContext ctx) {

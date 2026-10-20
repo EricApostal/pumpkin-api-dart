@@ -83,35 +83,22 @@ final class HostTrackLevel extends TrackLevel {
 
   @override
   Future<void> setBlock(Pos pos, BState state) async {
-    final dbgId = stateIdOf(state);
-    final before = world.getBlockStateId(pos: pos.toBlockPos());
-    Tr.i.log.info('TRACKWRITE pos=$pos state=$state id=$dbgId before=$before');
-    if (before == dbgId) {
+    final stateId = stateIdOf(state);
+    final currentId = world.getBlockStateId(pos: pos.toBlockPos());
+    if (currentId == stateId) {
       // `LevelChunk.setBlockState` returns null for an unchanged state, and `Level.setBlock`
       // then returns without firing `onPlace`/`onRemove`: a track that is written over itself
       // keeps its block entity.
-      Tr.i.log.info('TRACKWRITE noop pos=$pos');
       return;
     }
     await setBlockState(world, pos, state);
-    Tr.i.log.info('TRACKWRITE done pos=$pos hostId=${world.getBlockStateId(pos: pos.toBlockPos())}');
-    try {
-      Tr.i.log.info('TRACKWRITE sync-before pos=$pos');
-      await _syncBlockEntity(pos, state);
-      Tr.i.log.info('TRACKWRITE sync-returned pos=$pos');
-    } catch (e, s) {
-      Tr.i.log.info('TRACKWRITE sync threw: $e\n$s');
-    }
-    Tr.i.log.info('TRACKWRITE synced pos=$pos');
+    await _syncBlockEntity(pos, state);
   }
 
   /// Java's `EntityBlock.newBlockEntity` / `onRemove`: a track block keeps its block entity only
   /// while `turn` is set, a fake track block always has one.
   Future<void> _syncBlockEntity(Pos pos, BState state) async {
     final blockPos = pos.toBlockPos();
-    Tr.i.log.info('TRACKSYNC enter pos=$pos key=${state.key} be=${hasBe(state)} '
-        'track=${TrackBlockRegistry.ofState(state) != null} '
-        'existing=${store.at(_worldId, blockPos)?.runtimeType}');
     if (state.key == fakeTrackKey) {
       if (store.at(_worldId, blockPos) is! FakeTrackBlockEntityHost) {
         store.createAt(world, blockPos, FakeTrackBlockEntityHost.type);
@@ -129,11 +116,8 @@ final class HostTrackLevel extends TrackLevel {
     final existing = store.at(_worldId, blockPos);
     if (existing is TrackBlockEntityHost ||
         existing is FakeTrackBlockEntityHost) {
-      Tr.i.log.info('TRACKSYNC remove-before pos=$pos');
       await world.removePluginBlockEntity(blockPos);
-      Tr.i.log.info('TRACKSYNC remove-after pos=$pos');
     }
-    Tr.i.log.info('TRACKSYNC exit pos=$pos');
   }
 
   @override
@@ -520,11 +504,6 @@ Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
   );
   final pos = e.blockPos.toPos();
   final lookVec = player.lookDirection;
-  final clickedState = level.stateAt(pos);
-  Tr.i.log.info(
-    'TRACKDBG click pos=$pos state=$clickedState hostId=${world.getBlockStateId(pos: e.blockPos)} '
-    'info=${BlockStates.info(world.getBlockStateId(pos: e.blockPos))}',
-  );
 
   // The player the placement reads and writes; its slots are written back below, after the
   // placement took the items it needs.
@@ -542,16 +521,6 @@ Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
   );
   await placementPlayer.flush();
 
-  final di = result.info;
-  Tr.i.log.info(
-    'TRACKDBG outcome=${result.outcome} message=${result.message} '
-    'cf=${stack.connectingFrom?.pos} valid=${di?.valid} '
-    'e1=${di?.end1Extent} e2=${di?.end2Extent} curve=${di?.curve != null} '
-    'p1=${di?.pos1} p2=${di?.pos2} a1=${di?.axis1} a2=${di?.axis2} '
-    't1=${di?.curve?.bePositions.first} t2=${di?.curve?.bePositions.second} '
-    'z0=${level.stateAt((0, -60, 0))} z1=${level.stateAt((0, -60, 1))} '
-    'z2=${level.stateAt((0, -60, 2))} z3=${level.stateAt((0, -60, 3))}',
-  );
   switch (result.outcome) {
     case TrackUseOutcome.pass:
       // No selection and no track clicked: the host places the single block.

@@ -1,5 +1,7 @@
 // The kinetics module: the kinetic network (shafts, cogwheels, gearboxes, motors,
 // water wheels, ...) of Create. See docs/ARCHITECTURE.md, "Kinetics".
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/module.dart';
@@ -21,6 +23,8 @@ import 'service.dart';
 import 'settings.dart';
 import 'use_records.dart';
 import 'wrench_integration.dart';
+import '../api/advancements.dart' show CreateAdvancements;
+import '../content/advancement_ids.dart' show AllAdvancements;
 
 final class KineticsModule extends CreateModule {
   @override
@@ -28,6 +32,9 @@ final class KineticsModule extends CreateModule {
 
   List<KineticBlockSpec> _specs = const [];
   KineticsRuntime? _runtime;
+
+  /// The provided service, kept so the advancement hooks can be cleared on unload.
+  KineticNetworkService? _kinetics;
 
   /// The blocks this module registers (after `register`).
   List<KineticBlockSpec> get specs => _specs;
@@ -77,6 +84,27 @@ final class KineticsModule extends CreateModule {
       KineticNetworkService(rt, [for (final s in _specs) s.block]),
     );
     ctx.services.provide<KineticSpeedLookup>(_SpeedLookup(rt));
+
+    // `WaterWheelBlockEntity.determineAndApplyFlowScore` awards `WATER_WHEEL`/`LAVA_WHEEL` and
+    // `StressGaugeBlockEntity.onObserved` awards `STRESSOMETER`(`_MAXED`); both hand the event to
+    // these hooks, which nothing installed, so the advancements were unobtainable.
+    final kinetics = ctx.services.find<KineticNetworkService>()!;
+    _kinetics = kinetics;
+    kinetics.onWaterWheelTurns = (wheel, {required lava}) => _awardNear(
+      ctx,
+      wheel.worldId,
+      wheel.pos,
+      [lava ? AllAdvancements.lavaWheel : AllAdvancements.waterWheel],
+    );
+    kinetics.onStressometerObserved = (gauge) => _awardNear(
+      ctx,
+      gauge.worldId,
+      gauge.pos,
+      [
+        AllAdvancements.stressometer,
+        if (gauge.dialTarget == 1) AllAdvancements.stressometerMaxed,
+      ],
+    );
 
     // Remember the last block use of every player: the host's placed event carries
     // neither the clicked face nor the item.
@@ -180,8 +208,41 @@ final class KineticsModule extends CreateModule {
 
   @override
   void onUnload() {
+    _kinetics?.onWaterWheelTurns = null;
+    _kinetics?.onStressometerObserved = null;
+    _kinetics = null;
     _runtime?.dispose();
     _runtime = null;
+  }
+}
+
+/// Awards [ids] to the players near the block at [pos] of [worldId]. Java awards the block's owner
+/// (`SmartBlockEntity.award` -> `AdvancementBehaviour`); the port tracks no per-block owner, so
+/// (like the backtank) the players near the block are awarded.
+void _awardNear(
+  CreateContext ctx,
+  String worldId,
+  BlockPos pos,
+  List<String> ids,
+) {
+  final bus = ctx.services.find<PayloadBus>();
+  final advancements = ctx.services.find<CreateAdvancements>();
+  if (bus == null || advancements == null) return;
+  for (final p in bus.roster.players) {
+    try {
+      final w = p.getWorld();
+      final same = w.getId() == worldId;
+      w.dispose();
+      if (!same) continue;
+      final (x, y, z) = p.getPosition();
+      final dx = x - (pos.x + 0.5), dy = y - (pos.y + 0.5), dz = z - (pos.z + 0.5);
+      if (dx * dx + dy * dy + dz * dz > 16 * 16) continue;
+      for (final id in ids) {
+        unawaited(advancements.award(p, id));
+      }
+    } on Object {
+      // a handle that went invalid: the player left
+    }
   }
 }
 

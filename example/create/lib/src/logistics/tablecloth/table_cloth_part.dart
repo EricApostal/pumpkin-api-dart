@@ -333,7 +333,7 @@ Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
   if (player == null) return;
   final world = e.targetWorld;
   final pos = e.pos.toPos();
-  final data = await _requestDataFromHand(player);
+  final data = await heldRequestData(player);
   if (data == null) return;
 
   final be = Lg.i.store.typed<TableClothBlockEntity>(world.getId(), e.pos);
@@ -357,24 +357,6 @@ Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
   if (advancements != null) {
     unawaited(advancements.award(player, AllAdvancements.tableClothShop));
   }
-}
-
-/// The `create:auto_request_data` component of the cloth in the player's hands.
-Future<AutoRequestData?> _requestDataFromHand(Player player) async {
-  final inventory = player.getInventory();
-  try {
-    for (final hand in [Hand.right, Hand.left]) {
-      final held = inventory.getItemInHand(hand: hand);
-      if (held == null) continue;
-      final stack = await Lg.i.read(held);
-      final bytes = stack.compBytes('create:auto_request_data');
-      if (bytes == null) continue;
-      return AutoRequestData.decode(bytes, Lg.i.wire);
-    }
-  } finally {
-    inventory.dispose();
-  }
-  return null;
 }
 
 /// The `tablecloth` part.

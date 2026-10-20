@@ -3,9 +3,7 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../model/stack.dart';
-
-/// The private JSON of a stack, next to the `{id, count}` a Create client reads.
-const String pluginStackKey = 'PluginStack';
+import '../model/stack_tags.dart' show pluginStackKey;
 
 /// `TransferUtil.saveItem` for the client (`client` true: only `{id, count}`, what a Create client
 /// can read) or for saving (adds the lossless JSON). An empty stack is an empty compound.

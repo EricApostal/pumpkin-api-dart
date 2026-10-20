@@ -15,6 +15,8 @@ import '../../common/common.dart' hide pos;
 import '../../common/host_bridge.dart';
 import '../../contraptions/core/nbt_map.dart';
 import '../../contraptions/core/structure_transform.dart';
+import '../../conveyance/items/stack_bridge.dart';
+import '../../conveyance/transport/funnel/funnel_block_entity.dart';
 import '../../core/block_entity.dart';
 import '../support/kinetics_bridge.dart';
 import '../common/capabilities.dart';
@@ -405,7 +407,12 @@ class FunnelPoint extends DepositOnlyArmInteractionPoint {
   @override
   Future<PStack> insert(ArmBlockEntity arm, PStack stack, bool simulate) async {
     if (cachedState.flag('powered')) return stack;
-    return super.insert(arm, stack, simulate);
+    // Java asks the funnel's own `InvManipulationBehaviour` for the insertion (it is not an
+    // item capability), with the funnel's filter (`FunnelBlockEntity.tryInsert`); the host's
+    // item handlers know nothing about a funnel.
+    final be = level.beAt(pos);
+    if (be is! FunnelBlockEntity) return stack;
+    return toPStack(await be.tryInsert(fromPStack(stack), simulate: simulate));
   }
 }
 
@@ -500,9 +507,23 @@ class JukeboxPoint extends TopFaceArmInteractionPoint {
 
   @override
   Future<PStack> insert(ArmBlockEntity arm, PStack stack, bool simulate) async {
-    if (!stack.key.startsWith('minecraft:music_disc_')) return stack;
+    // `stack.get(DataComponents.JUKEBOX_PLAYABLE) == null`
+    if (!_isPlayable(stack)) return stack;
     if (cachedState.flag('has_record')) return stack;
-    return super.insert(arm, stack, simulate);
+    final container = _jukeboxContainer();
+    if (container == null) return stack;
+    final current = container.getStack(slot: 0);
+    if (current != null && await current.getCount() > 0) return stack;
+
+    // `remainder.split(1)`: one disc goes in, the rest is for the arm.
+    final remainder = stack.withCount(stack.count - 1);
+    if (!simulate) {
+      final one = await HostStacks.write(stack.withCount(1));
+      if (one == null) return stack;
+      await container.setStack(slot: 0, stack: one);
+      _setHasRecord(true);
+    }
+    return remainder;
   }
 
   @override
@@ -513,7 +534,53 @@ class JukeboxPoint extends TopFaceArmInteractionPoint {
     bool simulate,
   ) async {
     if (!cachedState.flag('has_record')) return PStack.empty;
-    return super.extract(arm, slot, amount, simulate);
+    final container = _jukeboxContainer();
+    if (container == null) return PStack.empty;
+    final stack = container.getStack(slot: 0);
+    if (stack == null) return PStack.empty;
+    final value = await HostStacks.read(stack);
+    if (value.isEmpty) return PStack.empty;
+
+    final taken = value.withCount(amount < value.count ? amount : value.count);
+    if (!simulate) {
+      final left = value.count - taken.count;
+      await container.setStack(
+        slot: 0,
+        stack: left <= 0 ? null : await HostStacks.write(value.withCount(left)),
+      );
+      _setHasRecord(left > 0);
+    }
+    return taken;
+  }
+
+  /// The jukebox's container (`JukeboxBlockEntity.getTheItem` / `setTheItem`): the record is
+  /// its single slot. `null` when the block entity is not a jukebox (or the world is gone).
+  ContainerBlockEntity? _jukeboxContainer() {
+    final world = level.world;
+    if (world == null) return null;
+    final be = world.getBlockEntity(pos: pos.toBlockPos());
+    if (be is! BlockEntityTypeJukeboxBlockEntity) return null;
+    return be.value.getContainer();
+  }
+
+  /// `JukeboxBlock.HAS_RECORD` after the record changed (Java's `setTheItem` writes the state).
+  void _setHasRecord(bool hasRecord) {
+    if (cachedState.flag('has_record') == hasRecord) return;
+    cachedState = cachedState.setValue('has_record', hasRecord ? 'true' : 'false');
+    final world = level.world;
+    if (world == null) return;
+    final id = BlockStates.setValue(
+      world.getBlockStateId(pos: pos.toBlockPos()),
+      'has_record',
+      hasRecord ? 'true' : 'false',
+    );
+    unawaited(
+      world.setBlockState(
+        pos: pos.toBlockPos(),
+        state: id,
+        updateFlags: BlockUpdateFlags.normal,
+      ),
+    );
   }
 }
 
@@ -559,6 +626,12 @@ class CrushingWheelPoint extends DepositOnlyArmInteractionPoint {
 
 /// The `facing` of a funnel block (`FunnelBlock.getFunnelFacing`): `null` for the upward one.
 Direction? _funnelFacing(BState state) => state.dir('facing');
+
+/// `stack.get(DataComponents.JUKEBOX_PLAYABLE) != null`: a music disc. The component is only
+/// readable when the host sends it, so the item name is the fallback.
+bool _isPlayable(PStack stack) =>
+    stack.hasComponent('minecraft:jukebox_playable') ||
+    stack.key.startsWith('minecraft:music_disc_');
 
 /// Drops the remainder at the point (helper for points that spill items).
 Future<void> dropAtPoint(ArmWorld level, Pos pos, PStack stack) async {

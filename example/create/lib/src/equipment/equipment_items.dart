@@ -1,7 +1,10 @@
 // Registration data of the equipment items from the manifest: stack size, durability, rarity,
 // enchantability and the equippable slot of armor. Nothing is retyped: the numbers come from
 // `kItems`; only what the manifest keeps as text (equippable slot, enchantment value) is mapped here.
-import 'package:pumpkin_api/pumpkin_api.dart';
+//
+// Only `pumpkin_api_core` is imported, so the registration of every item is unit tested on the
+// plain VM; the entity type spec, which needs the host's `EntityTypeSpec`, lives in the module.
+import 'package:pumpkin_api/pumpkin_api_core.dart';
 
 import '../manifest/manifest.dart';
 import 'tools/tool_materials.dart';
@@ -132,6 +135,42 @@ ItemRegistration equipmentItem(String path) {
   if (path == 'sand_paper' || path == 'red_sand_paper' || path == 'cardboard_sword') {
     components['minecraft:enchantable'] = {'value': 1};
   }
+  if (path == 'builders_tea') {
+    // `AllItems.BUILDERS_TEA`: `stacksTo(16)`, then
+    // `food(nutrition 1, saturation .6, alwaysEdible)` with a consumable of
+    // haste 3:00. `BuildersTeaItem` overrides the use duration to 42 ticks
+    // (`getUseDuration`) and the animation to DRINK; the host takes both from
+    // the component, so `consume_seconds` is 42/20. The sound stays vanilla's
+    // `entity.generic.eat`, the one the item never overrides. The glass bottle
+    // of `finishUsingItem` is granted by the module (`MiscItemsHost`), not here.
+    components['minecraft:food'] = {
+      'nutrition': 1,
+      'saturation': 0.6,
+      'can_always_eat': true,
+    };
+    components['minecraft:consumable'] = {
+      'consume_seconds': 2.1,
+      'animation': 'drink',
+      'sound': 'minecraft:entity.generic.eat',
+      'has_consume_particles': true,
+      'on_consume_effects': [
+        {
+          'type': 'minecraft:apply_effects',
+          'effects': [
+            {
+              'id': 'minecraft:haste',
+              'amplifier': 0,
+              'duration': 3 * 60 * 20,
+              'ambient': false,
+              'show_particles': false,
+              'show_icon': false,
+            },
+          ],
+          'probability': 1.0,
+        },
+      ],
+    };
+  }
   if (path == 'cardboard_sword') {
     // `AllItems.CARDBOARD_SWORD`: `properties(p -> p.sword(AllToolMaterials.CARDBOARD, 3, 1))`.
     components.addAll(AllToolMaterials.cardboard.swordComponents());
@@ -156,21 +195,4 @@ ItemRegistration equipmentItem(String path) {
   // for the items whose extractor saw the call, and [_classDurability] covers the others.
   final maxStack = components.containsKey('minecraft:max_damage') ? 1 : m.maxStack;
   return ItemRegistration(key: 'create:$path', components: all, maxStackSize: maxStack);
-}
-
-/// The entity type spec of `create:<path>` from the manifest.
-EntityTypeSpec equipmentEntityType(String path) {
-  final d = kEntityTypes.firstWhere((e) => e.key == path);
-  return EntityTypeSpec(
-    key: 'create:${d.key}',
-    width: d.width,
-    height: d.height,
-    eyeHeight: d.eyeHeight,
-    fireImmune: d.fireImmune,
-    trackingRange: d.trackingRange,
-    updateInterval: d.updateInterval.clamp(1, 1000),
-    trackDeltas: d.sendVelocity,
-    summonable: d.summonable,
-    spawnDataChannel: d.complexSpawnData ? 'neoforge:advanced_add_entity' : null,
-  );
 }

@@ -337,6 +337,63 @@ void _empty(_Ctx c, Object? v, PacketWriter w) {
   c.only(json, const {});
 }
 
+/// One `ConsumeEffect` of a `minecraft:consumable`: a VarInt registry id
+/// (`ConsumeEffect::registry_id`) and the payload its reader expects
+/// (`deserialize_consume_effect`). `apply_effects` is 0, then
+/// `remove_effects` 1, `clear_all_effects` 2, `teleport_randomly` 3 and
+/// `play_sound` 4; only `apply_effects` has a caller, the others fail.
+void _consumeEffect(_Ctx c, Object? value, PacketWriter w) {
+  final json = c.object(value, 'a consume effect');
+  final type = c.field<String>(json, 'type', '', c.string);
+  switch (type) {
+    case 'minecraft:apply_effects':
+      c.only(json, {'type', 'effects', 'probability'}, 'the effect');
+      w.writeVarInt(0);
+      final effects = c.list(json['effects'] ?? const <Object?>[], 'effects');
+      w.writeVarInt(effects.length);
+      for (final effect in effects) {
+        _statusEffectInstance(c, effect, w);
+      }
+      final probability = c.numField(json, 'probability', 1.0);
+      if (probability < 0 || probability > 1) {
+        c.fail('probability must be 0 to 1, got $probability');
+      }
+      w.writeFloat(probability);
+    case '':
+      c.fail('a consume effect has no `type`');
+    default:
+      c.fail('consume effect `$type` has no encoder');
+  }
+}
+
+/// One `MobEffectInstance` of an `apply_effects` consume effect: the effect id,
+/// the amplifier, the duration and the three display flags, then the "no hidden
+/// effect" flag the host reads.
+void _statusEffectInstance(_Ctx c, Object? value, PacketWriter w) {
+  final json = c.object(value, 'a status effect');
+  c.only(json, {
+    'id',
+    'amplifier',
+    'duration',
+    'ambient',
+    'show_particles',
+    'show_icon',
+  }, 'a status effect');
+  if (!json.containsKey('id')) c.fail('a status effect has no `id`');
+  if (!json.containsKey('duration')) c.fail('a status effect has no `duration`');
+  w.writeVarInt(
+    c.idOf(c.registries.mobEffect, c.string(json['id'], 'id'), 'mob effect'),
+  );
+  final amplifier = c.intField(json, 'amplifier', 0);
+  if (amplifier < 0) c.fail('amplifier cannot be negative, got $amplifier');
+  w.writeVarInt(amplifier);
+  w.writeVarInt(c.integer(json['duration'], 'duration'));
+  w.writeBool(c.boolField(json, 'ambient', false));
+  w.writeBool(c.boolField(json, 'show_particles', true));
+  w.writeBool(c.boolField(json, 'show_icon', true));
+  w.writeBool(false);
+}
+
 const _rarities = ['common', 'uncommon', 'rare', 'epic'];
 
 // Slot ids of `EquipmentSlot::get_slot_index` (Equippable.slot).
@@ -374,6 +431,21 @@ const _operations = {
 
 // Pumpkin's `SwingAnimationType::from_id`: whack 0, stab 1, none 2.
 const _swingTypes = {'whack': 0, 'stab': 1, 'none': 2};
+
+// `ConsumeAnimation` of a `minecraft:consumable` (`TryFrom<i32>` in
+// `data_component_impl/food.rs`), vanilla's `ItemUseAnimation` names.
+const _consumeAnimations = {
+  'none': 0,
+  'eat': 1,
+  'drink': 2,
+  'block': 3,
+  'bow': 4,
+  'spear': 5,
+  'crossbow': 6,
+  'spyglass': 7,
+  'horn': 8,
+  'brush': 9,
+};
 
 final Map<String, _Encoder> _encoders = {
   // MaxStackSizeImpl::deserialize: VarInt, must fit a u8.
@@ -701,6 +773,62 @@ final Map<String, _Encoder> _encoders = {
     w.writeFloat(c.numField(json, 'damage_multiplier', 1.0));
     c.optionalSound(w, json['sound'], 'sound');
     c.optionalSound(w, json['hit_sound'], 'hit_sound');
+  },
+  // FoodPropertiesImpl: VarInt nutrition, f32 saturation, bool can_always_eat
+  // (vanilla's `FoodProperties.DIRECT_STREAM_CODEC`).
+  //
+  // The host reads this component and no other one to decide whether an item
+  // can be eaten, so an edible item needs it (`prepare_hand_item_for_use`,
+  // `living.rs`); a `minecraft:consumable` beside it gives the item its use
+  // duration and its consume effects.
+  'minecraft:food': (c, v, w) {
+    final json = c.object(v);
+    c.only(json, {'nutrition', 'saturation', 'can_always_eat'});
+    if (!json.containsKey('nutrition')) c.fail('food has no `nutrition`');
+    final nutrition = c.integer(json['nutrition'], 'nutrition');
+    if (nutrition < 0) c.fail('nutrition cannot be negative, got $nutrition');
+    if (!json.containsKey('saturation')) c.fail('food has no `saturation`');
+    w.writeVarInt(nutrition);
+    w.writeFloat(c.number(json['saturation'], 'saturation'));
+    w.writeBool(c.boolField(json, 'can_always_eat', false));
+  },
+  // ConsumableImpl: f32 consume_seconds, VarInt animation, the consume sound,
+  // bool has_consume_particles, the consume effects. The duration of a use is
+  // `consume_seconds * 20` ticks (`ConsumableImpl::consume_ticks`), so 1.6 is
+  // vanilla's 32-tick food and 2.1 an item whose `getUseDuration` is 42.
+  //
+  // The sound is read as an `IdOr<SoundEvent>`, which is a registry holder:
+  // the id plus one (see [_Ctx.soundHolder]).
+  'minecraft:consumable': (c, v, w) {
+    final json = c.object(v);
+    c.only(json, {
+      'consume_seconds',
+      'animation',
+      'sound',
+      'has_consume_particles',
+      'on_consume_effects',
+    });
+    final seconds = c.numField(json, 'consume_seconds', 1.6);
+    if (seconds < 0) c.fail('consume_seconds cannot be negative, got $seconds');
+    w.writeFloat(seconds);
+    final animation = c.field<String>(json, 'animation', 'eat', c.string);
+    final animationId = _consumeAnimations[animation];
+    if (animationId == null) c.fail('unknown animation `$animation`');
+    w.writeVarInt(animationId);
+    c.soundHolder(
+      w,
+      json['sound'] ?? 'minecraft:entity.generic.eat',
+      'sound',
+    );
+    w.writeBool(c.boolField(json, 'has_consume_particles', true));
+    final effects = c.list(
+      json['on_consume_effects'] ?? const <Object?>[],
+      'on_consume_effects',
+    );
+    w.writeVarInt(effects.length);
+    for (final effect in effects) {
+      _consumeEffect(c, effect, w);
+    }
   },
   // UnbreakableImpl, GliderImpl: no payload.
   'minecraft:unbreakable': _empty,

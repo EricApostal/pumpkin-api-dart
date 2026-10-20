@@ -279,7 +279,8 @@ class PackagerLinkBlockEntity extends LgBlockEntity implements LinkedHost {
     return faceConnectedDirection(info?.properties ?? const {});
   }
 
-  /// `PackagerLinkBlock.getPower(state, level, pos)`.
+  /// `PackagerLinkBlock.getPower(state, level, pos)` and the `POWERED` update of its
+  /// `neighborChanged`.
   Future<void> refreshPower() async {
     final w = world;
     if (w == null) return;
@@ -291,6 +292,11 @@ class PackagerLinkBlockEntity extends LgBlockEntity implements LinkedHost {
         d.toHost(),
       );
       if (value > power) power = value;
+    }
+    final lvl = Lvl(w);
+    final powered = lvl.info(_pos)?.properties['powered'] == 'true';
+    if (powered != (power > 0)) {
+      await lvl.setProps(_pos, {'powered': power > 0 ? 'true' : 'false'});
     }
     behaviour.redstonePowerChanged(power);
   }

@@ -102,6 +102,32 @@ void flapTunnel(BeltEnvironment env, int offset, Direction side, bool inward) {
   tunnelOnHorizontalSegment(env, offset)?.flap(side, inward);
 }
 
+/// The tunnel above segment [index] takes an item inserted from [side] to distribute instead of
+/// letting it ride on (`BeltBlockEntity.tryInsertingFromSide`, `BeltBlockEntity.java:497-515`).
+/// A brass tunnel that is not distributing yet and whose flap filter accepts [stack] keeps it;
+/// every other case leaves it with the belt. Returns whether the tunnel took the stack.
+///
+/// [env] is the belt [index] belongs to — the controller, as Java's `flapTunnel(nextInventory,
+/// …)` uses — so the slope guard of [flapTunnel] applies to the belt's own slope.
+bool tunnelTakesInsertion(
+  BeltEnvironment env,
+  int index,
+  Direction side,
+  ItemValue stack, {
+  required bool simulate,
+}) {
+  final tunnel = env.tunnelOnSegment(index);
+  if (tunnel == null || !tunnel.isBrass || !tunnel.hasDistributionBehaviour)
+    return false;
+  if (tunnel.getStackToDistribute().isNotEmpty) return false;
+  if (!tunnel.testFlapFilter(side.opposite, stack)) return false;
+  if (!simulate) {
+    flapTunnel(env, index, side.opposite, true);
+    tunnel.setStackToDistribute(stack, side.opposite);
+  }
+  return true;
+}
+
 /// `BeltTunnelInteractionHandler.stuckAtTunnel`.
 bool stuckAtTunnel(BeltEnvironment env, int offset, ItemValue stack, Direction movementDirection) {
   final tunnel = env.brassTunnelAbove(offset);

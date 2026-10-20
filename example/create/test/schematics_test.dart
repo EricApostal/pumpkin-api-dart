@@ -7,6 +7,7 @@ import 'package:create/src/schematics/item_requirement.dart';
 import 'package:create/src/schematics/launched_item.dart';
 import 'package:create/src/schematics/material_checklist.dart';
 import 'package:create/src/schematics/schematic_printer.dart';
+import 'package:create/src/schematics/schematic_hooks.dart';
 import 'package:create/src/schematics/schematic_stack.dart';
 import 'package:create/src/schematics/schematic_world.dart';
 import 'package:create/src/schematics/schematicannon_core.dart';
@@ -412,6 +413,211 @@ void main() {
             .length,
         2,
       );
+    });
+
+    test('a strict requirement compares the components it names', () {
+      const strict = StackRequirement(
+        'minecraft:diamond_sword',
+        1,
+        ItemUseType.consume,
+        strictComponents: {'minecraft:damage': NbtValue.int32(5)},
+      );
+      // `ItemStack.getComponents` gives a component's network bytes under its wire name;
+      // `DataComponentCodec` turns the required NBT into that form.
+      List<int>? encode(String name, NbtValue value) =>
+          name == 'minecraft:damage' ? [value.value as int] : null;
+      // The item decides first.
+      expect(
+        strict.matches(
+          'minecraft:iron_sword',
+          otherComponents: {
+            'damage': [5],
+          },
+          encode: encode,
+        ),
+        isFalse,
+      );
+      // Nothing to compare against: the requirement pins the item only.
+      expect(strict.matches('minecraft:diamond_sword'), isTrue);
+      // The component the requirement names must match too.
+      expect(
+        strict.matches(
+          'minecraft:diamond_sword',
+          otherComponents: {
+            'damage': [5],
+          },
+          encode: encode,
+        ),
+        isTrue,
+      );
+      expect(
+        strict.matches(
+          'minecraft:diamond_sword',
+          otherComponents: {
+            'damage': [6],
+          },
+          encode: encode,
+        ),
+        isFalse,
+      );
+      expect(
+        strict.matches(
+          'minecraft:diamond_sword',
+          otherComponents: const <String, List<int>>{},
+          encode: encode,
+        ),
+        isFalse,
+      );
+      // A component without an encoder cannot be compared, so it is not.
+      expect(
+        strict.matches(
+          'minecraft:diamond_sword',
+          otherComponents: const <String, List<int>>{},
+          encode: (name, value) => null,
+        ),
+        isTrue,
+      );
+    });
+
+    test('entities: glue and blueprint', () {
+      final empty = BinaryNbt.write(NbtValue.compound(const {}));
+      final glue = r
+          .ofEntity('create:super_glue', empty)
+          .requiredItems
+          .single;
+      expect(glue.item, 'create:super_glue');
+      expect(glue.usage, ItemUseType.damage);
+      expect(glue.count, 1);
+      final blueprint = r
+          .ofEntity('create:crafting_blueprint', empty)
+          .requiredItems
+          .single;
+      expect(blueprint.item, 'create:crafting_blueprint');
+      expect(blueprint.usage, ItemUseType.consume);
+      final frame = r
+          .ofEntity('minecraft:item_frame', empty)
+          .requiredItems
+          .single;
+      expect(frame.item, 'minecraft:item_frame');
+    });
+
+    test('blocks without an item resolve through their special requirement', () {
+      final special = SchematicRequirements()
+        ..itemOfBlock = (k) => k.startsWith('create:') ? k : null;
+      registerSpecialBlockRequirements(special);
+      String items(BState state) => special
+          .ofBlock(state, null)
+          .requiredItems
+          .map((e) => '${e.count}x ${e.item}')
+          .join(', ');
+      expect(items(const BState('create:glass_fluid_pipe')), '1x create:fluid_pipe');
+      expect(
+        items(const BState('create:andesite_belt_funnel')),
+        '1x create:andesite_funnel',
+      );
+      expect(
+        items(const BState('create:brass_belt_funnel')),
+        '1x create:brass_funnel',
+      );
+      expect(
+        items(const BState('create:metal_girder_encased_shaft')),
+        '1x create:shaft, 1x create:metal_girder',
+      );
+      expect(
+        items(const BState('create:lectern_controller')),
+        '1x minecraft:lectern, 1x create:linked_controller',
+      );
+    });
+
+    test('a copycat needs the item it was made from', () {
+      final copycat = SchematicRequirements();
+      copycat.itemOfBlock = (k) => k;
+      copycat.blockEntityTypeOf = (k) =>
+          k == 'create:copycat_panel' ? 'create:copycat' : null;
+      registerSpecialBlockRequirements(copycat);
+      final nbt = BinaryNbt.write(
+        NbtValue.compound({
+          'Item': NbtValue.compound({
+            'id': const NbtValue.string('minecraft:stone'),
+            'count': const NbtValue.int32(1),
+          }),
+          'Material': NbtValue.compound({
+            'Name': const NbtValue.string('minecraft:stone'),
+          }),
+        }),
+      );
+      expect(
+        copycat
+            .ofBlock(const BState('create:copycat_panel'), nbt)
+            .requiredItems
+            .map((e) => e.item),
+        ['create:copycat_panel', 'minecraft:stone'],
+      );
+      // A copycat without a material needs only its own item.
+      expect(
+        copycat
+            .ofBlock(const BState('create:copycat_panel'), null)
+            .requiredItems
+            .map((e) => e.item),
+        ['create:copycat_panel'],
+      );
+    });
+  });
+
+  group('safe nbt', () {
+    test('a printed copycat keeps its item and material', () {
+      final hooks = SchematicHooks();
+      registerCreateSafeNbtWriters(hooks);
+      final writer = hooks.safeNbtWriters['create:copycat_panel']!;
+      final data = writer(
+        const BState('create:copycat_panel'),
+        BinaryNbt.write(
+          NbtValue.compound({
+            'id': const NbtValue.string('create:copycat'),
+            'Item': NbtValue.compound({
+              'id': const NbtValue.string('minecraft:stone'),
+              'count': const NbtValue.int32(1),
+              'components': NbtValue.compound({
+                'minecraft:custom_name': const NbtValue.string('x'),
+              }),
+            }),
+            'Material': NbtValue.compound({
+              'Name': const NbtValue.string('minecraft:stone'),
+            }),
+            'ClientOnly': const NbtValue.string('drop me'),
+          }),
+        ),
+      );
+      final kept = BinaryNbt.read(data!)!.root.asCompound;
+      expect(kept.containsKey('ClientOnly'), isFalse);
+      expect(kept['Item']!.asCompound['id']!.value, 'minecraft:stone');
+      // `ItemStack.CODEC` of `DataComponentPatch.EMPTY`: the components are not copied.
+      expect(kept['Item']!.asCompound.containsKey('components'), isFalse);
+      expect(kept['Material']!.asCompound['Name']!.value, 'minecraft:stone');
+    });
+
+    test('safe behaviours survive, a table cloth keeps none of its filter', () {
+      final data = safeBlockEntityData(
+        const BState('create:white_table_cloth'),
+        BinaryNbt.write(
+          NbtValue.compound({
+            'id': const NbtValue.string('create:table_cloth'),
+            'Filter': NbtValue.compound({
+              'id': const NbtValue.string('minecraft:stone'),
+            }),
+            'FilterAmount': const NbtValue.int32(4),
+            'ScrollValue': const NbtValue.int32(2),
+            'Bracket': NbtValue.compound({
+              'Name': const NbtValue.string('minecraft:oak_log'),
+            }),
+          }),
+        ),
+      );
+      final kept = BinaryNbt.read(data!)!.root.asCompound;
+      expect(kept.containsKey('Filter'), isFalse);
+      expect(kept.containsKey('FilterAmount'), isFalse);
+      expect(kept['ScrollValue']!.value, 2);
+      expect(kept['Bracket']!.asCompound['Name']!.value, 'minecraft:oak_log');
     });
   });
 

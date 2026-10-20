@@ -109,6 +109,7 @@ final class BellHost {
 
     // `AllBlocks`: the peculiar bell uses the vanilla bell actor; the haunted bell also sends
     // soul pulses to the blocks it travels over.
+    MovementBehaviours.register('create:desk_bell', const BellMovementBehaviour());
     MovementBehaviours.register('create:peculiar_bell', const BellMovementBehaviour());
     MovementBehaviours.register('create:haunted_bell', HauntedBellMovementBehaviour(env));
   }

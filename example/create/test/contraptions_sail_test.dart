@@ -323,6 +323,73 @@ void main() {
     });
   });
 
+  group('sail row placement from a click', () {
+    // `sailBlockBehavior` calls `sailRowPlacement`, the `useItemOn` branch: the clicked sail's
+    // state comes from the world (`useItemOn`'s `state` argument). The event's `stateIndex` is
+    // the index of the state within the block (`docs/block-callbacks.md`), not a state id, so a
+    // sail's `0..5` resolved as an id is a vanilla state with no `facing`: the row then grows as
+    // if the sail faced north and the new sail is placed facing north.
+    const pos = (0, 64, 0);
+
+    test('an up-facing row grows inside the canvas and keeps the facing', () {
+      // The canvas of an up sail is the plate y in [5/16, 10/16]; the click lands on its top
+      // surface (cursor y = 5/16), on the south half. The row is the x/z plane, so the next
+      // sail goes south, not down out of the canvas.
+      final offset = sailRowPlacement(
+        level: world({pos: sail(Direction.up)}),
+        pos: pos,
+        cursor: (0.5, 5 / 16, 0.9),
+      );
+      expect(offset.pos, (0, 64, 1));
+      expect(offset.transform(const BState(white)), sail(Direction.up));
+    });
+
+    test('the clicked sail decides the plane and the facing for every facing', () {
+      // Each case is a click on the canvas surface, towards one in-plane neighbour: the plate's
+      // thickness axis is the facing axis, so the cursor component on it is the surface.
+      final cases = <(Direction, (double, double, double), Pos)>[
+        (Direction.up, (0.1, 5 / 16, 0.5), (-1, 64, 0)),
+        (Direction.up, (0.5, 5 / 16, 0.9), (0, 64, 1)),
+        (Direction.down, (0.1, 6 / 16, 0.5), (-1, 64, 0)),
+        (Direction.down, (0.5, 6 / 16, 0.1), (0, 64, -1)),
+        (Direction.north, (0.9, 0.5, 5 / 16), (1, 64, 0)),
+        (Direction.north, (0.5, 0.9, 5 / 16), (0, 65, 0)),
+        (Direction.south, (0.9, 0.5, 5 / 16), (1, 64, 0)),
+        (Direction.south, (0.5, 0.1, 5 / 16), (0, 63, 0)),
+        (Direction.east, (5 / 16, 0.5, 0.9), (0, 64, 1)),
+        (Direction.east, (5 / 16, 0.9, 0.5), (0, 65, 0)),
+        (Direction.west, (6 / 16, 0.5, 0.9), (0, 64, 1)),
+        (Direction.west, (6 / 16, 0.1, 0.5), (0, 63, 0)),
+      ];
+      for (final (facing, cursor, expected) in cases) {
+        final offset = sailRowPlacement(
+          level: world({pos: sail(facing)}),
+          pos: pos,
+          cursor: cursor,
+        );
+        expect(offset.pos, expected, reason: '$facing row, cursor $cursor');
+        expect(
+          offset.transform(const BState(white)),
+          sail(facing),
+          reason: 'the new sail keeps the clicked $facing sail\'s facing',
+        );
+      }
+    });
+
+    test('the click is world-relative, not the raw cursor', () {
+      // The host reports the cursor inside the clicked block; the helpers compare it with the
+      // block centre, so the row follows the click wherever the sail is in the world.
+      const far = (1000, 64, -2000);
+      final offset = sailRowPlacement(
+        level: world({far: sail(Direction.up)}),
+        pos: far,
+        cursor: (0.98, 5 / 16, 0.5),
+      );
+      expect(offset.pos, (1001, 64, -2000));
+      expect(offset.transform(const BState(white)), sail(Direction.up));
+    });
+  });
+
   group('sail keys and dyes', () {
     test('the frame, the white sail and the sixteen dyed sails are sail blocks', () {
       expect(isSailKey(frame), isTrue);

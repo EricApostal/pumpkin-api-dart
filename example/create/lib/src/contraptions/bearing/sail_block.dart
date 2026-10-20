@@ -120,7 +120,6 @@ Future<void> applySailDye(
 BlockBehavior sailBlockBehavior(String blockKey, {required bool frame}) {
   return BlockBehavior(
     onUseWithItem: (server, e) async {
-      final state = HostBlockGetter.stateOfId(e.stateIndex);
       final String itemKey;
       try {
         itemKey = await e.item.getRegistryKey();
@@ -130,17 +129,18 @@ BlockBehavior sailBlockBehavior(String blockKey, {required bool frame}) {
 
       final world = e.targetWorld;
       final pos = (e.pos.x, e.pos.y, e.pos.z);
+      final level = HostBlockGetter(world);
+      // `useItemOn`'s `state`: the clicked sail's own state, read from the world like Java's
+      // `state` argument. `e.stateIndex` is the index of the state within the block
+      // (`docs/block-callbacks.md`: `state id = baseStateId + stateIndex`), so it cannot be used
+      // as a state id: a sail's `0..5` would resolve a vanilla state with no `facing`.
+      final state = level.stateAt(pos);
       // `ray.getLocation()`: world coordinates, not the host's block-relative cursor.
       final hit = sailHitLocation(pos, e.cursor);
 
       // `PlacementHelper.matchesItem` comes first and is the only branch sneaking disables.
       if (isSailItemKey(itemKey) && !e.sneaking && _mayBuild(e.player)) {
-        final offset = sailPlacementOffset(
-          level: HostBlockGetter(world),
-          state: state,
-          pos: pos,
-          hit: hit,
-        );
+        final offset = sailRowPlacement(level: level, pos: pos, cursor: e.cursor);
         // `PlacementOffset.placeInWorld` places the item's block where it can, and the click is
         // consumed either way.
         if (offset.isSuccessful) {

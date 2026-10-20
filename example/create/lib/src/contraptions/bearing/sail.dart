@@ -91,6 +91,9 @@ bool isSailItemKey(String itemKey) =>
 /// of the canvas). The new sail keeps the clicked sail's `facing` (upstream
 /// `PlacementOffset.success(pos, s -> s.setValue(FACING, state.getValue(FACING)))`).
 ///
+/// [state] is the clicked sail's own state, as Java's `useItemOn` receives it; see
+/// [sailRowPlacement].
+///
 /// [hit] is the click point in world coordinates (`BlockHitResult.getLocation()`); see
 /// [sailHitLocation].
 PlacementOffset sailPlacementOffset({
@@ -114,6 +117,29 @@ PlacementOffset sailPlacementOffset({
     (s) => BState(s.key, {...s.props, 'facing': facing.serializedName}),
   );
 }
+
+/// `SailBlock.useItemOn` with a sail item on a sail: the next sail of the row for a click at
+/// [cursor] on the sail at [pos].
+///
+/// [cursor] is the event's `cursor` (`0..1` inside the clicked block), so the click is at
+/// `pos + cursor` (`BlockHitResult.getLocation()`); see [sailHitLocation].
+///
+/// The clicked state is read from [level] at [pos], which is the `state` Java's `useItemOn`
+/// receives (vanilla passes `level.getBlockState(pos)` to the clicked block's `useItemOn`). It
+/// must not come from a block callback's `stateIndex`: that counts the states of the block, so
+/// `state id = baseStateId + stateIndex` (`docs/block-callbacks.md`), and a sail's `0..5` used as
+/// an id resolves a vanilla state with no `facing`. The row would then grow as if every sail
+/// faced north and the new sail would be placed facing north.
+PlacementOffset sailRowPlacement({
+  required BlockGetter level,
+  required Pos pos,
+  required (double, double, double) cursor,
+}) => sailPlacementOffset(
+  level: level,
+  state: level.stateAt(pos),
+  pos: pos,
+  hit: sailHitLocation(pos, cursor),
+);
 
 /// `AllShapes.SAIL`: the canvas, a plate five pixels thick centred in the block and perpendicular
 /// to `facing`.

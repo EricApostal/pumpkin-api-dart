@@ -7,10 +7,14 @@
 // cannot corrupt a shared constant.
 //
 // Pure: no host imports.
+//
+// create's pure helpers (positions, `Aabb`, `BlockBounds`) are not exported from
+// its public barrel yet, so they are imported from `src/` deliberately.
+// ignore_for_file: implementation_imports
 import 'package:pumpkin_api/src/geometry.dart' show Vec3;
 
-import '../../common/bounds.dart' show Aabb;
-import '../../common/pos.dart' show Pos;
+import 'package:create/src/common/bounds.dart' show Aabb;
+import 'package:create/src/common/pos.dart' show Pos;
 import 'vector.dart';
 
 /// Conversions between Mojang and JOML math types.

@@ -101,7 +101,7 @@ final class SubLevelStorageFile {
   int get totalIndexCapacity => _image.totalIndexCapacity;
 
   /// Whether the file holds nothing.
-  bool isEmpty() => _image.isEmpty;
+  bool get isEmptyFile => _image.isEmpty;
 
   /// Writes [tag] at [index]; `null` clears the index.
   void write(int index, Map<String, Object?>? tag) {
@@ -215,7 +215,7 @@ final class SubLevelRegionFile {
   void close() => file.close();
 
   /// Whether the region has no entries.
-  bool isEmpty() => file.isEmpty;
+  bool get isEmptyFile => file.isEmptyFile;
 
   /// Deletes the file.
   void delete() => file.delete();

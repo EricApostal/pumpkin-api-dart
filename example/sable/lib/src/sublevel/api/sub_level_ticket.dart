@@ -75,13 +75,11 @@ final class SubLevelLoadingTicket<T> {
 /// where the sub-level was last saved (needed to load it back).
 final class SubLevelTicketInfo {
   final Set<SubLevelLoadingTicket<Object?>> tickets = {};
-  GlobalSavedSubLevelPointer? _pointer;
 
-  SubLevelTicketInfo([this._pointer, Set<SubLevelLoadingTicket<Object?>>? tickets]) {
+  /// Where the sub-level was last saved (needed to load it back).
+  GlobalSavedSubLevelPointer? pointer;
+
+  SubLevelTicketInfo([this.pointer, Set<SubLevelLoadingTicket<Object?>>? tickets]) {
     if (tickets != null) this.tickets.addAll(tickets);
   }
-
-  GlobalSavedSubLevelPointer? get pointer => _pointer;
-
-  set pointer(GlobalSavedSubLevelPointer? value) => _pointer = value;
 }

@@ -2,7 +2,7 @@
 // memory but not in the level, plus the pointer to where it is saved.
 //
 // Pure: no host imports.
-import '../holding/saved_pointer.dart';
+import 'holding/saved_pointer.dart';
 import 'serialization/sub_level_data.dart';
 
 /// A sub-level waiting in a holding chunk.

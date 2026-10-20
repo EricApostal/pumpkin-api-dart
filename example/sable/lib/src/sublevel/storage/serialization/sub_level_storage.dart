@@ -11,9 +11,9 @@ import '../../math/bounding_box.dart';
 import '../../math/vector.dart';
 import '../holding/saved_pointer.dart';
 import '../holding/sub_level_holding_chunk.dart';
-import 'region/sub_level_storage_file.dart';
-import 'serialization/sub_level_data.dart';
-import 'serialization/sub_level_serializer.dart';
+import '../region/sub_level_storage_file.dart';
+import 'sub_level_data.dart';
+import 'sub_level_serializer.dart';
 
 /// Manages the sub-level holding chunks and regions for a level.
 final class SubLevelStorage {
@@ -48,7 +48,7 @@ final class SubLevelStorage {
     if (regionCache.length >= maxCacheSize) {
       final lastKey = regionCache.keys.first;
       final last = regionCache.remove(lastKey)!;
-      if (last.isEmpty && pruneEmptyFiles) {
+      if (last.isEmptyFile && pruneEmptyFiles) {
         last.delete();
       } else {
         last.close();
@@ -74,7 +74,7 @@ final class SubLevelStorage {
     if (storageCache.length >= maxCacheSize) {
       final lastKey = storageCache.keys.first;
       final last = storageCache.remove(lastKey)!;
-      if (last.isEmpty() && pruneEmptyFiles) {
+      if (last.isEmptyFile && pruneEmptyFiles) {
         last.delete();
       } else {
         last.close();
@@ -214,7 +214,7 @@ final class SubLevelStorage {
   /// Prunes empty files from the caches.
   void pruneCache() {
     for (final entry in storageCache.entries.toList()) {
-      if (!entry.value.isEmpty()) continue;
+      if (!entry.value.isEmptyFile) continue;
       if (pruneEmptyFiles) {
         entry.value.delete();
       } else {
@@ -223,7 +223,7 @@ final class SubLevelStorage {
       storageCache.remove(entry.key);
     }
     for (final entry in regionCache.entries.toList()) {
-      if (!entry.value.isEmpty) continue;
+      if (!entry.value.isEmptyFile) continue;
       if (pruneEmptyFiles) {
         entry.value.delete();
       } else {

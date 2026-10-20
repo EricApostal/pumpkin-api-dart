@@ -18,21 +18,25 @@ const String slimeBallItem = 'minecraft:slime_ball';
 List<CreateBlock> buildChassisBlocks() => [
   manifestBlock(
     'linear_chassis',
+    blockEntityType: 'create:linear_chassis',
     placement: const [PlacementRule.clickedAxis('axis')],
     behavior: chassisBehavior(linearChassis),
   ),
   manifestBlock(
     'secondary_linear_chassis',
+    blockEntityType: 'create:secondary_linear_chassis',
     placement: const [PlacementRule.clickedAxis('axis')],
     behavior: chassisBehavior(secondaryLinearChassis),
   ),
   manifestBlock(
     'radial_chassis',
+    blockEntityType: 'create:radial_chassis',
     placement: const [PlacementRule.clickedAxis('axis')],
     behavior: chassisBehavior(radialChassis),
   ),
   manifestBlock(
     'sticker',
+    blockEntityType: 'create:sticker',
     placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
     behavior: stickerBehavior(),
   ),

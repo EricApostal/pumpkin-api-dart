@@ -6,9 +6,9 @@
 // written by the Java mod reads back.
 //
 // Pure: no host imports.
-import '../../math/bounding_box.dart';
-import '../../math/pose.dart';
-import '../../math/vector.dart';
+import '../math/bounding_box.dart';
+import '../math/pose.dart';
+import '../math/vector.dart';
 import 'uuid.dart';
 
 /// The NBT helpers of Sable.

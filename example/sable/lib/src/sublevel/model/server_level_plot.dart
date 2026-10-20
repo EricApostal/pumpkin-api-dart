@@ -10,14 +10,17 @@
 // blob opaquely and the plot only lays out the compound.
 //
 // Pure: no host imports (chunk access goes through `PlotChunkHost`).
-import '../../common/pos.dart' show Pos;
-import '../../math/bounding_box.dart';
+//
+// create's `Pos` is not exported from its public barrel yet; imported from
+// `src/` deliberately.
+// ignore_for_file: implementation_imports
+import 'package:create/src/common/pos.dart' show Pos;
+import '../api/block_entity_hooks.dart';
 import '../api/physics.dart';
 import '../host/sub_level_host.dart';
 import 'level_plot.dart';
 import 'plot_chunk_holder.dart';
 import 'server_sub_level.dart';
-import 'sub_level_container.dart';
 
 /// A plot of a server sub-level.
 final class ServerLevelPlot extends LevelPlot {
@@ -36,8 +39,7 @@ final class ServerLevelPlot extends LevelPlot {
   /// The lift providers inside this plot, by packed block position.
   final Map<int, LiftProviderContext> liftProviders = {};
 
-  ServerLevelPlot(SubLevelContainer container, int x, int z, int logSize, ServerSubLevel subLevel)
-    : super(container, x, z, logSize, subLevel);
+  ServerLevelPlot(super.container, super.x, super.z, super.logSize, super.subLevel);
 
   /// Adds a contraption to this plot.
   void addContraption(KinematicContraption contraption) => contraptions.add(contraption);
@@ -208,6 +210,19 @@ final class ServerLevelPlot extends LevelPlot {
   /// The Create blocks implement `BlockSubLevelLiftProvider`; the compat layer
   /// supplies this lookup.
   LiftProviderContext? liftProviderAt(Pos pos, String state) => null;
+
+  /// The sub-level actor block entity at [pos], or `null`.
+  ///
+  /// HOST GAP: the host cannot look up a block entity inside a plot chunk; the
+  /// plugin's block entity store supplies this once plot chunks are host-owned.
+  @override
+  BlockEntitySubLevelActor? actorAt(Pos pos) => null;
+
+  /// The reaction wheel block entity at [pos], or `null`.
+  ///
+  /// HOST GAP: same as [actorAt].
+  @override
+  BlockEntitySubLevelReactionWheel? reactionWheelAt(Pos pos) => null;
 
   /// All lift providers of this plot.
   Iterable<LiftProviderContext> getLiftProviders() => liftProviders.values;

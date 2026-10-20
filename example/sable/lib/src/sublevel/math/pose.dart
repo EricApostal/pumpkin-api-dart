@@ -3,6 +3,10 @@
 // stores; the abstract `Pose3dc` carries the read-only transforms.
 //
 // Pure: no host imports.
+//
+// create's pure helpers (positions, `Aabb`, `BlockBounds`) are not exported from
+// its public barrel yet, so they are imported from `src/` deliberately.
+// ignore_for_file: implementation_imports
 import 'package:pumpkin_api/src/geometry.dart' show Vec3;
 
 import 'bounding_box.dart';

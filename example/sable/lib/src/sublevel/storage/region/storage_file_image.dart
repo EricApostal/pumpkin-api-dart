@@ -14,7 +14,7 @@
 // Pure: no host imports.
 import 'dart:typed_data';
 
-import '../util/bit_grid.dart';
+import '../../util/bit_grid.dart';
 
 /// A growable sector bitset (Java `BitSet`, which grows on demand).
 final class _SectorBits {

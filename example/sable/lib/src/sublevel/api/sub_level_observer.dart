@@ -7,7 +7,7 @@ import '../model/sub_level_container.dart';
 import '../storage/sub_level_removal_reason.dart';
 
 /// Observes additions, removals, and ticking of sub-levels.
-abstract interface class SubLevelObserver {
+abstract mixin class SubLevelObserver {
   /// Called after a sub-level is added to a [SubLevelContainer].
   void onSubLevelAdded(SubLevel subLevel) {}
 

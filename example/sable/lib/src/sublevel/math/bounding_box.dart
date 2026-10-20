@@ -13,12 +13,16 @@
 // `transformMatrix`, ...).
 //
 // Pure: no host imports.
+//
+// create's pure helpers (positions, `Aabb`, `BlockBounds`) are not exported from
+// its public barrel yet, so they are imported from `src/` deliberately.
+// ignore_for_file: implementation_imports
 import 'dart:math' as math;
 
 import 'package:pumpkin_api/src/geometry.dart' show Vec3;
 
-import '../../common/bounds.dart' show Aabb, BlockBounds;
-import '../../common/pos.dart' show Pos;
+import 'package:create/src/common/bounds.dart' show Aabb, BlockBounds;
+import 'package:create/src/common/pos.dart' show Pos;
 import 'pose.dart';
 import 'vector.dart';
 
@@ -243,13 +247,14 @@ final class BoundingBox3d extends BoundingBox3dc {
       maxZ = math.max(minZ, maxZ);
 
   /// A box with the given values, *not* swapped into order.
-  BoundingBox3d.unchecked(double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
-    : minX = minX,
-      minY = minY,
-      minZ = minZ,
-      maxX = maxX,
-      maxY = maxY,
-      maxZ = maxZ;
+  BoundingBox3d.unchecked(
+    this.minX,
+    this.minY,
+    this.minZ,
+    this.maxX,
+    this.maxY,
+    this.maxZ,
+  );
 
   /// `new BoundingBox3d(BoundingBox3dc)`.
   BoundingBox3d.copy(BoundingBox3dc other)
@@ -498,8 +503,11 @@ abstract class BoundingBox3ic {
   /// The encompassing Z range.
   int length() => maxZ - minZ + 1;
 
-  /// The volume of this box, in blocks.
-  int volume() => (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
+  /// The volume of this box, in blocks. An empty (inverted) box has volume 0.
+  int volume() =>
+      maxX < minX || maxY < minY || maxZ < minZ
+      ? 0
+      : (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
 
   /// The chunk sections this box intersects.
   BoundingBox3i chunkBoundsFrom([BoundingBox3i? dest]) => (dest ?? BoundingBox3i()).setValues(
@@ -559,13 +567,14 @@ final class BoundingBox3i extends BoundingBox3ic {
       maxZ = math.max(minZ, maxZ);
 
   /// A box with the given values, *not* swapped into order.
-  BoundingBox3i.unchecked(int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
-    : minX = minX,
-      minY = minY,
-      minZ = minZ,
-      maxX = maxX,
-      maxY = maxY,
-      maxZ = maxZ;
+  BoundingBox3i.unchecked(
+    this.minX,
+    this.minY,
+    this.minZ,
+    this.maxX,
+    this.maxY,
+    this.maxZ,
+  );
 
   /// `new BoundingBox3i(BoundingBox3ic)`.
   BoundingBox3i.copy(BoundingBox3ic other)

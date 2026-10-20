@@ -30,6 +30,12 @@ abstract interface class SableLevel {
 
   /// `Level.getSectionsCount()`.
   int get sectionsCount => (maxY - minY) >> 4;
+
+  /// `level.getBiome(BlockPos).unwrapKey()` as a string, or `null` when the
+  /// position is not loaded.
+  ///
+  /// HOST GAP: the Pumpkin API has no biome lookup by position.
+  String? biomeAt(int x, int y, int z) => null;
 }
 
 /// One chunk of the plot yard, as far as the plot cares.

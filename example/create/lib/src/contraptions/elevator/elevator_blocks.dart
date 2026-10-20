@@ -22,6 +22,7 @@ const String redstoneContactKey = 'create:redstone_contact';
 List<CreateBlock> buildElevatorBlocks() => [
   manifestBlock(
     'elevator_pulley',
+    blockEntityType: elevatorPulleyKey,
     placement: const [PlacementRule.horizontalFacing('facing')],
     behavior: BlockBehavior(
       // `useItemOn` with a non-empty stack returns TRY_WITH_EMPTY_HAND, so any click toggles the
@@ -42,6 +43,7 @@ List<CreateBlock> buildElevatorBlocks() => [
   ),
   manifestBlock(
     'elevator_contact',
+    blockEntityType: elevatorContactKey,
     placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
     behavior: elevatorContactBehavior(),
   ),

@@ -11,9 +11,13 @@
 // the Java class) is abstract.
 //
 // Pure: no host imports.
-import '../../common/direction.dart' show Direction;
-import '../../common/pos.dart' show Pos;
-import '../../math/bounding_box.dart';
+//
+// create's pure helpers (positions, `Aabb`, `BlockBounds`) are not exported from
+// its public barrel yet, so they are imported from `src/` deliberately.
+// ignore_for_file: implementation_imports
+import 'package:create/src/common/direction.dart' show Direction;
+import 'package:create/src/common/pos.dart';
+import '../math/bounding_box.dart';
 import '../api/block_entity_hooks.dart';
 import '../host/sub_level_host.dart';
 import 'plot_chunk_holder.dart';

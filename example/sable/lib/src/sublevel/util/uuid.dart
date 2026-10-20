@@ -5,6 +5,7 @@
 // identity, so the conversion lives here.
 //
 // Pure: no host imports.
+import 'dart:math' as math;
 
 /// The four ints of [uuid] (`UUIDUtil.CODEC`).
 List<int> uuidToInts(String uuid) {
@@ -27,3 +28,20 @@ String uuidFromInts(List<int> ints) {
   return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
       '${hex.substring(16, 20)}-${hex.substring(20)}';
 }
+
+/// A random UUID v4 string, formatted like Java's `UUID.toString()`.
+///
+/// [nextByte] is injectable so tests are deterministic; it defaults to
+/// `dart:math`'s unseeded generator.
+String randomUuidV4([int Function()? nextByte]) {
+  final source = nextByte ?? _randomByte;
+  final bytes = List<int>.generate(16, (_) => source());
+  bytes[6] = (bytes[6] & 0x0F) | 0x40;
+  bytes[8] = (bytes[8] & 0x3F) | 0x80;
+  final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
+      '${hex.substring(16, 20)}-${hex.substring(20)}';
+}
+
+final _random = math.Random();
+int _randomByte() => _random.nextInt(256);

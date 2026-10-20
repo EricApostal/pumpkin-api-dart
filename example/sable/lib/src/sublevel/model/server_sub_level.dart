@@ -10,9 +10,12 @@
 // [StateError] naming what is missing.
 //
 // Pure: no host imports.
-import '../../common/pos.dart' show Pos;
+//
+// create's pure helpers (positions, `Aabb`, `BlockBounds`) are not exported from
+// its public barrel yet, so they are imported from `src/` deliberately.
+// ignore_for_file: implementation_imports
+import 'package:create/src/common/pos.dart' show Pos;
 import '../api/physics.dart';
-import '../host/sub_level_host.dart';
 import '../math/bounding_box.dart';
 import '../math/pose.dart';
 import '../math/vector.dart';
@@ -79,13 +82,13 @@ final class ServerSubLevel extends SubLevel implements ServerSubLevelLike {
   ///
   /// [plotX] and [plotZ] are the global plot coordinates.
   ServerSubLevel(
-    SableLevel level,
-    int plotX,
-    int plotZ,
-    Pose3d pose, {
+    super.level,
+    super.plotX,
+    super.plotZ,
+    super.pose, {
     required this.runtimeId,
     this.config,
-  }) : super(level, plotX, plotZ, pose);
+  });
 
   @override
   LevelPlot createPlot(SubLevelContainer plotContainer, int plotX, int plotZ, int logPlotSize) =>

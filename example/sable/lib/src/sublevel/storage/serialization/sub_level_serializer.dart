@@ -12,7 +12,6 @@
 import '../../math/bounding_box.dart';
 import '../../math/pose.dart';
 import '../../math/vector.dart';
-import '../../model/server_level_plot.dart';
 import '../../model/server_sub_level.dart';
 import '../../model/sub_level_container.dart';
 import '../../util/sable_nbt.dart';

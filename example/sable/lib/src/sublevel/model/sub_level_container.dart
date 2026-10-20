@@ -11,8 +11,6 @@
 // `PlotChunkHost` and are created by the concrete container.
 //
 // Pure: no host imports.
-import 'dart:math' as math;
-
 import '../api/sub_level_observer.dart';
 import '../host/sub_level_host.dart';
 import '../math/bounding_box.dart';
@@ -20,6 +18,7 @@ import '../math/pose.dart';
 import '../math/vector.dart';
 import '../storage/sub_level_removal_reason.dart';
 import '../util/bit_grid.dart';
+import '../util/uuid.dart';
 import 'level_plot.dart';
 import 'plot_chunk_holder.dart';
 import 'sub_level.dart';
@@ -279,8 +278,8 @@ abstract class SubLevelContainer {
   Iterable<SablePlayer> getPlayersTracking((int, int) chunkPos) {
     final plot = getPlotAt(chunkPos);
     if (plot == null) return const [];
-    final lookup = chunkHost;
-    if (lookup is! PlayerLookupHost) return const [];
+    final lookup = chunkHost is PlayerLookupHost ? chunkHost as PlayerLookupHost : null;
+    if (lookup == null) return const [];
     final players = <SablePlayer>[];
     for (final uuid in trackingPlayerIdsOf(plot.getSubLevel())) {
       final player = lookup.playerById(uuid);
@@ -367,30 +366,4 @@ abstract interface class ServerSubLevelLike {
 /// A chunk host that can resolve players by UUID.
 abstract interface class PlayerLookupHost {
   SablePlayer? playerById(String uuid);
-}
-
-/// A random UUID v4 string, formatted like Java's `UUID.toString()`.
-String randomUuidV4([RandomSource? random]) {
-  final source = random ?? RandomSource.secure();
-  final bytes = List<int>.generate(16, (_) => source.nextByte());
-  bytes[6] = (bytes[6] & 0x0F) | 0x40;
-  bytes[8] = (bytes[8] & 0x3F) | 0x80;
-  final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
-      '${hex.substring(16, 20)}-${hex.substring(20)}';
-}
-
-/// A source of random bytes for [randomUuidV4]; tests inject a fixed one.
-abstract interface class RandomSource {
-  int nextByte();
-
-  /// A source seeded from the clock.
-  static RandomSource secure() => _MathRandomSource();
-}
-
-final class _MathRandomSource implements RandomSource {
-  final math.Random _random = math.Random();
-
-  @override
-  int nextByte() => _random.nextInt(256);
 }

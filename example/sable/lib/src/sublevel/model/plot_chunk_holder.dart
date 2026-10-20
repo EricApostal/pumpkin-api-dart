@@ -7,7 +7,7 @@
 // host (`host/sub_level_host.dart`).
 //
 // Pure: no host imports.
-import '../../math/bounding_box.dart';
+import '../math/bounding_box.dart';
 import '../host/sub_level_host.dart';
 
 /// A chunk holder for chunks that live inside a `LevelPlot`.

@@ -219,15 +219,23 @@ final class HostContraptionLevel extends ContraptionLevel {
   }
 
   @override
-  Object? seatPassengerAt(Pos pos) {
+  int? seatPassengerIdAt(Pos pos) {
     final area = Aabb.ofBlock(pos);
     for (final snapshot in _snapshots(area)) {
       final entity = world.getEntityById(id: snapshot.id);
       if (entity == null) continue;
-      if (entity.getPluginTypeKey() != 'create:seat') continue;
-      final passengers = entity.getPassengers();
-      if (passengers.isEmpty) return null;
-      return passengers.first;
+      try {
+        if (entity.getPluginTypeKey() != 'create:seat') continue;
+        final passengers = entity.getPassengers();
+        if (passengers.isEmpty) continue;
+        final id = passengers.first.getId();
+        for (final passenger in passengers) {
+          passenger.dispose();
+        }
+        return id;
+      } finally {
+        entity.dispose();
+      }
     }
     return null;
   }
@@ -366,14 +374,21 @@ final class HostContraptionLevel extends ContraptionLevel {
 
   @override
   bool sitPassenger(Pos seatPos, Object passenger) {
-    final handle = passenger is HostPassengerRef ? passenger.handle : passenger;
+    final hook = ContraptionHostHooks.sitPassenger;
+    if (hook == null) return false;
+    if (passenger is HostPassengerRef) {
+      // The ref keeps only the id: the entity is looked up for this call and released again.
+      final entity = world.getEntityById(id: passenger.entityId);
+      if (entity == null) return false;
+      try {
+        return hook(world.getId(), seatPos, entity);
+      } finally {
+        entity.dispose();
+      }
+    }
+    final handle = passenger;
     if (handle is! Entity) return false;
-    return ContraptionHostHooks.sitPassenger?.call(
-          world.getId(),
-          seatPos,
-          handle,
-        ) ??
-        false;
+    return hook(world.getId(), seatPos, handle);
   }
 
   List<EntitySnapshot> _snapshots(Aabb area) => world.getEntitiesInBox(
@@ -387,32 +402,79 @@ final class HostContraptionLevel extends ContraptionLevel {
   static bool _isMinecartType(String type) => isMinecartEntityType(type);
 }
 
-/// A passenger of a contraption, wrapping a host [Entity].
+/// A passenger of a contraption, identified by its entity id.
+///
+/// The host hands out `Entity` handles that are released when the callback that received them
+/// returns. A passenger outlives that: assembly stores the rider of every seat for
+/// `onEntityInitialize` on a later tick and keeps it until disassembly. So this ref keeps only
+/// the world, the id and the uuid, and looks the entity up for each use.
 final class HostPassengerRef implements ContraptionPassengerRef {
-  final Entity handle;
+  HostPassengerRef(
+    this.world,
+    this.entityId,
+    this.uuid,
+    this.entityById,
+  );
+
+  /// A ref for the host entity [handle]. The caller keeps ownership of [handle].
+  factory HostPassengerRef.of(
+    World world,
+    Entity handle,
+    AbstractContraptionEntity? Function(int id) entityById,
+  ) => HostPassengerRef(
+    world,
+    handle.getId(),
+    handle.getUuid().toString(),
+    entityById,
+  );
+
+  final World world;
   final AbstractContraptionEntity? Function(int id) entityById;
 
-  HostPassengerRef(this.handle, this.entityById);
+  @override
+  final int entityId;
 
   @override
-  String get uuid => handle.getUuid().toString();
+  final String uuid;
+
+  /// The host entity for one use, `null` when it is gone. The caller must [Entity.dispose] it.
+  Entity? _resolve() => world.getEntityById(id: entityId);
+
+  /// Runs [body] on the entity and releases it again.
+  T? _with<T>(T Function(Entity entity) body) {
+    final entity = _resolve();
+    if (entity == null) return null;
+    try {
+      return body(entity);
+    } finally {
+      entity.dispose();
+    }
+  }
 
   @override
-  int get entityId => handle.getId();
+  bool get isPlayer => _with((e) => hostEntityTypeKey(e) == 'minecraft:player') ?? false;
 
   @override
-  bool get isPlayer => _typeName == 'minecraft:player';
+  bool get isTamableAnimal =>
+      _with(
+        (e) => const {
+          'minecraft:wolf',
+          'minecraft:cat',
+          'minecraft:ocelot',
+          'minecraft:parrot',
+        }.contains(hostEntityTypeKey(e)),
+      ) ??
+      false;
 
   @override
-  bool get isTamableAnimal => const {
-    'minecraft:wolf',
-    'minecraft:cat',
-    'minecraft:ocelot',
-    'minecraft:parrot',
-  }.contains(_typeName);
-
-  @override
-  bool get isPassenger => handle.getVehicle() != null;
+  bool get isPassenger =>
+      _with((e) {
+        final vehicle = e.getVehicle();
+        if (vehicle == null) return false;
+        vehicle.dispose();
+        return true;
+      }) ??
+      false;
 
   @override
   double get vehicleAttachmentPointY => 0;
@@ -421,10 +483,15 @@ final class HostPassengerRef implements ContraptionPassengerRef {
   Object? get contraptionEntity => entityById(entityId);
 
   @override
-  ContraptionPassengerRef? get vehicle {
-    final v = handle.getVehicle();
-    return v == null ? null : HostPassengerRef(v, entityById);
-  }
+  ContraptionPassengerRef? get vehicle => _with<ContraptionPassengerRef?>((e) {
+    final vehicle = e.getVehicle();
+    if (vehicle == null) return null;
+    try {
+      return HostPassengerRef.of(world, vehicle, entityById);
+    } finally {
+      vehicle.dispose();
+    }
+  });
 
   @override
   void setInSittingPose(bool sitting) {
@@ -432,32 +499,41 @@ final class HostPassengerRef implements ContraptionPassengerRef {
   }
 
   @override
-  void teleportTo(Vec3 position) =>
-      unawaited(handle.teleport(pos: position, worldRef: handle.getWorld()));
-
-  @override
-  NbtValue? getPersistentData(String key) {
-    final tree = handle.getCustomData(namespace: 'create', key: key);
-    return tree == null ? null : treeToValue(tree);
+  void teleportTo(Vec3 position) {
+    final entity = _resolve();
+    if (entity == null) return;
+    unawaited(
+      entity.teleport(pos: position, worldRef: world).whenComplete(entity.dispose),
+    );
   }
 
   @override
-  void setPersistentData(String key, NbtValue? value) {
+  NbtValue? getPersistentData(String key) => _with<NbtValue?>((e) {
+    final tree = e.getCustomData(namespace: 'create', key: key);
+    return tree == null ? null : treeToValue(tree);
+  });
+
+  @override
+  void setPersistentData(String key, NbtValue? value) => _with((e) {
     if (value == null) {
-      handle.removeCustomData(namespace: 'create', key: key);
+      e.removeCustomData(namespace: 'create', key: key);
     } else {
-      handle.setCustomData(
+      e.setCustomData(
         namespace: 'create',
         key: key,
         value: valueToTree(value),
       );
     }
-  }
+    return null;
+  });
 
+  /// No live host entity: a handle is only valid inside the callback that received it.
   @override
-  Object get hostEntity => handle;
+  Object? get hostEntity => null;
 
-  String get _typeName => hostEntityTypeKey(handle);
+  /// The world the passenger lives in (`_coupledCartPositions` needs it).
+  @override
+  String get worldId => world.getId();
 }
 
 /// A colliding entity, wrapping a host [Entity].
@@ -731,10 +807,20 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   }
 
   @override
-  List<ContraptionPassengerRef> get passengers => [
-    for (final p in _handle?.getPassengers() ?? const <Entity>[])
-      HostPassengerRef(p, _entityById),
-  ];
+  List<ContraptionPassengerRef> get passengers {
+    final handle = _handle;
+    if (handle == null) return const [];
+    final out = <ContraptionPassengerRef>[];
+    for (final passenger in handle.getPassengers()) {
+      // The handle is released with the callback, the ref keeps the id.
+      try {
+        out.add(HostPassengerRef.of(world, passenger, _entityById));
+      } finally {
+        passenger.dispose();
+      }
+    }
+    return out;
+  }
 
   @override
   bool hasPassenger(ContraptionPassengerRef passenger) =>
@@ -744,14 +830,19 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   void addPassenger(ContraptionPassengerRef passenger, {bool force = true}) {
     final handle = _handle;
     if (handle == null || passenger is! HostPassengerRef) return;
-    unawaited(handle.addPassenger(passenger: passenger.handle));
+    // `addPassenger` takes ownership of the handle (`takeHandle`), so it must not be disposed.
+    final entity = world.getEntityById(id: passenger.entityId);
+    if (entity == null) return;
+    unawaited(handle.addPassenger(passenger: entity));
   }
 
   @override
   void removePassenger(ContraptionPassengerRef passenger) {
     final handle = _handle;
     if (handle == null || passenger is! HostPassengerRef) return;
-    unawaited(handle.removePassenger(passenger: passenger.handle));
+    final entity = world.getEntityById(id: passenger.entityId);
+    if (entity == null) return;
+    unawaited(handle.removePassenger(passenger: entity));
   }
 
   @override
@@ -760,18 +851,23 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   @override
   void setPassengerPosition(ContraptionPassengerRef passenger, Vec3 position) {
     if (passenger is! HostPassengerRef) return;
-    _handle?.setPassengerOffset(
-      passenger: passenger.handle,
-      x: position.$1,
-      y: position.$2,
-      z: position.$3,
-    );
+    final entity = world.getEntityById(id: passenger.entityId);
+    if (entity == null) return;
+    try {
+      _handle?.setPassengerOffset(
+        passenger: entity,
+        x: position.$1,
+        y: position.$2,
+        z: position.$3,
+      );
+    } finally {
+      entity.dispose();
+    }
   }
 
   @override
   void teleportEntity(ContraptionPassengerRef passenger, Vec3 position) {
-    if (passenger is HostPassengerRef)
-      unawaited(passenger.handle.teleport(pos: position, worldRef: world));
+    if (passenger is HostPassengerRef) passenger.teleportTo(position);
   }
 
   @override
@@ -779,8 +875,13 @@ final class HostContraptionEntity implements ContraptionEntityHost {
 
   @override
   ContraptionPassengerRef? get vehiclePassenger {
-    final v = _handle?.getVehicle();
-    return v == null ? null : HostPassengerRef(v, _entityById);
+    final vehicle = _handle?.getVehicle();
+    if (vehicle == null) return null;
+    try {
+      return HostPassengerRef.of(world, vehicle, _entityById);
+    } finally {
+      vehicle.dispose();
+    }
   }
 
   @override
@@ -936,8 +1037,18 @@ final class HostContraptionEntity implements ContraptionEntityHost {
 
   @override
   ContraptionPassengerRef? passengerFromHost(Object handle) {
+    // An id (the passenger of a seat recorded at assembly), or a handle the caller owns.
+    if (handle is int) {
+      final entity = world.getEntityById(id: handle);
+      if (entity == null) return null;
+      try {
+        return HostPassengerRef.of(world, entity, _entityById);
+      } finally {
+        entity.dispose();
+      }
+    }
     if (handle is! Entity) return null;
-    return HostPassengerRef(handle, _entityById);
+    return HostPassengerRef.of(world, handle, _entityById);
   }
 
   @override

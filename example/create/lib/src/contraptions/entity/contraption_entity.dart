@@ -42,7 +42,12 @@ abstract interface class ContraptionPassengerRef
   NbtValue? getPersistentData(String key);
   void setPersistentData(String key, NbtValue? value);
 
-  Object get hostEntity;
+  /// The id of the world the passenger is in.
+  String get worldId;
+
+  /// The host entity behind this passenger, when the ref holds a live handle (only inside the
+  /// callback that received it). Prefer [worldId] and [entityId].
+  Object? get hostEntity;
 }
 
 /// An entity near a contraption, as the collision code sees it.

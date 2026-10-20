@@ -4057,11 +4057,15 @@ const List<ParticleTypeDef> kParticleTypes = [
   ),
 ];
 
-/// Entity data serializers (1), registration order.
+/// Entity data serializers (2), registration order.
 const List<EntityDataSerializerDef> kEntityDataSerializers = [
   EntityDataSerializerDef(
     key: 'carriage_data',
     javaClass: 'com.simibubi.create.content.trains.entity.CarriageSyncDataSerializer',
+  ),
+  EntityDataSerializerDef(
+    key: 'optional_uuid',
+    javaClass: 'net.minecraft.network.syncher.EntityDataSerializer',
   ),
 ];
 

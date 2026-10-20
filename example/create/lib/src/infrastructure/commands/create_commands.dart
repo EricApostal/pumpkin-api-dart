@@ -16,7 +16,6 @@ import '../../core/services.dart';
 import '../../core/worlds.dart';
 import '../config/config_service.dart';
 import 'command_parsing.dart';
-import 'pipe_shape_probe.dart';
 import 'railway_report.dart';
 
 /// What the commands need at run time. The module fills it in `onLoad`; the commands are declared

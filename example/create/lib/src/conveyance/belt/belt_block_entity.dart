@@ -34,36 +34,13 @@ import 'belt_ports.dart';
 import 'belt_segment_inventory.dart';
 import 'transported_item.dart';
 
+export 'belt_block_def.dart' show BeltBlockDef;
+
 /// `BeltBlockEntity.CasingType` (the names Create's client reads from the update tag).
 abstract final class BeltCasing {
   static const String none = 'NONE';
   static const String andesite = 'ANDESITE';
   static const String brass = 'BRASS';
-}
-
-/// The `IRotate` rules of the belt: the rotation axis follows the facing, and only the pulley
-/// parts (start, end, pulley) have a shaft.
-class BeltBlockDef extends KineticBlockDef {
-  const BeltBlockDef();
-
-  @override
-  KAxis rotationAxis(KState state) {
-    if (state['slope'] == BeltSlope.sideways.name) return KAxis.y;
-    final facing = state.dirOf('facing') ?? Dir.north;
-    return facing.clockWise(KAxis.y).axis;
-  }
-
-  @override
-  bool hasShaftTowards(KState state, Dir face) =>
-      face.axis == rotationAxis(state) &&
-      (state['part'] ?? 'start') != BeltPart.middle.name;
-
-  @override
-  bool areStatesKineticallyEquivalent(KState oldState, KState newState) {
-    if (oldState.block != newState.block) return false;
-    if (oldState['part'] != newState['part']) return false;
-    return rotationAxis(newState) == rotationAxis(oldState);
-  }
 }
 
 /// `BeltBlockEntity`.

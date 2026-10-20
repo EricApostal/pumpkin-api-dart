@@ -437,11 +437,9 @@ void unloadActuatorContent() {
   String couplingId,
 ) {
   if (couplingId.isEmpty) return null;
-  final host = vehicle.hostEntity;
-  if (host is! Entity) return null;
-  final world = host.getWorld();
-  final worldId = world.getId();
-  world.dispose();
+  // The passenger keeps its world id: a host `Entity` handle is only valid inside the callback
+  // that received it.
+  final worldId = vehicle.worldId;
 
   final controller = CapabilityMinecartController.byUuid(worldId, couplingId);
   if (controller == null || !controller.isPresent) return null;

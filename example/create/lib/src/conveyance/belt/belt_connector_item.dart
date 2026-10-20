@@ -29,34 +29,48 @@ Future<bool> useBeltConnector(
   ItemUseFirstEventData e,
 ) async {
   if (e.useResult != ItemUseFirstResult.pass) return false;
+
+  // The event carries a copy of the held stack (`ItemUseFirstEvent.stack`); the host does not
+  // read it back. Work on the hand stack and write it back after every change, or the pending
+  // first shaft is lost with the copy and the second click can never connect (`useOn`).
+  final player = e.player;
+  final hand = e.hand;
+  final held = player.getItemInHand(hand: hand);
+  if (held == null) return false;
   final String key;
   try {
-    key = await e.stack.getRegistryKey();
+    key = await held.getRegistryKey();
   } on Object {
     return false;
   }
   if (key != beltConnectorKey) return false;
 
-  final player = e.player;
   final world = player.getWorld();
   final worldId = rt.ctx.worlds.touch(world);
   final pos = e.blockPos.toPos();
 
   if (_isSneaking(player)) {
-    _clearFirst(e.stack);
+    _clearFirst(held);
+    await _setHeld(player, hand, held);
     return true;
   }
 
   final validAxis = _validateAxis(world, pos);
-  var firstPulley = _readFirst(e.stack);
+  var firstPulley = _readFirst(held);
+  var staleCleared = false;
   if (firstPulley != null &&
       (!_validateAxis(world, firstPulley) ||
           !firstPulley.closerThan(pos, rt.maxBeltLength * 2))) {
-    _clearFirst(e.stack);
+    _clearFirst(held);
+    staleCleared = true;
     firstPulley = null;
   }
 
-  if (!validAxis) return false;
+  if (!validAxis) {
+    // Java removes a stale first shaft before it fails the click.
+    if (staleCleared) await _setHeld(player, hand, held);
+    return false;
+  }
 
   if (firstPulley != null) {
     if (!canConnectBelt(
@@ -71,15 +85,26 @@ Future<bool> useBeltConnector(
     if (firstPulley != pos) {
       await createBelts(rt, world, worldId, firstPulley, pos);
       await rt.award(player, 'create:belt');
-      if (!player.isCreative) await _consumeOne(player, e);
+      if (!player.isCreative) await _consumeOne(player, hand);
     }
-    _clearFirst(e.stack);
+    // Java removes the component from the (possibly shrunk) stack in the hand.
+    final remaining = player.getItemInHand(hand: hand);
+    if (remaining != null) {
+      _clearFirst(remaining);
+      await _setHeld(player, hand, remaining);
+    }
     return true;
   }
 
-  _writeFirst(e.stack, pos);
+  _writeFirst(held, pos);
+  await _setHeld(player, hand, held);
   return true;
 }
+
+/// Writes [stack] back to [hand]. The host hands out copies, so a component written to a
+/// stack is lost unless the stack is put back (`ItemStack` in the hand is not a live handle).
+Future<void> _setHeld(Player player, Hand hand, ItemStack stack) =>
+    player.setItemInHand(hand: hand, stack: stack);
 
 /// `BeltConnectorItem.createBelts`.
 Future<void> createBelts(
@@ -158,19 +183,24 @@ Future<void> _switch(
   await setBlockState(world, pos, state);
 }
 
+/// The stored first shaft (`BlockPos.STREAM_CODEC`: one big-endian long, the
+/// bytes of `BlockPos.asLong`).
 Pos? _readFirst(ItemStack stack) {
   final bytes = stack.customComponent(_firstShaftComponent);
   if (bytes == null || bytes.length < 8) return null;
   var packed = 0;
   for (var i = 0; i < 8; i++) {
-    packed |= (bytes[i] & 0xff) << (8 * i);
+    packed = (packed << 8) | (bytes[i] & 0xff);
   }
   return unpackPos(packed);
 }
 
 void _writeFirst(ItemStack stack, Pos pos) {
   final packed = packPos(pos.x, pos.y, pos.z);
-  final bytes = List<int>.generate(8, (i) => (packed >> (8 * i)) & 0xff);
+  final bytes = List<int>.generate(
+    8,
+    (i) => (packed >> (8 * (7 - i))) & 0xff,
+  );
   stack.setCustomComponent(_firstShaftComponent, bytes);
 }
 
@@ -191,13 +221,15 @@ bool _isSneaking(Player player) {
   }
 }
 
-Future<void> _consumeOne(Player player, ItemUseFirstEventData e) async {
-  final count = await e.stack.getCount();
-  final held = player.getItemInHand(hand: e.hand);
+Future<void> _consumeOne(Player player, Hand hand) async {
+  final held = player.getItemInHand(hand: hand);
   if (held == null) return;
+  final count = await held.getCount();
   if (count <= 1) {
-    await player.setItemInHand(hand: e.hand, stack: null);
+    await player.setItemInHand(hand: hand, stack: null);
   } else {
     await held.setCount(count: count - 1);
+    // `getItemInHand` is a copy: the decremented count only exists once it is written back.
+    await player.setItemInHand(hand: hand, stack: held);
   }
 }

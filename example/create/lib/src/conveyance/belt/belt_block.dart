@@ -228,6 +228,8 @@ Future<void> _consumeOne(Player player, CustomBlockUseEventData e) async {
     await player.setItemInHand(hand: e.hand, stack: null);
   } else {
     await held.setCount(count: count - 1);
+    // `getItemInHand` is a copy: the decremented count only exists once it is written back.
+    await player.setItemInHand(hand: e.hand, stack: held);
   }
 }
 

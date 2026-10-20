@@ -120,8 +120,11 @@ abstract class ContraptionLevel extends BlockGetter {
   /// Removes the glue entity (`glue.discard()`).
   void discardGlue(GlueRef glue) {}
 
-  /// The first passenger of the seat entity at [pos] (`Entity` of the host), `null` for none.
-  Object? seatPassengerAt(Pos pos) => null;
+  /// The network id of the first passenger of the seat entity at [pos], `null` for none.
+  ///
+  /// Only the id, never a host entity handle: the rider is used on a later tick
+  /// (`onEntityInitialize`), and a handle is released when the callback that received it returns.
+  int? seatPassengerIdAt(Pos pos) => null;
 
   /// Minecarts whose box intersects the block at [pos].
   List<MinecartRef> minecartsAt(Pos pos) => const [];

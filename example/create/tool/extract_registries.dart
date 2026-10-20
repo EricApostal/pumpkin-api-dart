@@ -989,13 +989,17 @@ List<T> extractMapDecorations() {
   for (final m in RegExp(r'DECORATION_TYPES\.register\("([^"]+)",\s*\(\)\s*->\s*new MapDecorationType\(([^;]*)\)\);').allMatches(cls.body)) {
     final a = splitArgs(m.group(2)!);
     final asset = RegExp(r'asResource\("([^"]+)"\)').firstMatch(a[0])?.group(1);
+    // 26.3 dropped `mapColor` and `explorationMapElement` from `MapDecorationType`: the
+    // constructor is now `(assetId, showOnItemFrame, trackCount)`. The fields stay in the
+    // manifest type so the generator keeps one shape across versions.
+    final threeArg = a.length == 3;
     out.add(T('MapDecorationDef', {
       'key': m.group(1),
       'assetId': 'create:$asset',
       'showOnItemFrame': a[1] == 'true',
-      'mapColor': int.parse(a[2]),
-      'trackCount': a[3] == 'true',
-      'explorationMapElement': a[4] == 'true',
+      'mapColor': threeArg ? 0 : int.parse(a[2]),
+      'trackCount': a[threeArg ? 2 : 3] == 'true',
+      'explorationMapElement': threeArg ? false : a[4] == 'true',
     }));
   }
   return out;

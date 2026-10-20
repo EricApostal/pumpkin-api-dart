@@ -3,12 +3,16 @@ import 'package:create/src/common/direction.dart';
 import 'package:create/src/common/pos.dart';
 import 'package:create/src/common/vec_helper.dart';
 import 'package:create/src/conveyance/behaviours/belt_interfaces.dart';
+import 'package:create/src/conveyance/belt/belt_block_def.dart';
 import 'package:create/src/conveyance/belt/belt_geometry.dart';
 import 'package:create/src/conveyance/belt/belt_inventory.dart';
 import 'package:create/src/conveyance/belt/belt_ports.dart';
 import 'package:create/src/conveyance/belt/transported_item.dart';
 import 'package:create/src/conveyance/items/item_data.dart';
+import 'package:create/src/kinetics/geometry.dart' show Dir, KAxis, KPos, KState;
 import 'package:test/test.dart';
+
+import 'kinetics_test_support.dart';
 
 /// A straight horizontal belt along +x starting at (0, 0, 0).
 class FakeBelt implements BeltEnvironment {
@@ -348,6 +352,176 @@ void main() {
 
     test('a tunnel with no belt under it falls back to the x axis', () {
       expect(beltAxis(const BState('minecraft:air', {})), Axis.x);
+    });
+  });
+
+  group('connector placement', () {
+    /// `BeltConnectorItem.createBelts` between two shafts: the (position, part,
+    /// slope, facing) of every segment.
+    List<(Pos, BeltPart, BeltSlope, Direction)> plan(
+      Pos start,
+      Pos end, {
+      String shaftAxis = 'z',
+    }) {
+      final world = MapBlockGetter();
+      world.set(start, BState('create:shaft', {'axis': shaftAxis}));
+      world.set(end, BState('create:shaft', {'axis': shaftAxis}));
+      return planBelts(start, end, world);
+    }
+
+    test('the planned states of the four horizontal facings', () {
+      // `getFacingFromTo`: the facing points from the first shaft to the second.
+      final east = plan((0, 0, 0), (3, 0, 0));
+      expect(east, [
+        ((0, 0, 0), BeltPart.start, BeltSlope.horizontal, Direction.east),
+        ((1, 0, 0), BeltPart.middle, BeltSlope.horizontal, Direction.east),
+        ((2, 0, 0), BeltPart.middle, BeltSlope.horizontal, Direction.east),
+        ((3, 0, 0), BeltPart.end, BeltSlope.horizontal, Direction.east),
+      ]);
+
+      final west = plan((3, 0, 0), (0, 0, 0));
+      expect([for (final (p, _, _, facing) in west) (p, facing)], [
+        ((3, 0, 0), Direction.west),
+        ((2, 0, 0), Direction.west),
+        ((1, 0, 0), Direction.west),
+        ((0, 0, 0), Direction.west),
+      ]);
+      expect([for (final (_, part, _, _) in west) part], [
+        BeltPart.start,
+        BeltPart.middle,
+        BeltPart.middle,
+        BeltPart.end,
+      ]);
+
+      // A belt along z rotates on x, so its shafts have `axis=x`.
+      final south = plan((0, 0, 0), (0, 0, 3), shaftAxis: 'x');
+      expect([for (final (p, part, _, facing) in south) (p, part, facing)], [
+        ((0, 0, 0), BeltPart.start, Direction.south),
+        ((0, 0, 1), BeltPart.middle, Direction.south),
+        ((0, 0, 2), BeltPart.middle, Direction.south),
+        ((0, 0, 3), BeltPart.end, Direction.south),
+      ]);
+
+      final north = plan((0, 0, 3), (0, 0, 0), shaftAxis: 'x');
+      expect([for (final (p, _, _, facing) in north) (p, facing)], [
+        ((0, 0, 3), Direction.north),
+        ((0, 0, 2), Direction.north),
+        ((0, 0, 1), Direction.north),
+        ((0, 0, 0), Direction.north),
+      ]);
+    });
+
+    test('a diagonal run is one slope up per block', () {
+      final up = plan((0, 0, 0), (2, 2, 0));
+      expect([for (final (p, part, slope, facing) in up) (p, part, slope, facing)], [
+        ((0, 0, 0), BeltPart.start, BeltSlope.upward, Direction.east),
+        ((1, 1, 0), BeltPart.middle, BeltSlope.upward, Direction.east),
+        ((2, 2, 0), BeltPart.end, BeltSlope.upward, Direction.east),
+      ]);
+    });
+
+    test('a vertical shaft in the middle makes a pulley and a sideways belt', () {
+      final world = MapBlockGetter();
+      world.set((0, 0, 0), const BState('create:shaft', {'axis': 'z'}));
+      world.set((3, 0, 0), const BState('create:shaft', {'axis': 'z'}));
+      world.set((1, 0, 0), const BState('create:shaft', {'axis': 'y'}));
+      final planned = planBelts((0, 0, 0), (3, 0, 0), world);
+      expect([for (final (p, part, slope, _) in planned) (p, part, slope)], [
+        ((0, 0, 0), BeltPart.start, BeltSlope.horizontal),
+        ((1, 0, 0), BeltPart.pulley, BeltSlope.sideways),
+        ((2, 0, 0), BeltPart.middle, BeltSlope.sideways),
+        ((3, 0, 0), BeltPart.end, BeltSlope.sideways),
+      ]);
+    });
+  });
+
+  group('BeltBlockDef', () {
+    const def = BeltBlockDef();
+    KState beltState(
+      String facing, {
+      String part = 'start',
+      String slope = 'horizontal',
+    }) => KState('create:belt', {
+      'facing': facing,
+      'part': part,
+      'slope': slope,
+    });
+
+    test('the rotation axis is the facing turned clockwise', () {
+      // `BeltBlock.getRotationAxis`: HORIZONTAL_FACING.getClockWise().getAxis().
+      expect(def.rotationAxis(beltState('north')), KAxis.x);
+      expect(def.rotationAxis(beltState('south')), KAxis.x);
+      expect(def.rotationAxis(beltState('east')), KAxis.z);
+      expect(def.rotationAxis(beltState('west')), KAxis.z);
+      expect(def.rotationAxis(beltState('east', slope: 'sideways')), KAxis.y);
+    });
+
+    test('hasShaftTowards matches BeltBlock.hasShaftTowards', () {
+      // Java: `face.getAxis() != getRotationAxis(state)` -> false, else
+      // `BeltBlockEntity.hasPulley()`, which is `part != MIDDLE`.
+      const zFaces = [Dir.north, Dir.south];
+      const xFaces = [Dir.east, Dir.west];
+      const yFaces = [Dir.up, Dir.down];
+      const allFaces = Dir.values;
+
+      for (final part in ['start', 'end', 'pulley']) {
+        final state = beltState('east', part: part); // rotation axis z
+        for (final face in allFaces) {
+          expect(
+            def.hasShaftTowards(state, face),
+            zFaces.contains(face),
+            reason: 'east/$part towards ${face.name}',
+          );
+        }
+      }
+      // A middle segment has no pulley, whatever the facing.
+      for (final facing in ['north', 'south', 'east', 'west']) {
+        final state = beltState(facing, part: 'middle');
+        for (final face in allFaces) {
+          expect(def.hasShaftTowards(state, face), isFalse);
+        }
+      }
+      // Facing north/south rotates on x.
+      for (final face in allFaces) {
+        expect(
+          def.hasShaftTowards(beltState('north'), face),
+          xFaces.contains(face),
+        );
+      }
+      // A sideways belt rotates on y.
+      for (final face in allFaces) {
+        expect(
+          def.hasShaftTowards(beltState('east', slope: 'sideways'), face),
+          yFaces.contains(face),
+        );
+      }
+      expect(
+        def.hasShaftTowards(beltState('east', part: 'middle', slope: 'sideways'), Dir.up),
+        isFalse,
+      );
+    });
+
+    test('a belt pulley joins the network of the shaft next to it', () {
+      final level = FakeLevel();
+      level.blocks.register('create:belt', const BeltBlockDef());
+      final motor = level.motor(0, 0, 0, 32, facing: Dir.east);
+      // facing north -> rotation axis x, so the belt takes a shaft on its east side.
+      final belt = level.place(KPos(1, 0, 0), beltState('north'));
+      level.tickAll(3);
+      expect(motor.speed, 32);
+      expect(belt.speed, 32);
+    });
+
+    test('a middle segment has no shaft and does not join the network', () {
+      final level = FakeLevel();
+      level.blocks.register('create:belt', const BeltBlockDef());
+      level.motor(0, 0, 0, 32, facing: Dir.east);
+      final belt = level.place(
+        KPos(1, 0, 0),
+        beltState('north', part: 'middle'),
+      );
+      level.tickAll(3);
+      expect(belt.speed, 0);
     });
   });
 }

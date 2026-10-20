@@ -168,8 +168,10 @@ class Contraption {
 
   final Set<GlueRef> _glueToRemove = {};
 
-  /// Seat local position -> the passenger that sat there before assembly.
-  final Map<Pos, Object> _initialPassengers = {};
+  /// Seat local position -> the network id of the passenger that sat there before assembly.
+  /// Only ids are kept: a host entity handle is released when the callback that received it
+  /// returns, and these are used on a later tick (`onEntityInitialize`).
+  final Map<Pos, int> _initialPassengers = {};
 
   /// Bearings that create a stabilized sub-contraption when the entity is created.
   final List<BlockFace> pendingSubContraptions = [];
@@ -557,8 +559,8 @@ class Contraption {
   void _moveSeat(ContraptionLevel level, Pos pos) {
     final local = toLocalPos(pos);
     seats.add(local);
-    final passenger = level.seatPassengerAt(pos);
-    if (passenger != null) _initialPassengers[local] = passenger;
+    final passengerId = level.seatPassengerIdAt(pos);
+    if (passengerId != null) _initialPassengers[local] = passengerId;
   }
 
   void _movePulley(
@@ -812,11 +814,12 @@ class Contraption {
   void onEntityInitialize(ContraptionLevel level, Object entity) {
     if (entity is! ContraptionEntityHandle) return;
     for (final seatPos in seats) {
-      final passenger = _initialPassengers[seatPos];
-      if (passenger == null) continue;
+      final passengerId = _initialPassengers[seatPos];
+      if (passengerId == null) continue;
       final seatIndex = seats.indexOf(seatPos);
       if (seatIndex == -1) continue;
-      entity.addSittingPassenger(passenger, seatIndex);
+      // An id: the host looks the entity up now, inside this tick's callback.
+      entity.addSittingPassenger(passengerId, seatIndex);
     }
   }
 

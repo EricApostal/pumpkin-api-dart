@@ -6,10 +6,12 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/blocks.dart';
+import '../../common/direction.dart';
 import '../../api/wrenchable.dart';
 import '../../core/blocks.dart';
 import '../blocks/actuator_runtime.dart';
 import 'bearing_block_entities.dart';
+import 'bearing_placement.dart';
 import 'sail_block.dart';
 
 const String mechanicalBearing = 'create:mechanical_bearing';
@@ -27,34 +29,93 @@ const List<String> bearingBlocks = [
 List<CreateBlock> buildBearingBlocks() => [
   manifestBlock(
     'mechanical_bearing',
-    placement: const [PlacementRule.clickedFace('facing')],
-    behavior: bearingEmptyHandBehavior(mechanicalBearing),
+    placement: bearingPlacementRules,
+    behavior: bearingBehavior(mechanicalBearing),
     blockEntityType: mechanicalBearing,
   ),
   manifestBlock(
     'windmill_bearing',
-    placement: const [PlacementRule.clickedFace('facing')],
-    behavior: bearingEmptyHandBehavior(windmillBearing),
+    placement: bearingPlacementRules,
+    behavior: bearingBehavior(windmillBearing),
     blockEntityType: windmillBearing,
   ),
   manifestBlock(
     'clockwork_bearing',
-    placement: const [PlacementRule.clickedFace('facing')],
-    behavior: bearingEmptyHandBehavior(clockworkBearing),
+    placement: bearingPlacementRules,
+    behavior: bearingBehavior(clockworkBearing),
     blockEntityType: clockworkBearing,
   ),
 ];
 
-/// `ClockworkBearingBlock.useItemOn` / `WindmillBearingBlock.useItemOn` for an empty hand: sneak
-/// clicks fail, a running bearing disassembles, an idle one assembles on the next tick.
-BlockBehavior bearingEmptyHandBehavior(String blockKey) => BlockBehavior(
+/// `DirectionalKineticBlock.getStateForPlacement` for a bearing, applied after the host placed it
+/// with [bearingPlacementRules].
+///
+/// The host cannot express `getPreferredFacing` (a neighbouring shaft) nor the sneaking branch,
+/// so the placed state is corrected here: a shaft decides `facing`, otherwise the player's look
+/// does, as in Java.
+Future<void> _bearingOnPlaced(
+  Server server,
+  CustomBlockPlacedEventData e,
+) async {
+  final playerId = e.player;
+  final player = playerId == null
+      ? null
+      : server.getPlayerByUuid(id: playerId);
+  final world = e.targetWorld;
+  final pos = (e.pos.x, e.pos.y, e.pos.z);
+  final entity = player?.asEntity();
+  final sneaking = entity?.isSneaking() ?? false;
+  final look = entity == null
+      ? null
+      : nearestLookingFromLook(entity.getYaw(), entity.getPitch());
+  final level = HostBlockGetter(world);
+  final preferred = bearingPreferredFacing(
+    pos,
+    (neighbour, side) => prefersShaftConnection(level, neighbour, side),
+  );
+  final facing = bearingFacingForPlacement(
+    nearestLooking: look ?? Direction.north,
+    sneaking: sneaking,
+    hasPlayer: player != null,
+    preferred: preferred,
+  );
+  final current = HostBlockGetter.stateOfId(e.stateIndex);
+  if (current.dir('facing') == facing) return;
+  await setBlockState(
+    world,
+    pos,
+    current.setValue('facing', facing.serializedName),
+  );
+}
+
+/// `ClockworkBearingBlock.useItemOn` / `WindmillBearingBlock.useItemOn`: sneak clicks fail, a
+/// running bearing disassembles, an idle one assembles on the next tick.
+///
+/// The host fires the `useWithoutItem` hook for every click the held item did not handle (with
+/// the held stack in `event.item`, see `fire_use` in the host's `dynamic.rs`), so a click holding
+/// a block reaches this handler too. Java returns `TRY_WITH_EMPTY_HAND` for a non-empty stack,
+/// which is what lets the held block be placed against the bearing; returning `success` here
+/// consumed the click and swallowed the placement.
+BlockBehavior bearingBehavior(String blockKey) => BlockBehavior(
+  onPlaced: _bearingOnPlaced,
   onUseWithoutItem: (server, e) async {
-    // `player.mayBuild()`: adventure and spectator players cannot use a bearing.
+    // `stack.isEmpty()`; the copy the host handed over is released with the callback.
+    final holdingItem = await e.item.getCount() > 0;
     final mode = e.player.getGamemode();
-    if (mode == GameMode.adventure || mode == GameMode.spectator) {
-      return BlockUseResult.fail;
+    final use = bearingUse(
+      // `player.mayBuild()`: adventure and spectator players cannot use a bearing.
+      mayBuild: mode != GameMode.adventure && mode != GameMode.spectator,
+      sneaking: e.sneaking,
+      holdingItem: holdingItem,
+    );
+    switch (use) {
+      case BearingUse.fail:
+        return BlockUseResult.fail;
+      case BearingUse.tryEmptyHand:
+        return BlockUseResult.tryEmptyHand;
+      case BearingUse.assemble:
+        break;
     }
-    if (e.sneaking) return BlockUseResult.fail;
     final runtime = ActuatorRuntime.maybe;
     if (runtime == null) return BlockUseResult.pass;
     final worldId = e.targetWorld.getId();

@@ -26,8 +26,7 @@
 //   content/contraptions/bearing/SailBlock.java:67-71                 sail frame, dyed sails
 //   foundation/block/WrenchableDirectionalBlock.java:42-44            sail (super)
 //   content/contraptions/bearing/BearingBlock.java                    bearings (no placement override)
-import 'dart:io';
-
+import 'package:create/src/contraptions/bearing/bearing_placement.dart';
 import 'package:create/src/contraptions/bearing/sail.dart';
 import 'package:create/src/kinetics/block_defs.dart';
 import 'package:create/src/kinetics/geometry.dart';
@@ -346,8 +345,13 @@ void main() {
     test('the declarations are the ones the Java rules need', () {
       // `sail.dart` (`SailBlock.getStateForPlacement`): the look direction, turned around.
       expect(_describe(sailPlacement), ['facing/lookingDirection/opposite']);
-      // `bearing_blocks.dart` (`DirectionalKineticBlock.getStateForPlacement`): the clicked face.
-      expect(_describe(_declaredRules('create:mechanical_bearing')), ['facing/clickedFace']);
+      // `bearing_placement.dart` (`DirectionalKineticBlock.getStateForPlacement`): away from the
+      // player's look. The clicked face is not used at all; the shaft and sneaking branches are
+      // corrected in `bearing_blocks.dart`'s `onPlaced`.
+      expect(
+        _describe(_declaredRules('create:mechanical_bearing')),
+        ['facing/lookingDirection/opposite'],
+      );
     });
   });
 
@@ -514,8 +518,9 @@ List<_Target> _targets() => [
       'DirectionalKineticBlock.getStateForPlacement (BearingBlock)',
       actual: (p, _) => _applyHostRules(_declaredRules(key), _HostInput.of(p)),
       expected: (p) => {'facing': _javaDirectionalFacing(p).name},
-      knownDivergence: 'bearing orientation comes from a clicked-face rule, Java uses '
-          'getPreferredFacing + the look direction',
+      knownDivergence: 'the rule list is the no-shaft, not-sneaking branch of '
+          'DirectionalKineticBlock.getStateForPlacement; getPreferredFacing is corrected in '
+          'bearing_blocks.dart onPlaced',
     ),
   for (final key in _sailKeys)
     _Target(
@@ -545,56 +550,12 @@ final List<String> _sailKeys = [
 
 /// The `placement:` list of `manifestBlock('<blockKey>', ...)`, as declared in the library.
 ///
-/// Sails keep theirs in the pure `sail.dart` (`sailPlacement`), so it is used directly. The
-/// bearings declare theirs inline in `bearing_blocks.dart`, which needs the host bindings and
-/// therefore cannot be imported by a VM test; their declaration is read from the source.
+/// Sails keep theirs in the pure `sail.dart` (`sailPlacement`), the bearings in the pure
+/// `bearing_placement.dart` (`bearingPlacementRules`), so both are used directly.
 List<PlacementRule> _declaredRules(String blockKey) {
-  final isBearing = _bearingKeys.contains(blockKey);
-  if (!isBearing && !_sailKeys.contains(blockKey)) {
-    throw StateError('no placement rules known for $blockKey');
-  }
-  if (!isBearing) return sailPlacement;
-  return _bearingRules.putIfAbsent(blockKey, () => _readDeclaredRules(blockKey));
-}
-
-final Map<String, List<PlacementRule>> _bearingRules = {};
-
-List<PlacementRule> _readDeclaredRules(String blockKey) {
-  final path = _libPath('lib/src/contraptions/bearing/bearing_blocks.dart');
-  final source = File(path).readAsStringSync();
-  final key = blockKey.substring('create:'.length);
-  final start = RegExp("manifestBlock\\(\\s*'${RegExp.escape(key)}'").firstMatch(source);
-  if (start == null) throw StateError('$path: no manifestBlock for $key');
-  final rest = source.substring(start.end);
-  final nextBlock = rest.indexOf('manifestBlock(');
-  final scope = nextBlock < 0 ? rest : rest.substring(0, nextBlock);
-  final placement = RegExp(r'placement:\s*').firstMatch(scope);
-  if (placement == null) throw StateError('$path: $key declares no placement rules');
-  final value = scope.substring(placement.end).replaceFirst(RegExp(r'^const\s+'), '').trim();
-  if (value.startsWith('[')) {
-    final end = value.indexOf(']');
-    if (end < 0) throw StateError('$path: unterminated placement list for $key');
-    return _parseRules(value.substring(1, end));
-  }
-  final name = RegExp(r'^(\w+)').firstMatch(value)?.group(1);
-  if (name == null) throw StateError('$path: cannot read the placement of $key: $value');
-  final consts = RegExp(
-    '(?:const\\s+)?List<PlacementRule>\\s+${RegExp.escape(name)}\\s*=\\s*\\[([^\\]]*)\\]',
-    dotAll: true,
-  ).firstMatch(source);
-  if (consts == null) throw StateError('$path: no constant $name for $key');
-  return _parseRules(consts.group(1)!);
-}
-
-/// [path] relative to the package root, whether the test runs from the package or above it.
-String _libPath(String path) {
-  var dir = Directory.current;
-  for (var i = 0; i < 4; i++) {
-    final file = File('${dir.path}/$path');
-    if (file.existsSync()) return file.path;
-    dir = dir.parent;
-  }
-  throw StateError('cannot find $path from ${Directory.current.path}');
+  if (_bearingKeys.contains(blockKey)) return bearingPlacementRules;
+  if (_sailKeys.contains(blockKey)) return sailPlacement;
+  throw StateError('no placement rules known for $blockKey');
 }
 
 /// `property/source/opposite` of every rule, for assertions.
@@ -602,34 +563,6 @@ List<String> _describe(List<PlacementRule> rules) => [
   for (final r in rules) '${r.property}/${r.source.name}${r.opposite ? '/opposite' : ''}',
 ];
 
-/// The `PlacementRule.<factory>(...)` calls of [body].
-List<PlacementRule> _parseRules(String body) => [
-  for (final m in RegExp(r'PlacementRule\.(\w+)\(([^)]*)\)').allMatches(body))
-    _parseRule(m.group(1)!, m.group(2)!),
-];
-
-PlacementRule _parseRule(String factory, String args) {
-  final parts = [
-    for (final part in args.split(','))
-      if (part.trim().isNotEmpty) part.trim(),
-  ];
-  String text(int i) => parts[i].replaceAll("'", '').trim();
-  final opposite = parts.contains('opposite: true');
-  return switch (factory) {
-    'horizontalFacing' => PlacementRule.horizontalFacing(text(0), opposite: opposite),
-    'lookingDirection' => PlacementRule.lookingDirection(text(0), opposite: opposite),
-    'clickedFace' => PlacementRule.clickedFace(text(0), opposite: opposite),
-    'clickedFaceDown' => PlacementRule.clickedFaceDown(text(0), opposite: opposite),
-    'clickedAxis' => PlacementRule.clickedAxis(text(0)),
-    'horizontalAxis' => PlacementRule.horizontalAxis(text(0)),
-    'clickedHalf' => PlacementRule.clickedHalf(text(0), opposite: opposite),
-    'verticalLook' => PlacementRule.verticalLook(text(0), double.parse(text(1)), opposite: opposite),
-    'inWater' => PlacementRule.inWater(text(0), opposite: opposite),
-    'sneaking' => PlacementRule.sneaking(text(0), opposite: opposite),
-    'constant' => PlacementRule.constant(text(0), text(1)),
-    _ => throw StateError('unknown placement rule PlacementRule.$factory'),
-  };
-}
 
 // -- The host's rule evaluation --------------------------------------------------------------
 

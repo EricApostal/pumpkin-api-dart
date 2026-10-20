@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
+import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import '../../../api/block_state.dart';
 import '../../../common/common.dart';
@@ -98,7 +99,18 @@ final class PloughMovementBehaviour extends BlockBreakingMovementBehaviour {
   Future<void> stopMoving(MovementContext context) async {
     await super.stopMoving(context);
     final player = context.temporaryData;
-    if (player is Player) FakePlayers.remove(player);
+    if (player is Player) {
+      try {
+        FakePlayers.remove(player);
+      } on Object {
+        // already gone
+      }
+      try {
+        player.dispose();
+      } on Object {
+        // already released
+      }
+    }
     context.temporaryData = null;
   }
 
@@ -106,7 +118,10 @@ final class PloughMovementBehaviour extends BlockBreakingMovementBehaviour {
   Player? getPlayer(MovementContext context, World world) {
     final existing = context.temporaryData;
     if (existing is Player) return existing;
-    final player = createPloughFakePlayer(world);
+    // The player outlives this call (`temporaryData` is kept until `stopMoving`), so it must be
+    // owned; without `keep()` the host releases it when the callback returns and every later use
+    // throws "This Entity is no longer valid (disposed)". `FakePlayers.remove` releases it.
+    final player = createPloughFakePlayer(world).keep();
     final hoe = ItemStack.create(
       registryKey: 'minecraft:diamond_hoe',
       count: 1,

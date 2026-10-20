@@ -17,6 +17,8 @@ workspace:
   - example/create
   - example/sable
   - example/sable_jolt
+  - example/simulated
+  - example/aeronautics
   - tool/runtime_check
 
 dev_dependencies:

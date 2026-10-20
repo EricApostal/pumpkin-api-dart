@@ -110,6 +110,15 @@ abstract interface class SimAssemblyWorld {
 
   /// Whether [state] is a swivel bearing (the search treats its plate as glued).
   bool isSwivelBearing(BState state);
+
+  /// Moves a super glue box by [offset] after its blocks were assembled.
+  void superGlueMoved(SimGlueBox glue, Pos offset);
+
+  /// Moves a honey glue volume by [offset] after its blocks were assembled.
+  void honeyGlueMoved(HoneyGlueVolume glue, Pos offset);
+
+  /// Plays the "contraption stops" sound at [pos].
+  void playDisassemblySound(Pos pos);
 }
 
 /// The 18 neighbours of a block that a contraption connects through: the six

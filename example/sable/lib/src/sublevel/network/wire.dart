@@ -117,9 +117,10 @@ abstract final class SableBufferUtils {
   /// `ChunkPos.pack(x, z)`: x in the low 32 bits, z in the high 32.
   static int packChunk(int x, int z) => (x & 0xFFFFFFFF) | (z & 0xFFFFFFFF) << 32;
 
-  /// `ChunkPos.getX(packed)`.
-  static int unpackChunkX(int packed) => packed & 0xFFFFFFFF;
+  /// `ChunkPos.getX(packed)`: the low 32 bits, sign-extended like the Java
+  /// `(int)` cast, so a negative chunk x stays negative.
+  static int unpackChunkX(int packed) => (packed & 0xFFFFFFFF).toSigned(32);
 
-  /// `ChunkPos.getZ(packed)`.
-  static int unpackChunkZ(int packed) => (packed >>> 32) & 0xFFFFFFFF;
+  /// `ChunkPos.getZ(packed)`: the high 32 bits, sign-extended.
+  static int unpackChunkZ(int packed) => (packed >>> 32).toSigned(32);
 }

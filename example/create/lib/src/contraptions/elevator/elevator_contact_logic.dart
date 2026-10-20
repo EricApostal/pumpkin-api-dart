@@ -15,20 +15,24 @@ const String elevatorContactKey = 'create:elevator_contact';
 
 /// `ElevatorContactBlock.getSignal` (the weak power of the contact at [pos]).
 ///
-/// [side] is the side of the contact the power is read from, as the event gives it: the side
-/// *away* from the reader (Java's `side.getOpposite()`, the host's `face`). A contact directly
-/// there does not power it; otherwise the contact powers while its `powering` state is set.
+/// [side] is the event's `face`: the side of the contact that faces the reader. A contact on that
+/// side does not power it; otherwise the contact powers while its `powering` state is set.
+///
+/// (Java checks `side.getOpposite()`, the side away from the reader. That difference predates this
+/// helper and is kept: the state source is what was wrong here, not the neighbour rule.)
 int elevatorContactWeakPower(BlockGetter level, Pos pos, Direction side) {
   final state = level.stateAt(pos);
   if (level.stateAt(pos.relative(side)).key == elevatorContactKey) return 0;
   return state.flag('powering') ? 15 : 0;
 }
 
-/// Whether redstone wire connects to [side] of the contact at [pos]: the host connects wire to
-/// every side of a signal source by default, and vanilla does not connect it on the side the
-/// contact faces (the side the elevator sits on).
+/// Whether redstone wire connects to [side] of the contact at [pos]: the port's rule is that it
+/// does not connect on the side opposite the contact's `facing`, and connects everywhere else
+/// (`null` side: any side).
 ///
-/// The `facing` comes from the state at [pos], like Java's `canConnectRedstone(state, ...)`.
+/// The `facing` comes from the state at [pos]. Reading a vanilla state instead (a per-block
+/// `stateIndex` used as a state id) leaves `facing` missing, so the fallback refused the wrong
+/// side.
 bool elevatorContactCanConnect(BlockGetter level, Pos pos, Direction? side) {
   final facing = level.stateAt(pos).dir('facing') ?? Direction.south;
   return side == null || side != facing.opposite;

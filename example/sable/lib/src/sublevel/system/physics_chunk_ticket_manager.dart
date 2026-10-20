@@ -23,6 +23,7 @@ import '../math/bounding_box.dart';
 import '../math/vector.dart';
 import '../model/server_sub_level.dart';
 import '../model/sub_level.dart';
+import '../network/wire.dart';
 import 'physics_system.dart';
 import 'tickets.dart';
 import 'plot_section_packer.dart';
@@ -245,8 +246,8 @@ final class PhysicsChunkTicketManager {
     for (final entry in entries) {
       entry.value.removeWhere((ticket) => ticket.lastInhabitedTick < gameTime - 20);
       if (entry.value.isEmpty) {
-        final x = entry.key & 0xFFFFFFFF;
-        final z = (entry.key >>> 32) & 0xFFFFFFFF;
+        final x = SableBufferUtils.unpackChunkX(entry.key);
+        final z = SableBufferUtils.unpackChunkZ(entry.key);
         host.removeChunkTicket(x, z, subLevelLoadedTicketType, subLevelLoadedTicketLevel);
         forcedInhabitedChunks.remove(entry.key);
       }

@@ -59,6 +59,13 @@ the power events run very often: keep the handlers fast, and prefer stored
 output where you can. `stateIndex` counts like the states of the block registry;
 add it to the block's `baseStateId` for the state id.
 
+It is **not** a state id: a block with six states reports `0..5`, so passing it
+straight to a state lookup reads a vanilla block whose properties are missing and
+whose fallbacks silently apply. Read the state at `event.pos` instead (it is the
+`BlockState` the hook is about, and it cannot be stale); only `state-replaced`
+(the position has the new block) and `can-place` (the block is not there yet)
+need `baseStateId + stateIndex`.
+
 ## Shapes
 
 Static shapes per state belong in the block definition: `shapeRules` (see

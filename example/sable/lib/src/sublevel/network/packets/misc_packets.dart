@@ -205,7 +205,7 @@ final class ServerboundPunchSubLevelPacket implements SablePacket {
 /// Wire: `UUID subLevel`, `Vector3d position`.
 final class ServerboundGizmoMoveSubLevelPacket implements SablePacket {
   /// `Sable.sablePath("gizmo_move_sublevel")`.
-  static const String payloadId = 'sable:gizmo_move_sublevel';
+  static const String payloadId = 'sable:gizmo_move_sub_level';
 
   final String subLevel;
 

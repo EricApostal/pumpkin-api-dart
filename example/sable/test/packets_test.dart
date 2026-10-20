@@ -29,7 +29,7 @@ Pose3d pose(double x, double y, double z, double qx, double qy, double qz, doubl
 
 void main() {
   group('tracking payloads', () {
-    test('start_tracking_sublevel round-trips', () {
+    test('start_tracking_sub_level round-trips', () {
       final packet = ClientboundStartTrackingSubLevelPacket(
         plotCoordinate: 0x0000000200000003,
         subLevelId: '00112233-4455-6677-8899-aabbccddeeff',
@@ -55,7 +55,7 @@ void main() {
       expect(decoded.pose.rotationPoint().z, 3.0);
     });
 
-    test('start_tracking_sublevel without a name', () {
+    test('start_tracking_sub_level without a name', () {
       final packet = ClientboundStartTrackingSubLevelPacket(
         plotCoordinate: 7,
         subLevelId: '00112233-4455-6677-8899-aabbccddeeff',
@@ -70,7 +70,7 @@ void main() {
       expect(decoded.name, isNull);
     });
 
-    test('start_tracking_sublevel field order is Java order', () {
+    test('start_tracking_sub_level field order is Java order', () {
       final packet = ClientboundStartTrackingSubLevelPacket(
         plotCoordinate: 9,
         subLevelId: '00112233-4455-6677-8899-aabbccddeeff',
@@ -107,7 +107,7 @@ void main() {
       expect(codec.decode(codec.encode(packet)).plotCoordinate, 0x1122334455667788);
     });
 
-    test('stop_tracking_sublevel round-trips and is one long', () {
+    test('stop_tracking_sub_level round-trips and is one long', () {
       final codec = ClientboundStopTrackingSubLevelPacket.codec;
       final packet = ClientboundStopTrackingSubLevelPacket(-5);
 
@@ -115,7 +115,7 @@ void main() {
       expect(codec.decode(codec.encode(packet)).plotCoordinate, -5);
     });
 
-    test('stop_moving_sublevel round-trips and is one long', () {
+    test('stop_moving_sub_level round-trips and is one long', () {
       final codec = ClientboundStopMovingSubLevelPacket.codec;
       final packet = ClientboundStopMovingSubLevelPacket(77);
 
@@ -511,7 +511,7 @@ void main() {
       expect(decoded.direction.y, -1.0);
     });
 
-    test('gizmo_move_sublevel round-trips and is uuid + three doubles', () {
+    test('gizmo_move_sub_level round-trips and is uuid + three doubles', () {
       final codec = ServerboundGizmoMoveSubLevelPacket.codec;
       final packet = ServerboundGizmoMoveSubLevelPacket(
         '00112233-4455-6677-8899-aabbccddeeff',
@@ -559,11 +559,11 @@ void main() {
       expect(SablePackets.allClientbound.map((c) => c.id), [
         'sable:snapshot_packet',
         'sable:snapshot_info_packet',
-        'sable:stop_moving_sublevel',
+        'sable:stop_moving_sub_level',
         'sable:change_sub_level_name',
-        'sable:start_tracking_sublevel',
+        'sable:start_tracking_sub_level',
         'sable:finalize_sub_level',
-        'sable:stop_tracking_sublevel',
+        'sable:stop_tracking_sub_level',
         'sable:change_bounds_sublevel',
         'sable:freeze_player',
         'sable:physics_property',
@@ -575,7 +575,7 @@ void main() {
       ]);
       expect(SablePackets.allServerbound.map((c) => c.id), [
         'sable:punch_sub_level',
-        'sable:gizmo_move_sublevel',
+        'sable:gizmo_move_sub_level',
       ]);
     });
 
@@ -583,7 +583,7 @@ void main() {
       expect(SableChannel.modId, 'sable');
       expect(SableChannel.version, '1');
       expect(SableChannel.name, 'sable:1');
-      expect(SableChannel.path('start_tracking_sublevel'), 'sable:start_tracking_sublevel');
+      expect(SableChannel.path('start_tracking_sub_level'), 'sable:start_tracking_sub_level');
     });
 
     test('encode/decode through the registry', () {

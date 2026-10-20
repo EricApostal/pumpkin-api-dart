@@ -156,6 +156,88 @@ abstract final class SubLevelHelper {
     return container.getPlot(chunkX, chunkZ)?.getSubLevel();
   }
 
+  /// `ActiveSableCompanion.runIncludingSubLevels`: runs [converter] on every
+  /// position [origin] can mean, and returns the first non-`null` result.
+  ///
+  /// The candidates, in order:
+  ///
+  /// 1. [origin] itself as a block position, when [shouldCheckOrigin] (the
+  ///    block position is in the same space as the caller);
+  /// 2. [origin] projected out of [subLevel] into the main level, with `null`
+  ///    as the converter's sub-level;
+  /// 3. [origin] projected into every *other* sub-level whose bounds intersect
+  ///    the projected position.
+  ///
+  /// This is how the Create compat layer makes a lookup that Create performs in
+  /// one space also see the other spaces: the caller supplies the lookup and
+  /// the helper supplies the positions.
+  static T? runIncludingSubLevels<T>(
+    SableLevel level,
+    Vector3d origin,
+    bool shouldCheckOrigin,
+    SubLevel? subLevel,
+    T? Function(SubLevel? subLevel, (int, int, int) pos) converter,
+  ) {
+    final mutablePos = Vector3d.copy(origin);
+
+    if (shouldCheckOrigin) {
+      final test = converter(subLevel, _blockPosOf(mutablePos));
+      if (test != null) return test;
+    }
+
+    if (subLevel != null) {
+      subLevel.logicalPose.transformPosition(mutablePos, mutablePos);
+      final test = converter(null, _blockPosOf(mutablePos));
+      if (test != null) return test;
+    }
+
+    final copyPos = Vector3d.copy(mutablePos);
+    for (final other in getAllIntersecting(level, BoundingBox3d.fromPos(_blockPosOf(mutablePos)))) {
+      if (identical(other, subLevel)) continue;
+
+      mutablePos.setFrom(copyPos);
+      other.logicalPose.transformPositionInverse(mutablePos, mutablePos);
+      final test = converter(other, _blockPosOf(mutablePos));
+      if (test != null) return test;
+    }
+
+    return null;
+  }
+
+  /// `ActiveSableCompanion.findIncludingSubLevels`: whether any candidate
+  /// position of [origin] satisfies [predicate].
+  static bool findIncludingSubLevels(
+    SableLevel level,
+    Vector3d origin,
+    bool shouldCheckOrigin,
+    SubLevel? subLevel,
+    bool Function(SubLevel? subLevel, (int, int, int) pos) predicate,
+  ) =>
+      runIncludingSubLevels<bool>(
+        level,
+        origin,
+        shouldCheckOrigin,
+        subLevel,
+        (candidate, pos) => predicate(candidate, pos) ? true : null,
+      ) ??
+      false;
+
+  /// `ActiveSableCompanion.distanceSquaredWithSubLevels`: the distance between
+  /// [a] and [b] once both are projected out of their sub-levels.
+  static double distanceSquaredWithSubLevels(SableLevel level, Vector3d a, Vector3d b) =>
+      projectOutOfSubLevel(level, a).distanceSquared(projectOutOfSubLevel(level, b));
+
+  /// `ActiveSableCompanion.distanceSquaredWithSubLevels(level, a, x, y, z)`.
+  static double distanceSquaredWithSubLevelsTo(
+    SableLevel level,
+    Vector3d a,
+    double bX,
+    double bY,
+    double bZ,
+  ) => distanceSquaredWithSubLevels(level, a, Vector3d(bX, bY, bZ));
+
+  static (int, int, int) _blockPosOf(Vector3d pos) => (pos.x.floor(), pos.y.floor(), pos.z.floor());
+
   /// All sub-levels whose global bounds intersect [bounds].
   static Iterable<SubLevel> getAllIntersecting(SableLevel level, BoundingBox3dc bounds) {
     final container = SubLevelContainer.of(level);

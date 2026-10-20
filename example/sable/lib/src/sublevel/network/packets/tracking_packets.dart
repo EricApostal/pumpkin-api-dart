@@ -23,7 +23,7 @@ import '../wire.dart';
 /// `Pose3d pose`, `BoundingBox3i bounds`, optional UTF `name`, `int gameTick`.
 final class ClientboundStartTrackingSubLevelPacket implements SablePacket {
   /// `Sable.sablePath("start_tracking_sublevel")`.
-  static const String payloadId = 'sable:start_tracking_sublevel';
+  static const String payloadId = 'sable:start_tracking_sub_level';
 
   /// The packed plot coordinate, relative to the plot yard origin.
   final int plotCoordinate;
@@ -140,7 +140,7 @@ final class ClientboundFinalizeSubLevelPacket implements SablePacket {
 /// Wire: `long plotCoordinate`.
 final class ClientboundStopTrackingSubLevelPacket implements SablePacket {
   /// `Sable.sablePath("stop_tracking_sublevel")`.
-  static const String payloadId = 'sable:stop_tracking_sublevel';
+  static const String payloadId = 'sable:stop_tracking_sub_level';
 
   final int plotCoordinate;
 
@@ -213,7 +213,7 @@ final class ClientboundChangeBoundsSubLevelPacket implements SablePacket {
 /// Wire: `long plotCoordinate`.
 final class ClientboundStopMovingSubLevelPacket implements SablePacket {
   /// `Sable.sablePath("stop_moving_sublevel")`.
-  static const String payloadId = 'sable:stop_moving_sublevel';
+  static const String payloadId = 'sable:stop_moving_sub_level';
 
   final int plotCoordinate;
 

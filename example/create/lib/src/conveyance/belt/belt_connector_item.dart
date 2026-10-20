@@ -125,7 +125,7 @@ Future<void> createBelts(
   );
 
   final getter = HostBlockGetter(world);
-  // `BeltConnectorItem.java:124-146` builds every state and writes it in one synchronous loop:
+  // `BeltConnectorItem.java:121-143` builds every state and writes it in one synchronous loop:
   // the whole run exists before any block entity ticks, so `BeltBlock.initBelt` always sees one
   // chain. `set-block-state` is an async host call (`wit/v0.2/world.wit`), so writing segment by
   // segment lets a tick run mid-loop; `initBelt` then finds a partial chain and makes every

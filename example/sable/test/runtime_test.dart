@@ -511,7 +511,7 @@ void main() {
       expect(subLevel.trackingPlayers, isEmpty);
     });
 
-    test('walking out of range sends stop_tracking_sublevel', () {
+    test('walking out of range sends stop_tracking_sub_level', () {
       final subLevel = addSubLevel(container, 0, 0, '00000000-0000-0000-0000-000000000001');
       subLevel.logicalPose.position().set(1, 2, 3);
       tracking.tick(container);
@@ -542,7 +542,7 @@ void main() {
       );
     });
 
-    test('a sub-level that comes to rest sends stop_moving_sublevel', () {
+    test('a sub-level that comes to rest sends stop_moving_sub_level', () {
       final subLevel = addSubLevel(container, 0, 0, '00000000-0000-0000-0000-000000000001');
       subLevel.logicalPose.position().set(1, 2, 3);
       tracking.tick(container);
@@ -623,7 +623,7 @@ void main() {
       subLevel.logicalPose.position().set(1, 2, 3);
       tracking.tick(container);
 
-      expect(sink.payloads.first.$2, 'sable:start_tracking_sublevel');
+      expect(sink.payloads.first.$2, 'sable:start_tracking_sub_level');
       expect(
         sink.ids,
         contains(ClientboundFinalizeSubLevelPacket.payloadId),

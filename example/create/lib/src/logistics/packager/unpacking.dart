@@ -57,8 +57,14 @@ final class DefaultUnpackingHandler implements UnpackingHandler {
 
         if (itemInSlot.isEmpty) {
           final limit = await target.slotLimit(slot);
-          if (limit < toInsert.count) toInsert = toInsert.withCount(limit);
-          items[boxSlot] = LStack.empty;
+          if (limit < toInsert.count) {
+            // Only part of the stack fits: the slot takes what it can hold and the remainder
+            // stays in the box for a later slot.
+            toInsert = toInsert.withCount(limit);
+            items[boxSlot] = items[boxSlot].withCount(items[boxSlot].count - limit);
+          } else {
+            items[boxSlot] = LStack.empty;
+          }
           itemInSlot = toInsert;
           await target.insert(slot, toInsert, simulate: simulate);
           continue;

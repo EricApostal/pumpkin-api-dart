@@ -69,10 +69,26 @@ const Map<String, String> _armorRepairTags = {
   'netherite_backtank': '#minecraft:repairs_netherite_armor',
   'netherite_diving_helmet': '#minecraft:repairs_netherite_armor',
   'netherite_diving_boots': '#minecraft:repairs_netherite_armor',
-  'cardboard_helmet': '#create:cardboard',
-  'cardboard_chestplate': '#create:cardboard',
-  'cardboard_leggings': '#create:cardboard',
-  'cardboard_boots': '#create:cardboard',
+  'cardboard_helmet': '#c:plates/cardboard',
+  'cardboard_chestplate': '#c:plates/cardboard',
+  'cardboard_leggings': '#c:plates/cardboard',
+  'cardboard_boots': '#c:plates/cardboard',
+};
+
+/// `Equippable#equipSound` of the wearables: `BaseArmorItem` copies it from the `ArmorMaterial`
+/// (`create:copper_armor_equip` for copper, leather's for cardboard, netherite's for netherite).
+/// `GogglesItem` sets no sound, so it keeps the codec's generic default.
+const Map<String, String> _equipSounds = {
+  'copper_backtank': 'create:copper_armor_equip',
+  'copper_diving_helmet': 'create:copper_armor_equip',
+  'copper_diving_boots': 'create:copper_armor_equip',
+  'netherite_backtank': 'minecraft:item.armor.equip_netherite',
+  'netherite_diving_helmet': 'minecraft:item.armor.equip_netherite',
+  'netherite_diving_boots': 'minecraft:item.armor.equip_netherite',
+  'cardboard_helmet': 'minecraft:item.armor.equip_leather',
+  'cardboard_chestplate': 'minecraft:item.armor.equip_leather',
+  'cardboard_leggings': 'minecraft:item.armor.equip_leather',
+  'cardboard_boots': 'minecraft:item.armor.equip_leather',
 };
 
 final Map<String, ManifestItem> _byKey = {for (final i in kItems) i.key: i};
@@ -93,7 +109,11 @@ ItemRegistration equipmentItem(String path) {
   }
   final w = _wearables[path];
   if (w != null) {
-    components['minecraft:equippable'] = {'slot': w.$1, if (w.$2 != null) 'asset_id': w.$2};
+    components['minecraft:equippable'] = {
+      'slot': w.$1,
+      if (w.$2 != null) 'asset_id': w.$2,
+      if (_equipSounds[path] != null) 'equip_sound': _equipSounds[path],
+    };
     if (w.$3 > 0) components['minecraft:enchantable'] = {'value': w.$3};
   }
   final repair = _armorRepairTags[path];

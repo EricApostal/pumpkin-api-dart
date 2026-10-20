@@ -71,17 +71,17 @@ final class HostBlockGetter extends BlockGetter {
   /// Otherwise `HostBlockGetter(world).stateAt(pos)` is the state the callback is about.
   static BState stateOfIndex(String blockKey, int stateIndex) {
     final ids = _stateIdsByBlock[blockKey] ?? _stateIdsOf(blockKey);
-    if (stateIndex < 0 || stateIndex >= ids.length) return BState.air;
+    if (ids == null || stateIndex < 0 || stateIndex >= ids.length) {
+      return BState.air;
+    }
     return stateOfId(ids[stateIndex]);
   }
 
-  /// The state ids of [blockKey] in state index order (the block's states are contiguous, so
-  /// entry `i` is `baseStateId + i`).
-  static List<int> _stateIdsOf(String blockKey) {
-    final block = BlockRegistry.of(blockKey);
-    final ids = block == null
-        ? const <int>[]
-        : [for (final state in block.states) state.id];
+  /// The state ids of [blockKey] in state index order (the states of a block are contiguous and
+  /// ordered, so entry `i` is `baseStateId + i`), `null` when the block is unknown.
+  static List<int>? _stateIdsOf(String blockKey) {
+    final ids = BlockRegistry.of(blockKey)?.stateIds;
+    if (ids == null) return null;
     return _stateIdsByBlock[blockKey] = ids;
   }
 

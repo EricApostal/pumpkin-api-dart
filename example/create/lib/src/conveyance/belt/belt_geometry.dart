@@ -105,7 +105,7 @@ enum BeltChainStatus {
   ok,
 
   /// A segment is missing (a non-belt block on the way back, or fewer than two segments).
-  /// Java destroys [BeltChainResolution.controller] then (`BeltBlock.java:425-426,443-446`).
+  /// Java destroys [BeltChainResolution.controller] then (`BeltBlock.java:428-430,443-446`).
   broken,
 
   /// The walk reached an unloaded chunk; Java returns without touching the block.
@@ -115,7 +115,7 @@ enum BeltChainStatus {
 /// The controller search of `BeltBlock.initBelt` (`BeltBlock.java:413-468`): walks back from
 /// [from] to the first segment of its chain and collects the chain from there on.
 ///
-/// [from] must hold a belt segment (`initBelt` checks that first, `BeltBlock.java:422-424`).
+/// [from] must hold a belt segment (`initBelt` checks that first, `BeltBlock.java:420-422`).
 final class BeltChainResolution {
   final BeltChainStatus status;
 

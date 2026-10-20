@@ -20,11 +20,11 @@ types of `SableUDPPacketType` whose two dual payloads are also TCP payloads.
 |---|---|---|---|---|
 | 1 | `sable:snapshot_packet` | both (TCP + UDP `SNAPSHOT`) | `int` tick, VarInt count, entries of `long` plot, `Pose3d`, `Vector3f` lin, `Vector3f` ang | **none** |
 | 2 | `sable:snapshot_info_packet` | both (TCP + UDP `SNAPSHOT_INFO`) | `int` ms, `int` tick, `bool` stopped | **none** |
-| 3 | `sable:stop_moving_sublevel` | clientbound | `long` plot | **none** |
+| 3 | `sable:stop_moving_sub_level` | clientbound | `long` plot | **none** |
 | 4 | `sable:change_sub_level_name` | clientbound | `UUID`, optional UTF name | **none** |
-| 5 | `sable:start_tracking_sublevel` | clientbound | `long` plot, `UUID`, `Pose3d` last, `Pose3d` now, `BoundingBox3i`, optional UTF name, `int` tick | **none** |
+| 5 | `sable:start_tracking_sub_level` | clientbound | `long` plot, `UUID`, `Pose3d` last, `Pose3d` now, `BoundingBox3i`, optional UTF name, `int` tick | **none** |
 | 6 | `sable:finalize_sub_level` | clientbound | `long` plot | **none** |
-| 7 | `sable:stop_tracking_sublevel` | clientbound | `long` plot | **none** |
+| 7 | `sable:stop_tracking_sub_level` | clientbound | `long` plot | **none** |
 | 8 | `sable:change_bounds_sublevel` | clientbound | `long` plot, `BoundingBox3i` | **none** |
 | 9 | `sable:freeze_player` | clientbound | `UUID`, `Vector3d` | **none** |
 | 10 | `sable:physics_property` | clientbound | NBT (`PhysicsBlockPropertiesDefinition.CODEC`) | **block / tag ids as strings** |
@@ -34,7 +34,7 @@ types of `SableUDPPacketType` whose two dual payloads are also TCP payloads.
 | 14 | `sable:udp_activation` | clientbound | `UUID` | **none** |
 | 15 | `sable:enter_gizmo_mode` | clientbound | empty | **none** |
 | 16 | `sable:punch_sub_level` | serverbound | `BlockPos`, `Vector3d`, `Vector3d` | **none** |
-| 17 | `sable:gizmo_move_sublevel` | serverbound | `UUID`, `Vector3d` | **none** |
+| 17 | `sable:gizmo_move_sub_level` | serverbound | `UUID`, `Vector3d` | **none** |
 | — | `PING` (UDP 0) | both | UTF text | none |
 | — | `AUTH` (UDP 3) | serverbound | UTF token (player UUID) | none |
 | — | `KEEP_ALIVE_CLIENTBOUND` (UDP 4) | clientbound | empty | none |

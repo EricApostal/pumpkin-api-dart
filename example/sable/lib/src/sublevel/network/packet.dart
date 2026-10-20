@@ -26,7 +26,7 @@ enum SablePacketDirection {
 
 /// `net.minecraft.network.protocol.common.custom.CustomPacketPayload`.
 abstract interface class SablePacket {
-  /// The `CustomPacketPayload.Type`, e.g. `sable:start_tracking_sublevel`.
+  /// The `CustomPacketPayload.Type`, e.g. `sable:start_tracking_sub_level`.
   String get id;
 
   /// The payload body, without the type id (Veil writes that).

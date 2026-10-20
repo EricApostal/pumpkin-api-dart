@@ -477,6 +477,22 @@ void main() {
       }
     });
 
+    test('the run has exactly one start and one end, so initBelt walks it once', () {
+      // `initBelt` finds the controller by walking back while `nextSegmentPosition` says there is
+      // a segment, and it stops at `part == start` (`BeltBlock.java:426-438`). Two starts would
+      // split the run into two controllers; no start would make the walk leave the run.
+      final world = createdBelt((0, 0, 0), (3, 0, 0));
+      final parts = [for (final at in [(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0)]) world.stateAt(at).beltPart];
+      expect(parts.where((p) => p == BeltPart.start).length, 1);
+      expect(parts.where((p) => p == BeltPart.end).length, 1);
+      expect(parts.first, BeltPart.start);
+      expect(parts.last, BeltPart.end);
+      // A segment placed with no controller at all (`controller == null`) is its own controller:
+      // `controllerPos` falls back to the segment's own position, which is what a run without
+      // `initBelt` looks like, one belt per block.
+      expect(getBeltChain(world, (0, 0, 0)).length, 4);
+    });
+
     test('the whole run is planned before anything is written', () {
       final shafts = MapBlockGetter()
         ..set((0, 0, 0), const BState('create:shaft', {'axis': 'z'}))

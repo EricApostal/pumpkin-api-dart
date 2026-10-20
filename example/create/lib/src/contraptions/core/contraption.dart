@@ -276,7 +276,11 @@ class Contraption {
   ) {
     final pos = frontier.isEmpty ? null : frontier.removeFirst();
     if (pos == null) return false;
-    visited.add(pos);
+    // A position is queued once per face that reaches it, so a compact structure queues most of
+    // its blocks several times. Every visit does the same work (the capture overwrites the same
+    // entry, the glue and the actuator notifications are idempotent), so a second visit only
+    // costs the six neighbour reads of a host world. Skip it.
+    if (!visited.add(pos)) return true;
 
     if (level.isOutsideBuildHeight(pos)) return true;
     if (!level.isLoaded(pos)) throw AssemblyException.unloadedChunk(pos);

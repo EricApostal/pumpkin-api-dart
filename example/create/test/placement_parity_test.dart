@@ -28,6 +28,14 @@
 //   content/contraptions/bearing/BearingBlock.java                    bearings (no placement override)
 import 'package:create/src/contraptions/bearing/bearing_placement.dart';
 import 'package:create/src/contraptions/bearing/sail.dart';
+import 'package:create/src/kinetics/block_data.dart'
+    show
+        facingShaftPaths,
+        facingShaftTag,
+        reverseFacingShaftPaths,
+        reverseFacingShaftTag,
+        shaftPaths,
+        shaftTag;
 import 'package:create/src/kinetics/block_defs.dart';
 import 'package:create/src/kinetics/geometry.dart';
 import 'package:create/src/kinetics/node.dart';
@@ -39,13 +47,22 @@ import 'package:test/test.dart';
 void main() {
   final registry = KineticBlockRegistry()
     ..register('create:shaft', const AxisBlockDef())
-    ..register('create:cogwheel', const AxisBlockDef(smallCog: true, dedicatedCog: true))
-    ..register('create:large_cogwheel', const AxisBlockDef(largeCog: true, dedicatedCog: true))
+    ..register(
+      'create:cogwheel',
+      const AxisBlockDef(smallCog: true, dedicatedCog: true),
+    )
+    ..register(
+      'create:large_cogwheel',
+      const AxisBlockDef(largeCog: true, dedicatedCog: true),
+    )
     ..register('create:andesite_encased_shaft', const AxisBlockDef())
     ..register('create:rotation_speed_controller', const AxisBlockDef())
     ..register('create:creative_motor', const FacingBlockDef())
     ..register('create:hand_crank', const FacingBlockDef(shaftAtFront: false))
-    ..register('create:mechanical_bearing', const FacingBlockDef(shaftAtFront: false));
+    ..register(
+      'create:mechanical_bearing',
+      const FacingBlockDef(shaftAtFront: false),
+    );
 
   group('placement parity', () {
     for (final target in _targets()) {
@@ -80,7 +97,7 @@ void main() {
                 final actual = target.actual(p, ctx);
                 final expected = target.expected(p);
                 if (_sameProps(actual, expected)) continue;
-                final key = '${_fmt(actual)} != Java ${_fmt(expected)}';
+                final key = '${layout.name}/${p.face}/${p.look}/${p.sneaking}: ${_fmt(actual)} != Java ${_fmt(expected)}';
                 divergences.update(key, (n) => n + 1, ifAbsent: () => 1);
               }
             }
@@ -91,18 +108,6 @@ void main() {
             '${target.label} disagrees with ${target.java} in $total of $cases placements\n'
             '${divergences.entries.map((e) => '  ${e.key}: ${e.value}x').join('\n')}';
 
-        if (target.knownDivergence != null) {
-          // A documented gap: the harness must keep seeing it, so a fix is noticed here too.
-          expect(
-            total,
-            greaterThan(0),
-            reason:
-                '${target.label} now matches Java everywhere; remove its knownDivergence '
-                'marker (${target.knownDivergence}).',
-          );
-          printOnFailure(report);
-          return;
-        }
         expect(divergences, isEmpty, reason: report);
       });
     }
@@ -123,9 +128,13 @@ void main() {
       );
       expect(_javaSailFacing(p), Dir.south);
       expect(_javaDirectionalFacing(p), Dir.south);
-      expect(_applyHostRules(sailRules(), _HostInput.of(p)), {'facing': 'south'});
+      expect(_applyHostRules(sailRules(), _HostInput.of(p)), {
+        'facing': 'south',
+      });
       expect(
-        _applyHostRules(const [PlacementRule.clickedFace('facing', opposite: true)], _HostInput.of(p)),
+        _applyHostRules(const [
+          PlacementRule.clickedFace('facing', opposite: true),
+        ], _HostInput.of(p)),
         {'facing': 'down'},
         reason: 'the old clicked-face rule is the regression the harness exists to catch',
       );
@@ -205,9 +214,15 @@ void main() {
       // clicked axis (y) is wrong and only the shaft's `hasShaftTowards` can give
       // the cog the z axis (`RotatedPillarKineticBlock.getPreferredAxis`).
       final neighbours = {const KPos(0, 0, 1): _shaft(Dir.south)};
-      expect(cogwheelAxis(ctxFor(Dir.up, neighbours: neighbours), large: false), KAxis.z);
       expect(
-        _javaCogwheelAxis(javaFor(Dir.up, neighbours: neighbours), large: false),
+        cogwheelAxis(ctxFor(Dir.up, neighbours: neighbours), large: false),
+        KAxis.z,
+      );
+      expect(
+        _javaCogwheelAxis(
+          javaFor(Dir.up, neighbours: neighbours),
+          large: false,
+        ),
         KAxis.z,
       );
     });
@@ -216,9 +231,15 @@ void main() {
       // The existing cog turns on z; the west face was clicked (x axis), and
       // `CogWheelBlock.getAxisForPlacement` copies the clicked-on cog's axis.
       final neighbours = {const KPos(1, 0, 0): _cog(Dir.south)};
-      expect(cogwheelAxis(ctxFor(Dir.west, neighbours: neighbours), large: false), KAxis.z);
       expect(
-        _javaCogwheelAxis(javaFor(Dir.west, neighbours: neighbours), large: false),
+        cogwheelAxis(ctxFor(Dir.west, neighbours: neighbours), large: false),
+        KAxis.z,
+      );
+      expect(
+        _javaCogwheelAxis(
+          javaFor(Dir.west, neighbours: neighbours),
+          large: false,
+        ),
         KAxis.z,
       );
     });
@@ -255,11 +276,17 @@ void main() {
     test('sneaking keeps the clicked face axis even next to a shaft', () {
       final neighbours = {const KPos(0, 0, 1): _shaft(Dir.south)};
       expect(
-        cogwheelAxis(ctxFor(Dir.up, neighbours: neighbours, sneaking: true), large: false),
+        cogwheelAxis(
+          ctxFor(Dir.up, neighbours: neighbours, sneaking: true),
+          large: false,
+        ),
         KAxis.y,
       );
       expect(
-        _javaCogwheelAxis(javaFor(Dir.up, neighbours: neighbours, sneaking: true), large: false),
+        _javaCogwheelAxis(
+          javaFor(Dir.up, neighbours: neighbours, sneaking: true),
+          large: false,
+        ),
         KAxis.y,
       );
     });
@@ -331,34 +358,45 @@ void main() {
       expect(ctx.horizontal.opposite, Dir.north);
       expect(mechanicalPressFacing(ctx), Dir.west);
       // No shaft: the declared rule is already the Java answer.
-      expect(mechanicalPressFacing(pressCtx(const {})), pressCtx(const {}).horizontal.opposite);
+      expect(
+        mechanicalPressFacing(pressCtx(const {})),
+        pressCtx(const {}).horizontal.opposite,
+      );
     });
   });
 
   group('declared placement rules', () {
     test('every sail and bearing declares placement rules', () {
       for (final key in [..._bearingKeys, ..._sailKeys]) {
-        expect(_declaredRules(key), isNotEmpty, reason: '$key declares no placement rules');
+        expect(
+          _declaredRules(key),
+          isNotEmpty,
+          reason: '$key declares no placement rules',
+        );
       }
     });
 
     test('the declarations are the ones the Java rules need', () {
       // `sail.dart` (`SailBlock.getStateForPlacement`): the look direction, turned around.
       expect(_describe(sailPlacement), ['facing/lookingDirection/opposite']);
-      // `bearing_placement.dart` (`DirectionalKineticBlock.getStateForPlacement`): away from the
-      // player's look. The clicked face is not used at all; the shaft and sneaking branches are
-      // corrected in `bearing_blocks.dart`'s `onPlaced`.
-      expect(
-        _describe(_declaredRules('create:mechanical_bearing')),
-        ['facing/lookingDirection/opposite'],
-      );
+      // `bearing_placement.dart` (`DirectionalKineticBlock.getStateForPlacement`): a
+      // neighbouring shaft wins unless the player sneaks, otherwise the look decides, turned
+      // around unless the player sneaks. The clicked face is not used at all.
+      expect(_describe(_declaredRules('create:mechanical_bearing')), [
+        'facing/neighbourShaft/opposite',
+        'facing/lookingDirection/opposite',
+        'facing/lookingDirection',
+      ]);
     });
   });
 
   test('every look direction maps to its canonical yaw/pitch', () {
     _lookAngles.forEach((look, angles) {
       expect(nearestLookingDirection(angles.$1, angles.$2), look);
-      expect(horizontalDirection(angles.$1), look.isHorizontal ? look : Dir.south);
+      expect(
+        horizontalDirection(angles.$1),
+        look.isHorizontal ? look : Dir.south,
+      );
     });
   });
 }
@@ -386,8 +424,10 @@ final class _Layout {
 
 KState _shaft(Dir along) => KState('create:shaft', {'axis': along.axis.name});
 KState _cog(Dir along) => KState('create:cogwheel', {'axis': along.axis.name});
-KState _largeCog(Dir along) => KState('create:large_cogwheel', {'axis': along.axis.name});
-KState _facing(String block, Dir facing) => KState(block, {'facing': facing.name});
+KState _largeCog(Dir along) =>
+    KState('create:large_cogwheel', {'axis': along.axis.name});
+KState _facing(String block, Dir facing) =>
+    KState(block, {'facing': facing.name});
 
 Map<KPos, KState> _noNeighbours(KPos pos, Dir face) => const {};
 
@@ -403,22 +443,45 @@ final List<_Layout> _layouts = [
       pos.relative(Dir.south): _shaft(Dir.south),
     },
   ),
-  _Layout('cog-at-click', (pos, face) => {pos.relative(face.opposite): _cog(Dir.up)}),
+  _Layout(
+    'cog-at-click',
+    (pos, face) => {pos.relative(face.opposite): _cog(Dir.up)},
+  ),
   _Layout('large-cog-above-x', (pos, _) => {pos.above(): _largeCog(Dir.east)}),
   _Layout('large-cog-above-z', (pos, _) => {pos.above(): _largeCog(Dir.south)}),
-  _Layout('motor-east', (pos, _) => {pos.relative(Dir.east): _facing('create:creative_motor', Dir.west)}),
-  _Layout('crank-west', (pos, _) => {pos.relative(Dir.west): _facing('create:hand_crank', Dir.west)}),
+  _Layout(
+    'motor-east',
+    (pos, _) => {
+      pos.relative(Dir.east): _facing('create:creative_motor', Dir.west),
+    },
+  ),
+  _Layout(
+    'crank-west',
+    (pos, _) => {
+      pos.relative(Dir.west): _facing('create:hand_crank', Dir.west),
+    },
+  ),
   _Layout(
     'bearing-south',
-    (pos, _) => {pos.relative(Dir.south): _facing('create:mechanical_bearing', Dir.south)},
+    (pos, _) => {
+      pos.relative(Dir.south): _facing('create:mechanical_bearing', Dir.south),
+    },
   ),
   _Layout(
     'controller-below-x',
-    (pos, _) => {pos.below(): const KState('create:rotation_speed_controller', {'axis': 'x'})},
+    (pos, _) => {
+      pos.below(): const KState('create:rotation_speed_controller', {
+        'axis': 'x',
+      }),
+    },
   ),
   _Layout(
     'controller-below-z',
-    (pos, _) => {pos.below(): const KState('create:rotation_speed_controller', {'axis': 'z'})},
+    (pos, _) => {
+      pos.below(): const KState('create:rotation_speed_controller', {
+        'axis': 'z',
+      }),
+    },
   ),
 ];
 
@@ -431,15 +494,11 @@ final class _Target {
   final Map<String, String> Function(_Placement p, PlacementContext ctx) actual;
   final Map<String, String> Function(_Placement p) expected;
 
-  /// Set when the plugin is known to differ from Java today; holds the explanation.
-  final String? knownDivergence;
-
   const _Target(
     this.label,
     this.java, {
     required this.actual,
     required this.expected,
-    this.knownDivergence,
   });
 }
 
@@ -518,9 +577,6 @@ List<_Target> _targets() => [
       'DirectionalKineticBlock.getStateForPlacement (BearingBlock)',
       actual: (p, _) => _applyHostRules(_declaredRules(key), _HostInput.of(p)),
       expected: (p) => {'facing': _javaDirectionalFacing(p).name},
-      knownDivergence: 'the rule list is the no-shaft, not-sneaking branch of '
-          'DirectionalKineticBlock.getStateForPlacement; getPreferredFacing is corrected in '
-          'bearing_blocks.dart onPlaced',
     ),
   for (final key in _sailKeys)
     _Target(
@@ -560,9 +616,9 @@ List<PlacementRule> _declaredRules(String blockKey) {
 
 /// `property/source/opposite` of every rule, for assertions.
 List<String> _describe(List<PlacementRule> rules) => [
-  for (final r in rules) '${r.property}/${r.source.name}${r.opposite ? '/opposite' : ''}',
+  for (final r in rules)
+    '${r.property}/${r.source.name}${r.opposite ? '/opposite' : ''}',
 ];
-
 
 // -- The host's rule evaluation --------------------------------------------------------------
 
@@ -575,12 +631,16 @@ final class _HostInput {
   final double pitch;
   final bool sneaking;
 
+  /// `PlacementContext.neighbours`: what is next to the placed block.
+  final KState Function(KPos pos) stateAt;
+
   const _HostInput({
     required this.face,
     required this.look,
     required this.horizontal,
     required this.pitch,
     required this.sneaking,
+    required this.stateAt,
   });
 
   factory _HostInput.of(_Placement p) => _HostInput(
@@ -589,14 +649,61 @@ final class _HostInput {
     horizontal: p.horizontal,
     pitch: p.pitch,
     sneaking: p.sneaking,
+    stateAt: p.stateAt,
   );
 }
 
+/// `ShaftNeighbour` + `PlacementContext::has_shaft_towards`: the neighbour in [direction] is in
+/// the rule's tag and its property points into the placed block.
+bool _hostShaftTowards(ShaftNeighbour rule, KState neighbour, Dir direction) {
+  final tagged = switch (rule.tag) {
+    shaftTag => shaftPaths.contains(neighbour.path),
+    facingShaftTag => facingShaftPaths.contains(neighbour.path),
+    reverseFacingShaftTag => reverseFacingShaftPaths.contains(neighbour.path),
+    _ => false,
+  };
+  if (!tagged) return false;
+  final value = switch (rule.property) {
+    'axis' => neighbour.axisOf('axis')?.name,
+    'facing' => neighbour.dirOf('facing')?.name,
+    _ => null,
+  };
+  if (value == null) return false;
+  return switch (rule.kind) {
+    ShaftKind.axis => value == direction.axis.name,
+    ShaftKind.facing => value == direction.name,
+    ShaftKind.facingOpposite => value == direction.opposite.name,
+  };
+}
+
+/// `PlacementContext::shaft_neighbour_direction`: `DirectionalKineticBlock.getPreferredFacing`,
+/// including the give-up when two sides on different axes connect.
+Dir? _hostShaftNeighbourDirection(
+  List<ShaftNeighbour> rules,
+  _HostInput input,
+) {
+  Dir? preferred;
+  for (final direction in Dir.values) {
+    final neighbour = input.stateAt(KPos.zero.relative(direction));
+    if (!rules.any((rule) => _hostShaftTowards(rule, neighbour, direction))) {
+      continue;
+    }
+    if (preferred != null && preferred.axis != direction.axis) return null;
+    preferred = direction;
+  }
+  return preferred;
+}
+
 /// `Block::placement_rules`: the first rule that gives a value for a property wins.
-Map<String, String> _applyHostRules(List<PlacementRule> rules, _HostInput input) {
+Map<String, String> _applyHostRules(
+  List<PlacementRule> rules,
+  _HostInput input,
+) {
   final out = <String, String>{};
   for (final rule in rules) {
     if (out.containsKey(rule.property)) continue;
+    if (rule.whenSneaking != null && rule.whenSneaking != input.sneaking)
+      continue;
     final value = _hostValue(rule, input);
     if (value != null) out[rule.property] = value;
   }
@@ -623,7 +730,8 @@ String? _hostValue(PlacementRule rule, _HostInput input) {
     case PlacementSourceKind.clickedHalf:
       // The click height is not part of this matrix; the middle of the face is the default.
       const cursorY = 0.5;
-      final bottom = input.face != Dir.down && (input.face == Dir.up || cursorY <= 0.5);
+      final bottom =
+          input.face != Dir.down && (input.face == Dir.up || cursorY <= 0.5);
       return bottom != opposite ? 'bottom' : 'top';
     case PlacementSourceKind.verticalLook:
       final threshold = rule.pitch ?? 90;
@@ -635,6 +743,10 @@ String? _hostValue(PlacementRule rule, _HostInput input) {
       return '${false != opposite}';
     case PlacementSourceKind.sneaking:
       return '${input.sneaking != opposite}';
+    case PlacementSourceKind.neighbourShaft:
+      final direction = _hostShaftNeighbourDirection(rule.shafts, input);
+      if (direction == null) return null;
+      return _pick(direction, opposite);
     case PlacementSourceKind.constant:
       return rule.constantValue;
   }
@@ -670,7 +782,11 @@ final class _Placement {
 
 /// `IRotate` of the blocks the matrix puts in the world.
 bool _javaRotates(KState state) => switch (state.path) {
-  'shaft' || 'cogwheel' || 'large_cogwheel' || 'encased_shaft' || 'encased_cogwheel' => true,
+  'shaft' ||
+  'cogwheel' ||
+  'large_cogwheel' ||
+  'encased_shaft' ||
+  'encased_cogwheel' => true,
   'rotation_speed_controller' => true,
   'creative_motor' || 'hand_crank' || 'mechanical_bearing' => true,
   _ => false,
@@ -679,12 +795,17 @@ bool _javaRotates(KState state) => switch (state.path) {
 /// `IRotate.hasShaftTowards` of the blocks the matrix puts in the world.
 bool _javaHasShaftTowards(KState state, Dir face) => switch (state.path) {
   // AbstractShaftBlock / RotatedPillarKineticBlock / HorizontalAxisKineticBlock: along the axis.
-  'shaft' || 'cogwheel' || 'large_cogwheel' || 'encased_shaft' || 'encased_cogwheel' ||
+  'shaft' ||
+  'cogwheel' ||
+  'large_cogwheel' ||
+  'encased_shaft' ||
+  'encased_cogwheel' ||
   'rotation_speed_controller' => face.axis == (state.axisOf('axis') ?? KAxis.y),
   // CreativeMotorBlock: the facing side.
   'creative_motor' => face == (state.dirOf('facing') ?? Dir.north),
   // HandCrankBlock / BearingBlock: the side opposite the facing.
-  'hand_crank' || 'mechanical_bearing' => face == (state.dirOf('facing') ?? Dir.north).opposite,
+  'hand_crank' ||
+  'mechanical_bearing' => face == (state.dirOf('facing') ?? Dir.north).opposite,
   _ => false,
 };
 
@@ -696,8 +817,9 @@ bool _javaIsLargeCog(KState state) => state.path == 'large_cogwheel';
 
 /// `IRotate.getRotationAxis` of the blocks the matrix puts in the world.
 KAxis _javaRotationAxis(KState state) => switch (state.path) {
-  'creative_motor' || 'hand_crank' || 'mechanical_bearing' =>
-    (state.dirOf('facing') ?? Dir.north).axis,
+  'creative_motor' ||
+  'hand_crank' ||
+  'mechanical_bearing' => (state.dirOf('facing') ?? Dir.north).axis,
   _ => state.axisOf('axis') ?? KAxis.y,
 };
 
@@ -743,7 +865,8 @@ KAxis _javaEncasedShaftAxis(_Placement c) {
 /// `DirectionalKineticBlock.getStateForPlacement`.
 Dir _javaDirectionalFacing(_Placement c) {
   final preferred = _javaPreferredFacing(c, Dir.values);
-  if (preferred == null || c.sneaking) return c.sneaking ? c.look : c.look.opposite;
+  if (preferred == null || c.sneaking)
+    return c.sneaking ? c.look : c.look.opposite;
   return preferred.opposite;
 }
 
@@ -792,7 +915,8 @@ KAxis _javaSpeedControllerAxis(_Placement c) {
   final above = c.stateAt(c.pos.above());
   if (_javaIsLargeCog(above)) {
     final axis = above.axisOf('axis');
-    if (axis != null && axis.isHorizontal) return axis == KAxis.x ? KAxis.z : KAxis.x;
+    if (axis != null && axis.isHorizontal)
+      return axis == KAxis.x ? KAxis.z : KAxis.x;
   }
   final preferred = _javaPreferredFacing(c, Dir.horizontals);
   if (preferred != null) return preferred.axis;
@@ -817,12 +941,16 @@ bool _prefersConnectionTo(_Placement c, Dir facing, {required bool shaftAxis}) {
   // GaugeBlock.getStateForPlacement: a gauge put onto a shaft's end takes its facing from the look.
   final face = c.face;
   final placedOnState = c.stateAt(c.placedOnPos);
-  if (_javaRotates(placedOnState) && _javaHasShaftTowards(placedOnState, face)) {
+  if (_javaRotates(placedOnState) &&
+      _javaHasShaftTowards(placedOnState, face)) {
     final lookPositive = c.look.isPositive;
     if (face.axis == KAxis.x) {
       return (facing: lookPositive ? Dir.north : Dir.south, alongFirst: true);
     } else if (face.axis == KAxis.y) {
-      return (facing: c.horizontal.opposite, alongFirst: c.horizontal.axis == KAxis.x);
+      return (
+        facing: c.horizontal.opposite,
+        alongFirst: c.horizontal.axis == KAxis.x,
+      );
     } else {
       return (facing: lookPositive ? Dir.west : Dir.east, alongFirst: false);
     }
@@ -838,8 +966,16 @@ bool _prefersConnectionTo(_Placement c, Dir facing, {required bool shaftAxis}) {
     final positivePerpendicular = faceAxis == KAxis.x ? Dir.south : Dir.east;
     final shaftAbove = _prefersConnectionTo(c, Dir.up, shaftAxis: true);
     final shaftBelow = _prefersConnectionTo(c, Dir.down, shaftAxis: true);
-    final preferLeft = _prefersConnectionTo(c, positivePerpendicular, shaftAxis: false);
-    final preferRight = _prefersConnectionTo(c, positivePerpendicular.opposite, shaftAxis: false);
+    final preferLeft = _prefersConnectionTo(
+      c,
+      positivePerpendicular,
+      shaftAxis: false,
+    );
+    final preferRight = _prefersConnectionTo(
+      c,
+      positivePerpendicular.opposite,
+      shaftAxis: false,
+    );
     if (shaftAbove || shaftBelow || preferLeft || preferRight) {
       alongFirst = faceAxis == KAxis.x;
     }
@@ -876,5 +1012,6 @@ bool _sameProps(Map<String, String> a, Map<String, String> b) {
   return true;
 }
 
-String _fmt(Map<String, String> props) =>
-    props.isEmpty ? '<nothing>' : props.entries.map((e) => '${e.key}=${e.value}').join(',');
+String _fmt(Map<String, String> props) => props.isEmpty
+    ? '<nothing>'
+    : props.entries.map((e) => '${e.key}=${e.value}').join(',');

@@ -51282,6 +51282,38 @@ return tmp11;
 }
 }
 const structures = _Imported$Structures();
+/// How the property of a neighbour says where its shaft points, see `shaft-neighbour`.
+enum ShaftKind {
+/// The property lists a direction (`facing`): the shaft points into the placed block when
+/// the value is the direction from the placed block to the neighbour, which is
+/// `IRotate.hasShaftTowards` of a directional block (`face == facing.getOpposite()`).
+  facing('facing'),
+/// The property lists an axis (`axis`): the shaft points into the placed block when the
+/// direction from the neighbour to the placed block runs along that axis.
+  axis('axis'),
+/// The property lists a direction (`facing`): the shaft points into the placed block when
+/// the value is the opposite of the direction from the placed block to the neighbour, like
+/// Create's creative motor (`face == facing`).
+  facingOpposite('facing-opposite');
+  const ShaftKind(this.wireName);
+  /// The name of this case in the WIT (kebab-case).
+  final String wireName;
+  /// The case called [wireName] in the WIT, or `null` if there is none.
+  static ShaftKind? fromWireName(String wireName) => _byWireName[wireName];
+  static final Map<String, ShaftKind> _byWireName = {for (final value in values) value.wireName: value};
+}
+/// A neighbour that has a shaft pointing into the placed block, like Create's
+/// `IRotate.hasShaftTowards`. Only the blocks a plugin registered are read, from their
+/// registration properties; a vanilla neighbour never has a shaft.
+final class ShaftNeighbour {
+/// Blocks that count, by tag (`create:shafts`).
+  final String tag;
+/// The property that says where the shaft points (`axis`, `facing`).
+  final String property;
+  final ShaftKind kind;
+  const ShaftNeighbour({required this.tag, required this.property, required this.kind, });
+  ShaftNeighbour copyWith({String? tag, String? property, ShaftKind? kind, }) => ShaftNeighbour(tag: tag ?? this.tag, property: property ?? this.property, kind: kind ?? this.kind, );
+}
 /// Where a rule takes the value of its property from. The property must list the value names
 /// given for each source.
 sealed class PlacementSource {
@@ -51334,6 +51366,15 @@ final class PlacementSourceInWater extends PlacementSource {
 final class PlacementSourceSneaking extends PlacementSource {
   const PlacementSourceSneaking();
 }
+/// The direction of the neighbour that has a shaft pointing into the placed block: `down`,
+/// `up`, `north`, `south`, `west`, `east`. None when no neighbour has one, or when two
+/// neighbours on different axes both have one (the give-up of
+/// `DirectionalKineticBlock.getPreferredFacing`). For a bearing, `opposite` makes the
+/// bearing face away from the shaft.
+final class PlacementSourceNeighbourShaft extends PlacementSource {
+  final List<ShaftNeighbour> value;
+  const PlacementSourceNeighbourShaft(this.value);
+}
 /// Always this value, useful as the last rule of a fallback.
 final class PlacementSourceConstant extends PlacementSource {
   final String value;
@@ -51346,8 +51387,11 @@ final class PlacementRule {
 /// Use the opposite of the source's value (`north` for `south`, `top` for `bottom`, `false`
 /// for `true`). Not allowed for `clicked-axis` and `constant`.
   final bool opposite;
-  const PlacementRule({required this.property, required this.source, required this.opposite, });
-  PlacementRule copyWith({String? property, PlacementSource? source, bool? opposite, }) => PlacementRule(property: property ?? this.property, source: source ?? this.source, opposite: opposite ?? this.opposite, );
+/// Only apply the rule when the player sneaks (`true`) or does not sneak (`false`). A rule
+/// that does not apply leaves the property to the next rule. None always applies.
+  final bool? whenSneaking;
+  const PlacementRule({required this.property, required this.source, required this.opposite, required this.whenSneaking, });
+  PlacementRule copyWith({String? property, PlacementSource? source, bool? opposite, bool? whenSneaking, bool clearWhenSneaking = false, }) => PlacementRule(property: property ?? this.property, source: source ?? this.source, opposite: opposite ?? this.opposite, whenSneaking: clearWhenSneaking ? null : (whenSneaking ?? this.whenSneaking), );
 }
 /// How placing a custom block chooses its property values, like vanilla's `getStateForPlacement`.
 /// 
@@ -51363,7 +51407,8 @@ final class PlacementRule {
 abstract interface class BlockPlacement {
 /// Sets the placement rules of a block registered with `register-block`, at most 64. Fails for
 /// an unknown block or property, a value the property does not list, `opposite` where it is not
-/// allowed, a pitch out of range, other rules than before, or when registration is closed.
+/// allowed, a pitch out of range, an empty tag or property in a `neighbour-shaft`, other rules
+/// than before, or when registration is closed.
 i1.Result<void, String> setBlockPlacementRules({required String blockKey, required List<PlacementRule> rules, });
 }
 @pragma("wasm:import", r"component._import1318")
@@ -51375,16 +51420,16 @@ i1.Result<void, String> setBlockPlacementRules({required String blockKey, requir
 final _cleanups = <void Function()>[];
 final tmp0 = i1.AllocatedString.allocateUtf16(blockKey);
 _cleanups.add(tmp0.free);
-final tmp14 = rules.length;
-final tmp15 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(24 * tmp14));
-for (var i = 0; i < tmp14; i++) {
-final tmp16 = rules[i];
-final elementPtr = i0.WasmI32.fromInt(tmp15.toIntUnsigned() + i * 24);
-final tmp1 = i1.AllocatedString.allocateUtf16(tmp16.property);
+final tmp24 = rules.length;
+final tmp25 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(24 * tmp24));
+for (var i = 0; i < tmp24; i++) {
+final tmp26 = rules[i];
+final elementPtr = i0.WasmI32.fromInt(tmp25.toIntUnsigned() + i * 24);
+final tmp1 = i1.AllocatedString.allocateUtf16(tmp26.property);
 _cleanups.add(tmp1.free);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.packedLength, offset: 4);
 i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp1.ptr, offset: 0);
-switch (tmp16.source) {
+switch (tmp26.source) {
 case PlacementSourceHorizontalFacing():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(0), offset: 8);
 
@@ -51416,35 +51461,68 @@ i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(8), offset: 8);
 case PlacementSourceSneaking():
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(9), offset: 8);
 
-case PlacementSourceConstant(value: final tmp12):
+case PlacementSourceNeighbourShaft(value: final tmp12):
 i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(10), offset: 8);
-final tmp13 = i1.AllocatedString.allocateUtf16(tmp12);
+final tmp15 = tmp12.length;
+final tmp16 = i1.mallocAligned(i0.WasmI32.fromInt(4), i0.WasmI32.fromInt(20 * tmp15));
+for (var i = 0; i < tmp15; i++) {
+final tmp17 = tmp12[i];
+final elementPtr = i0.WasmI32.fromInt(tmp16.toIntUnsigned() + i * 20);
+final tmp13 = i1.AllocatedString.allocateUtf16(tmp17.tag);
 _cleanups.add(tmp13.free);
-i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp13.packedLength, offset: 16);
-i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp13.ptr, offset: 12);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp13.packedLength, offset: 4);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp13.ptr, offset: 0);
+final tmp14 = i1.AllocatedString.allocateUtf16(tmp17.property);
+_cleanups.add(tmp14.free);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp14.packedLength, offset: 12);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp14.ptr, offset: 8);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromInt(tmp17.kind.index), offset: 16);
 
 }
-i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp16.opposite), offset: 20);
+final tmp18 = i0.WasmI32.fromInt(tmp15);
+_cleanups.add(() { i1.dartFree(tmp16, i0.WasmI32.fromInt(20 * tmp15), const i0.WasmI32(4)); });
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp18, offset: 16);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp16, offset: 12);
+
+case PlacementSourceConstant(value: final tmp19):
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(11), offset: 8);
+final tmp20 = i1.AllocatedString.allocateUtf16(tmp19);
+_cleanups.add(tmp20.free);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp20.packedLength, offset: 16);
+i1.memory.storeInt32(elementPtr.toIntUnsigned(), tmp20.ptr, offset: 12);
 
 }
-final tmp17 = i0.WasmI32.fromInt(tmp14);
-_cleanups.add(() { i1.dartFree(tmp15, i0.WasmI32.fromInt(24 * tmp14), const i0.WasmI32(4)); });
-var tmp18 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
-_import1318(tmp0.ptr, tmp0.packedLength, tmp15, tmp17, tmp18);
-for (final cleanup in _cleanups) { cleanup(); }
-final tmp19 = i1.memory.loadUint8(tmp18.toIntUnsigned(), offset: 0);
-late final i1.Result<void, String> tmp22;
-if (tmp19.toIntUnsigned() == 0) {
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp26.opposite), offset: 20);
+final tmp23 = tmp26.whenSneaking;
+if (tmp23 != null) {
+final tmp22 = tmp23;
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(1), offset: 21);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), i0.WasmI32.fromBool(tmp22), offset: 22);
 
-tmp22 = i1.Result.ok(null);
 } else {
-final tmp20 = i1.memory.loadInt32(tmp18.toIntUnsigned(), offset: 4);
-final tmp21 = i1.memory.loadInt32(tmp18.toIntUnsigned(), offset: 8);
+i1.memory.storeInt8(elementPtr.toIntUnsigned(), const i0.WasmI32(0), offset: 21);
 
-tmp22 = i1.Result.error(i1.AllocatedString.read(tmp20, tmp21));
 }
-i1.dartFree(tmp18, const i0.WasmI32(12), const i0.WasmI32(4));
-return tmp22;
+
+}
+final tmp27 = i0.WasmI32.fromInt(tmp24);
+_cleanups.add(() { i1.dartFree(tmp25, i0.WasmI32.fromInt(24 * tmp24), const i0.WasmI32(4)); });
+var tmp28 = i1.mallocAligned(const i0.WasmI32(4), const i0.WasmI32(12));
+_import1318(tmp0.ptr, tmp0.packedLength, tmp25, tmp27, tmp28);
+for (final cleanup in _cleanups) { cleanup(); }
+final tmp29 = i1.memory.loadUint8(tmp28.toIntUnsigned(), offset: 0);
+late final i1.Result<void, String> tmp32;
+if (tmp29.toIntUnsigned() == 0) {
+
+tmp32 = i1.Result.ok(null);
+} else {
+final tmp30 = i1.memory.loadInt32(tmp28.toIntUnsigned(), offset: 4);
+final tmp31 = i1.memory.loadInt32(tmp28.toIntUnsigned(), offset: 8);
+
+tmp32 = i1.Result.error(i1.AllocatedString.read(tmp30, tmp31));
+}
+i1.dartFree(tmp28, const i0.WasmI32(12), const i0.WasmI32(4));
+return tmp32;
 
 }
 }

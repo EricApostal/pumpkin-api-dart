@@ -36,8 +36,58 @@ enum PlacementSourceKind {
   /// `true` when the player sneaks.
   sneaking,
 
+  /// The direction of the neighbour whose shaft points into the placed block (see
+  /// [ShaftNeighbour]); none when no neighbour has one or two lie on different
+  /// axes.
+  neighbourShaft,
+
   /// Always [PlacementRule.constant]'s value.
   constant,
+}
+
+/// How a [ShaftNeighbour]'s property says where its shaft points.
+enum ShaftKind {
+  /// The property lists a direction (`facing`): the shaft points into the placed
+  /// block when the value is the direction from the placed block to the
+  /// neighbour (`IRotate.hasShaftTowards` of a directional block).
+  facing,
+
+  /// The property lists an axis (`axis`): the shaft points into the placed block
+  /// when the direction from the neighbour to it runs along that axis.
+  axis,
+
+  /// The property lists a direction (`facing`): the shaft points into the placed
+  /// block when the value is the opposite of the direction from the placed block
+  /// to the neighbour (Create's creative motor, `face == facing`).
+  facingOpposite,
+}
+
+/// A neighbour that has a shaft pointing into the placed block, like Create's
+/// `IRotate.hasShaftTowards`. Only plugin blocks are read, from their
+/// registration properties; a vanilla neighbour never has a shaft.
+final class ShaftNeighbour {
+  /// Blocks that count, by tag (`create:shafts`).
+  final String tag;
+
+  /// The property that says where the shaft points (`axis`, `facing`).
+  final String property;
+
+  final ShaftKind kind;
+
+  const ShaftNeighbour(this.tag, this.property, this.kind);
+
+  @override
+  bool operator ==(Object other) =>
+      other is ShaftNeighbour &&
+      other.tag == tag &&
+      other.property == property &&
+      other.kind == kind;
+
+  @override
+  int get hashCode => Object.hash(tag, property, kind);
+
+  @override
+  String toString() => '$tag.$property (${kind.name})';
 }
 
 /// Sets one property of a block when a player places it. Rules are tried in
@@ -58,46 +108,173 @@ final class PlacementRule {
   /// The value of a [PlacementSourceKind.constant].
   final String? constantValue;
 
-  const PlacementRule._(this.property, this.source, this.opposite, {this.pitch, this.constantValue});
+  /// The neighbours that count for a [PlacementSourceKind.neighbourShaft].
+  final List<ShaftNeighbour> shafts;
 
-  const PlacementRule.horizontalFacing(String property, {bool opposite = false})
-    : this._(property, PlacementSourceKind.horizontalFacing, opposite);
+  /// Only apply the rule when the player sneaks (`true`) or does not sneak
+  /// (`false`). A rule that does not apply leaves the property to the next rule.
+  final bool? whenSneaking;
 
-  const PlacementRule.lookingDirection(String property, {bool opposite = false})
-    : this._(property, PlacementSourceKind.lookingDirection, opposite);
+  const PlacementRule._(
+    this.property,
+    this.source,
+    this.opposite, {
+    this.pitch,
+    this.constantValue,
+    this.shafts = const [],
+    this.whenSneaking,
+  });
 
-  const PlacementRule.clickedFace(String property, {bool opposite = false})
-    : this._(property, PlacementSourceKind.clickedFace, opposite);
+  const PlacementRule.horizontalFacing(
+    String property, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.horizontalFacing,
+         opposite,
+         whenSneaking: whenSneaking,
+       );
+
+  const PlacementRule.lookingDirection(
+    String property, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.lookingDirection,
+         opposite,
+         whenSneaking: whenSneaking,
+       );
+
+  const PlacementRule.clickedFace(
+    String property, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.clickedFace,
+         opposite,
+         whenSneaking: whenSneaking,
+       );
 
   /// The clicked face, but `up` gives `down`: for hopper-like facing properties.
-  const PlacementRule.clickedFaceDown(String property, {bool opposite = false})
-    : this._(property, PlacementSourceKind.clickedFaceDown, opposite);
+  const PlacementRule.clickedFaceDown(
+    String property, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.clickedFaceDown,
+         opposite,
+         whenSneaking: whenSneaking,
+       );
 
-  const PlacementRule.clickedAxis(String property) : this._(property, PlacementSourceKind.clickedAxis, false);
+  const PlacementRule.clickedAxis(String property, {bool? whenSneaking})
+    : this._(
+        property,
+        PlacementSourceKind.clickedAxis,
+        false,
+        whenSneaking: whenSneaking,
+      );
 
   /// The horizontal axis of the player's look direction: `x` or `z`.
-  const PlacementRule.horizontalAxis(String property)
-    : this._(property, PlacementSourceKind.horizontalAxis, false);
+  const PlacementRule.horizontalAxis(String property, {bool? whenSneaking})
+    : this._(
+        property,
+        PlacementSourceKind.horizontalAxis,
+        false,
+        whenSneaking: whenSneaking,
+      );
 
-  const PlacementRule.clickedHalf(String property, {bool opposite = false})
-    : this._(property, PlacementSourceKind.clickedHalf, opposite);
+  const PlacementRule.clickedHalf(
+    String property, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.clickedHalf,
+         opposite,
+         whenSneaking: whenSneaking,
+       );
 
   /// `up`/`down` from a pitch of [pitch] degrees or more (above 0, at most
   /// 90), `horizontal` in between.
-  const PlacementRule.verticalLook(String property, double pitch, {bool opposite = false})
-    : this._(property, PlacementSourceKind.verticalLook, opposite, pitch: pitch);
+  const PlacementRule.verticalLook(
+    String property,
+    double pitch, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.verticalLook,
+         opposite,
+         pitch: pitch,
+         whenSneaking: whenSneaking,
+       );
 
-  const PlacementRule.inWater(String property, {bool opposite = false})
-    : this._(property, PlacementSourceKind.inWater, opposite);
+  const PlacementRule.inWater(
+    String property, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.inWater,
+         opposite,
+         whenSneaking: whenSneaking,
+       );
 
-  const PlacementRule.sneaking(String property, {bool opposite = false})
-    : this._(property, PlacementSourceKind.sneaking, opposite);
+  const PlacementRule.sneaking(
+    String property, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.sneaking,
+         opposite,
+         whenSneaking: whenSneaking,
+       );
 
-  const PlacementRule.constant(String property, String value)
-    : this._(property, PlacementSourceKind.constant, false, constantValue: value);
+  /// The direction of the neighbour whose shaft points into the placed block,
+  /// read from [shafts] (like Create's `IRotate.hasShaftTowards`). Gives no
+  /// value when no neighbour has one, or when two lie on different axes.
+  const PlacementRule.neighbourShaft(
+    String property,
+    List<ShaftNeighbour> shafts, {
+    bool opposite = false,
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.neighbourShaft,
+         opposite,
+         shafts: shafts,
+         whenSneaking: whenSneaking,
+       );
+
+  const PlacementRule.constant(
+    String property,
+    String value, {
+    bool? whenSneaking,
+  }) : this._(
+         property,
+         PlacementSourceKind.constant,
+         false,
+         constantValue: value,
+         whenSneaking: whenSneaking,
+       );
 
   @override
-  String toString() => '$property <- ${source.name}${opposite ? ' (opposite)' : ''}';
+  String toString() {
+    final sneaking = switch (whenSneaking) {
+      null => '',
+      true => ' (sneaking)',
+      false => ' (not sneaking)',
+    };
+    final neighbours = source == PlacementSourceKind.neighbourShaft
+        ? ' [${shafts.join(', ')}]'
+        : '';
+    return '$property <- ${source.name}${opposite ? ' (opposite)' : ''}$sneaking$neighbours';
+  }
 }
 
 /// The host's block placement rules (`block-placement.wit`), permission

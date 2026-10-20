@@ -37,6 +37,7 @@ final class HostBlockPlacement implements BlockPlacementBackend {
   static generated.PlacementRule _toWire(PlacementRule rule) => generated.PlacementRule(
     property: rule.property,
     opposite: rule.opposite,
+    whenSneaking: rule.whenSneaking,
     source: switch (rule.source) {
       PlacementSourceKind.horizontalFacing => const generated.PlacementSourceHorizontalFacing(),
       PlacementSourceKind.lookingDirection => const generated.PlacementSourceLookingDirection(),
@@ -48,6 +49,18 @@ final class HostBlockPlacement implements BlockPlacementBackend {
       PlacementSourceKind.verticalLook => generated.PlacementSourceVerticalLook(rule.pitch ?? 90),
       PlacementSourceKind.inWater => const generated.PlacementSourceInWater(),
       PlacementSourceKind.sneaking => const generated.PlacementSourceSneaking(),
+      PlacementSourceKind.neighbourShaft => generated.PlacementSourceNeighbourShaft([
+        for (final shaft in rule.shafts)
+          generated.ShaftNeighbour(
+            tag: shaft.tag,
+            property: shaft.property,
+            kind: switch (shaft.kind) {
+              ShaftKind.facing => generated.ShaftKind.facing,
+              ShaftKind.axis => generated.ShaftKind.axis,
+              ShaftKind.facingOpposite => generated.ShaftKind.facingOpposite,
+            },
+          ),
+      ]),
       PlacementSourceKind.constant => generated.PlacementSourceConstant(rule.constantValue ?? ''),
     },
   );

@@ -10,20 +10,55 @@
 // No host imports: the placement tests use this file on the plain Dart VM.
 import 'dart:math' as math;
 
-import 'package:pumpkin_api/pumpkin_api_core.dart' show PlacementRule;
+import 'package:pumpkin_api/pumpkin_api_core.dart'
+    show PlacementRule, PlacementSourceKind, ShaftKind, ShaftNeighbour;
 
 import '../../common/direction.dart';
 import '../../common/pos.dart';
+import '../../kinetics/block_data.dart'
+    show facingShaftTag, reverseFacingShaftTag, shaftTag;
 
-/// The placement rules the host applies when a bearing is placed.
+/// The neighbours that count for a bearing's `getPreferredFacing`, each with the property that
+/// says where its shaft points (the tags are the sets in `kinetics/block_data.dart`):
 ///
-/// `DirectionalKineticBlock.getStateForPlacement`: without a neighbouring shaft and without
-/// sneaking, `FACING` is `getNearestLookingDirection().getOpposite()` — the bearing faces the
-/// player. The host cannot express the other two branches (`getPreferredFacing`, and the sneaking
-/// player who keeps the look direction), so `bearing_blocks.dart` corrects the state in
-/// `onPlaced` with [bearingFacingForPlacement].
+/// * [shaftTag]: `hasShaftTowards(face) == (face.getAxis() == axis)`, [ShaftKind.axis].
+/// * [facingShaftTag]: `face == FACING.getOpposite()`, so `FACING` points from the bearing to
+///   the neighbour, [ShaftKind.facing].
+/// * [reverseFacingShaftTag]: `face == FACING`, so `FACING` points from the neighbour to the
+///   bearing, [ShaftKind.facingOpposite].
+const List<ShaftNeighbour> bearingShaftNeighbours = [
+  ShaftNeighbour(shaftTag, 'axis', ShaftKind.axis),
+  ShaftNeighbour(facingShaftTag, 'facing', ShaftKind.facing),
+  ShaftNeighbour(reverseFacingShaftTag, 'facing', ShaftKind.facingOpposite),
+];
+
+/// The placement rules the host applies when a bearing is placed, in Java's order:
+///
+/// ```java
+/// Direction preferred = getPreferredFacing(context);
+/// if (preferred == null || (player != null && player.isShiftKeyDown())) {
+///     Direction nearest = context.getNearestLookingDirection();
+///     return defaultBlockState().setValue(FACING,
+///         sneaking ? nearest : nearest.getOpposite());
+/// }
+/// return defaultBlockState().setValue(FACING, preferred.getOpposite());
+/// ```
+///
+/// The host evaluates these before it writes the block (`DynamicBlock::on_place` in
+/// `crates/pumpkin-core/src/block/blocks/dynamic.rs`), so no `placed` hook has to rewrite the
+/// state — rewriting it there re-enters the placed hook and recursed once.
 const List<PlacementRule> bearingPlacementRules = [
-  PlacementRule.lookingDirection('facing', opposite: true),
+  // A neighbouring shaft decides, unless the player sneaks: `preferred.getOpposite()`.
+  PlacementRule.neighbourShaft(
+    'facing',
+    bearingShaftNeighbours,
+    opposite: true,
+    whenSneaking: false,
+  ),
+  // No shaft, not sneaking: the bearing faces the player (`nearest.getOpposite()`).
+  PlacementRule.lookingDirection('facing', opposite: true, whenSneaking: false),
+  // Sneaking keeps the look direction, whatever the neighbours are.
+  PlacementRule.lookingDirection('facing', whenSneaking: true),
 ];
 
 /// `DirectionalKineticBlock.getPreferredFacing`: the side a neighbouring shaft sticks into.
@@ -63,6 +98,39 @@ Direction bearingFacingForPlacement({
     return hasPlayer && sneaking ? nearestLooking : nearestLooking.opposite;
   }
   return preferred.opposite;
+}
+
+/// [bearingPlacementRules] evaluated like the host does: the first rule that applies and gives a
+/// value wins (`DynamicBlockInfo::state_for_placement` in
+/// `crates/pumpkin-data/src/block_registry.rs`). This is the `facing` a placed bearing gets, and
+/// it must equal [bearingFacingForPlacement].
+///
+/// [shaftTowards] is the same callback as [bearingPreferredFacing]'s.
+Direction bearingFacingFromRules(
+  Pos pos, {
+  required Direction nearestLooking,
+  required bool sneaking,
+  required bool Function(Pos neighbour, Direction side) shaftTowards,
+}) {
+  for (final rule in bearingPlacementRules) {
+    if (rule.whenSneaking != null && rule.whenSneaking != sneaking) continue;
+    final value = switch (rule.source) {
+      PlacementSourceKind.neighbourShaft => () {
+        final preferred = bearingPreferredFacing(pos, shaftTowards);
+        return preferred == null
+            ? null
+            : (rule.opposite ? preferred.opposite : preferred).serializedName;
+      }(),
+      PlacementSourceKind.lookingDirection =>
+        (rule.opposite ? nearestLooking.opposite : nearestLooking)
+            .serializedName,
+      _ => throw StateError('the bearing rules use ${rule.source.name}'),
+    };
+    final direction = value == null ? null : Direction.byName(value);
+    if (direction != null) return direction;
+  }
+  // `bearingPlacementRules` ends with an unconditional look rule, so this cannot happen.
+  throw StateError('the bearing placement rules gave no facing');
 }
 
 /// `BlockPlaceContext.getNearestLookingDirection()` from the player's look.

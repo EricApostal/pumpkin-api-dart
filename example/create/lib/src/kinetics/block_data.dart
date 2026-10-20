@@ -105,6 +105,41 @@ int? _itemMaxStack(String? itemKey) {
   return max == null || max == 64 ? null : max;
 }
 
+/// The blocks whose `hasShaftTowards` is `face.getAxis() == axis`: plain shafts, cogwheels, the
+/// encased shafts and the speed controller. Their `axis` property is read by [shaftTag].
+const Set<String> shaftPaths = {
+  'shaft',
+  'powered_shaft',
+  'cogwheel',
+  'large_cogwheel',
+  'andesite_encased_shaft',
+  'brass_encased_shaft',
+  'rotation_speed_controller',
+};
+
+/// The tag of [shaftPaths], for placement rules that look for a neighbouring shaft.
+const String shaftTag = 'create:shafts';
+
+/// The blocks whose `hasShaftTowards` is `face == FACING.getOpposite()`: their `facing` is the
+/// direction from the placed block to them (Create's hand crank and the bearings themselves, a
+/// bearing's shaft leaves through the side opposite its `facing`).
+const Set<String> facingShaftPaths = {
+  'hand_crank',
+  'mechanical_bearing',
+  'windmill_bearing',
+  'clockwork_bearing',
+};
+
+/// The tag of [facingShaftPaths].
+const String facingShaftTag = 'create:facing_shafts';
+
+/// The blocks whose `hasShaftTowards` is `face == FACING`: their `facing` is the direction from
+/// the neighbour to the placed block (Create's creative motor).
+const Set<String> reverseFacingShaftPaths = {'creative_motor'};
+
+/// The tag of [reverseFacingShaftPaths].
+const String reverseFacingShaftTag = 'create:reverse_facing_shafts';
+
 /// The data of `create:<path>`: manifest stats and properties, the shapes of
 /// [kineticShapeRules] unless overridden, Create's generated loot table.
 KineticBlockData kineticBlockData(
@@ -139,7 +174,15 @@ KineticBlockData kineticBlockData(
     drops: useLootTable
         ? BlockDrops.lootTable('create:blocks/${m.key}')
         : BlockDrops.selfItem,
-    tags: [for (final k in m.mineable) 'minecraft:mineable/$k'],
+    tags: [
+      for (final k in m.mineable) 'minecraft:mineable/$k',
+      // `IRotate.hasShaftTowards` is `face.getAxis() == AXIS` for these, which is what the
+      // `create:shafts` placement tag says: a placement rule of another block can read it
+      // (`PlacementRule.neighbourShaft`, see the bearings).
+      if (shaftPaths.contains(path)) shaftTag,
+      if (facingShaftPaths.contains(path)) facingShaftTag,
+      if (reverseFacingShaftPaths.contains(path)) reverseFacingShaftTag,
+    ],
     pistonBehavior:
         pistonBehavior ??
         kineticPistonBehavior[path] ??

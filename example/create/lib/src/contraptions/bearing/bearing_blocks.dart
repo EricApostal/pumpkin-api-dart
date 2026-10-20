@@ -6,9 +6,9 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/blocks.dart';
-import '../../common/direction.dart';
 import '../../api/wrenchable.dart';
 import '../../core/blocks.dart';
+import '../../kinetics/block_data.dart' show facingShaftTag;
 import '../blocks/actuator_runtime.dart';
 import 'bearing_block_entities.dart';
 import 'bearing_placement.dart';
@@ -30,18 +30,23 @@ List<CreateBlock> buildBearingBlocks() => [
   manifestBlock(
     'mechanical_bearing',
     placement: bearingPlacementRules,
+    // `BearingBlock.hasShaftTowards`: `face == FACING.getOpposite()`, so a bearing is a shaft
+    // neighbour of the same kind as the hand crank (`ShaftKind.facing`).
+    tags: const [facingShaftTag],
     behavior: bearingBehavior(mechanicalBearing),
     blockEntityType: mechanicalBearing,
   ),
   manifestBlock(
     'windmill_bearing',
     placement: bearingPlacementRules,
+    tags: const [facingShaftTag],
     behavior: bearingBehavior(windmillBearing),
     blockEntityType: windmillBearing,
   ),
   manifestBlock(
     'clockwork_bearing',
     placement: bearingPlacementRules,
+    tags: const [facingShaftTag],
     behavior: bearingBehavior(clockworkBearing),
     blockEntityType: clockworkBearing,
   ),

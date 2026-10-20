@@ -31,7 +31,7 @@ export 'src/bindings.g.dart'
         // The raw `block-placement`, `plugin-block-entity`, `menus` and `custom-components`
         // interfaces; use `BlockPlacements.host`, `BlockEntityRegistries.host` and the
         // `PluginBlockEntities`, `PluginMenus` and `CustomItemComponents` extensions.
-        BlockPlacement, blockPlacement, PlacementRule, PlacementSource, PlacementSourceHorizontalFacing, PlacementSourceLookingDirection, PlacementSourceClickedFace, PlacementSourceClickedAxis, PlacementSourceClickedHalf, PlacementSourceVerticalLook, PlacementSourceInWater, PlacementSourceSneaking, PlacementSourceConstant,
+        BlockPlacement, blockPlacement, PlacementRule, PlacementSource, PlacementSourceHorizontalFacing, PlacementSourceLookingDirection, PlacementSourceClickedFace, PlacementSourceClickedAxis, PlacementSourceClickedHalf, PlacementSourceVerticalLook, PlacementSourceInWater, PlacementSourceSneaking, PlacementSourceNeighbourShaft, PlacementSourceConstant, ShaftKind, ShaftNeighbour,
         PluginBlockEntity, pluginBlockEntity, PluginBlockEntityData, BlockEntityTypeEntry,
         Menus, menus, MenuTypeEntry, OpenMenuInfo,
         CustomComponents, customComponents, ComponentTypeEntry, CodecOp, CodecOpVarInt, CodecOpVarLong, CodecOpFlag, CodecOpByte, CodecOpShort, CodecOpInt, CodecOpLong, CodecOpFloat32, CodecOpFloat64, CodecOpText, CodecOpByteArray, CodecOpUuid, CodecOpFixedBytes, CodecOpNbt, CodecOpStack, CodecOpComponentPatch, CodecOpOptional, CodecOpRepeated, CodecOpSequence,

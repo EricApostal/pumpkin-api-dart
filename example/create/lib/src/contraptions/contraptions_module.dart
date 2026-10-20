@@ -6,7 +6,8 @@
 // See `docs/ARCHITECTURE.md` for the module contract.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../api/trains.dart' show CarriageContraptionAssembly;
+import '../api/trains.dart'
+    show CarriageContraptionAssembly, ConductorSeatLookup;
 import '../common/common.dart' show Direction;
 import '../core/module.dart';
 import '../core/registry.dart';
@@ -23,6 +24,7 @@ import 'actuators_registration.dart';
 import 'blocks/actuator_contract.dart';
 import 'blocks/actuator_runtime.dart';
 import 'core/contraption_type.dart';
+import 'core/entity_type_keys.dart' show reportedEntityTypeKey;
 import 'core/structure_info.dart';
 import 'entity/carriage_contraption_host.dart';
 import 'entity/contraption_collider.dart';
@@ -168,16 +170,23 @@ final class ContraptionsModule extends CreateModule {
       contraption.storage.handleSync(StorageSync.fromWire(fields), contraption);
     });
 
-    ctx.listen(Events.worldTick, (server, e) async {
-      await host.tick(e.targetWorld.getId());
+    ctx.onWorldTick((t) async {
+      // Nothing to collide and nothing to decay yet (the collision list keeps a
+      // dead contraption for a few ticks, so both have to be empty).
+      if (host.entities.isEmpty && ContraptionHandler.isEmpty) return;
+      await host.tick(t.worldId);
     });
 
     // `AbstractContraptionEntity.tick()` is the entity's own tick: the host only fires
     // `Events.entityTick` for a plugin type that opted in (`entity_tick_interval` is 0 otherwise,
     // `crates/pumpkin-core/src/world/mod.rs:1708-1734`). Without this every contraption exists,
     // is sent to the client and then never moves: no actor ticks, no passenger placement.
+    // The host reports the type with a `minecraft:` prefix even for a plugin key
+    // (`minecraft:create:contraption`), so the key is normalized before it is matched
+    // ([reportedEntityTypeKey]).
     ctx.listen(Events.entityTick, (server, e) async {
-      if (!_contraptionEntityKeys.contains(e.entityType)) return;
+      final type = reportedEntityTypeKey(e.entityType);
+      if (!_contraptionEntityKeys.contains(type)) return;
       await host.onEntityTick(e.entityId);
     });
     for (final key in _contraptionEntityKeys) {
@@ -199,6 +208,9 @@ final class ContraptionsModule extends CreateModule {
     ctx.services.provide<CarriageContraptionAssembly>(
       HostCarriageContraptionAssembly(host),
     );
+    // The schedule area's conductor interaction (`ScheduleItemEntityInteraction`): without this
+    // service right-clicking a conductor does nothing at all.
+    ctx.services.provide<ConductorSeatLookup>(HostConductorSeatLookup(host));
 
     // The station assembles carriages through `CarriageContraptionAssembly`, which is not one of
     // the contraption kinds above; the spawn needs the right entity type.
@@ -211,12 +223,12 @@ final class ContraptionsModule extends CreateModule {
 
     // `ContraptionCollider` treats a carriage entity as a train carriage: it runs over entities
     // and hurts them (`create:run_over`) when the config allows it.
-    ContraptionColliderHooks.isTrainCarriage =
-        (entity) => entity is HostCarriageContraptionEntity;
-    ContraptionColliderHooks.trainsCauseDamage =
-        () => TrainSettings.current.trainsCauseDamage;
-    ContraptionColliderHooks.damageRunOver =
-        (entity, damage) => entity.damageRunOver(damage);
+    ContraptionColliderHooks.isTrainCarriage = (entity) =>
+        entity is HostCarriageContraptionEntity;
+    ContraptionColliderHooks.trainsCauseDamage = () =>
+        TrainSettings.current.trainsCauseDamage;
+    ContraptionColliderHooks.damageRunOver = (entity, damage) =>
+        entity.damageRunOver(damage);
 
     loadActuatorContent(ctx);
     loadActorContent(ctx);
@@ -227,9 +239,9 @@ final class ContraptionsModule extends CreateModule {
     serverActuatorContentLoaded(runtime);
     serverActorContentLoaded(runtime);
     // The threshold switch reads a pulley's rope offset (`ThresholdSwitchObservable`).
-    runtime.services
-        .find<RedstoneObservables>()
-        ?.register(const PulleyObservableProbe());
+    runtime.services.find<RedstoneObservables>()?.register(
+      const PulleyObservableProbe(),
+    );
   }
 
   @override

@@ -1,13 +1,68 @@
 // `BasinRecipe.match` / `BasinRecipe.apply` (pure): matching a basin's items and fluids against
-// a processing recipe and consuming/producing them. Used by the basin's operators (mixer,
-// press) and testable without the host.
+// a recipe and consuming/producing them. Used by the basin's operators (mixer, press) and
+// testable without the host.
 import 'dart:math';
 
 import '../common/stack.dart';
 import '../common/storage.dart';
+import '../recipe/crafting_recipes.dart';
 import '../recipe/heat.dart';
 import '../recipe/ingredient.dart';
 import '../recipe/recipe.dart';
+
+/// `BasinRecipe.apply` takes any `Recipe`, not just a `BasinRecipe`: the press and the mixer run
+/// vanilla crafting recipes too (`matchStaticFilters`). This is that recipe as the basin needs
+/// it, over a `create:*` processing recipe or a vanilla crafting recipe.
+final class BasinRecipeRef {
+  final ProcessingRecipe? processing;
+  final CraftingRecipeEntry? crafting;
+
+  const BasinRecipeRef.processing(ProcessingRecipe this.processing)
+    : crafting = null;
+
+  const BasinRecipeRef.crafting(CraftingRecipeEntry this.crafting)
+    : processing = null;
+
+  /// `recipe.placementInfo().ingredients()` of a crafting recipe, the processing recipe's
+  /// ingredients otherwise.
+  List<Ingredient> get ingredients =>
+      crafting?.ingredients ?? processing!.ingredients;
+
+  /// `recipe instanceof BasinRecipe ? getFluidIngredients() : emptyList()`.
+  List<FluidIngredient> get fluidIngredients =>
+      processing?.fluidIngredients ?? const [];
+
+  /// `getFluidResults()` (`BasinRecipe` only).
+  List<PFluid> get fluidResults => processing?.fluidResults ?? const [];
+
+  /// `getRequiredHeat()`; a crafting recipe is `HeatCondition.NONE`.
+  HeatCondition get requiredHeat =>
+      processing?.requiredHeat ?? HeatCondition.none;
+
+  /// `BasinRecipe.getResultItem(recipe, registryAccess)`.
+  PStack get resultItem => crafting?.result ?? processing!.resultItem;
+
+  /// `ProcessingRecipe.getProcessingDuration()`; `StandardProcessingRecipe` only, so 0 for a
+  /// crafting recipe (the mixer's `processingTicks` then uses a recipe speed of 1).
+  int get processingDuration => processing?.processingDuration ?? 0;
+
+  /// `recipe.rollResults(random)`; a crafting recipe always assembles the same item
+  /// (`getResultItem`), empty or not.
+  List<PStack> rollResults(Random random) => crafting != null
+      ? [crafting!.result]
+      : processing!.rollResults(random);
+
+  /// `BasinRecipe.apply` only takes the remaining items of a `CraftingRecipe`
+  /// (`CraftingRecipe.getRemainingItems(remainderInput)`); a processing recipe produces none.
+  List<PStack> remainingItemsFor(List<PStack> consumed) =>
+      crafting?.remainingItemsFor(consumed) ?? const [];
+
+  /// Whether this is the vanilla crafting kind (for the filter and the outputs).
+  bool get isCrafting => crafting != null;
+
+  @override
+  String toString() => crafting?.toString() ?? processing!.toString();
+}
 
 /// What a basin offers to [BasinRecipeOps] (implemented by `BasinBlockEntity`).
 abstract interface class BasinRecipeHost {
@@ -41,13 +96,16 @@ abstract final class BasinRecipeOps {
   /// `BasinRecipe.match(basin, recipe)`.
   static bool matches(
     BasinRecipeHost host,
-    ProcessingRecipe recipe,
+    BasinRecipeRef recipe,
     TagLookup tags,
     Random random,
   ) {
     var filterTest = host.filterAccepts(recipe.resultItem);
-    // A recipe with only fluid results is filtered by its first fluid.
-    if (recipe.results.isEmpty && recipe.fluidResults.isNotEmpty) {
+    // A `BasinRecipe` with only fluid results is filtered by its first fluid.
+    final processing = recipe.processing;
+    if (processing != null &&
+        processing.results.isEmpty &&
+        recipe.fluidResults.isNotEmpty) {
       filterTest = host.filterAcceptsFluid(recipe.fluidResults.first);
     }
     if (!filterTest) return false;
@@ -58,7 +116,7 @@ abstract final class BasinRecipeOps {
   /// `BasinRecipe.apply(basin, recipe)`.
   static bool apply(
     BasinRecipeHost host,
-    ProcessingRecipe recipe,
+    BasinRecipeRef recipe,
     TagLookup tags,
     Random random, {
     required bool test,
@@ -76,6 +134,9 @@ abstract final class BasinRecipeOps {
       // Java re-creates the extracted counters for every pass.
       final extractedItems = List<int>.filled(items.slots, 0);
       final extractedFluids = List<int>.filled(tanks.length, 0);
+      // `DummyCraftingContainer(availableItems, extractedItemsFromSlot)`: the consumed items in
+      // extraction order, which the crafting remainders are taken from.
+      final consumed = <PStack>[];
 
       for (final ingredient in recipe.ingredients) {
         if (!_extractIngredient(
@@ -84,6 +145,7 @@ abstract final class BasinRecipeOps {
           tags,
           extractedItems,
           simulate,
+          consumed,
         ))
           return false;
       }
@@ -105,6 +167,10 @@ abstract final class BasinRecipeOps {
         for (final fluid in recipe.fluidResults) {
           if (fluid.isNotEmpty) outputFluids.add(fluid);
         }
+        // `CraftingRecipe.getRemainingItems(remainderInput)`: only a crafting recipe has them.
+        for (final remainder in recipe.remainingItemsFor(consumed)) {
+          if (remainder.isNotEmpty) outputItems.add(remainder);
+        }
       }
 
       if (!host.acceptOutputs(outputItems, outputFluids, simulate: simulate))
@@ -120,6 +186,7 @@ abstract final class BasinRecipeOps {
     TagLookup tags,
     List<int> extractedFromSlot,
     bool simulate,
+    List<PStack> consumed,
   ) {
     for (var slot = 0; slot < items.slots; slot++) {
       final stack = items.stackIn(slot);
@@ -128,6 +195,7 @@ abstract final class BasinRecipeOps {
       if (extracted.isEmpty || !ingredient.test(extracted, tags)) continue;
       if (!simulate) items.extract(slot, 1);
       extractedFromSlot[slot]++;
+      consumed.add(extracted);
       return true;
     }
     return false;

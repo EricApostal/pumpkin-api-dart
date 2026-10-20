@@ -35,6 +35,9 @@ abstract final class SeatEntities {
 
   static int? seatAt(String worldId, Pos pos) => _byWorld[worldId]?[pos];
 
+  /// Whether no world has a seat entity (a cheap check before a world id is resolved).
+  static bool get isEmpty => _byWorld.values.every((m) => m.isEmpty);
+
   static void forgetWorld(String worldId) => _byWorld.remove(worldId);
 
   static void clear() => _byWorld.clear();

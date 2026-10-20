@@ -30,6 +30,7 @@ import 'belt_deployer_callbacks.dart';
 import 'deployer_filter.dart';
 import 'deployer_handler.dart';
 import 'deployer_item_handler.dart';
+import 'deployer_items.dart';
 import 'deployer_types.dart';
 
 /// `DeployerBlockEntity`.
@@ -735,7 +736,7 @@ final class DeployerBlockEntity extends KineticBlockEntity
   RecipeMatch? getRecipe(PStack stack) {
     if (heldItem.isEmpty) return null;
     bool automated(ProcessingRecipe recipe) => !ignoredInAutomation(recipe.id);
-    if (heldItem.key == 'create:sandpaper') {
+    if (isSandPaperItem(heldItem)) {
       final polishing = _rt.recipes.findForInput(
         CreateRecipeType.sandpaperPolishing,
         stack,

@@ -17,6 +17,13 @@ abstract final class CapabilityMinecartController {
   static Map<String, MinecartController> _of(String worldId) =>
       _controllers.putIfAbsent(worldId, () => {});
 
+  /// Whether any world has a controller, a queued cart or a removal pending (a
+  /// cheap check before a world id is resolved).
+  static bool get hasState =>
+      _controllers.isNotEmpty ||
+      _queuedAdditions.isNotEmpty ||
+      _queuedRemovals.isNotEmpty;
+
   /// `get(world, cart)`: the controller of a cart, created on first use.
   static MinecartController get(MinecartWorld level, String cartUuid) =>
       _of(level.worldId)[cartUuid] ??= MinecartController(level, cartUuid);

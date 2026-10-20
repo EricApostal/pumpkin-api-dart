@@ -105,8 +105,8 @@ void loadBelts(CreateContext ctx) {
   });
 
   // `ServerChainConveyorHandler.tick`: the riding TTLs are global, tick them once per server tick.
-  ctx.listen(Events.worldTick, (server, e) {
-    if (e.targetWorld.getId() != 'minecraft:overworld') return;
+  ctx.onWorldTick((t) {
+    if (t.worldId != 'minecraft:overworld') return;
     ServerChainConveyorHandler.tick(rt);
   });
 }

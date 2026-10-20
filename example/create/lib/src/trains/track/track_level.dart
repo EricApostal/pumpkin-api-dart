@@ -24,7 +24,7 @@ const String trackConnectingFromComponent = 'create:track_connecting_from';
 
 /// `AllDataComponents.TRACK_EXTENDED_CURVE`: the client's "maximise turn" hint for the next
 /// placement (`PlaceExtendedCurvePacket`).
-const String trackExtendedCurveComponent = 'create:track_extended_curve';
+const String trackExtendedCurveComponent = 'create:track_extend_curve';
 
 /// `ProperWaterloggedBlock.withWater(level, state, pos)`: waterlogged blocks placed in a water
 /// source become waterlogged, air placed in water becomes water.
@@ -91,8 +91,8 @@ abstract class TrackLevel extends BlockGetter {
   /// `level.setBlockAndUpdate(pos, state)`.
   Future<void> setBlockAndUpdate(Pos pos, BState state) => setBlock(pos, state);
 
-  /// `level.removeBlockEntity(pos)`.
-  void removeBlockEntity(Pos pos);
+  /// `level.removeBlockEntity(pos)`. Awaits the host: removing the entity fires its unload event.
+  Future<void> removeBlockEntity(Pos pos);
 
   /// `level.removeBlock(pos, false)`.
   Future<void> removeBlock(Pos pos);
@@ -267,7 +267,7 @@ final class MemoryTrackLevel extends TrackLevel {
   Future<void> setBlock(Pos pos, BState state) async => blocks[pos] = state;
 
   @override
-  void removeBlockEntity(Pos pos) {}
+  Future<void> removeBlockEntity(Pos pos) async {}
 
   @override
   Future<void> removeBlock(Pos pos) async => blocks[pos] = BState.air;

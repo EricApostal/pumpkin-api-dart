@@ -44,6 +44,14 @@ PStack? craftingRemainderOf(PStack stack) {
   };
 }
 
+/// `heldItem.getItem() instanceof SandPaperItem` (`DeployerBlockEntity.java:604`): the two items
+/// of that class, `create:sand_paper` and `create:red_sand_paper` (`AllItems.java:387-395`).
+///
+/// The items are not named `create:sandpaper`: that is the *tag* that holds them
+/// (`AllTags.AllItemTags.SANDPAPER`), so testing the item key against it never matches.
+bool isSandPaperItem(PStack stack) =>
+    stack.key == 'create:sand_paper' || stack.key == 'create:red_sand_paper';
+
 /// Items that are fluid containers (`TransferUtil.hasFluidHandler`): the buckets.
 bool _isFluidHandlerItem(String key) =>
     key == 'minecraft:bucket' ||

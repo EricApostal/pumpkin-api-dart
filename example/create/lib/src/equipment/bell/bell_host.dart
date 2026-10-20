@@ -103,7 +103,7 @@ final class BellHost {
   static const pulserWarmupTicks = 10;
 
   void install(CreateContext ctx) {
-    ctx.listen(Events.worldTick, (server, e) => _tick = e.tick);
+    ctx.onWorldTick((t) => _tick = t.tick);
     ctx.listen(Events.playerTick, _onPlayerTick);
     ctx.listen(Events.projectileHit, _onProjectileHit);
 

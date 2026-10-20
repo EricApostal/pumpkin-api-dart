@@ -58,7 +58,10 @@ final class MountedStorageHost {
   /// Subscribes to the tick that mirrors the open menus and to the close that plays the closing
   /// sound. Called once from the module's `onLoad`.
   void install() {
-    ctx.listen(Events.worldTick, (server, e) => tick(e.targetWorld.getId()));
+    ctx.onWorldTick((t) {
+      if (_open.isEmpty) return;
+      tick(t.worldId);
+    });
     ctx.listen(Events.inventoryClose, (server, e) => _onInventoryClose(e));
   }
 

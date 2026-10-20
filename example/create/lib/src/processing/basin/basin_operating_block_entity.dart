@@ -4,7 +4,7 @@
 // Create.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../recipe/recipe.dart';
+import '../recipe/crafting_recipes.dart';
 import '../recipe/recipe_type.dart';
 import '../processing_runtime.dart';
 import '../support/kinetics_bridge.dart';
@@ -21,7 +21,7 @@ abstract class BasinOperatingBlockEntity extends KineticBlockEntity {
   bool _basinCheckPending = false;
 
   /// `currentRecipe`: the recipe a running processing cycle applies.
-  ProcessingRecipe? currentRecipe;
+  BasinRecipeRef? currentRecipe;
 
   /// `basinChecker.scheduleUpdate()`.
   void scheduleBasinCheck() => _basinCheckPending = true;
@@ -75,7 +75,7 @@ abstract class BasinOperatingBlockEntity extends KineticBlockEntity {
   bool continueWithPreviousRecipe() => true;
 
   /// `matchBasinRecipe(recipe)`.
-  bool matchBasinRecipe(ProcessingRecipe? recipe) {
+  bool matchBasinRecipe(BasinRecipeRef? recipe) {
     if (recipe == null) return false;
     final basin = getBasin();
     if (basin == null) return false;
@@ -110,20 +110,38 @@ abstract class BasinOperatingBlockEntity extends KineticBlockEntity {
   }
 
   /// `getMatchingRecipes`: every recipe the basin contents satisfy, longest first.
-  List<ProcessingRecipe> getMatchingRecipes() {
+  ///
+  /// Java searches *all* recipes of the level with the machine's `matchStaticFilters`, which for
+  /// the press and the mixer also admits vanilla crafting recipes; those come from
+  /// [matchingCraftingRecipes], the `create:*` ones from the recipe book.
+  List<BasinRecipeRef> getMatchingRecipes() {
     final basin = getBasin();
     if (basin == null || basin.isEmpty) return [];
     final book = ProcessingRuntime.instance.recipes;
-    final matches = <ProcessingRecipe>[];
-    for (final type in matchingRecipeTypes) {
-      matches.addAll(book.where(type, (recipe) => matchBasinRecipe(recipe)));
+    final matches = <BasinRecipeRef>[];
+    void consider(BasinRecipeRef ref) {
+      if (matchBasinRecipe(ref)) matches.add(ref);
     }
+
+    for (final type in matchingRecipeTypes) {
+      for (final recipe in book.ofType(type)) {
+        consider(BasinRecipeRef.processing(recipe));
+      }
+    }
+    for (final entry in matchingCraftingRecipes) {
+      consider(BasinRecipeRef.crafting(entry));
+    }
+    // `list.sort((r1, r2) -> r2.placementInfo().ingredients().size() - r1...)`.
     matches.sort((a, b) => b.ingredients.length - a.ingredients.length);
     return matches;
   }
 
   /// The recipe types this machine runs (`matchStaticFilters`).
   List<CreateRecipeType> get matchingRecipeTypes;
+
+  /// The vanilla crafting recipes this machine runs (`matchStaticFilters`): the press takes the
+  /// compressible 2x2 / 3x3 squares, the mixer the shapeless ones.
+  List<CraftingRecipeEntry> get matchingCraftingRecipes => const [];
 
   /// `getBasin()`: the basin two blocks below.
   BasinBlockEntity? getBasin() => store.typed<BasinBlockEntity>(

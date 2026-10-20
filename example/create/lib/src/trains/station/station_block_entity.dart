@@ -575,7 +575,10 @@ final class StationBlockEntity extends CreateBlockEntity {
   // -- Assembly of the train -------------------------------------------------------------------
 
   /// `assemble(playerUUID)`: builds the carriages from the scanned bogeys and starts the train.
-  void assemble(String playerUuid) {
+  ///
+  /// Asynchronous because taking the structure out of the world
+  /// (`contraption.removeBlocksFromWorld`) writes blocks through the host.
+  Future<void> assemble(String playerUuid) async {
     refreshAssemblyInfo();
     final locations = assembly.bogeyLocations;
     if (locations == null) return;
@@ -732,6 +735,15 @@ final class StationBlockEntity extends CreateBlockEntity {
     if (!atLeastOneForwardControls) {
       _exception(const TrainAssemblyException('train_assembly.no_controls'));
       return;
+    }
+
+    // `contraption.removeBlocksFromWorld(level, BlockPos.ZERO)` and
+    // `contraption.expandBoundsAroundAxis(Axis.Y)` for every contraption, before the train is
+    // created (Java `StationBlockEntity.java:885-887`): the structure leaves the world and only
+    // the carriage entities show it from then on.
+    for (final contraption in contraptions) {
+      await contraption.data.removeBlocksFromWorld();
+      contraption.data.expandBoundsAroundAxis(Axis.y);
     }
 
     final train = Train(

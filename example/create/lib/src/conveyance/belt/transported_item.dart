@@ -110,3 +110,15 @@ class TransportedItemStack implements Comparable<TransportedItemStack> {
   @override
   String toString() => 'Transported($stack at ${beltPosition.toStringAsFixed(3)})';
 }
+
+/// The position fields of `TransportedItemStack.serializeNBT` under their Java NBT keys, which
+/// the block entity writes verbatim (`belt_block_entity.dart`, `transportedItemToNbt`). The
+/// client lerps `PrevPos` -> `Pos` and `PrevOffset` -> `Offset` (`BeltRenderer.renderItem`), so
+/// both pairs have to be apart for anything to appear to move; kept here so a plain VM test can
+/// assert on the values the update tag carries.
+Map<String, double> transportedItemPositionFields(TransportedItemStack t) => {
+  'Pos': t.beltPosition,
+  'PrevPos': t.prevBeltPosition,
+  'Offset': t.sideOffset,
+  'PrevOffset': t.prevSideOffset,
+};

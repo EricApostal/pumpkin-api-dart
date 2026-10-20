@@ -8,6 +8,7 @@ import '../core/module.dart';
 import '../core/perf.dart';
 import '../core/registry.dart';
 import '../core/registry_apply.dart';
+import '../core/worlds.dart';
 import '../manifest/canonical_order.dart';
 import '../modules.dart';
 import 'create_neoforge.dart';
@@ -128,6 +129,24 @@ final class CreatePlugin extends Plugin {
         saveIntervalTicks: config.core.saveIntervalTicks,
       );
       core.network.install(context);
+
+      // One host listener for every world tick, for the framework and all
+      // modules: the host calls into the plugin once per world and tick instead
+      // of once per listener, and the world id and player list are fetched at
+      // most once for the whole tick (`WorldTick` resolves them lazily).
+      core.worldTickHandlers.add(core.blockEntities.tickWorld);
+      core.worldTickHandlers.add(core.savedData.tickWorld);
+      context.listen(Events.worldTick, (server, event) async {
+        final tick = WorldTick(server, event, core.worlds);
+        for (final handler in core.worldTickHandlers) {
+          try {
+            final result = handler(tick);
+            if (result is Future) await result;
+          } catch (e, s) {
+            log.error('World tick handler failed', error: e, stackTrace: s);
+          }
+        }
+      });
     });
 
     for (final module in _active) {

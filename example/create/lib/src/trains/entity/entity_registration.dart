@@ -7,6 +7,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
 import '../../manifest/manifest.dart';
+import 'carriage_sync_data.dart' show CarriageSyncDataSerializer;
 
 /// `create:carriage_contraption`.
 const String carriageContraptionEntity = 'create:carriage_contraption';
@@ -32,8 +33,19 @@ void registerEntity(CreateRegistry registry) {
   );
 }
 
-/// Phase 2: nothing (the contraptions module installs the entity factory).
-void loadEntity(CreateContext ctx) {}
+/// Phase 2: registers the `create:carriage_data` entity data serializer
+/// (`CarriageSyncDataSerializer.serializerId`), which the carriage wheel sync needs to put its
+/// value in an entity metadata entry.
+void loadEntity(CreateContext ctx) {
+  try {
+    CarriageSyncDataSerializer.serializerId = EntityRegistries
+        .registerDataSerializer('create:carriage_data');
+  } on HostException catch (e) {
+    ctx.log.error(
+      'Could not register the entity data serializer create:carriage_data: ${e.message}',
+    );
+  }
+}
 
 /// Phase 3: nothing.
 void serverEntityLoaded(CreateRuntime runtime) {}

@@ -9,6 +9,12 @@ abstract final class ContraptionHandler {
   static final Map<String, Map<int, AbstractContraptionEntity>> _loaded = {};
   static final Map<String, List<AbstractContraptionEntity>> _queued = {};
 
+  /// Whether no world has a contraption to collide or decay (a cheap check
+  /// before a world id is resolved).
+  static bool get isEmpty =>
+      _loaded.values.every((m) => m.isEmpty) &&
+      _queued.values.every((l) => l.isEmpty);
+
   /// `tick(world)`: registers queued entities, drops dead ones and collides the rest.
   static void tick(String worldId) {
     final map = _loaded.putIfAbsent(worldId, () => {});

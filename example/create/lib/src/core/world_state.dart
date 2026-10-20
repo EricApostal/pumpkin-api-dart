@@ -89,14 +89,23 @@ final class WorldSavedData {
 
   /// Flushes at the end of every [saveIntervalTicks] and when a world unloads.
   void install(Context context, {required int saveIntervalTicks}) {
-    context.listen(Events.worldTick, (server, e) {
-      if (e.tick % saveIntervalTicks == 0) flushWorld(e.targetWorld);
-    });
+    _saveIntervalTicks = saveIntervalTicks;
     context.listen(Events.worldUnload, (server, e) {
       if (e.cancelled) return;
       flushWorld(e.targetWorld);
       final prefix = '${e.targetWorld.getId()}/';
       _cache.removeWhere((k, _) => k.startsWith(prefix));
     });
+  }
+
+  int _saveIntervalTicks = 20;
+
+  /// The world tick: flushes the dirty data at the end of every save interval.
+  /// Registered with the core's world tick (`CreateCore.worldTickHandlers`), so
+  /// an idle tick costs no host call.
+  void tickWorld(WorldTick t) {
+    if (_dirty.isEmpty) return;
+    if (t.tick % _saveIntervalTicks != 0) return;
+    flushWorld(t.world);
   }
 }

@@ -208,8 +208,9 @@ extension PluginBlockEntities on generated.World {
   );
 
   /// Removes the plugin block entity at [pos] with its saved data; whether
-  /// there was one. Fires the unload event with `removed` true.
-  bool removePluginBlockEntity(generated.BlockPos pos) =>
+  /// there was one. Fires the unload event with `removed` true. Await it: the
+  /// event goes back into the plugin while the call is in flight.
+  Future<bool> removePluginBlockEntity(generated.BlockPos pos) =>
       generated.pluginBlockEntity.removeBlockEntity(targetWorld: this, pos: pos);
 }
 

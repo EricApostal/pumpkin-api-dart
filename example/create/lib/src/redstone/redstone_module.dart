@@ -135,7 +135,10 @@ final class RedstoneModule extends CreateModule {
       handler.onUnloadWorld(id);
       ReservationHolder.forget(id);
     });
-    ctx.listen(Events.worldTick, (server, e) => handler.tick(rs.worldId(e.targetWorld)));
+    ctx.onWorldTick((t) {
+      if (!handler.hasInputs) return;
+      handler.tick(t.worldId);
+    });
 
     // Interactions and payloads.
     LinkHandler.install(rs);

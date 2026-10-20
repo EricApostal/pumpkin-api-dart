@@ -92,7 +92,7 @@ Future<void> _apply(
   if (tryAssemble != null) {
     if (!isAssemblyMode) return;
     if (tryAssemble) {
-      be.assemble(uuid);
+      await be.assemble(uuid);
       assemblyComplete = station != null && station.getPresentTrain() != null;
     } else {
       if (be.tryDisassembleTrain(uuid) && be.tryEnterAssemblyMode()) {

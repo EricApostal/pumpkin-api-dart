@@ -31,7 +31,7 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
   int _tick = 0;
 
   void install(CreateContext ctx) {
-    ctx.listen(Events.worldTick, (server, e) => _tick = e.tick);
+    ctx.onWorldTick((t) => _tick = t.tick);
     ctx.listen(Events.playerItemHeld, _onItemHeld);
     ctx.listen(Events.blockBreak, _onBlockBreak);
     ctx.listen(Events.blockPlace, _onBlockPlace);

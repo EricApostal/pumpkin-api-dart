@@ -5,4 +5,4 @@ library;
 export 'basin_block.dart' show BasinBlock;
 export 'basin_block_entity.dart' show BasinBlockEntity, BasinInventory;
 export 'basin_operating_block_entity.dart' show BasinOperatingBlockEntity;
-export 'basin_recipe_ops.dart' show BasinRecipeHost, BasinRecipeOps;
+export 'basin_recipe_ops.dart' show BasinRecipeHost, BasinRecipeOps, BasinRecipeRef;

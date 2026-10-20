@@ -10,6 +10,7 @@ import 'arm/arm_part.dart';
 import 'assembly/assembly_operator_block_item.dart';
 import 'basin/basin_part.dart';
 import 'burner/burner_part.dart';
+import 'common/stack.dart';
 import 'crafter/crafter_part.dart';
 import 'crusher/crusher_part.dart';
 import 'depot/depot_part.dart';
@@ -25,6 +26,8 @@ import 'press/press_part.dart';
 import 'processing_part.dart';
 import 'processing_runtime.dart';
 import 'processing_settings.dart';
+import 'recipe/crafting_recipes.dart';
+import 'recipe/ingredient.dart' as ing;
 import 'recipe/recipe_book.dart';
 import 'recipe/recipe_network.dart';
 import 'recipe/recipe_type.dart';
@@ -91,8 +94,13 @@ final class ProcessingModule extends CreateModule {
 
     _loadRecipes(ctx, rt);
 
+    CraftingRecipeCache.current ??= CraftingRecipeCache();
+
     ctx.listen(Events.tagsUpdated, (server, e) => _tags.clear());
-    ctx.listen(Events.datapackReload, (server, e) => _tags.clear());
+    ctx.listen(Events.datapackReload, (server, e) {
+      _tags.clear();
+      _loadCraftingRecipes(server);
+    });
 
     for (final p in parts) {
       try {
@@ -213,6 +221,8 @@ final class ProcessingModule extends CreateModule {
   void onServerLoaded(CreateRuntime runtime) {
     final rt = _runtime;
     if (rt == null) return;
+    // The press and the mixer also run vanilla crafting recipes (`matchStaticFilters`).
+    _loadCraftingRecipes(runtime.server);
     for (final p in parts) {
       try {
         p.onServerLoaded(runtime, rt);
@@ -226,8 +236,68 @@ final class ProcessingModule extends CreateModule {
     }
   }
 
+  /// Reads the vanilla crafting recipes the basin machines can run: the shaped table holds the
+  /// compressible squares of the press, the shapeless table the recipes of the mixer.
+  void _loadCraftingRecipes(Server server) {
+    final cache = CraftingRecipeCache.current;
+    if (cache == null) return;
+    try {
+      final manager = server.getRecipeManager();
+      cache.shaped = _craftingRecipes(manager, 'minecraft:crafting_shaped', shaped: true);
+      cache.shapeless = _craftingRecipes(manager, 'minecraft:crafting_shapeless', shaped: false);
+    } on Object {
+      // A recipe manager that cannot be read leaves the machines without crafting recipes.
+    }
+  }
+
+  static List<CraftingRecipeEntry> _craftingRecipes(
+    RecipeManager manager,
+    String type, {
+    required bool shaped,
+  }) {
+    final out = <CraftingRecipeEntry>[];
+    for (final recipe in manager.findRecipes(recipeType: type)) {
+      if (recipe.ingredients.isEmpty || recipe.results.isEmpty) continue;
+      final ingredients = <ing.Ingredient>[];
+      var complete = true;
+      for (final sized in recipe.ingredients) {
+        final ingredient = _ingredient(sized.ingredient);
+        if (ingredient == null) {
+          complete = false;
+          break;
+        }
+        ingredients.add(ingredient);
+      }
+      if (!complete) continue;
+      final result = recipe.results.first;
+      out.add(
+        CraftingRecipeEntry(
+          // Vanilla crafting recipes have no id in the host's tables.
+          id: recipe.id ?? '$type/${out.length}',
+          shaped: shaped,
+          ingredients: ingredients,
+          result: PStack(result.item, result.count),
+        ),
+      );
+    }
+    return out;
+  }
+
+  /// The host ingredient as the pure one; `null` for a form the plugin does not model.
+  static ing.Ingredient? _ingredient(Ingredient ingredient) =>
+      switch (ingredient) {
+        IngredientItem(:final value) => ing.Ingredient.item(value),
+        IngredientTag(:final value) => ing.Ingredient.tag(
+          value.startsWith('#') ? value.substring(1) : value,
+        ),
+        IngredientOneOf(:final value) => ing.Ingredient.anyOf([
+          for (final v in value) ing.Ingredient.item(v),
+        ]),
+      };
+
   @override
   void onUnload() {
+    CraftingRecipeCache.current = null;
     for (final p in parts.reversed) {
       try {
         p.onUnload();

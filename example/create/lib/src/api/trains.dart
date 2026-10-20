@@ -68,7 +68,7 @@ abstract interface class CarriageContraptionAssembly {
   );
 }
 
-/// Provided by the logistics module: the single schedule slot of a station (`DepotBehaviour` with
+/// Provided by the conveyance module: the single schedule slot of a station (`DepotBehaviour` with
 /// `onlyAccepts(AllItems.SCHEDULE)`). The station adds the behaviour to its block entity.
 abstract class StationDepot extends BlockEntityBehaviour {
   /// `getHeldItemStack()`: the held stack, `null` when the slot is empty.
@@ -78,7 +78,7 @@ abstract class StationDepot extends BlockEntityBehaviour {
   void removeHeldItem();
 }
 
-/// Creates the station's schedule slot. Provided by the logistics module.
+/// Creates the station's schedule slot. Provided by the conveyance module.
 abstract interface class StationDepotFactory {
   /// `new DepotBehaviour(station).onlyAccepts(AllItems.SCHEDULE).withCallback(onChanged)`.
   StationDepot create(

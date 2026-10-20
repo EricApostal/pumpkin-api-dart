@@ -3,6 +3,8 @@
 // damage and custom names of stored items intact.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../common/nbt_convert.dart';
+import '../../common/stack_tag.dart';
 import '../../core/nbt.dart';
 import '../toolbox/toolbox_model.dart';
 
@@ -99,50 +101,36 @@ abstract final class StackCodec {
 
   // -- plugin NBT ----------------------------------------------------------------------
 
-  /// The private persistence form of a stack (`Key`, `Count`, `Max`, `Dmg`, `Comps`).
-  static NbtCompound toNbt(TStack t) {
-    final c = NbtCompound()
-      ..putString('Key', t.key)
-      ..putInt('Count', t.count)
-      ..putInt('Max', t.maxStack)
-      ..putBool('Dmg', t.damageable);
-    final list = <Object>[
-      for (final (name, bytes) in t.comps)
-        NbtCompound()
-          ..putString('N', name)
-          ..putByteArray('V', bytes),
-    ];
-    c.putList('Comps', list);
-    return c;
-  }
+  /// The persistence form of a stack: Java's `ItemStack.CODEC` shape, with the plugin's own
+  /// extras (see `common/stack_tag.dart`).
+  static NbtCompound toNbt(TStack t) => compoundOf(
+        JavaStackTag.write(
+          id: t.key,
+          count: t.count,
+          comps: t.comps,
+          components: t.rawComponents,
+          maxStack: t.maxStack,
+          damageable: t.damageable,
+        ),
+      );
 
   static TStack fromNbt(NbtCompound c) {
-    final key = c.getString('Key');
-    final count = c.getInt('Count') ?? 0;
-    if (key == null || count <= 0) return TStack.empty;
-    final comps = <(String, List<int>)>[];
-    for (final e in c.getList('Comps') ?? const <Object>[]) {
-      if (e is NbtCompound) {
-        final n = e.getString('N');
-        final v = e.getByteArray('V');
-        if (n != null && v != null) comps.add((n, v));
-      }
-    }
-    comps.sort((a, b) => a.$1.compareTo(b.$1));
+    final t = JavaStackTag.read(valueOfCompound(c));
+    if (t == null) return TStack.empty;
     return TStack(
-      key,
-      count,
-      maxStack: c.getInt('Max') ?? 64,
-      damageable: c.getBool('Dmg') ?? false,
-      comps: comps,
+      t.id,
+      t.count,
+      maxStack: t.maxStack ?? 64,
+      damageable: t.damageable ?? false,
+      comps: t.comps,
+      rawComponents: t.components,
     );
   }
 
   /// The vanilla-looking stack tag the Create client reads from a block entity update tag:
-  /// `{id, count}` (components are not representable here).
-  static NbtCompound toClientNbt(TStack t) => NbtCompound()
-    ..putString('id', t.key)
-    ..putInt('count', t.count);
+  /// `{id, count}` and, when a Java save provided them, its components.
+  static NbtCompound toClientNbt(TStack t) =>
+      compoundOf(JavaStackTag.writeClient(id: t.key, count: t.count, components: t.rawComponents));
 
   static int _varInt(List<int> bytes) {
     var value = 0;
@@ -158,36 +146,4 @@ abstract final class StackCodec {
 
 /// Converts the host's NBT compound into the pure network NBT model (for payload fields and
 /// menu extra data).
-NbtValue nbtCompoundToValue(NbtCompound c) => _treeToValue(c.toTree());
-
-NbtValue _treeToValue(NbtTree tree) => _tagToValue(tree, tree.root, 0);
-
-NbtValue _tagToValue(NbtTree tree, int index, int depth) {
-  final tag = tree.tags[index];
-  switch (tag) {
-    case NbtTagByte(:final value):
-      return NbtValue.byte(value);
-    case NbtTagShort(:final value):
-      return NbtValue.short(value);
-    case NbtTagInt(:final value):
-      return NbtValue.int32(value);
-    case NbtTagLong(:final value):
-      return NbtValue.long(value);
-    case NbtTagFloat(:final value):
-      return NbtValue.float(value);
-    case NbtTagDouble(:final value):
-      return NbtValue.double64(value);
-    case NbtTagStringTag(:final value):
-      return NbtValue.string(value);
-    case NbtTagByteArray(:final value):
-      return NbtValue.byteArray(value);
-    case NbtTagIntArray(:final value):
-      return NbtValue.intArray(value);
-    case NbtTagLongArray(:final value):
-      return NbtValue.longArray(value);
-    case NbtTagListTag(:final value):
-      return NbtValue.list([for (final i in value) _tagToValue(tree, i, depth + 1)]);
-    case NbtTagCompound(:final value):
-      return NbtValue.compound({for (final e in value) e.key: _tagToValue(tree, e.value, depth + 1)});
-  }
-}
+NbtValue nbtCompoundToValue(NbtCompound c) => valueOfCompound(c);

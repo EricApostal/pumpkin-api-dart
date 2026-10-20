@@ -235,6 +235,14 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
     if (be is SidedFluidCapable)
       return (be as SidedFluidCapable).fluidHandlerAt(side);
     if (be is FluidCapable) return (be as FluidCapable).fluidHandler;
+    // A block entity of this plugin without a fluid handler has no `Capabilities.Fluid.BLOCK`,
+    // which is what `FluidPropagator.hasFluidCapability` asks for (`FluidPropagator.java:203`:
+    // a block entity, and a handler from it). The host's handler for such a block is the "spot
+    // in the world" one, which every waterloggable block gets (`FluidHandler::at`,
+    // `fluid_handler.rs:203`): the pump and the pipes have a `waterlogged` property, so without
+    // this they look like fluid handlers. Then a pipe ends its network at the pump instead of
+    // flowing through it, and the pump's handler is filled with what the tank should get.
+    if (be != null) return null;
     final key = (p.$1, p.$2, p.$3, side?.index ?? -1);
     final cached = _handlers[key];
     if (cached != null) return cached;

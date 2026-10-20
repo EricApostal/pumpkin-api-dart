@@ -186,15 +186,17 @@ void loadActorContent(CreateContext ctx) {
   ActorControlHooks.isSameFilter = ContraptionControlsMovement.isSameFilter;
 
   // Per-world state: seat entities that lost their block, and the keys held on train controls.
-  ctx.listen(Events.worldTick, (server, e) {
-    final world = e.targetWorld;
-    final worldId = world.getId();
+  ctx.onWorldTick((t) {
+    if (SeatEntities.isEmpty && !controls.hasPending) return;
+    final world = t.world;
+    final worldId = t.worldId;
 
     for (final entry in SeatEntities.of(worldId).entries.toList()) {
       tickSeat(world, worldId, entry.key, entry.value);
     }
 
-    final players = server.getPlayersInWorld(worldRef: world);
+    if (!controls.hasPending) return;
+    final players = t.playersInWorld;
     controls.tick(worldId, (uuid) {
       for (final player in players) {
         if (player.getId().asString == uuid)

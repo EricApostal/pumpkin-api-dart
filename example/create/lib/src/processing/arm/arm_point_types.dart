@@ -25,7 +25,10 @@ class BeltType extends ArmInteractionPointType {
   @override
   bool canCreatePoint(ArmWorld level, Pos pos, BState state) {
     if (state.key != 'create:belt') return false;
-    if (level.stateAt(pos.above).key == 'create:belt_tunnel') return false;
+    // `level.getBlockState(pos.above()).getBlock() instanceof BeltTunnelBlock`: the belt tunnels
+    // are `create:andesite_tunnel` (`AllBlocks.java:1768`) and `create:brass_tunnel`
+    // (`AllBlocks.java:1776`, a `BrassTunnelBlock extends BeltTunnelBlock`).
+    if (_isBeltTunnel(level.stateAt(pos.above).key)) return false;
     return state['part'] != 'pulley';
   }
 
@@ -253,6 +256,10 @@ ArmInteractionPointType? armPointTypeOf(String key) {
   }
   return null;
 }
+
+/// The belt tunnel blocks (`BeltTunnelBlock` and its subclass `BrassTunnelBlock`).
+bool _isBeltTunnel(String key) =>
+    key == 'create:andesite_tunnel' || key == 'create:brass_tunnel';
 
 /// `ArmInteractionPointType.getPrimaryType`: the first type that accepts the block.
 ArmInteractionPointType? primaryArmPointType(

@@ -70,6 +70,14 @@ class BeltTunnelBlockEntity extends CreateBlockEntity
   @override
   bool get canTakeItems => true;
 
+  /// `getStackToDistribute()`: only a brass tunnel distributes.
+  @override
+  ItemValue getStackToDistribute() => ItemValue.empty;
+
+  /// `testFlapFilter(side, stack)`: only a brass tunnel has per-side filters.
+  @override
+  bool testFlapFilter(Direction side, ItemValue stack) => true;
+
   @override
   bool canInsert(Direction side, ItemValue stack) => true;
 
@@ -260,6 +268,7 @@ class BrassTunnelBlockEntity extends BeltTunnelBlockEntity {
   }
 
   /// `getStackToDistribute`.
+  @override
   ItemValue getStackToDistribute() => stackToDistribute;
 
   // -- Inventory -------------------------------------------------------------------------------
@@ -552,6 +561,7 @@ class BrassTunnelBlockEntity extends BeltTunnelBlockEntity {
   }
 
   /// `testFlapFilter`.
+  @override
   bool testFlapFilter(Direction side, ItemValue stack) {
     if (filtering.get(side) == null) {
       final adjacent = rt.behaviourAt<FilteringBehaviour>(

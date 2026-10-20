@@ -270,7 +270,20 @@ Future<void> _entityCollision(
     if (entity.isItem()) {
       await belt.absorbItemEntity(entity);
     } else {
-      belt.entityEntered(e.entityId, pos);
+      // `BeltBlock.entityInside` stores the passenger on the *controller*
+      // (`BeltBlock.java:225-234`); the collided segment is not ticked
+      // (`BeltBlockEntity.java:130`, `if (!isController()) return;`), so a passenger remembered
+      // by the segment would never move.
+      final controller = belt.controllerBE;
+      if (controller == null) return;
+      final (x, y, z) = entity.getPosition();
+      final added = controller.entityEntered(
+        e.entityId,
+        pos,
+        KState('create:belt', state.props),
+        (x.floor(), y.floor(), z.floor()),
+      );
+      if (added) entity.setOnGround(onGround: true);
     }
   } finally {
     entity.dispose();

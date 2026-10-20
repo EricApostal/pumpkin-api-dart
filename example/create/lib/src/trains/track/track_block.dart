@@ -95,7 +95,7 @@ class TrackBlock extends ITrackBlock {
       if (hasBe(oldState) && !hasBe(state)) {
         final tbe = level.getTrackBlockEntity(pos);
         if (tbe != null && !level.isClientSide) await tbe.removeInboundConnections(true);
-        if (!level.isClientSide) level.removeBlockEntity(pos);
+        if (!level.isClientSide) await level.removeBlockEntity(pos);
       }
       if (withHasBe(state, true) != withHasBe(oldState, true)) TrackPropagator.onRailRemoved(level, pos, oldState);
     }

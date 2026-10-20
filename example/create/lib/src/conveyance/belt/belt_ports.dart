@@ -93,6 +93,12 @@ abstract interface class BeltTunnelPort {
   /// `canTakeItems()` (brass tunnels).
   bool get canTakeItems;
 
+  /// `getStackToDistribute()` (brass tunnels; empty for the others).
+  ItemValue getStackToDistribute();
+
+  /// `testFlapFilter(side, stack)` (brass tunnels; `true` for the others).
+  bool testFlapFilter(Direction side, ItemValue stack);
+
   /// `canInsert(side, stack)` (brass tunnels).
   bool canInsert(Direction side, ItemValue stack);
 
@@ -177,7 +183,9 @@ abstract interface class BeltEnvironment {
   /// The belt funnel in the block above segment [segment], `null` when there is none.
   BeltFunnelPort? funnelAbove(int segment);
 
-  /// `BeltTunnelInteractionHandler.getTunnelOnPosition` for segment [segment] (horizontal belts).
+  /// The tunnel in the block above segment [segment]
+  /// (`BeltTunnelInteractionHandler.getTunnelOnPosition`), regardless of the belt's slope: the
+  /// horizontal-only guard of `getTunnelOnSegment` lives in `belt_handlers.dart`.
   BeltTunnelPort? tunnelOnSegment(int segment);
 
   /// The brass tunnel at [segment] if there is one (for `stuckAtTunnel`).

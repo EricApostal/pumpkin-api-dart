@@ -341,23 +341,25 @@ final class BlockEntityStore {
   final Set<CreateBlockEntity> _unpublished = {};
 
   /// Retries the deferred writes of [world]. Called on every world tick.
-  void _publishDeferred(World world) {
+  void _publishDeferred(World world, String worldId) {
     if (_unpublished.isEmpty) return;
-    final id = world.getId();
     for (final be in _unpublished.toList()) {
-      if (be.worldId != id || be.removed) continue;
+      if (be.worldId != worldId || be.removed) continue;
       _publish(be, world);
     }
   }
 
   /// Writes the pending sync and (every [saveIntervalTicks]) dirty entities of
-  /// [world].
-  void flushWorld(World world, int tick, {bool force = false}) =>
-      Perf.measure('tick.flushWorld', () => _flushWorld(world, tick, force: force));
+  /// [world]. [worldId] avoids a `World.getId()` host call when it is known.
+  void flushWorld(World world, int tick, {bool force = false, String? worldId}) =>
+      Perf.measure(
+        'tick.flushWorld',
+        () => _flushWorld(world, tick, force: force, worldId: worldId),
+      );
 
-  void _flushWorld(World world, int tick, {bool force = false}) {
+  void _flushWorld(World world, int tick, {bool force = false, String? worldId}) {
     if (_dirty.isEmpty) return;
-    final id = world.getId();
+    final id = worldId ?? world.getId();
     final saveNow = force || tick % saveIntervalTicks == 0;
     // Collect what this world has to write before touching the sets (removing while iterating
     // throws). The old code copied the whole set — every world's entities — on every world tick;
@@ -416,11 +418,17 @@ final class BlockEntityStore {
     context.listen(Events.blockEntityTick, (server, e) {
       dispatcher.dispatch(worlds.touch(e.targetWorld), e.positions);
     });
-    context.listen(Events.worldTick, (server, e) {
-      worlds.touch(e.targetWorld);
-      _publishDeferred(e.targetWorld);
-      flushWorld(e.targetWorld, e.tick);
-    });
+  }
+
+  /// The world tick: publishes deferred entities and writes the pending syncs.
+  /// Registered with the core's world tick (`CreateCore.worldTickHandlers`), so
+  /// an idle tick (nothing dirty) costs no host call.
+  void tickWorld(WorldTick t) {
+    if (_dirty.isEmpty && _unpublished.isEmpty) return;
+    final world = t.world;
+    final worldId = t.worldId;
+    _publishDeferred(world, worldId);
+    flushWorld(world, t.tick, worldId: worldId);
   }
 
   /// Registers the host ticking of every type (after the types are registered

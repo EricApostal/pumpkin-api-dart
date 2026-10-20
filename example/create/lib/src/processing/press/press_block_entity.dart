@@ -6,6 +6,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../basin/basin_operating_block_entity.dart';
 import '../common/stack.dart';
+import '../deployer/deployer_items.dart' show craftingRemainderOf;
+import '../recipe/crafting_recipes.dart';
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
 import '../recipe/recipe_applier.dart';
@@ -36,6 +38,22 @@ final class MechanicalPressBlockEntity extends BasinOperatingBlockEntity
     CreateRecipeType.compacting,
   ];
 
+  /// `matchStaticFilters` for vanilla crafting recipes: `canCompress` — a 2x2 or 3x3 square of
+  /// one ingredient, when `recipes.allowShapedSquareInPress` is set (`canCompress` checks that
+  /// flag itself). Mechanical crafting recipes are `create:*` recipes and never come from here.
+  @override
+  List<CraftingRecipeEntry> get matchingCraftingRecipes {
+    if (!(_rt.configs?.server.recipes.allowShapedSquareInPress.value ?? false)) {
+      return const [];
+    }
+    return [
+      for (final entry
+          in CraftingRecipeCache.current?.compressibleSquares ??
+              const <CraftingRecipeEntry>[])
+        if (!ignoredInAutomation(entry.id)) entry,
+    ];
+  }
+
   @override
   bool isRunning() => pressingBehaviour.running;
 
@@ -52,6 +70,7 @@ final class MechanicalPressBlockEntity extends BasinOperatingBlockEntity
       match.recipe,
       random,
       returnProcessingRemainder: true,
+      craftingRemainder: craftingRemainderOf,
       rollFirst: sequenced == null ? null : sequenced.forcedResult(random),
     );
   }

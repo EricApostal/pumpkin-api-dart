@@ -84,15 +84,34 @@ final class HostTrackLevel extends TrackLevel {
   @override
   Future<void> setBlock(Pos pos, BState state) async {
     final dbgId = stateIdOf(state);
-    Tr.i.log.info('TRACKWRITE pos=$pos state=$state id=$dbgId');
+    final before = world.getBlockStateId(pos: pos.toBlockPos());
+    Tr.i.log.info('TRACKWRITE pos=$pos state=$state id=$dbgId before=$before');
+    if (before == dbgId) {
+      // `LevelChunk.setBlockState` returns null for an unchanged state, and `Level.setBlock`
+      // then returns without firing `onPlace`/`onRemove`: a track that is written over itself
+      // keeps its block entity.
+      Tr.i.log.info('TRACKWRITE noop pos=$pos');
+      return;
+    }
     await setBlockState(world, pos, state);
-    _syncBlockEntity(pos, state);
+    Tr.i.log.info('TRACKWRITE done pos=$pos hostId=${world.getBlockStateId(pos: pos.toBlockPos())}');
+    try {
+      Tr.i.log.info('TRACKWRITE sync-before pos=$pos');
+      await _syncBlockEntity(pos, state);
+      Tr.i.log.info('TRACKWRITE sync-returned pos=$pos');
+    } catch (e, s) {
+      Tr.i.log.info('TRACKWRITE sync threw: $e\n$s');
+    }
+    Tr.i.log.info('TRACKWRITE synced pos=$pos');
   }
 
   /// Java's `EntityBlock.newBlockEntity` / `onRemove`: a track block keeps its block entity only
   /// while `turn` is set, a fake track block always has one.
-  void _syncBlockEntity(Pos pos, BState state) {
+  Future<void> _syncBlockEntity(Pos pos, BState state) async {
     final blockPos = pos.toBlockPos();
+    Tr.i.log.info('TRACKSYNC enter pos=$pos key=${state.key} be=${hasBe(state)} '
+        'track=${TrackBlockRegistry.ofState(state) != null} '
+        'existing=${store.at(_worldId, blockPos)?.runtimeType}');
     if (state.key == fakeTrackKey) {
       if (store.at(_worldId, blockPos) is! FakeTrackBlockEntityHost) {
         store.createAt(world, blockPos, FakeTrackBlockEntityHost.type);
@@ -110,13 +129,17 @@ final class HostTrackLevel extends TrackLevel {
     final existing = store.at(_worldId, blockPos);
     if (existing is TrackBlockEntityHost ||
         existing is FakeTrackBlockEntityHost) {
-      world.removePluginBlockEntity(blockPos);
+      Tr.i.log.info('TRACKSYNC remove-before pos=$pos');
+      await world.removePluginBlockEntity(blockPos);
+      Tr.i.log.info('TRACKSYNC remove-after pos=$pos');
     }
+    Tr.i.log.info('TRACKSYNC exit pos=$pos');
   }
 
   @override
-  void removeBlockEntity(Pos pos) =>
-      world.removePluginBlockEntity(pos.toBlockPos());
+  Future<void> removeBlockEntity(Pos pos) async {
+    await world.removePluginBlockEntity(pos.toBlockPos());
+  }
 
   @override
   Future<void> removeBlock(Pos pos) => setBlock(pos, BState.air);
@@ -446,7 +469,8 @@ ConnectingFrom? readConnectingFrom(ItemStack stack) {
   }
 }
 
-/// A boolean data component (`create:track_extended_curve`), `null` when absent.
+/// A boolean data component (`create:track_extend_curve`, `AllDataComponents.java:151`), `null` when
+/// absent.
 bool? readBoolComponent(ItemStack stack, String key) {
   final bytes = stack.customComponent(key);
   if (bytes == null) return null;
@@ -518,10 +542,15 @@ Future<ItemUseFirstResult?> useTrackItemOnBlock(ItemUseFirstEventData e) async {
   );
   await placementPlayer.flush();
 
+  final di = result.info;
   Tr.i.log.info(
     'TRACKDBG outcome=${result.outcome} message=${result.message} '
-    'cf=${stack.connectingFrom?.pos} mid=${level.stateAt((0, 100, 2))} '
-    'at1=${level.stateAt((0, 100, 1))} at3=${level.stateAt((0, 100, 3))}',
+    'cf=${stack.connectingFrom?.pos} valid=${di?.valid} '
+    'e1=${di?.end1Extent} e2=${di?.end2Extent} curve=${di?.curve != null} '
+    'p1=${di?.pos1} p2=${di?.pos2} a1=${di?.axis1} a2=${di?.axis2} '
+    't1=${di?.curve?.bePositions.first} t2=${di?.curve?.bePositions.second} '
+    'z0=${level.stateAt((0, -60, 0))} z1=${level.stateAt((0, -60, 1))} '
+    'z2=${level.stateAt((0, -60, 2))} z3=${level.stateAt((0, -60, 3))}',
   );
   switch (result.outcome) {
     case TrackUseOutcome.pass:

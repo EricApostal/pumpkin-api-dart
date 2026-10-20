@@ -51817,7 +51817,10 @@ i1.Result<void, String> setBlockEntityData({required World targetWorld, required
 i1.Result<void, String> syncBlockEntity({required World targetWorld, required BlockPos pos, });
 /// Removes the plugin block entity at a position, with its saved data. Returns whether there
 /// was one. Fires `block-entity-unload-event` with `removed` true.
-bool removeBlockEntity({required World targetWorld, required BlockPos pos, });
+/// 
+/// Async, like every other import that runs server work: the unload event goes back into the
+/// plugin, and a callback can only be serviced while the calling guest call is suspended.
+Future<bool> removeBlockEntity({required World targetWorld, required BlockPos pos, });
 }
 @pragma("wasm:import", r"component._import1320")
 external i0.WasmVoid _import1320(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
@@ -51836,7 +51839,7 @@ external i0.WasmVoid _import1326(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0
 @pragma("wasm:import", r"component._import1327")
 external i0.WasmVoid _import1327(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 @pragma("wasm:import", r"component._import1328")
-external i0.WasmI32 _import1328(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3);
+external i0.WasmI32 _import1328(i0.WasmI32 p0, i0.WasmI32 p1, i0.WasmI32 p2, i0.WasmI32 p3, i0.WasmI32 p4);
 final class _Imported$PluginBlockEntity implements PluginBlockEntity {
   const _Imported$PluginBlockEntity();
 @override
@@ -52528,9 +52531,15 @@ return tmp4;
 
 }
 @override
-bool removeBlockEntity({required World targetWorld, required BlockPos pos, }){
-final tmp0 = _import1328(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z));
-return tmp0.toBool();
+Future<bool> removeBlockEntity({required World targetWorld, required BlockPos pos, }){
+final _cleanups = <void Function()>[];
+var tmp0 = i1.mallocAligned(const i0.WasmI32(1), const i0.WasmI32(1));
+final tmp1 = _import1328(i0.WasmI32.fromInt(targetWorld.resourceHandle), i0.WasmI32.fromInt(pos.x), i0.WasmI32.fromInt(pos.y), i0.WasmI32.fromInt(pos.z), tmp0);
+return i1.awaitSubtask(tmp1.toIntUnsigned(), _cleanups, () {
+final tmp2 = i1.memory.loadUint8(tmp0.toIntUnsigned(), offset: 0);
+i1.dartFree(tmp0, const i0.WasmI32(1), const i0.WasmI32(1));
+return tmp2.toBool();
+});
 
 }
 }

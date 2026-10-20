@@ -3,6 +3,8 @@
 // compartment. Pure; stacks are [TStack] values (the host converts to and from item stacks).
 import 'dart:math' as math;
 
+import '../../core/nbt.dart';
+
 /// An item stack as the toolbox sees it. [comps] are the data components (wire name and
 /// bytes, sorted by name) so stacks with different components do not merge.
 final class TStack {
@@ -14,7 +16,17 @@ final class TStack {
   final bool damageable;
   final List<(String, List<int>)> comps;
 
-  const TStack(this.key, this.count, {this.maxStack = 64, this.damageable = false, this.comps = const []});
+  /// The `components` compound of a Java save, kept verbatim (`ItemValue.rawComponents`).
+  final NbtValue? rawComponents;
+
+  const TStack(
+    this.key,
+    this.count, {
+    this.maxStack = 64,
+    this.damageable = false,
+    this.comps = const [],
+    this.rawComponents,
+  });
 
   static const TStack empty = TStack('minecraft:air', 0, maxStack: 64);
 
@@ -23,7 +35,8 @@ final class TStack {
   /// `ItemStack.isStackable()`.
   bool get stackable => maxStack > 1 && !damageable;
 
-  TStack copyWithCount(int n) => TStack(key, n, maxStack: maxStack, damageable: damageable, comps: comps);
+  TStack copyWithCount(int n) =>
+      TStack(key, n, maxStack: maxStack, damageable: damageable, comps: comps, rawComponents: rawComponents);
 
   /// `ItemStack.isSameItemSameComponents`.
   bool sameItemSameComponents(TStack o) {

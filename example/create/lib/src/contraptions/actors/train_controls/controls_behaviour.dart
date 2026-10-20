@@ -78,6 +78,10 @@ final class ControlsServerHandler {
 
   final Map<String, Map<String, ControlsContext>> _received = {};
 
+  /// Whether any player holds a key somewhere (a cheap check before a world id
+  /// is resolved).
+  bool get hasPending => _received.isNotEmpty;
+
   /// `tick`: advances the held keys and passes them to the contraption entity.
   void tick(String worldId, ControlsPlayerResolver playerOf) {
     final map = _received[worldId];

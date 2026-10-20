@@ -737,11 +737,15 @@ Future<void> _trackDbg(CommandContext ctx, InfraCommandState st) async {
     // The second click must be within the block interaction range of the bot.
     FakePlayerActions(bot).moveTo(
       world,
-      (b.$1 + 0.5, b.$2.toDouble(), b.$3 - 1.5),
+      (b.$1 + 0.5, b.$2.toDouble(), b.$3 - 2.5),
       yaw: 0,
       pitch: 0,
     );
-    await bot.useItemOnBlock(b.below.toBlockPos(), BlockDirection.up);
+    try {
+      await bot.useItemOnBlock(b.below.toBlockPos(), BlockDirection.up);
+    } catch (e, s) {
+      st.log.info('TRACKDBG click2 threw: $e\n$s');
+    }
     final held2 = bot.getItemInHand(hand: Hand.right);
     st.log.info(
       'TRACKDBG click2: held=${held2 == null ? null : await held2.getRegistryKey()} '

@@ -71,8 +71,8 @@ final class LogisticsModule extends CreateModule {
     ctx.listen(Events.worldLoad, (server, e) {
       if (e.targetWorld.getId() == overworldId) rt.loadGlobal(e.targetWorld);
     });
-    ctx.listen(Events.worldTick, (server, e) {
-      if (e.targetWorld.getId() != overworldId) return;
+    ctx.onWorldTick((t) {
+      if (t.worldId != overworldId) return;
       rt.tick++;
       rt.global.tick();
     });

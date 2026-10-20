@@ -56,6 +56,10 @@ final class LinkedControllerServerHandler {
   /// `receivedInputs`: world id -> player uuid -> entries.
   final Map<String, Map<String, List<ManualFrequencyEntry>>> receivedInputs = {};
 
+  /// Whether any controller input is held somewhere (a cheap check before a
+  /// world id is resolved).
+  bool get hasInputs => receivedInputs.isNotEmpty;
+
   /// `tick(world)`.
   void tick(String worldId) {
     final map = receivedInputs[worldId];

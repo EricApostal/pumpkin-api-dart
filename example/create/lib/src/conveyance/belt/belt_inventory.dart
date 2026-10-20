@@ -87,6 +87,9 @@ class BeltInventory {
     // resolve ending only when items will reach it this tick
     var ending = _Ending.unresolved;
 
+    // Whether any item was moved this tick; the client has to be told, see the end of tick().
+    var moved = false;
+
     var i = 0;
     while (i < items.length) {
       final stackInFront = currentItem;
@@ -171,6 +174,7 @@ class BeltInventory {
       final diffToMiddle = current.targetSideOffset - current.sideOffset;
       current.sideOffset += (diffToMiddle * limitedMovement.abs() * 6.0).clamp(-diffToMiddle.abs(), diffToMiddle.abs()).toDouble();
       currentPos = current.beltPosition;
+      if (limitedMovement != 0) moved = true;
 
       // Movement successful
       if (limitedMovement == movement) {
@@ -228,6 +232,14 @@ class BeltInventory {
       }
       i++;
     }
+
+    // The client cannot move the items itself: unlike the Java client, it does not tick a copy of
+    // the inventory, it only renders the items of the update tag and interpolates `PrevPos` to
+    // `Pos` (`BeltRenderer.renderItem`). So every tick that moved an item has to push a new tag;
+    // without this the tag stays at the one written when the item was inserted and the item never
+    // moves on screen. (Java gets away without it because `BeltInventory.tick` also runs on the
+    // client, see its `onClient` flag.)
+    if (moved) env.notifyUpdate();
   }
 
   bool _handleBeltProcessingAndCheckIfRemoved(TransportedItemStack currentItem, double nextOffset, bool noMovement) {

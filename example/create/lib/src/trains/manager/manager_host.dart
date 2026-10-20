@@ -34,8 +34,8 @@ void installRailwayManager(CreateContext ctx) {
     Events.worldUnload,
     (server, e) => levels.forget(e.targetWorld.getId()),
   );
-  ctx.listen(Events.worldTick, (server, e) {
-    final level = levels.of(e.targetWorld.getId());
+  ctx.onWorldTick((t) {
+    final level = levels.of(t.worldId);
     if (level != null) Create.RAILWAYS.tick(level);
   });
   ctx.listen(

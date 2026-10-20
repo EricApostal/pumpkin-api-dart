@@ -5,6 +5,7 @@
 
 import 'dart:convert';
 
+import '../../core/nbt.dart';
 import 'glob.dart';
 
 /// `ItemHelper.ExtractionCountMode`.
@@ -12,6 +13,10 @@ enum ExtractionCountMode { exactly, upTo }
 
 /// The empty item.
 const String airKey = 'minecraft:air';
+
+/// Prefix of the component names that hold the plugin's own (`custom:create:*`) components in
+/// [ItemValue.comps]; the codec form of such a component uses the plain wire name.
+const String customComponentPrefix = 'custom:';
 
 /// An item stack: item, count, and the data components that make it different from another
 /// stack of the same item (wire name and bytes, sorted by name). Immutable; the Java
@@ -27,7 +32,21 @@ final class ItemValue {
   final bool damageable;
   final List<(String, List<int>)> comps;
 
-  const ItemValue(this.key, this.count, {this.maxStack = 64, this.damageable = false, this.comps = const []});
+  /// The `components` compound of a Java save, kept as it was read. Java persists components in
+  /// the codec form (`ItemStack.CODEC`), which the plugin cannot turn into the network bytes of
+  /// [comps] (it only encodes), so it keeps the codec form of the whole compound instead of
+  /// losing it and writes it back unchanged. It is a persistence detail, not part of the
+  /// identity of a stack: [sameItemSameComponents] compares [comps] only.
+  final NbtValue? rawComponents;
+
+  const ItemValue(
+    this.key,
+    this.count, {
+    this.maxStack = 64,
+    this.damageable = false,
+    this.comps = const [],
+    this.rawComponents,
+  });
 
   /// `ItemStack.EMPTY`.
   static const ItemValue empty = ItemValue(airKey, 0);
@@ -39,7 +58,9 @@ final class ItemValue {
   bool get stackable => maxStack > 1 && !damageable;
 
   /// `copyWithCount(n)`; an empty result is [empty].
-  ItemValue withCount(int n) => n <= 0 ? empty : ItemValue(key, n, maxStack: maxStack, damageable: damageable, comps: comps);
+  ItemValue withCount(int n) => n <= 0
+      ? empty
+      : ItemValue(key, n, maxStack: maxStack, damageable: damageable, comps: comps, rawComponents: rawComponents);
 
   ItemValue grow(int n) => withCount(count + n);
   ItemValue shrink(int n) => withCount(count - n);
@@ -82,14 +103,24 @@ final class ItemValue {
     return null;
   }
 
-  /// A copy with the component [name] set (or removed with `null`).
+  /// A copy with the component [name] set (or removed with `null`). The codec form of that one
+  /// component is dropped: the plugin cannot write [bytes] (network encoding) into it.
   ItemValue withComponent(String name, List<int>? bytes) {
     final list = [
       for (final c in comps)
         if (c.$1 != name) c,
       if (bytes != null) (name, List<int>.of(bytes)),
     ]..sort((a, b) => a.$1.compareTo(b.$1));
-    return ItemValue(key, count, maxStack: maxStack, damageable: damageable, comps: list);
+    return ItemValue(key, count, maxStack: maxStack, damageable: damageable, comps: list, rawComponents: _withoutRawComponent(name));
+  }
+
+  /// [rawComponents] without the codec value of component [name] (`custom:` prefixed names are
+  /// the plugin's own; their codec key is the wire name).
+  NbtValue? _withoutRawComponent(String name) {
+    final raw = rawComponents;
+    if (raw == null || raw.kind != NbtKind.compound) return null;
+    final key = name.startsWith(customComponentPrefix) ? name.substring(customComponentPrefix.length) : name;
+    return NbtValue.compound(Map<String, NbtValue>.of(raw.asCompound)..remove(key));
   }
 
   @override
@@ -153,10 +184,19 @@ bool matchPackageAddress(String boxAddress, String address) {
 const String packageAddressComponent = 'custom:create:package_address';
 
 /// `PackageItem.getAddress(box)`: the address component (a VarInt length and UTF-8 text), blank
-/// when there is none.
+/// when there is none. A package that came from a Java save carries the address in the preserved
+/// codec form instead (`create:package_address` is a plain string there), which is read too.
 String packageAddressOf(ItemValue box) {
   final bytes = box.component(packageAddressComponent);
-  if (bytes == null || bytes.isEmpty) return '';
+  if (bytes == null) {
+    final raw = box.rawComponents;
+    if (raw != null && raw.kind == NbtKind.compound) {
+      final value = raw.asCompound['create:package_address'];
+      if (value != null && value.kind == NbtKind.string) return value.value as String;
+    }
+    return '';
+  }
+  if (bytes.isEmpty) return '';
   var length = 0, shift = 0, i = 0;
   while (i < bytes.length) {
     final b = bytes[i++];

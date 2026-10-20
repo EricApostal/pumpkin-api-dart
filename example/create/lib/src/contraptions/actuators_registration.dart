@@ -399,10 +399,9 @@ void loadActuatorContent(CreateContext ctx) {
   });
 
   // The coupling physics and the minecart controller update.
-  ctx.listen(Events.worldTick, (server, e) async {
-    CapabilityMinecartController.tick(
-      HostMinecartWorld(e.targetWorld, ctx.blockEntities),
-    );
+  ctx.onWorldTick((t) async {
+    if (!CapabilityMinecartController.hasState && !hasPendingRides) return;
+    CapabilityMinecartController.tick(HostMinecartWorld(t.world, ctx.blockEntities));
     await tickPendingRides();
   });
   ctx.listen(Events.worldUnload, (server, e) {

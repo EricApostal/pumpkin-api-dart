@@ -14,7 +14,7 @@ import '../../../core/block_entity.dart';
 import '../../../processing/transport/transport_behaviours.dart' as pt;
 import '../../behaviours/belt_interfaces.dart';
 import '../../behaviours/processing_bridge.dart'
-    show copyBack, fromProcessing, toProcessing;
+    show copyBack, fromProcessing, live, toProcessing;
 import '../../belt/transported_item.dart';
 import '../../items/inventory.dart';
 import '../../items/item_codec.dart';
@@ -147,9 +147,15 @@ class DepotBehaviour extends BlockEntityBehaviour {
 
     final previous = held.stack;
     final wasLocked = held.locked;
-    final result = wasLocked
-        ? machine.handleHeldItem(toProcessing(held), _processingHandler)
-        : machine.handleReceivedItem(toProcessing(held), _processingHandler);
+    // Java passes the live `heldItem` (`DepotBehaviour.java:130-132`); the processing form is the
+    // same object on every call, so what the machine mutates in place is written back here.
+    final processing = toProcessing(held);
+    final result = live(
+      () => wasLocked
+          ? machine.handleHeldItem(processing, _processingHandler)
+          : machine.handleReceivedItem(processing, _processingHandler),
+    );
+    copyBack(processing, held);
 
     if (heldItem == null || result == pt.ProcessingResult.remove) {
       heldItem = null;
@@ -368,12 +374,14 @@ class DepotBehaviour extends BlockEntityBehaviour {
     if (held == null) return;
     if (.5 - held.beltPosition > maxDistanceFromCentre) return;
 
+    // Java runs the callback on the live `heldItem` (`DepotBehaviour.java:401`), so the fields it
+    // mutates in place — a fan's `processingTime` — survive even when the result does nothing.
     final processing = toProcessing(held);
     final stackBefore = processing.stack;
-    final result = process(processing);
+    final result = live(() => process(processing));
+    copyBack(processing, held);
     if (result == null || result.didntChangeFrom(stackBefore)) return;
 
-    copyBack(processing, held);
     _applyProcessingResult(result);
   }
 

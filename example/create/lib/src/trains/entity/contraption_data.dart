@@ -2,6 +2,7 @@
 // the real `Contraption`; its carriage contraption wraps a [CarriageContraption] (the train
 // specific part) and implements [ContraptionData] for it. `lib/src/api/trains.dart` exports this.
 import '../../api/block_state.dart';
+import '../../common/direction.dart' show Axis;
 import '../../common/pos.dart';
 import '../util/ctag.dart';
 import 'carriage_storage.dart';
@@ -60,4 +61,13 @@ abstract interface class ContraptionData {
 
   /// `contraption.storage = storage` (`returnStorageForDisassembly`).
   void returnStorage(CarriageStorage storage);
+
+  /// `contraption.removeBlocksFromWorld(level, BlockPos.ZERO)`: the structure is taken out of the
+  /// world while the carriage entity shows it. The station calls this before it creates the train
+  /// (`StationBlockEntity.assemble`, Java `StationBlockEntity.java:885-887`).
+  Future<void> removeBlocksFromWorld();
+
+  /// `contraption.expandBoundsAroundAxis(Axis.Y)`: the bounds of an assembled carriage grow along
+  /// the axis its bogeys sit on.
+  void expandBoundsAroundAxis(Axis axis);
 }

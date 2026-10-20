@@ -3,12 +3,15 @@ import 'package:create/src/common/direction.dart';
 import 'package:create/src/common/pos.dart';
 import 'package:create/src/common/vec_helper.dart';
 import 'package:create/src/conveyance/behaviours/belt_interfaces.dart';
+import 'package:create/src/conveyance/behaviours/item_forms.dart';
 import 'package:create/src/conveyance/belt/belt_block_def.dart';
 import 'package:create/src/conveyance/belt/belt_geometry.dart';
 import 'package:create/src/conveyance/belt/belt_inventory.dart';
 import 'package:create/src/conveyance/belt/belt_ports.dart';
 import 'package:create/src/conveyance/belt/transported_item.dart';
 import 'package:create/src/conveyance/items/item_data.dart';
+import 'package:create/src/processing/common/stack.dart';
+import 'package:create/src/processing/transport/transported_stack.dart' as pt;
 import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockBox;
 import 'package:create/src/kinetics/geometry.dart' show Dir, KAxis, KPos, KState;
 import 'package:test/test.dart';
@@ -17,10 +20,11 @@ import 'kinetics_test_support.dart';
 
 /// A straight horizontal belt along +x starting at (0, 0, 0).
 class FakeBelt implements BeltEnvironment {
-  FakeBelt({this.length = 4, this.speedValue = 32});
+  FakeBelt({this.length = 4, this.speedValue = 32, this.horizontal = true});
 
   final int length;
   double speedValue;
+  bool horizontal;
   int updates = 0;
   final spawned = <(ItemValue, Vec3, Vec3)>[];
   final Map<Pos, DirectBeltInput> inputs = {};
@@ -43,7 +47,7 @@ class FakeBelt implements BeltEnvironment {
   @override
   Direction get movementFacing => speedValue >= 0 ? Direction.east : Direction.west;
   @override
-  bool get isHorizontal => true;
+  bool get isHorizontal => horizontal;
   @override
   int get beltLength => length;
   @override
@@ -113,6 +117,68 @@ void main() {
       await inv.tick();
       expect(item.beltPosition, closeTo(start + 32 / 480, 1e-9));
       expect(item.prevBeltPosition, closeTo(start, 1e-9));
+    });
+
+    test('a tick that moves an item marks the belt for a client update', () async {
+      final env = FakeBelt();
+      final inv = BeltInventory(env);
+      inv.addItem(stackAt(0.5));
+      await inv.tick(); // inserts and moves
+      final afterFirstTick = env.updates;
+      await inv.tick();
+      expect(
+        env.updates,
+        greaterThan(afterFirstTick),
+        reason:
+            'the client cannot move the item itself, so every tick that '
+            'moved it has to push a new update tag (Java only gets away '
+            'without this because its client ticks the inventory too)',
+      );
+    });
+
+    test('a held item is not pushed every tick', () async {
+      final env = FakeBelt();
+      final inv = BeltInventory(env);
+      inv.addItem(stackAt(0.5));
+      await inv.tick();
+      final item = inv.items.single;
+      item.locked = true; // held by a processing machine without a handler
+      await inv.tick();
+      final held = env.updates;
+      await inv.tick();
+      expect(env.updates, held, reason: 'a held item does not move');
+      final fields = transportedItemPositionFields(item);
+      expect(fields['Pos'], fields['PrevPos'], reason: 'and interpolates to itself');
+    });
+
+    test('a moved item serializes with a distinct Pos and PrevPos', () async {
+      final env = FakeBelt();
+      final inv = BeltInventory(env);
+      inv.addItem(stackAt(0.5));
+      await inv.tick();
+      await inv.tick();
+
+      // The values the update tag carries (`transportedItemToNbt`); the client lerps
+      // PrevPos -> Pos, so equal values would render the item still.
+      final fields = transportedItemPositionFields(inv.items.single);
+      expect(fields['Pos'], closeTo(0.5 + 2 * 32 / 480, 1e-6));
+      expect(fields['PrevPos'], closeTo(0.5 + 32 / 480, 1e-6));
+      expect(fields['Pos'], isNot(fields['PrevPos']));
+    });
+
+    test('a re-centering item serializes with a distinct Offset and PrevOffset', () async {
+      final env = FakeBelt();
+      final inv = BeltInventory(env);
+      final item = stackAt(0.5)
+        ..angle = 0 // target side offset -1/6
+        ..sideOffset = .1
+        ..prevSideOffset = .1;
+      inv.addItem(item);
+      await inv.tick();
+
+      final fields = transportedItemPositionFields(inv.items.single);
+      expect(fields['PrevOffset'], closeTo(.1, 1e-6));
+      expect(fields['Offset'], isNot(fields['PrevOffset']));
     });
 
     test('an item stops at the end margin when the belt ends in a solid wall', () async {
@@ -228,6 +294,97 @@ void main() {
       });
       await inv.tick();
       expect(inv.items.single.stack.key, 'minecraft:dirt');
+    });
+
+    test('a machine above the belt sees the live item, so its result applies', () async {
+      // `BeltPressingCallbacks.whenItemHeld` calls
+      // `handler.handleProcessingOnItem(transported, TransportedResult...)` with the object the
+      // belt handed it, and `TransportedItemStackHandlerBehaviour.handleProcessingOnItem` matches
+      // it by identity (`TransportedItemStackHandlerBehaviour.java:102-108`). Across the bridge
+      // that only holds when the conversion keeps one form per item (`item_forms.dart`);
+      // otherwise the result is dropped and the item on the belt never changes.
+      final env = FakeBelt(length: 4);
+      final inv = BeltInventory(env);
+      final handler = _InventoryHandler(inv, 1);
+      inv.addItem(stackAt(1.5));
+      await inv.tick();
+      final item = inv.items.single;
+
+      // What `ProcessingBeltAdapter.handleHeldItem` does around the machine callback.
+      final processing = toProcessing(item);
+      live(() {
+        ProcessingHandlerView(handler).handleProcessingOnItem(
+          processing,
+          pt.TransportedResult.convertTo(
+            pt.TransportedItemStack(const PStack('minecraft:iron_plate', 1))
+              ..beltPosition = item.beltPosition,
+          ),
+        );
+      });
+      copyBack(processing, item);
+      await inv.tick();
+
+      expect(
+        inv.items.map((e) => e.stack.key),
+        contains('minecraft:iron_plate'),
+        reason: 'the machine result has to reach the belt, not be dropped by the identity test',
+      );
+      expect(inv.items.every((e) => e.stack.key != 'minecraft:stone'), isTrue);
+    });
+
+    test('a processing state written in place survives a result that does nothing', () {
+      // `FanProcessing.applyProcessingTransported` sets `processedBy` / `processingTime` on the
+      // item and returns `doNothing()`; `DepotBehaviour.applyToAllItems` (Java passes the live
+      // `heldItem`, `DepotBehaviour.java:401`) has to keep that state, so the form is written back
+      // before the "result changes nothing" check.
+      final t = TransportedItemStack(ItemValue('minecraft:wet_sponge', 1));
+      final processing = toProcessing(t);
+      final stackBefore = processing.stack;
+      final result = live(() {
+        processing.processedBy = 'create:splashing';
+        processing.processingTime += 25;
+        return pt.TransportedResult.doNothing();
+      });
+      copyBack(processing, t);
+
+      expect(result.didntChangeFrom(stackBefore), isTrue, reason: 'a fan result does nothing');
+      expect(t.processedBy, 'create:splashing');
+      expect(t.processingTime, 25);
+    });
+
+    test('the bridge keeps one processing form per belt item', () {
+      final t = TransportedItemStack(ItemValue('minecraft:stone', 1));
+      final first = toProcessing(t);
+      expect(identical(toProcessing(t), first), isTrue);
+      t.stack = ItemValue('minecraft:iron_ingot', 2);
+      final again = toProcessing(t);
+      expect(identical(again, first), isTrue);
+      expect(again.stack.key, 'minecraft:iron_ingot');
+      expect(again.stack.count, 2);
+    });
+
+    test('a sloped belt does not take the tunnel of a neighbouring horizontal one', () async {
+      // `BeltTunnelInteractionHandler.getTunnelOnSegment` returns null unless the belt's slope is
+      // horizontal (`BeltTunnelInteractionHandler.java:138-144`).
+      final sloped = FakeBelt(length: 4)..horizontal = false;
+      final slopedTunnel = _TunnelPort();
+      sloped.tunnels[1] = slopedTunnel;
+      final slopedInv = BeltInventory(sloped);
+      slopedInv.addItem(stackAt(0.9));
+      for (var i = 0; i < 20; i++) {
+        await slopedInv.tick();
+      }
+      expect(slopedTunnel.flaps, isEmpty);
+
+      final flat = FakeBelt(length: 4);
+      final flatTunnel = _TunnelPort();
+      flat.tunnels[1] = flatTunnel;
+      final flatInv = BeltInventory(flat);
+      flatInv.addItem(stackAt(0.9));
+      for (var i = 0; i < 20; i++) {
+        await flatInv.tick();
+      }
+      expect(flatTunnel.flaps, isNotEmpty);
     });
   });
 
@@ -661,6 +818,76 @@ class _HoldOnce implements BeltProcessing {
     held++;
     return held >= 3 ? ProcessingResult.pass : ProcessingResult.hold;
   }
+}
+
+/// The belt's own [TransportedItemStackHandler]: what `BeltBlockEntity` exposes to the machines
+/// above it (`handleCenteredProcessingOnAllItems` -> `BeltInventory.applyToEachWithin`).
+class _InventoryHandler implements TransportedItemStackHandler {
+  _InventoryHandler(this.inv, this.segment);
+
+  final BeltInventory inv;
+  final int segment;
+
+  @override
+  void handleCenteredProcessingOnAllItems(double maxDistanceFromCenter, ItemProcessor processFunction) =>
+      inv.applyToEachWithin(segment + .5, maxDistanceFromCenter, processFunction);
+
+  @override
+  void handleProcessingOnAllItems(ItemProcessor processFunction) =>
+      handleCenteredProcessingOnAllItems(.51, processFunction);
+
+  @override
+  void handleProcessingOnItem(TransportedItemStack item, TransportedResult result) =>
+      handleCenteredProcessingOnAllItems(.51, (t) => identical(t, item) ? result : null);
+
+  @override
+  Vec3 getWorldPositionOf(TransportedItemStack transported) => (0, 0, 0);
+}
+
+/// A belt tunnel above a segment that records what the belt does with it.
+class _TunnelPort implements BeltTunnelPort {
+  final flaps = <(Direction, bool)>[];
+  final distributed = <(ItemValue, Direction?)>[];
+
+  @override
+  Pos get position => (1, 1, 0);
+
+  @override
+  bool get isBrass => false;
+
+  @override
+  bool get hasDistributionBehaviour => false;
+
+  @override
+  bool get canTakeItems => true;
+
+  @override
+  ItemValue getStackToDistribute() => ItemValue.empty;
+
+  @override
+  bool testFlapFilter(Direction side, ItemValue stack) => true;
+
+  @override
+  bool canInsert(Direction side, ItemValue stack) => true;
+
+  @override
+  void setStackToDistribute(ItemValue stack, Direction? enteredFrom) =>
+      distributed.add((stack, enteredFrom));
+
+  @override
+  bool get isAndesiteJunction => false;
+
+  @override
+  Axis get horizontalAxis => Axis.x;
+
+  @override
+  bool hasFlap(Direction side) => false;
+
+  @override
+  void flap(Direction side, bool inward) => flaps.add((side, inward));
+
+  @override
+  void itemReceived(int amount) {}
 }
 
 class _NoopHandler implements TransportedItemStackHandler {

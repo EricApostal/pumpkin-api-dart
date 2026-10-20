@@ -37,12 +37,21 @@ abstract class CreateModule {
   void onUnload() {}
 }
 
+/// Handles one world tick; registered with `CreateContext.onWorldTick`.
+typedef WorldTickHandler = FutureOr<void> Function(WorldTick t);
+
 /// The state shared by all modules.
 final class CreateCore {
   final CreateConfig config;
   final CreateServices services = CreateServices();
   final CreateRegistry registry = CreateRegistry();
   final Worlds worlds = Worlds();
+
+  /// The world tick handlers, in registration order: the framework's first, then
+  /// the modules' in module order. The plugin runs them from one host listener
+  /// per world tick ([WorldTick] resolves the world id at most once).
+  final List<WorldTickHandler> worldTickHandlers = [];
+
   final Logger log;
   late final BlockEntityStore blockEntities = BlockEntityStore(
     worlds,
@@ -83,6 +92,14 @@ final class CreateContext {
     FutureOr<void> Function(Server server, D data) handler, {
     EventPriority priority = EventPriority.normal,
   }) => host.listen(kind, handler, priority: priority);
+
+  /// Registers a per-world-tick handler: it runs for every world on every tick,
+  /// from the plugin's single `worldTick` host listener, in registration order.
+  ///
+  /// Check your module's state first and return early when there is nothing to
+  /// do — [WorldTick.worldId] and [WorldTick.playersInWorld] are host calls and
+  /// are only made when the handler asks for them, so an idle tick is free.
+  void onWorldTick(WorldTickHandler handler) => _core.worldTickHandlers.add(handler);
 }
 
 /// What a module gets in `onServerLoaded`.

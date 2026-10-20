@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../common/nbt_convert.dart';
+import '../../common/stack_tag.dart';
 import '../../content/components.dart';
 import '../schematic_stack.dart';
 
@@ -63,38 +65,30 @@ abstract final class HostSlotStacks {
     return stack;
   }
 
-  /// The private persistence form: `Key`, `Count`, `Comps` (list of `{N, V}`).
-  static NbtCompound toNbt(SlotStack s) {
-    final c = NbtCompound()
-      ..putString('Key', s.item)
-      ..putInt('Count', s.count);
-    c.putList('Comps', [
-      for (final e in s.components.entries)
-        NbtCompound()
-          ..putString('N', e.key)
-          ..putByteArray('V', e.value),
-    ]);
-    return c;
-  }
+  /// The persistence form of a slot stack: Java's `ItemStack.CODEC` shape, with the plugin's own
+  /// component bytes (see `common/stack_tag.dart`).
+  static NbtCompound toNbt(SlotStack s) => compoundOf(
+        JavaStackTag.write(
+          id: s.item,
+          count: s.count,
+          comps: [for (final e in s.components.entries) (e.key, e.value)],
+          components: s.rawComponents,
+        ),
+      );
 
   static SlotStack fromNbt(NbtCompound c) {
-    final key = c.getString('Key');
-    final count = c.getInt('Count') ?? 0;
-    if (key == null || count <= 0) return SlotStack.empty;
-    final comps = <String, Uint8List>{};
-    for (final e in c.getList('Comps') ?? const <Object>[]) {
-      if (e is NbtCompound) {
-        final n = e.getString('N');
-        final v = e.getByteArray('V');
-        if (n != null && v != null) comps[n] = Uint8List.fromList(v);
-      }
-    }
-    return SlotStack(key, count, comps);
+    final t = JavaStackTag.read(valueOfCompound(c));
+    if (t == null) return SlotStack.empty;
+    return SlotStack(
+      t.id,
+      t.count,
+      {for (final (name, bytes) in t.comps) name: Uint8List.fromList(bytes)},
+      t.components,
+    );
   }
 
-  /// The client's view of a stack (`ItemStack.CODEC`: `id` and `count`), used for the missing item
-  /// shown in the cannon GUI.
-  static NbtCompound toClientNbt(SlotStack s) => NbtCompound()
-    ..putString('id', s.item)
-    ..putInt('count', s.count);
+  /// The client's view of a stack (`ItemStack.CODEC`: `id` and `count`, plus the components of a
+  /// Java save), used for the missing item shown in the cannon GUI.
+  static NbtCompound toClientNbt(SlotStack s) =>
+      compoundOf(JavaStackTag.writeClient(id: s.item, count: s.count, components: s.rawComponents));
 }

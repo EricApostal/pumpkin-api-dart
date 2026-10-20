@@ -12,7 +12,11 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../api/trains.dart' show CarriageContraptionAssembly;
+import '../../api/trains.dart'
+    show
+        CarriageContraptionAssembly,
+        ConductorSeatLookup,
+        ScheduleCarriagePassenger;
 import '../../common/binary_nbt.dart';
 import '../../common/common.dart';
 import '../../common/nbt_convert.dart';
@@ -172,6 +176,19 @@ final class HostCarriageContraptionData implements ContraptionData {
   @override
   void returnStorage(CarriageStorage storage) =>
       contraption.returnStorageForDisassembly(storage);
+
+  /// `contraption.removeBlocksFromWorld(level, BlockPos.ZERO)`: the station calls this through
+  /// [ContraptionData] before it creates the train.
+  @override
+  Future<void> removeBlocksFromWorld() async {
+    final level = contraption.level;
+    if (level == null) return;
+    await contraption.removeBlocksFromWorld(level, posZero);
+  }
+
+  @override
+  void expandBoundsAroundAxis(Axis axis) =>
+      contraption.expandBoundsAroundAxis(axis);
 }
 
 /// The live `getBlocks()` map of the contraption, in the train code's block info type.
@@ -229,8 +246,9 @@ final class HostCarriageContraptionEntity extends OrientedContraptionEntity {
   /// The pure train side; set right after construction.
   CarriageContraptionEntity? train;
 
-  /// The synced values the train side sets. The payload bus has no channel for them, so the
-  /// server only keeps them here.
+  /// The synced values the train side sets. [lastCarriageData] is also sent to the clients
+  /// tracking the entity (see `HostCarriageEntity.setCarriageData`); [scheduled] and [trackGraph]
+  /// have no entry yet and stay server side.
   CarriageSyncData? lastCarriageData;
   bool scheduled = false;
   String? trackGraph;
@@ -476,11 +494,21 @@ final class HostCarriageEntity implements CarriageEntityHost {
     return CTag.fromNbt(nbt.toValue());
   }
 
-  /// `entityData.set(CARRIAGE_DATA, data)`: the client sync of the carriage has no channel in
-  /// the payload bus, so the server keeps the value in the entity and nothing is sent.
+  /// `entityData.set(CARRIAGE_DATA, data)`: the entry is pushed to the clients tracking the
+  /// entity as a metadata update (`Entity.setSyncedEntry`), which is what
+  /// `CarriageContraptionEntity.onSyncedDataUpdated` reads on the client.
   @override
-  void setCarriageData(CarriageSyncData data) =>
-      worldEntity.lastCarriageData = data;
+  void setCarriageData(CarriageSyncData data) {
+    worldEntity.lastCarriageData = data;
+    final host = worldEntity.host;
+    if (host is! HostContraptionEntity) return;
+    final entry = CarriageSyncDataSerializer.encodeEntry(data);
+    if (entry == null) return;
+    host.handle?.setSyncedEntry(
+      CarriageSyncDataSerializer.carriageDataIndex,
+      entry,
+    );
+  }
 
   @override
   void setScheduled(bool scheduled) => worldEntity.scheduled = scheduled;
@@ -844,5 +872,67 @@ final class HostCarriageContraptionAssembly
     final contraption = HostCarriageContraption(assemblyDirection);
     if (!contraption.assembleSync(contraptionLevel, anchor)) return null;
     return contraption.train;
+  }
+}
+
+/// `ScheduleItemEntityInteraction.interactWithConductor`'s first half: what the clicked entity
+/// rides (`entity.getRootVehicle() instanceof CarriageContraptionEntity`).
+///
+/// The schedule area looks this up as a service (`ConductorSeatLookup`); without it a conductor
+/// can neither be handed a schedule nor give one back.
+final class HostConductorSeatLookup implements ConductorSeatLookup {
+  HostConductorSeatLookup(this.host);
+
+  final ContraptionHost host;
+
+  @override
+  ScheduleCarriagePassenger? passengerOf(String worldId, int entityId) {
+    final world = host.worldOf(worldId);
+    if (world == null) return null;
+    final handle = world.getEntityById(id: entityId);
+    if (handle == null) return null;
+    final bool living;
+    final String uuid;
+    try {
+      living = handle.isLiving();
+      uuid = handle.getUuid().toString();
+    } finally {
+      handle.dispose();
+    }
+
+    final rootId = _rootVehicleId(world, entityId);
+    if (rootId == null) return null;
+    final root = host.entityById(worldId, rootId);
+    if (root is! HostCarriageContraptionEntity) return null;
+    final train = root.train;
+    if (train == null) return null;
+    final contraption = train.contraption;
+    if (contraption == null) return null;
+
+    final seatPos = contraption.data.getSeatOf(uuid);
+    return ScheduleCarriagePassenger(
+      train: train.getCarriage()?.train,
+      seated: seatPos != null,
+      conductorSeat:
+          seatPos != null && contraption.conductorSeats[seatPos] != null,
+      isCarriageContraption: true,
+      living: living,
+    );
+  }
+
+  /// `entity.getRootVehicle().getId()`: the vehicle of the vehicle of ... until one has none.
+  int? _rootVehicleId(World world, int entityId) {
+    Entity? current = world.getEntityById(id: entityId);
+    if (current == null) return null;
+    try {
+      while (true) {
+        final vehicle = current!.getVehicle();
+        if (vehicle == null) return current.getId();
+        current.dispose();
+        current = vehicle;
+      }
+    } finally {
+      current?.dispose();
+    }
   }
 }

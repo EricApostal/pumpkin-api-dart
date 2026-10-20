@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../common/stack.dart';
+import '../deployer/deployer_items.dart' show craftingRemainderOf;
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
 import '../recipe/heat.dart';
@@ -122,6 +123,7 @@ final class SplashingType implements FanProcessingType {
       match.recipe,
       ProcessingRuntime.instance.random,
       returnProcessingRemainder: true,
+      craftingRemainder: craftingRemainderOf,
     );
   }
 
@@ -179,6 +181,7 @@ final class HauntingType implements FanProcessingType {
       match.recipe,
       ProcessingRuntime.instance.random,
       returnProcessingRemainder: true,
+      craftingRemainder: craftingRemainderOf,
     );
   }
 

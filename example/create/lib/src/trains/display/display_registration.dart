@@ -2,13 +2,14 @@
 // kinetic rules of the board, the wrench handler and the `FlapDisplayAccess` service the display
 // link reads boards through (`DisplayBoardTarget`).
 import '../../api/kinetics.dart' show KineticNetworkService;
-import '../../api/redstone.dart' show FlapDisplayAccess;
+import '../../api/redstone.dart' show FlapDisplayAccess, TrainDisplayData;
 import '../../api/wrenchable.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
 import 'flap_display_block_entity.dart';
 import 'flap_display_blocks.dart';
+import 'train_display_data.dart';
 
 bool _kineticWired = false;
 bool _wrenchWired = false;
@@ -29,6 +30,9 @@ void registerDisplay(CreateRegistry registry) {
 /// Phase 2: provides [FlapDisplayAccess], registers the kinetic rules of the board and its wrench handler.
 void loadDisplay(CreateContext ctx) {
   ctx.services.provide<FlapDisplayAccess>(FlapDisplayAccessImpl());
+  // The train display-link sources (`observed_train_name`, `train_status`, `station_summary`)
+  // read the trains module through this; without it they always show an empty line.
+  ctx.services.provide<TrainDisplayData>(const HostTrainDisplayData());
   _wire(ctx.services.find<KineticNetworkService>(), ctx.services.find<WrenchRegistry>());
 }
 

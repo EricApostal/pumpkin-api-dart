@@ -92,9 +92,14 @@ Future<bool> checkForFunnels(
   return false;
 }
 
+/// `BeltTunnelInteractionHandler.getTunnelOnSegment`: only a horizontal belt has tunnels on its
+/// segments, so a sloped belt cannot grab the tunnel of a neighbouring one.
+BeltTunnelPort? tunnelOnHorizontalSegment(BeltEnvironment env, int offset) =>
+    env.isHorizontal ? env.tunnelOnSegment(offset) : null;
+
 /// `BeltTunnelInteractionHandler.flapTunnel`.
 void flapTunnel(BeltEnvironment env, int offset, Direction side, bool inward) {
-  env.tunnelOnSegment(offset)?.flap(side, inward);
+  tunnelOnHorizontalSegment(env, offset)?.flap(side, inward);
 }
 
 /// `BeltTunnelInteractionHandler.stuckAtTunnel`.
@@ -124,7 +129,7 @@ Future<bool> flapTunnelsAndCheckIfStuck(
   }
 
   var removed = false;
-  final nextTunnel = env.tunnelOnSegment(upcomingSegment);
+  final nextTunnel = tunnelOnHorizontalSegment(env, upcomingSegment);
   final transferred = current.stack.count;
 
   if (nextTunnel != null && nextTunnel.isBrass) {

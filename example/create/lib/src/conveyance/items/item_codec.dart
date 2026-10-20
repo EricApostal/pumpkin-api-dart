@@ -1,10 +1,13 @@
 // Host glue for [ItemValue]: reading and writing the host's `ItemStack` resources (item,
-// count and data components as raw bytes), the plugin's private NBT form of a stack, the
-// client NBT form, and dropping / giving stacks.
+// count and data components as raw bytes), the persistence tag of a stack (Java's
+// `ItemStack.CODEC` shape, see `common/stack_tag.dart`), the client NBT form, and dropping /
+// giving stacks.
 import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../common/nbt_convert.dart';
+import '../../common/stack_tag.dart';
 import '../../manifest/manifest.dart';
 import 'item_data.dart';
 
@@ -14,7 +17,7 @@ final List<String> customComponentKeys = [for (final c in kDataComponents) 'crea
 
 abstract final class ItemCodec {
   /// Prefix of component names that are custom (`create:*`) components.
-  static const String customPrefix = 'custom:';
+  static const String customPrefix = customComponentPrefix;
 
   /// Reads [stack] (not consumed) into a value.
   static Future<ItemValue> read(ItemStack? stack) async {
@@ -81,68 +84,49 @@ abstract final class ItemCodec {
 
   // -- Plugin NBT -------------------------------------------------------------------------
 
-  /// The private persistence form of a stack (`Key`, `Count`, `Max`, `Dmg`, `Comps`), an
-  /// empty compound for an empty stack.
-  static NbtCompound toNbt(ItemValue t) {
-    final c = NbtCompound();
-    if (t.isEmpty) return c;
-    c
-      ..putString('Key', t.key)
-      ..putInt('Count', t.count)
-      ..putInt('Max', t.maxStack)
-      ..putBool('Dmg', t.damageable);
-    if (t.comps.isNotEmpty) {
-      c.putList('Comps', [
-        for (final (name, bytes) in t.comps)
-          NbtCompound()
-            ..putString('N', name)
-            ..putByteArray('V', bytes),
-      ]);
-    }
-    return c;
-  }
+  /// The persistence form of a stack: Java's `ItemStack.CODEC` tag (`id`, `count`, and the
+  /// `components` of a Java save, written back unchanged), plus the plugin's own lossless extras
+  /// (`Max`, `Dmg`, and `Comps` with the network-encoded component bytes). An empty compound for
+  /// an empty stack.
+  static NbtCompound toNbt(ItemValue t) => t.isEmpty
+      ? NbtCompound()
+      : compoundOf(
+          JavaStackTag.write(
+            id: t.key,
+            count: t.count,
+            comps: t.comps,
+            components: t.rawComponents,
+            maxStack: t.maxStack,
+            damageable: t.damageable,
+          ),
+        );
 
+  /// The stack of either persistence form, or [ItemValue.empty] when the tag holds none.
   static ItemValue fromNbt(NbtCompound? c) {
-    if (c == null) return ItemValue.empty;
-    final key = c.getString('Key');
-    final count = c.getInt('Count') ?? 0;
-    if (key == null || count <= 0) return ItemValue.empty;
-    final comps = <(String, List<int>)>[];
-    for (final e in c.getList('Comps') ?? const <Object>[]) {
-      if (e is NbtCompound) {
-        final n = e.getString('N');
-        final v = e.getByteArray('V');
-        if (n != null && v != null) comps.add((n, v));
-      }
-    }
-    comps.sort((a, b) => a.$1.compareTo(b.$1));
-    return ItemValue(key, count, maxStack: c.getInt('Max') ?? defaultMaxStack(key), damageable: c.getBool('Dmg') ?? false, comps: comps);
+    final t = JavaStackTag.read(c == null ? null : valueOfCompound(c));
+    if (t == null) return ItemValue.empty;
+    return ItemValue(
+      t.id,
+      t.count,
+      maxStack: t.maxStack ?? defaultMaxStack(t.id),
+      damageable: t.damageable ?? false,
+      comps: t.comps,
+      rawComponents: t.components,
+    );
   }
 
-  /// The stack tag the Create client reads from an update tag (`ItemStack.CODEC`:
-  /// `{id, count}`; components are not representable).
-  static NbtCompound toClientNbt(ItemValue t) {
-    final c = NbtCompound();
-    if (t.isEmpty) return c;
-    return c
-      ..putString('id', t.key)
-      ..putInt('count', t.count);
-  }
+  /// The stack tag the Create client reads from an update tag (`ItemStack.CODEC`: `{id, count}`
+  /// and, when a Java save provided them, its components).
+  static NbtCompound toClientNbt(ItemValue t) => t.isEmpty
+      ? NbtCompound()
+      : compoundOf(JavaStackTag.writeClient(id: t.key, count: t.count, components: t.rawComponents));
 
-  /// `TransferUtil.parseItem` for the client form (no components).
-  static ItemValue fromClientNbt(NbtCompound? c) {
-    if (c == null) return ItemValue.empty;
-    final id = c.getString('id');
-    final count = c.getInt('count') ?? c.getInt('Count') ?? 1;
-    if (id == null || count <= 0) return ItemValue.empty;
-    return ItemValue(id, count, maxStack: defaultMaxStack(id));
-  }
+  /// `TransferUtil.parseItem` for the client form: the item and count, with the components of a
+  /// Java save preserved (the plugin cannot decode them).
+  static ItemValue fromClientNbt(NbtCompound? c) => fromNbt(c);
 
-  /// Reads either the private form ([toNbt]) or the client form ([toClientNbt]).
-  static ItemValue fromAnyNbt(NbtCompound? c) {
-    if (c == null) return ItemValue.empty;
-    return c.getString('Key') != null ? fromNbt(c) : fromClientNbt(c);
-  }
+  /// Reads either the Java form ([fromNbt] handles both) or the plugin's own older form.
+  static ItemValue fromAnyNbt(NbtCompound? c) => fromNbt(c);
 
   /// [toNbt] when saving, [toClientNbt] for the client update tag.
   static NbtCompound toTag(ItemValue t, {required bool clientPacket}) => clientPacket ? toClientNbt(t) : toNbt(t);

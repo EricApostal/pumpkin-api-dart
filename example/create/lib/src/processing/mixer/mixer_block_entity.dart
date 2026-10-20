@@ -5,6 +5,9 @@ import 'dart:math';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../basin/basin_operating_block_entity.dart';
+import '../processing_runtime.dart';
+import '../recipe/crafting_recipes.dart';
+import '../recipe/recipe_book.dart';
 import '../recipe/recipe_type.dart';
 
 /// `MechanicalMixerBlockEntity`.
@@ -20,11 +23,38 @@ final class MechanicalMixerBlockEntity extends BasinOperatingBlockEntity {
 
   MechanicalMixerBlockEntity(super.worldId, super.pos);
 
-  /// `matchStaticFilters`: mixing recipes (shapeless crafting is not part of the recipe book).
+  /// `matchStaticFilters`: mixing recipes.
   @override
   List<CreateRecipeType> get matchingRecipeTypes => const [
     CreateRecipeType.mixing,
   ];
+
+  /// `matchStaticFilters` for vanilla crafting recipes: a shapeless recipe with more than one
+  /// ingredient that the press cannot compress, when `recipes.allowShapelessInMixer` is set.
+  /// `canCompress` answers with `allowShapedSquareInPress`, so a square is only kept here when
+  /// that flag is off.
+  ///
+  /// `allowBrewingInMixer` (`PotionMixingRecipes.sortRecipesByItem`) has no counterpart yet: the
+  /// host exposes no brewing recipes (`RecipeManager.findRecipes` covers the crafting, cooking,
+  /// stonecutting and smithing types only), so there is nothing to mirror as a mixing recipe.
+  @override
+  List<CraftingRecipeEntry> get matchingCraftingRecipes {
+    final rt = ProcessingRuntime.instance;
+    if (!(rt.configs?.server.recipes.allowShapelessInMixer.value ?? false)) {
+      return const [];
+    }
+    final compressConfig =
+        rt.configs?.server.recipes.allowShapedSquareInPress.value ?? false;
+    return [
+      for (final entry
+          in CraftingRecipeCache.current?.shapeless ??
+              const <CraftingRecipeEntry>[])
+        if (entry.ingredients.length > 1 &&
+            !(compressConfig && entry.isCompressibleSquare) &&
+            !ignoredInAutomation(entry.id))
+          entry,
+    ];
+  }
 
   @override
   bool isRunning() => running;

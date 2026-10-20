@@ -250,29 +250,11 @@ class BeltBlockEntity extends KineticBlockEntity
   // -- Lifecycle ------------------------------------------------------------------------------
 
   @override
-  void sendData() {
-    final inv = isController ? getInventory() : null;
-    runtime.log.info(
-      'DBG sendData $p controller=$controller idx=$index speed=$speed '
-      'items=${inv?.items.map((t) => '${t.beltPosition.toStringAsFixed(3)}/${t.prevBeltPosition.toStringAsFixed(3)}').join(',')} '
-      'toInsert=${inv?.toInsert.length} toRemove=${inv?.toRemove.length}',
-    );
-    super.sendData();
-  }
-
-  @override
   void tick() {
     if (beltLength == 0) initBelt(this);
     super.tick();
     if (!beltState.isBelt) return;
     initializeItemHandler();
-    if (isController) {
-      final inv0 = getInventory();
-      runtime.log.info(
-        'DBG tick $p speed=$speed len=$beltLength '
-        'items=${inv0?.items.map((t) => '${t.beltPosition.toStringAsFixed(3)}/${t.prevBeltPosition.toStringAsFixed(3)}/${t.sideOffset.toStringAsFixed(3)}/${t.prevSideOffset.toStringAsFixed(3)}').join(',')}',
-      );
-    }
     if (!isController) return;
     final inv = getInventory();
     if (inv == null) return;
@@ -518,8 +500,18 @@ class BeltBlockEntity extends KineticBlockEntity
     final inv = controller.getInventory();
     if (inv == null) return inserted;
 
-    // A brass tunnel above the belt would distribute the item; the tunnel's own insertion path
-    // (its `DirectBeltInput`) handles that when the tunnel block is ported.
+    // A brass tunnel above the belt distributes the item instead of letting it ride on
+    // (`BeltBlockEntity.tryInsertingFromSide`, `BeltBlockEntity.java:498-510`).
+    final tunnel = tunnelOnSegment(index);
+    if (tunnel != null && tunnel.isBrass && tunnel.hasDistributionBehaviour) {
+      if (tunnel.getStackToDistribute().isNotEmpty) return inserted;
+      if (!tunnel.testFlapFilter(side.opposite, inserted)) return inserted;
+      if (!simulate) {
+        flapTunnel(this, index, side.opposite, true);
+        tunnel.setStackToDistribute(inserted, side.opposite);
+      }
+      return ItemValue.empty;
+    }
 
     if (isOccupied(side)) return inserted;
     if (simulate) return ItemValue.empty;
@@ -652,15 +644,21 @@ class BeltBlockEntity extends KineticBlockEntity
 
   // -- Entity interaction ---------------------------------------------------------------------
 
-  /// `entityInside` for a non-item entity: remember it as a belt passenger.
-  void entityEntered(int entityId, Pos at) {
+  /// `entityInside` for a non-item entity: remember it as a belt passenger. [at] is the belt block
+  /// the entity collided with and [state] that block's state (Java `pos` / `state`), [entityPos]
+  /// the entity's own block position. Runs on the belt *controller* (`BeltBlock.java:225-234`),
+  /// whose map is the one `_tickPassengers` walks. Returns whether the entity is new, which is
+  /// when Java puts it on the ground.
+  bool entityEntered(int entityId, Pos at, KState state, Pos entityPos) {
     final info = passengers[entityId];
     if (info != null) {
-      if (info.ticksSinceLastCollision != 0 || at == p)
-        info.refresh(at, blockState);
-    } else {
-      passengers[entityId] = TransportedEntityInfo(at, blockState);
+      if (info.ticksSinceLastCollision != 0 || at == entityPos) {
+        info.refresh(at, state);
+      }
+      return false;
     }
+    passengers[entityId] = TransportedEntityInfo(at, state);
+    return true;
   }
 
   /// `entityInside` for an item entity: try to take its stack onto the belt.
@@ -712,9 +710,6 @@ class BeltBlockEntity extends KineticBlockEntity
         );
     }
     super.write(tag, clientPacket: clientPacket);
-    if (clientPacket && isController) {
-      runtime.log.info('DBG clientTag $p $tag');
-    }
   }
 
   NbtCompound _writeInventory(BeltInventory inv, {required bool clientPacket}) {
@@ -722,63 +717,16 @@ class BeltBlockEntity extends KineticBlockEntity
     final nbt = NbtCompound();
     nbt.putList('Items', [
       for (final t in inv.items)
-        _transportedToNbt(t, clientPacket: clientPacket),
+        transportedItemToNbt(t, clientPacket: clientPacket),
     ]);
     final lazy = inv.lazyClientItem;
     if (lazy != null)
       nbt.putCompound(
         'LazyItem',
-        _transportedToNbt(lazy, clientPacket: clientPacket),
+        transportedItemToNbt(lazy, clientPacket: clientPacket),
       );
     nbt.putBool('PositiveOrder', inv.beltMovementPositive);
     return nbt;
-  }
-
-  NbtCompound _transportedToNbt(
-    TransportedItemStack t, {
-    required bool clientPacket,
-  }) {
-    final nbt = NbtCompound()
-      ..putCompound(
-        'Item',
-        ItemCodec.toTag(t.stack, clientPacket: clientPacket),
-      )
-      ..putFloat('Pos', t.beltPosition)
-      ..putFloat('PrevPos', t.prevBeltPosition)
-      ..putFloat('Offset', t.sideOffset)
-      ..putFloat('PrevOffset', t.prevSideOffset)
-      ..putInt('InSegment', t.insertedAt)
-      ..putInt('Angle', t.angle)
-      ..putInt('InDirection', t.insertedFrom.index);
-    if (t.processedBy != null) {
-      nbt
-        ..putString('FanProcessingType', t.processedBy!)
-        ..putInt('FanProcessingTime', t.processingTime);
-    }
-    if (t.locked) nbt.putBool('Locked', true);
-    if (t.lockedExternally) nbt.putBool('LockedExternally', true);
-    return nbt;
-  }
-
-  TransportedItemStack _transportedFromNbt(NbtCompound nbt) {
-    final t = TransportedItemStack.raw(
-      ItemCodec.fromAnyNbt(nbt.getCompound('Item')),
-    );
-    t.beltPosition = nbt.getDouble('Pos') ?? 0;
-    t.prevBeltPosition = nbt.getDouble('PrevPos') ?? 0;
-    t.sideOffset = nbt.getDouble('Offset') ?? 0;
-    t.prevSideOffset = nbt.getDouble('PrevOffset') ?? 0;
-    t.insertedAt = nbt.getInt('InSegment') ?? 0;
-    t.angle = nbt.getInt('Angle') ?? 0;
-    t.insertedFrom = Direction.from3DDataValue(nbt.getInt('InDirection') ?? 0);
-    t.locked = nbt.getBool('Locked') ?? false;
-    t.lockedExternally = nbt.getBool('LockedExternally') ?? false;
-    final fan = nbt.getString('FanProcessingType');
-    if (fan != null) {
-      t.processedBy = fan;
-      t.processingTime = nbt.getInt('FanProcessingTime') ?? 0;
-    }
-    return t;
   }
 
   @override
@@ -804,10 +752,10 @@ class BeltBlockEntity extends KineticBlockEntity
       if (inv != null && inventoryTag != null) {
         inv.items.clear();
         for (final e in inventoryTag.getList('Items') ?? const <Object>[]) {
-          if (e is NbtCompound) inv.items.add(_transportedFromNbt(e));
+          if (e is NbtCompound) inv.items.add(transportedItemFromNbt(e));
         }
         final lazy = inventoryTag.getCompound('LazyItem');
-        inv.lazyClientItem = lazy == null ? null : _transportedFromNbt(lazy);
+        inv.lazyClientItem = lazy == null ? null : transportedItemFromNbt(lazy);
         inv.beltMovementPositive =
             inventoryTag.getBool('PositiveOrder') ?? false;
       }
@@ -868,6 +816,55 @@ class BeltBlockEntity extends KineticBlockEntity
       index++;
     }
   }
+}
+
+/// `TransportedItemStack.serializeNBT`: the item as the update tag (and the save data) carries
+/// it. `Pos` / `PrevPos` is where the item is on the belt now and where it was last tick; the
+/// client interpolates them (`BeltRenderer.renderItem`), so a moving item must serialize with the
+/// two apart. `Offset` / `PrevOffset` is the same for the sideways offset.
+NbtCompound transportedItemToNbt(
+  TransportedItemStack t, {
+  required bool clientPacket,
+}) {
+  final nbt = NbtCompound()
+    ..putCompound('Item', ItemCodec.toTag(t.stack, clientPacket: clientPacket));
+  for (final e in transportedItemPositionFields(t).entries) {
+    nbt.putFloat(e.key, e.value);
+  }
+  nbt
+    ..putInt('InSegment', t.insertedAt)
+    ..putInt('Angle', t.angle)
+    ..putInt('InDirection', t.insertedFrom.index);
+  if (t.processedBy != null) {
+    nbt
+      ..putString('FanProcessingType', t.processedBy!)
+      ..putInt('FanProcessingTime', t.processingTime);
+  }
+  if (t.locked) nbt.putBool('Locked', true);
+  if (t.lockedExternally) nbt.putBool('LockedExternally', true);
+  return nbt;
+}
+
+/// `TransportedItemStack.read`: the inverse of [transportedItemToNbt].
+TransportedItemStack transportedItemFromNbt(NbtCompound nbt) {
+  final t = TransportedItemStack.raw(
+    ItemCodec.fromAnyNbt(nbt.getCompound('Item')),
+  );
+  t.beltPosition = nbt.getDouble('Pos') ?? 0;
+  t.prevBeltPosition = nbt.getDouble('PrevPos') ?? 0;
+  t.sideOffset = nbt.getDouble('Offset') ?? 0;
+  t.prevSideOffset = nbt.getDouble('PrevOffset') ?? 0;
+  t.insertedAt = nbt.getInt('InSegment') ?? 0;
+  t.angle = nbt.getInt('Angle') ?? 0;
+  t.insertedFrom = Direction.from3DDataValue(nbt.getInt('InDirection') ?? 0);
+  t.locked = nbt.getBool('Locked') ?? false;
+  t.lockedExternally = nbt.getBool('LockedExternally') ?? false;
+  final fan = nbt.getString('FanProcessingType');
+  if (fan != null) {
+    t.processedBy = fan;
+    t.processingTime = nbt.getInt('FanProcessingTime') ?? 0;
+  }
+  return t;
 }
 
 /// `BeltHelper.getPositionForOffset` (renamed to avoid clashing with the method of the entity).

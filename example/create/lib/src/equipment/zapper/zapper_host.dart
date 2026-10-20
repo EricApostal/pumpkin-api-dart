@@ -96,7 +96,7 @@ final class ZapperHost {
     ctx.host.intercept(Events.playerUseItem, _onUseItem);
     ctx.host.intercept(Events.canAttackBlock, _onCanAttackBlock);
     ctx.host.intercept(Events.playerInteract, _onInteract);
-    ctx.listen(Events.worldTick, (server, e) => _tick = e.tick);
+    ctx.onWorldTick((t) => _tick = t.tick);
     env.bus.onServerbound('create:configure_worldshaper', _onConfigure);
     // `LeftClickPacket` -> `CommonEvents.leftClickEmpty`: the client left-clicked in the air.
     env.bus.onServerbound('create:left_click', _onLeftClick);

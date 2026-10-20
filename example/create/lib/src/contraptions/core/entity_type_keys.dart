@@ -23,6 +23,21 @@ String? hostTypeKey({String? pluginKey, String? wireName}) {
   return entityTypeKey(wireName: wireName);
 }
 
+/// The key of an entity type as `Events.entityTick` reports it.
+///
+/// The host formats the event type as `minecraft:<resource_name>`
+/// (`crates/pumpkin-core/src/world/mod.rs:1728`), unconditionally. A plugin type's resource name
+/// already is its registered `namespace:path` key, so it arrives as
+/// `minecraft:create:contraption` and never matches `create:contraption`. Strip the `minecraft:`
+/// the host prepended in front of a key that has a namespace of its own; vanilla types, whose
+/// resource name is bare, keep it.
+String reportedEntityTypeKey(String reported) {
+  const prefix = 'minecraft:';
+  if (!reported.startsWith(prefix)) return reported;
+  final rest = reported.substring(prefix.length);
+  return rest.contains(':') ? rest : reported;
+}
+
 /// `AbstractMinecart` variants: `MinecartRef.canAssemble` and the collision/riding checks of the
 /// contraption code (`_isMinecartType`).
 const Set<String> minecartEntityTypeKeys = {

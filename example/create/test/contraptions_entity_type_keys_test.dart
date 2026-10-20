@@ -36,6 +36,24 @@ void main() {
     });
   });
 
+  group('reportedEntityTypeKey', () {
+    test('a plugin key the host prefixed with minecraft: is unwrapped', () {
+      // `crates/pumpkin-core/src/world/mod.rs:1728`: `format!("minecraft:{}", resource_name)`.
+      expect(
+        reportedEntityTypeKey('minecraft:create:stationary_contraption'),
+        'create:stationary_contraption',
+      );
+      expect(reportedEntityTypeKey('minecraft:create:contraption'), 'create:contraption');
+      expect(reportedEntityTypeKey('minecraft:create:gantry_contraption'), 'create:gantry_contraption');
+    });
+
+    test('a vanilla type keeps its minecraft: namespace, an unprefixed key is unchanged', () {
+      expect(reportedEntityTypeKey('minecraft:minecart'), 'minecraft:minecart');
+      expect(reportedEntityTypeKey('minecraft:player'), 'minecraft:player');
+      expect(reportedEntityTypeKey('create:contraption'), 'create:contraption');
+    });
+  });
+
   group('isMinecartEntityType', () {
     test('every minecart variant is one, with its namespaced key', () {
       for (final key in [

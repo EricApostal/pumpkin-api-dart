@@ -370,6 +370,34 @@ class CarriageSyncData {
 abstract final class CarriageSyncDataSerializer {
   static const String id = 'create:carriage_data';
 
+  /// The id of the registered serializer (`EntityRegistries.registerDataSerializer`), filled by
+  /// the trains module while the server loads. It is the VarInt in front of every encoded value.
+  static int? serializerId;
+
+  /// The `SynchedEntityData` index of `CARRIAGE_DATA` on `CarriageContraptionEntity`.
+  ///
+  /// Java assigns the id by the static initialisation order of the class chain
+  /// (`SynchedEntityData.defineId`): `Entity` uses 0..7 (`DATA_SHARED_FLAGS_ID` ..
+  /// `DATA_TICKS_FROZEN`, see the host's `tracked_data.rs`, module `entity`),
+  /// `AbstractContraptionEntity` adds `STALLED` and `CONTROLLED_BY` (8, 9,
+  /// `AbstractContraptionEntity.java:86-92`), `OrientedContraptionEntity` adds `COUPLING` and
+  /// `INITIAL_ORIENTATION` (10, 11, `OrientedContraptionEntity.java:67-69`), so
+  /// `CarriageContraptionEntity.CARRIAGE_DATA` is 12 (`TRACK_GRAPH` 13, `SCHEDULED` 14,
+  /// `CarriageContraptionEntity.java:65-70`).
+  static const int carriageDataIndex = 12;
+
+  /// `entityData.set(CARRIAGE_DATA, data)`: the metadata entry (serializer id, then the value) a
+  /// client tracking the entity receives (`setSyncedEntry`). `null` while the serializer is not
+  /// registered.
+  static List<int>? encodeEntry(CarriageSyncData data) {
+    final serializer = serializerId;
+    if (serializer == null) return null;
+    final w = PacketWriter();
+    w.writeVarInt(serializer);
+    data.write(w);
+    return w.toBytes();
+  }
+
   /// `STREAM_CODEC` write: the bytes of the value.
   static Uint8List encode(CarriageSyncData data) => data.toBytes();
 

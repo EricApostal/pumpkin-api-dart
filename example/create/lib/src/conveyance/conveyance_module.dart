@@ -6,6 +6,7 @@
 // See `docs/ARCHITECTURE.md` for the module contract.
 import '../api/filter_api.dart' show ItemFilterApi;
 import '../api/redstone.dart' show RedstoneObservables;
+import '../api/trains.dart' show StationDepotFactory;
 import '../core/module.dart';
 import '../core/registry.dart';
 import 'belts_registration.dart';
@@ -13,6 +14,7 @@ import 'chain_observable_probe.dart';
 import 'items/filter_match.dart' as filter_match;
 import 'observable_probes.dart';
 import 'runtime.dart';
+import 'transport/depot/station_depot.dart';
 import 'transport/funnel/funnel_block_entity.dart';
 import 'transport_registration.dart';
 
@@ -33,6 +35,9 @@ final class ConveyanceModule extends CreateModule {
     // The filter slots match their item through the logistics module's `ItemFilterApi`
     // (`FilterItemStack`); without that module a filter item matches nothing.
     filter_match.itemFilterApi = () => ctx.services.find<ItemFilterApi>();
+    // The station's schedule slot is a `DepotBehaviour`; the depot behaviour is this module's,
+    // so the station's slot comes from here (`StationBlockEntity.getAutoSchedule`).
+    ctx.services.provide<StationDepotFactory>(const StationDepotFactoryImpl());
   }
 
   @override

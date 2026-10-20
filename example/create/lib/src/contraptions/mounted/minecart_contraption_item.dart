@@ -156,6 +156,9 @@ void attachContraptionToCart(
   int cartId,
 ) => _pendingRides.add((entity, worldId, cartId));
 
+/// Whether a contraption waits to be mounted on its cart.
+bool get hasPendingRides => _pendingRides.isNotEmpty;
+
 /// Attaches the contraption entities spawned in the previous tick to their carts
 /// (`contraptionEntity.startRiding(cart)`).
 Future<void> tickPendingRides() async {

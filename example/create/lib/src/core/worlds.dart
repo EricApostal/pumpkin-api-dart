@@ -5,6 +5,37 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
+/// One world tick, shared by every `worldTick` handler of the plugin.
+///
+/// The plugin registers a single host listener per world tick (see
+/// `CreateCore.worldTickHandlers`), so the world id is fetched at most once per
+/// world and tick instead of once per listener. [worldId] and [playersInWorld]
+/// call the host lazily: a handler that returns before touching them costs no
+/// host call at all, which is what makes an idle server cheap.
+final class WorldTick {
+  final Server server;
+  final WorldTickEventData event;
+  final Worlds _worlds;
+  String? _worldId;
+  List<Player>? _players;
+
+  WorldTick(this.server, this.event, this._worlds);
+
+  /// The world that ticked; valid for the duration of the tick.
+  World get world => event.targetWorld;
+
+  /// The server tick (`Server.tickCount`).
+  int get tick => event.tick;
+
+  /// The world id (`World.getId()`), resolved on first use and reused.
+  String get worldId => _worldId ??= _worlds.touch(event.targetWorld);
+
+  /// The players in the world (`Server.getPlayersInWorld`), fetched on first
+  /// use. Only ask for it when a handler actually needs a player.
+  List<Player> get playersInWorld =>
+      _players ??= server.getPlayersInWorld(worldRef: event.targetWorld);
+}
+
 final class Worlds {
   final Map<String, World> _worlds = {};
   Context? _host;

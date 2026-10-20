@@ -6,6 +6,7 @@ import 'package:pumpkin_api/pumpkin_api_core.dart';
 
 import '../common/direction.dart';
 import '../common/pos.dart';
+import '../core/nbt.dart' show NbtValue;
 import '../core/pos.dart' as core_pos;
 
 /// A stack in a block entity inventory: item, count and the values of the custom (`create:*`)
@@ -15,13 +16,16 @@ final class SlotStack {
   final int count;
   final Map<String, Uint8List> components;
 
-  const SlotStack(this.item, this.count, [this.components = const {}]);
+  /// The `components` compound of a Java save, kept verbatim (`ItemValue.rawComponents`).
+  final NbtValue? rawComponents;
+
+  const SlotStack(this.item, this.count, [this.components = const {}, this.rawComponents]);
 
   static const SlotStack empty = SlotStack('minecraft:air', 0);
 
   bool get isEmpty => count <= 0 || item == 'minecraft:air';
 
-  SlotStack withCount(int c) => c <= 0 ? empty : SlotStack(item, c, components);
+  SlotStack withCount(int c) => c <= 0 ? empty : SlotStack(item, c, components, rawComponents);
 
   SlotStack shrink(int n) => withCount(count - n);
 

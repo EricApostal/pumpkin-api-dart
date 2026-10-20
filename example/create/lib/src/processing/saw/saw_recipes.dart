@@ -4,6 +4,7 @@
 import 'dart:math';
 
 import '../common/stack.dart';
+import '../deployer/deployer_items.dart' show craftingRemainderOf;
 import '../recipe/ingredient.dart';
 import '../recipe/recipe_applier.dart';
 import '../recipe/recipe_book.dart';
@@ -59,6 +60,7 @@ final class SawRecipe {
         m.recipe,
         random,
         returnProcessingRemainder: true,
+        craftingRemainder: craftingRemainderOf,
         rollFirst: m.sequenced?.forcedResult(random),
       );
     }

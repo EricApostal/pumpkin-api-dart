@@ -130,6 +130,13 @@ criterion triggers, tags, payload channels (serverbound with handler, clientboun
 commands. Event subscriptions are not in the registry: use `ctx.listen` in
 `onLoad`.
 
+Per-tick work goes through `ctx.onWorldTick` instead of `ctx.listen(Events.worldTick)`:
+the plugin registers one `worldTick` host listener and runs every handler from it, in
+registration order, with one `WorldTick` per world and tick. `WorldTick.worldId` and
+`WorldTick.playersInWorld` are host calls and are resolved lazily, so a handler that
+returns early (its module has nothing to do) costs no host call. Check the module's own
+state first: `if (_dirty.isEmpty) return;`.
+
 ### Registration order
 
 Registration order is the id: the n-th entry of a registry gets `vanillaCount + n`

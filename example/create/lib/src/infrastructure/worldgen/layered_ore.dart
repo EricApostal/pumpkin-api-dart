@@ -2,9 +2,55 @@
 // algorithm is a port of the Java feature; instead of writing to a level it reports
 // the blocks to place through a callback and can be clipped to one chunk (a plugin
 // feature only sees the chunk it generates, see `striated_ores.dart`).
+import 'dart:collection';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'worldgen_random.dart';
+
+/// A bounded LRU of computed veins ([veinBlocks]).
+///
+/// Every chunk replays the placement of the 3x3 cells around it (see `striated_ores.dart`) and a
+/// vein of size 32 reaches ~16 blocks past its own chunk, so one vein is asked for by up to nine
+/// chunks. The draw costs ~150ms of noise in this runtime, so the vein is computed once and the
+/// other eight chunks replay the block list.
+final class VeinCache {
+  /// How many veins are kept; the least recently used one is dropped first.
+  final int maxEntries;
+
+  /// Roughly how many vein blocks are kept in total (one vein is up to ~19k blocks).
+  final int maxBlocks;
+
+  final LinkedHashMap<Object, VeinBlocks> _entries = LinkedHashMap();
+  int _blocks = 0;
+
+  VeinCache({this.maxEntries = 48, this.maxBlocks = 250000});
+
+  /// The vein of [key], computed by [build] when it is not cached yet.
+  VeinBlocks blocksFor(Object key, VeinBlocks Function() build) {
+    final hit = _entries.remove(key);
+    if (hit != null) {
+      _entries[key] = hit; // most recently used
+      return hit;
+    }
+    final built = build();
+    _entries[key] = built;
+    _blocks += built.length;
+    // Never drop the entry just added: a vein bigger than the whole budget stays.
+    while ((_entries.length > maxEntries || _blocks > maxBlocks) && _entries.length > 1) {
+      final oldest = _entries.keys.first;
+      final dropped = _entries.remove(oldest);
+      _blocks -= dropped?.length ?? 0;
+    }
+    return built;
+  }
+
+  /// Forgets every vein.
+  void clear() {
+    _entries.clear();
+    _blocks = 0;
+  }
+}
 
 /// What a [BlockReplacement] replaces: the `RuleTest` of the Java mod.
 enum OreRuleTest {
@@ -233,26 +279,35 @@ class _ResolvedLayer {
   _ResolvedLayer(this.layer, this.radialThresholdMultiplier, this.rampStartValue);
 }
 
-/// `LayeredOreFeature.place` as a function.
+/// The blocks of a vein, in the order `LayeredOreFeature` visits them, with the block each one
+/// rolls. Independent of the chunk that asked for it, so one computation can be replayed for
+/// every chunk the vein reaches into (see [generateLayeredVein]).
+final class VeinBlocks {
+  final Int32List x, y, z;
+  final List<List<BlockReplacement>> targets;
+
+  const VeinBlocks(this.x, this.y, this.z, this.targets);
+
+  int get length => x.length;
+}
+
+/// The blocks of the vein of [config] around ([x0], [y0], [z0]) that lie inside the y range
+/// [minY]..[maxY], in the order the Java feature visits them.
 ///
-/// Draws the vein of [config] around ([x0], [y0], [z0]) with [random]; for each block of the vein
-/// inside [clip] the [apply] callback decides: it gets the [BlockReplacement]s of the rolled
-/// layer block and returns true when it placed one (then the count grows). The random draws do not
-/// depend on [clip] or on what [apply] does, so the same vein generated for two chunks agrees.
-/// Returns the number of blocks [apply] reported.
-int generateLayeredVein(
+/// The draws of the vein do not depend on the chunk being generated, so this is the *whole*
+/// vein: a caller clips it to its own chunk (see [generateLayeredVein]).
+VeinBlocks veinBlocks(
   LayeredOreConfiguration config,
   LegacyRandom random,
   int x0,
   int y0,
   int z0,
-  VeinClip clip,
-  bool Function(int x, int y, int z, List<BlockReplacement> targets, LegacyRandom random) apply,
+  int minY,
+  int maxY,
 ) {
   final patternPool = config.layerPatterns;
-  if (patternPool.isEmpty) return 0;
+  if (patternPool.isEmpty) return VeinBlocks(Int32List(0), Int32List(0), Int32List(0), const []);
   final layerPattern = patternPool[random.nextInt(patternPool.length)];
-  var placedAmount = 0;
   final size = config.size + 1;
   final radius = config.size * 0.5;
   final radiusBound = radius.ceil() - 1;
@@ -293,6 +348,28 @@ int generateLayeredVein(
   const maxRadialThresholdReduction = 0.25;
   const radialNoiseFrequency = 0.125;
 
+  var xs = Int32List(4096);
+  var ys = Int32List(4096);
+  var zs = Int32List(4096);
+  var targets = <List<BlockReplacement>>[];
+  var count = 0;
+
+  void add(int x, int y, int z, List<BlockReplacement> rolled) {
+    if (count == xs.length) {
+      final grown = count * 2;
+      final nx = Int32List(grown), ny = Int32List(grown), nz = Int32List(grown);
+      nx.setRange(0, count, xs);
+      ny.setRange(0, count, ys);
+      nz.setRange(0, count, zs);
+      xs = nx; ys = ny; zs = nz;
+    }
+    xs[count] = x;
+    ys[count] = y;
+    zs[count] = z;
+    targets.add(rolled);
+    count++;
+  }
+
   for (var dzBlock = -radiusBound; dzBlock <= radiusBound; dzBlock++) {
     final dz = dzBlock * (1.0 / radius);
     if (dz * dz > 1) continue;
@@ -304,7 +381,7 @@ int generateLayeredVein(
         final distanceSquared = dz * dz + dx * dx + dy * dy;
         if (distanceSquared > 1) continue;
         final currentY = y0 + dyBlock;
-        if (currentY < clip.minY || currentY > clip.maxY) continue; // isOutsideBuildHeight
+        if (currentY < minY || currentY > maxY) continue; // isOutsideBuildHeight
         final currentX = x0 + dxBlock;
         final currentZ = z0 + dzBlock;
 
@@ -338,10 +415,49 @@ int generateLayeredVein(
         if (distanceSquared > entry.radialThresholdMultiplier * thresholdNoiseValue) continue;
 
         final targetBlockStates = entry.layer!.rollBlock(random);
-        if (!clip.contains(currentX, currentY, currentZ)) continue;
-        if (apply(currentX, currentY, currentZ, targetBlockStates, random)) placedAmount++;
+        add(currentX, currentY, currentZ, targetBlockStates);
       }
     }
+  }
+  return VeinBlocks(
+    Int32List.sublistView(xs, 0, count),
+    Int32List.sublistView(ys, 0, count),
+    Int32List.sublistView(zs, 0, count),
+    targets,
+  );
+}
+
+/// `LayeredOreFeature.place` as a function.
+///
+/// Draws the vein of [config] around ([x0], [y0], [z0]) with [random]; for each block of the vein
+/// inside [clip] the [apply] callback decides: it gets the [BlockReplacement]s of the rolled
+/// layer block and returns true when it placed one (then the count grows). The random draws do not
+/// depend on [clip] or on what [apply] does, so the same vein generated for two chunks agrees.
+/// Returns the number of blocks [apply] reported.
+///
+/// With [cache] and a [key] that identifies the vein (they belong together, see `VeinCache`), the
+/// vein is computed once and replayed for the other chunks it reaches into.
+int generateLayeredVein(
+  LayeredOreConfiguration config,
+  LegacyRandom random,
+  int x0,
+  int y0,
+  int z0,
+  VeinClip clip,
+  bool Function(int x, int y, int z, List<BlockReplacement> targets, LegacyRandom random) apply, {
+  VeinCache? cache,
+  Object? key,
+}) {
+  final blocks = cache == null || key == null
+      ? veinBlocks(config, random, x0, y0, z0, clip.minY, clip.maxY)
+      : cache.blocksFor(key, () => veinBlocks(config, random, x0, y0, z0, clip.minY, clip.maxY));
+
+  var placedAmount = 0;
+  final xs = blocks.x, ys = blocks.y, zs = blocks.z;
+  for (var i = 0; i < blocks.length; i++) {
+    final x = xs[i], y = ys[i], z = zs[i];
+    if (!clip.contains(x, y, z)) continue;
+    if (apply(x, y, z, blocks.targets[i], random)) placedAmount++;
   }
   return placedAmount;
 }

@@ -52,6 +52,25 @@ List<Pos> placedTracks(MemoryTrackLevel level) => [
     return byX != 0 ? byX : a.$3.compareTo(b.$3);
   });
 
+/// The first click of a connection: `useOn` on a track block without a selection.
+Future<TrackUseResult> firstClick(
+  MemoryTrackLevel level,
+  TrackItemStack stack,
+  Vec3 look, {
+  Pos at = (0, 0, 0),
+  TrackPlacementPlayer? player,
+}) => TrackBlockItem.useOn(
+  level: level,
+  player: player ?? TestPlacementPlayer(look),
+  stack: stack,
+  clickedPos: at,
+  clickedFace: Direction.up,
+  clickedState: level.stateAt(at),
+  lookVec: look,
+  yRot: 0,
+  sneaking: false,
+);
+
 void main() {
   late TrackBlock block;
   late BState zo;
@@ -239,25 +258,6 @@ void main() {
       return TestPlacementPlayer(look, creative: false)
         ..inventory = TrackInventory(items, 0);
     }
-
-    /// The first click of a connection: `useOn` on a track block without a selection.
-    Future<TrackUseResult> firstClick(
-      MemoryTrackLevel level,
-      TrackItemStack stack,
-      Vec3 look, {
-      Pos at = (0, 0, 0),
-      TrackPlacementPlayer? player,
-    }) => TrackBlockItem.useOn(
-      level: level,
-      player: player ?? TestPlacementPlayer(look),
-      stack: stack,
-      clickedPos: at,
-      clickedFace: Direction.up,
-      clickedState: level.stateAt(at),
-      lookVec: look,
-      yRot: 0,
-      sneaking: false,
-    );
 
     test('the first click on a track selects it and asks for a second point', () async {
       final level = MemoryTrackLevel({(0, 0, 0): zo});
@@ -512,6 +512,108 @@ void main() {
 
       expect(TrackBlockItem.use(stack, sneaking: true), isTrue);
       expect(stack.connectingFrom, isNull);
+    });
+  });
+
+  group('placement cost', () {
+    // One use of a track item writes the straights of both ends, the curve, and the fake tracks
+    // along it. In Java each of those is a memory store, so a 30 block run costs nothing; in the
+    // plugin every `setBlock` is a round trip into the server (and each one runs a neighbour,
+    // shape and light update plus the plugin's own callbacks), which is the TPS spike a player
+    // sees while a run fills in. What has to hold: the number of *write* calls does not grow with
+    // the run - a phase of the placement is one batched write, not one call per block.
+    late TrackBlock block;
+    late BState zo;
+
+    setUp(() {
+      block = registerTrackBlock();
+      zo = track(block.defaultState, TrackShape.zo);
+    });
+
+    /// One placement of a straight run of [length] blocks: click 1 at the start, click 2 at the
+    /// end, both on the same axis. Returns the level it writes into.
+    Future<MemoryTrackLevel> placeStraight(int length) async {
+      final level = MemoryTrackLevel({(0, 0, 0): zo});
+      final stack = TrackItemStack('create:track', 64);
+      await firstClick(level, stack, (0.0, 0.0, 1.0));
+      level.blocks[(0, 0, length)] = zo;
+      final result = await TrackBlockItem.useOn(
+        level: level,
+        player: TestPlacementPlayer((0.0, 0.0, 1.0)),
+        stack: stack,
+        clickedPos: (0, 0, length),
+        clickedFace: Direction.up,
+        clickedState: zo,
+        lookVec: (0.0, 0.0, 1.0),
+        yRot: 0,
+        sneaking: false,
+      );
+      expect(result.outcome, TrackUseOutcome.placed, reason: result.message);
+      return level;
+    }
+
+    test('a straight run is written without one level call per block', () async {
+      final level = await placeStraight(31);
+
+      final perBlock = level.writeCounts.where((blocks) => blocks == 1).length;
+      final batched = level.writeCounts.where((blocks) => blocks > 1).length;
+      // ignore: avoid_print
+      print(
+        'straight 31: reads=${level.readCount} '
+        'write calls=${level.writeCounts.length} (single block: $perBlock, batched: $batched, '
+        'blocks per batch: ${level.writeCounts.where((b) => b > 1).toList()})',
+      );
+      expect(level.writeCounts, isNotEmpty, reason: 'the run was written');
+      expect(
+        perBlock,
+        lessThanOrEqualTo(2),
+        reason: 'the run is written in batches; $perBlock single block calls is the spike',
+      );
+    });
+
+    test('the write calls do not grow with the run length', () async {
+      final short = await placeStraight(7);
+      final long = await placeStraight(31);
+
+      final shortCalls = short.writeCounts.length;
+      final longCalls = long.writeCounts.length;
+      // ignore: avoid_print
+      print('run 8: $shortCalls write calls, run 32: $longCalls write calls');
+      expect(
+        longCalls,
+        lessThanOrEqualTo(shortCalls + 1),
+        reason: 'a four times longer run must not cost four times the level calls',
+      );
+    });
+
+    test('a curved turn is written in batches as well', () async {
+      final level = MemoryTrackLevel({(0, 0, 0): zo});
+      final xo = track(block.defaultState, TrackShape.xo);
+      final stack = TrackItemStack('create:track', 64);
+      await firstClick(level, stack, (0.0, 0.0, 1.0));
+
+      level.blocks[(15, 0, 14)] = xo;
+      final result = await TrackBlockItem.useOn(
+        level: level,
+        player: TestPlacementPlayer((-1.0, 0.0, 0.0)),
+        stack: stack,
+        clickedPos: (15, 0, 14),
+        clickedFace: Direction.up,
+        clickedState: xo,
+        lookVec: (-1.0, 0.0, 0.0),
+        yRot: 0,
+        sneaking: false,
+      );
+      expect(result.outcome, TrackUseOutcome.placed, reason: result.message);
+
+      final perBlock = level.writeCounts.where((blocks) => blocks == 1).length;
+      // ignore: avoid_print
+      print(
+        'curve: reads=${level.readCount} write calls=${level.writeCounts.length} '
+        '(single block: $perBlock, blocks per batch: '
+        '${level.writeCounts.where((b) => b > 1).toList()})',
+      );
+      expect(perBlock, lessThanOrEqualTo(2), reason: 'the curve is written in batches too');
     });
   });
 

@@ -1,0 +1,8 @@
+{"tick":20,"client":1,"kind":"chunk","chunk":[0,0]}
+{"tick":21,"client":1,"kind":"block_update","pos":[4,70,0],"state":38180}
+{"tick":21,"client":1,"kind":"block_update","pos":[4,71,0],"state":38180}
+{"tick":22,"client":1,"kind":"section_block_update","pos":[4,70,0],"state":38181}
+{"tick":22,"client":1,"kind":"block_entity_data","pos":[4,70,0],"type":17,"nbt":"0a00"}
+{"tick":40,"client":2,"kind":"chunk","chunk":[0,0]}
+{"tick":40,"client":2,"kind":"chunk_block_entity","chunk":[0,0],"pos":[4,70,0],"type":17,"nbt":"0a00"}
+{"tick":40,"client":2,"kind":"chunk_block_entity","chunk":[0,0],"pos":[4,71,0],"type":17,"nbt":"0a00"}

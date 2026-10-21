@@ -280,6 +280,20 @@ abstract final class BeltShapes {
   static final Map<BState, Shape> _cache = {};
   static final Map<BState, Shape> _collisionCache = {};
 
+  /// `BeltShapes.getShape` of the default state (`facing=north, part=start, slope=horizontal,
+  /// casing=false`, the manifest's `defaultState`).
+  ///
+  /// This is the shape a belt block *registers*. Its Java shapes are per state (160
+  /// combinations, more than the host's 64 static shape rules), so the real one is computed per
+  /// state through the dynamic shape hook; the registered shape is the base the host falls back
+  /// to, and — unlike the manifest's full-cube default — it is what the host derives the state
+  /// flags and the light opacity from. `BeltShapes` is never a full cube, so `BeltBlock`'s
+  /// `getLightDampening()` is 0: a belt does not occlude light.
+  static final Shape registeredShape = _flatStart.get(Direction.north);
+
+  /// `BeltShapes.getCollisionShape` of the default state.
+  static final Shape registeredCollision = intersect(beltCollisionMask, registeredShape);
+
   /// `BeltShapes.getShape(state)`.
   static Shape getShape(BState state) =>
       _cache[state] ??= union([_beltShape(state), _casingShape(state)]);

@@ -1,3 +1,19 @@
+## Differential (`diff_servers.dart`)
+
+Runs one scenario against two servers (a Java NeoForge server built from an existing
+install, and Pumpkin with the plugin), records both through a `mctrace` proxy, and reports
+the first *semantic* difference between what the two clients were told:
+
+```sh
+puro dart run tool/diff_servers.dart [--reference java|pumpkin] [--candidate pumpkin|java]
+```
+
+Exit codes: 0 agree, 1 differ, 2 the run never got to compare. The comparison itself lives in
+`test/support/differential/` (`trace_diff.dart` is pure and unit-tested by
+`test/trace_diff_test.dart`), the contraption rig is the scenario defined in the tool, and
+`README.md` ("Differential against a Java server") documents the environment and the
+normalisations.
+
 
 ## Data pack (`package_datapack.dart`)
 

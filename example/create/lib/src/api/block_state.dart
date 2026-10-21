@@ -2,7 +2,7 @@
 // (pure). Algorithms that depend on the neighbours (connected pillars, glass panes,
 // girders, stairs, ...) are written against [BlockGetter] so they run on the plain Dart VM in
 // tests; `api/blocks.dart` provides the host implementation.
-import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockBox;
+import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockBox, BlockStateLayout;
 
 import '../common/direction.dart';
 import '../common/pos.dart';
@@ -92,6 +92,22 @@ final class BState {
 
   @override
   String toString() => props.isEmpty ? key : '$key[${props.entries.map((e) => '${e.key}=${e.value}').join(',')}]';
+}
+
+/// The index of [state] in [layout] (the layout of its block), or `null` when a value is outside
+/// the block's domain.
+///
+/// A block callback that answers with a state — the `update-shape` hook — answers with an index of
+/// *the block*, not with a global state id: the host takes the answer only while it is below the
+/// block's state count and then looks the state up as `states[index]`
+/// (`crates/pumpkin-core/src/block/blocks/dynamic.rs:194-198`, `state_id`), so a global state id
+/// (`BlockRegistry.resolveState`) is always past the count of a plugin block and is discarded.
+int? stateIndexIn(BlockStateLayout layout, BState state) {
+  try {
+    return layout.indexOf(state.props);
+  } catch (_) {
+    return null;
+  }
 }
 
 /// A read-only view of the world's blocks (`BlockGetter` / `LevelReader`).

@@ -442,6 +442,11 @@ abstract final class TrackPlacement {
   ) async {
     info.requiredTracks = 0;
 
+    // The run of one placement (the straights of both ends and the two end blocks) is collected
+    // and written in batches: one host call per phase instead of one per block, which is what a
+    // long run used to cost inside a single tick.
+    final changes = <(Pos, BState)>[];
+
     for (final first in Iterate.trueAndFalse) {
       final extent = first ? info.end1Extent : info.end2Extent;
       final axis = first ? info.axis1! : info.axis2!;
@@ -477,8 +482,15 @@ abstract final class TrackPlacement {
           canPlace = true;
         }
 
-        if (canPlace) await level.setBlock(offsetPos, withWater(level, toPlace, offsetPos)!);
+        if (canPlace) changes.add((offsetPos, withWater(level, toPlace, offsetPos)!));
       }
+    }
+
+    // Java writes each block as it goes; the straights are done before the end blocks read
+    // their own position, so the batch is flushed here.
+    if (changes.isNotEmpty) {
+      await level.setBlocks(changes);
+      changes.clear();
     }
 
     if (info.curve == null) return info;
@@ -486,22 +498,26 @@ abstract final class TrackPlacement {
     if (!simulate) {
       final onto = _defaultStateOf(info.trackMaterial);
       var stateAtPos = level.stateAt(targetPos1);
-      await level.setBlock(
+      changes.add((
         targetPos1,
         withHasBe(
           withWater(level, TrackBlockRegistry.isTrack(stateAtPos) ? stateAtPos : copyProperties(state1, onto), targetPos1)!,
           true,
         ),
-      );
+      ));
 
       stateAtPos = level.stateAt(targetPos2);
-      await level.setBlock(
+      changes.add((
         targetPos2,
         withHasBe(
           withWater(level, TrackBlockRegistry.isTrack(stateAtPos) ? stateAtPos : copyProperties(state2, onto), targetPos2)!,
           true,
         ),
-      );
+      ));
+      // Flushed before the block entities below are read: `_syncBlockEntity` gives the two end
+      // blocks their `turn` block entity with the write.
+      await level.setBlocks(changes);
+      changes.clear();
     }
 
     final tte1 = level.getTrackBlockEntity(targetPos1);

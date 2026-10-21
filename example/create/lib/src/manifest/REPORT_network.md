@@ -18,7 +18,7 @@ None: every codec was either decoded mechanically or hand verified from the Java
 
 ### Hand decoded (override) payloads
 - `create:place_package_port`: PackagePortTarget.STREAM_CODEC = registry(PACKAGE_PORT_TARGET_TYPE).dispatch(...): varint registry id (registration order: chain_conveyor=0, train_station=1) then the type codec.
-- `create:sync_rail_graph`: Hand decoded from TrackGraphSyncPacket.write(): every field after fullWipe is absent when packetDeletesGraph is true. The dimension palette is written first (int count, then identifiers), followed by the lists in the order shown. Only SignalBoundary edge points append group data.
+- `create:sync_rail_graph`: Hand decoded from TrackGraphSyncPacket.write(): every field after fullWipe is absent when packetDeletesGraph is true. The dimension palette is written first (int count, then identifiers), followed by the lists in the order shown. SignalBoundary and GlobalStation edge points append subclass data (see the subclassData field).
 - `catnip:open_config_screen`: Either<String modId, Either<ConfigId, ConfigValueId>>: bool(isLeft) then the left/right value.
 - `catnip:set_config_values`: changes: varint count, then (ConfigPath, WrappedConfigValue) pairs; WrappedConfigValue is a tagged union: varint ordinal of WrappedConfigValue.Type then the variant value (ENUM = varint ordinal).
 - `ponder:open_ponder`: Target is a tagged union: varint ordinal of OpenPonderPacket.Target.Type then the variant payload.

@@ -15,6 +15,7 @@ import '../../common/direction.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
 import '../../core/block_entity.dart';
+import '../../core/perf.dart';
 import '../../manifest/manifest.dart';
 import '../entity/train_level.dart' show TrainSettings;
 import '../station/host_ops.dart' show playCreateSound, sendOverlay;
@@ -27,6 +28,7 @@ import 'track_block_entity.dart';
 import 'track_block_item.dart';
 import 'track_level.dart';
 import 'track_placement.dart' show ConnectingFrom, TrackPlacement;
+import 'track_write_plan.dart';
 
 /// `TrackLevel` over a host [World]. Reads go through [HostBlockGetter]; block writes keep the
 /// track and fake track block entities in the store, like Java's `EntityBlock.newBlockEntity`.
@@ -93,6 +95,88 @@ final class HostTrackLevel extends TrackLevel {
     }
     await setBlockState(world, pos, state);
     await _syncBlockEntity(pos, state);
+  }
+
+  /// One placement phase in one host call: `world.placeBlocks` writes every block of the batch,
+  /// then runs the neighbour, shape and light updates once for the whole batch.
+  ///
+  /// Java writes a placement as a run of `setBlock`s; here each one used to be a round trip into
+  /// the server plus its own neighbour, shape and light update - a long run fills in over
+  /// hundreds of calls inside one tick, which is the spike (and the delay) a player sees. The
+  /// per-block behaviour is the same as [setBlock]: an unchanged state is skipped (so a track
+  /// written over itself keeps its block entity), a track with `turn` gets its block entity and a
+  /// block that is no track any more loses it.
+  ///
+  /// The write also passes [BlockFlagsFlag.skipBlockAddedCallback]: the host then writes the
+  /// whole batch without calling back into this plugin for each block. Those callbacks are what
+  /// the tick was spent on - each one is a host-to-plugin round trip of tens of milliseconds
+  /// while the handler itself takes ~0.06ms (measured with the `[perf]` labels before/after this
+  /// change) - and the plugin runs the same placed handling itself, once per written position,
+  /// right after the write ([_firePlaced]), so no block is ever left without its block entity.
+  @override
+  Future<void> setBlocks(List<(Pos, BState)> changes) async {
+    final writes = planTrackWrite(
+      changes,
+      currentStateAt: (pos) => world.getBlockStateId(pos: pos.toBlockPos()),
+      idOf: stateIdOf,
+    );
+    if (writes.isEmpty) return;
+    final placements = [
+      for (final (pos, _, stateId, _) in writes)
+        BlockPlacementChange(pos.toBlockPos(), stateId),
+    ];
+    // The `placed` event of every written block, which the host is asked not to fire.
+    final handling = planPlacedHandling(writes);
+
+    if (!Perf.enabled) {
+      await world.placeBlocks(placements, flags: _bulkWriteFlags);
+    } else {
+      final watch = Stopwatch()..start();
+      try {
+        await world.placeBlocks(placements, flags: _bulkWriteFlags);
+      } finally {
+        Perf.record(
+          'track.write(${placements.length})',
+          watch.elapsedMicroseconds,
+        );
+      }
+    }
+    final syncWatch = Perf.enabled ? (Stopwatch()..start()) : null;
+    try {
+      for (var i = 0; i < writes.length; i++) {
+        final (pos, state, _, _) = writes[i];
+        final placed = handling[i];
+        // Before the sync: the block entity of a track with `turn` is created here, and
+        // `TrackBlock.onPlace` / `setPlacedBy` read it.
+        if (placed != null) await _firePlaced(placed);
+        await _syncBlockEntity(pos, state);
+      }
+    } finally {
+      if (syncWatch != null) {
+        Perf.record('track.syncBlockEntities', syncWatch.elapsedMicroseconds);
+      }
+    }
+  }
+
+  /// The flags of one placement write: notify the neighbours and the clients like `setBlock`
+  /// does, but do not call back into the plugin per block.
+  static const Set<BlockFlagsFlag> _bulkWriteFlags = {
+    ...BlockUpdateFlags.normal,
+    BlockFlagsFlag.skipBlockAddedCallback,
+  };
+
+  /// Runs the `placed` handling of one written block itself, the way the host would have for a
+  /// single write (`BlockBehavior.onPlaced`: the block entity of the block and
+  /// `TrackBlock.onPlace`). See `track_write_plan.dart` for why the plugin fires it.
+  Future<void> _firePlaced(PlacedBlock placed) async {
+    final (pos, blockKey, stateIndex, oldStateId) = placed;
+    await CustomBlockBehaviors.firePlaced(
+      targetWorld: world,
+      pos: pos.toBlockPos(),
+      blockKey: blockKey,
+      stateIndex: stateIndex,
+      oldStateId: oldStateId,
+    );
   }
 
   /// Java's `EntityBlock.newBlockEntity` / `onRemove`: a track block keeps its block entity only

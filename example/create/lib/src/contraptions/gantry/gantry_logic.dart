@@ -5,7 +5,7 @@
 //
 // Java: `content/contraptions/gantry/{GantryCarriageBlock,GantryCarriageBlockEntity,
 // GantryContraptionEntity}`.
-import 'package:pumpkin_api/pumpkin_api_core.dart' show PlacementRule;
+import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockStateLayout, PlacementRule;
 
 import '../../api/block_state.dart';
 import '../../common/common.dart';
@@ -71,6 +71,22 @@ BState cycleGantryAxisIfNecessary(
   if (shaftAxis == direction.axis) return state;
   if (isValidGantryShaftAxis(state, other)) return state;
   return state.cycleFlag('axis_along_first');
+}
+
+/// `GantryCarriageBlock.updateShape` answered for the `update-shape` hook: the index of the new
+/// state in [layout] (the layout of the carriage block), or `null` when the shaft leaves the state
+/// unchanged.
+///
+/// The hook answers with a state index *of the block*, not a global state id (see [stateIndexIn]).
+int? gantryCarriageShapeAnswer(
+  BlockStateLayout layout,
+  BState state,
+  Direction side,
+  BState other,
+) {
+  final next = cycleGantryAxisIfNecessary(state, side, other);
+  if (next == state) return null;
+  return stateIndexIn(layout, next);
 }
 
 /// `GantryCarriageBlock.getStateForPlacement`: the state the carriage at [pos] gets after

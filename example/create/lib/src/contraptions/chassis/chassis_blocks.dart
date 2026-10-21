@@ -17,23 +17,20 @@ const String slimeBallItem = 'minecraft:slime_ball';
 
 /// The chassis and sticker block definitions.
 List<CreateBlock> buildChassisBlocks() => [
-  manifestBlock(
+  _chassisBlock(
     'linear_chassis',
     blockEntityType: 'create:linear_chassis',
     placement: linearChassisPlacementRules,
-    behavior: chassisBehavior(linearChassis),
   ),
-  manifestBlock(
+  _chassisBlock(
     'secondary_linear_chassis',
     blockEntityType: 'create:secondary_linear_chassis',
     placement: linearChassisPlacementRules,
-    behavior: chassisBehavior(secondaryLinearChassis),
   ),
-  manifestBlock(
+  _chassisBlock(
     'radial_chassis',
     blockEntityType: 'create:radial_chassis',
     placement: radialChassisPlacementRules,
-    behavior: chassisBehavior(radialChassis),
   ),
   manifestBlock(
     'sticker',
@@ -43,9 +40,26 @@ List<CreateBlock> buildChassisBlocks() => [
   ),
 ];
 
+/// A linear or radial chassis. The behaviour needs the block itself, because the `update-shape`
+/// answer is a state index of the block (see [linearChassisShapeAnswer]).
+CreateBlock _chassisBlock(
+  String key, {
+  required String blockEntityType,
+  required List<PlacementRule> placement,
+}) {
+  late final CreateBlock block;
+  block = manifestBlock(
+    key,
+    blockEntityType: blockEntityType,
+    placement: placement,
+    behavior: chassisBehavior(() => block),
+  );
+  return block;
+}
+
 /// `AbstractChassisBlock.useItemOn` / `useWithoutItem`: a slime ball or super glue adds the sticky
 /// side, an empty sneaking hand removes it, and a slime ball on a sticky side fills every side.
-BlockBehavior chassisBehavior(String blockKey) => BlockBehavior(
+BlockBehavior chassisBehavior(CreateBlock Function() blockRef) => BlockBehavior(
   onUseWithItem: (server, e) async {
     final pos = (e.pos.x, e.pos.y, e.pos.z);
     // The clicked state (`useItemOn`'s `state` argument), not the event's per-block `stateIndex`.
@@ -94,13 +108,12 @@ BlockBehavior chassisBehavior(String blockKey) => BlockBehavior(
     );
     if (!isLinearChassis(state)) return null;
     final other = HostBlockGetter.stateOfId(e.neighborStateId);
-    final next = linearChassisUpdateShape(
+    return linearChassisShapeAnswer(
+      blockRef().layout,
       state,
       toDirection(e.direction),
       other,
     );
-    if (next == state) return null;
-    return BlockRegistry.resolveState(next.key, next.props);
   },
 );
 

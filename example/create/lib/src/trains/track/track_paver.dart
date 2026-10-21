@@ -68,11 +68,18 @@ abstract final class TrackPaver {
     }
 
     final state = defaultBlockState;
+    // One batched write for the whole straight: collecting first keeps the per position reads
+    // the same (each one is its own position) while the run costs one host call instead of one
+    // per block.
+    final changes = <(Pos, BState)>[];
     for (final p in toPlaceOn.toList()) {
       if (!visited.add(p)) continue;
-      if (await _placeBlockIfFree(level, p, state, simulate)) itemsNeeded += slabLike ? 2 : 1;
+      if (_wantsPlacement(level, p, state)) {
+        itemsNeeded += slabLike ? 2 : 1;
+        if (!simulate) changes.add((p, withWater(level, state, p)!));
+      }
     }
-    visited.addAll(toPlaceOn);
+    if (changes.isNotEmpty) await level.setBlocks(changes);
 
     return itemsNeeded;
   }
@@ -134,6 +141,7 @@ abstract final class TrackPaver {
       }
     }
 
+    final changes = <(Pos, BState)>[];
     for (final entry in yLevels.entries) {
       final yValue = entry.value;
       final floor = yValue.floor();
@@ -142,25 +150,30 @@ abstract final class TrackPaver {
       if (placeSlab) targetPos = targetPos.above;
       final stateToPlace = placeSlab ? defaultBlockState.setValue('type', 'bottom') : defaultBlockState;
       if (!visited.add(targetPos)) continue;
-      if (await _placeBlockIfFree(level, targetPos, stateToPlace, simulate)) itemsNeeded += !placeSlab ? 2 : 1;
+      if (_wantsPlacement(level, targetPos, stateToPlace)) {
+        itemsNeeded += !placeSlab ? 2 : 1;
+        if (!simulate) changes.add((targetPos, withWater(level, stateToPlace, targetPos)!));
+      }
       if (placeSlab) {
         if (!visited.add(targetPos.below)) continue;
         final topSlab = stateToPlace.setValue('type', 'top');
-        if (await _placeBlockIfFree(level, targetPos.below, topSlab, simulate)) itemsNeeded++;
+        if (_wantsPlacement(level, targetPos.below, topSlab)) {
+          itemsNeeded++;
+          if (!simulate) {
+            changes.add((targetPos.below, withWater(level, topSlab, targetPos.below)!));
+          }
+        }
       }
     }
+    if (changes.isNotEmpty) await level.setBlocks(changes);
 
     return itemsNeeded;
   }
 
   static bool _isWallLike(PaveBlockInfo block) => block.isWall || block.blockKey == metalGirderKey;
 
-  static Future<bool> _placeBlockIfFree(TrackLevel level, Pos pos, BState state, bool simulate) async {
-    final stateAtPos = level.stateAt(pos);
-    if (stateAtPos.key != state.key && level.canBeReplaced(pos)) {
-      if (!simulate) await level.setBlock(pos, withWater(level, state, pos)!);
-      return true;
-    }
-    return false;
-  }
+  /// `_placeBlockIfFree` without the write: whether [pos] takes [state] (`stateAt(pos).getBlock()`
+  /// differs and the position is free).
+  static bool _wantsPlacement(TrackLevel level, Pos pos, BState state) =>
+      level.stateAt(pos).key != state.key && level.canBeReplaced(pos);
 }

@@ -1,0 +1,7 @@
+# The `e2e` tests boot a real `pumpkin` server (and a real simulated client), so they are slow and
+# need built binaries: they are off unless `PUMPKIN_E2E=1`, and the tag exists so a run can also
+# select or exclude them explicitly (`-x e2e` / `--tags e2e`). See `README.md`, "End-to-end tests
+# against a real server".
+tags:
+  e2e:
+    timeout: 20x

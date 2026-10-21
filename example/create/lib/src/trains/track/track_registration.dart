@@ -6,7 +6,10 @@ import '../../api/blocks.dart';
 import '../../common/host_bridge.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
+import '../../core/perf.dart';
 import '../../core/registry.dart';
+// TEMPORARY (DeferredEventDrainLatency): the write-cost rig.
+import '../../infrastructure/commands/temp_write_bench.dart' show wbRecord;
 import '../station/host_ops.dart' show sendOverlay;
 import '../station/station_block_entity.dart';
 import '../support/runtime.dart';
@@ -74,18 +77,28 @@ void registerTrack(CreateRegistry registry) {
 /// The `TrackBlock` callbacks of the host block.
 BlockBehavior _trackBehavior(TrackBlock track) => BlockBehavior(
   onPlaced: (server, e) async {
-    final level = HostTrackLevel(e.targetWorld, Tr.i.store);
-    final pos = e.pos.toPos();
-    final old = e.oldStateId == null
-        ? BState.air
-        : HostBlockGetter.stateOfId(e.oldStateId!);
-    await track.onPlace(level, pos, level.stateAt(pos), old);
-    await track.setPlacedBy(level, pos);
+    wbRecord(e); // TEMPORARY (DeferredEventDrainLatency): the write-cost rig.
+    if (!Perf.enabled) return _onTrackPlaced(track, e);
+    final watch = Stopwatch()..start();
+    try {
+      await _onTrackPlaced(track, e);
+    } finally {
+      Perf.record('place.track.onPlaced', watch.elapsedMicroseconds);
+    }
   },
   onScheduledTick: (server, e) async {
     final level = HostTrackLevel(e.targetWorld, Tr.i.store);
     final pos = e.pos.toPos();
-    await track.tick(level, pos, level.stateAt(pos));
+    if (!Perf.enabled) {
+      await track.tick(level, pos, level.stateAt(pos));
+      return;
+    }
+    final watch = Stopwatch()..start();
+    try {
+      await track.tick(level, pos, level.stateAt(pos));
+    } finally {
+      Perf.record('track.scheduledTick', watch.elapsedMicroseconds);
+    }
   },
   onStateReplaced: (server, e) {
     final level = HostTrackLevel(e.targetWorld, Tr.i.store);
@@ -111,10 +124,25 @@ BlockBehavior _trackBehavior(TrackBlock track) => BlockBehavior(
   // `useItemOn`: a click inside a station's assembly area is the station's (bogey creation and
   // size cycling); otherwise the item still gets its use.
   onUseWithItem: (server, e) => _trackUse(track, e),
-  // `updateShape`: a portal track whose portal is gone becomes air. The host keeps the state when
-  // the callback returns `null`; the portal connection is repaired on the next scheduled tick.
-  onUpdateShape: (server, e) => null,
+  // No `updateShape` hook. Java's `TrackBlock.updateShape` (a portal track whose portal is gone
+  // becomes air, `track_block.dart` `TrackBlock.updateShape`) is not ported: the scheduled tick
+  // repairs a broken portal connection (`connectToPortal`) and drops the track when the other
+  // side is gone. Registering the hook for a handler that keeps the state (`null`) bought
+  // nothing and cost a host-to-plugin round trip for every shape update of every neighbour of
+  // every written track - tens of milliseconds each (see `HostTrackLevel.setBlocks`), which is
+  // the tick a track placement used to spike. Wire it up here if the portal case is ever ported.
 );
+
+/// `TrackBlock.onPlace` + `setPlacedBy` of one placed track block ([_trackBehavior]'s `onPlaced`).
+Future<void> _onTrackPlaced(TrackBlock track, CustomBlockPlacedEventData e) async {
+  final level = HostTrackLevel(e.targetWorld, Tr.i.store);
+  final pos = e.pos.toPos();
+  final old = e.oldStateId == null
+      ? BState.air
+      : HostBlockGetter.stateOfId(e.oldStateId!);
+  await track.onPlace(level, pos, level.stateAt(pos), old);
+  await track.setPlacedBy(level, pos);
+}
 
 Future<BlockUseResult> _trackUse(
   TrackBlock track,

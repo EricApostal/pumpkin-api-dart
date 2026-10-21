@@ -5,14 +5,18 @@
 // resolves a vanilla block whose properties are missing and whose defaults silently apply. These
 // tests pin the state resolution of two callbacks that were affected: the elevator contact's
 // redstone (its `facing` and `powering`) and the gantry carriage's placement (`facing` and
-// `axis_along_first`).
+// `axis_along_first`) — and the answer side of the `update-shape` hooks of the linear chassis and
+// the gantry carriage, which must be a state index of the block, not a global state id.
 import 'package:test/test.dart';
 
 import 'package:create/src/api/block_state.dart';
 import 'package:create/src/common/direction.dart';
 import 'package:create/src/common/pos.dart';
+import 'package:create/src/contraptions/chassis/chassis_logic.dart';
 import 'package:create/src/contraptions/elevator/elevator_contact_logic.dart';
 import 'package:create/src/contraptions/gantry/gantry_logic.dart';
+import 'package:create/src/manifest/blocks.g.dart';
+import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockDefinition, BlockProperty, BlockStateLayout;
 
 const contact = 'create:elevator_contact';
 const carriage = 'create:gantry_carriage';
@@ -25,6 +29,34 @@ BState contactState(Direction facing, {bool powering = false}) => BState(contact
   'powered': 'false',
   'calling': 'false',
 });
+
+/// The layout of the manifest block [path] (`linear_chassis`): how the host numbers its states
+/// (properties sorted by name, the manifest's default state). The registration builds the same
+/// layout (`api/blocks.dart`, `hostProperty`), so an index derived here is the index the plugin's
+/// `update-shape` answer must carry.
+BlockStateLayout manifestLayout(String path) {
+  final entry = kBlocks.firstWhere((b) => b.key == path);
+  return BlockStateLayout(
+    BlockDefinition(
+      key: 'create:$path',
+      properties: [
+        for (final p in entry.properties)
+          switch (p.type) {
+            'bool' => BlockProperty.boolean(p.name),
+            'int' => BlockProperty.intRange(
+                p.name,
+                int.parse(p.values.first),
+                int.parse(p.values.last),
+              ),
+            _ => BlockProperty.enumeration(p.name, p.values),
+          },
+      ],
+      defaultState: entry.defaultState,
+      hardness: entry.hardness,
+      blastResistance: entry.blastResistance,
+    ),
+  );
+}
 
 void main() {
   group('elevator contact redstone reads the state at the position', () {
@@ -111,6 +143,126 @@ void main() {
 
       // The shaft behind a carriage facing east is to its west; the one to its east is in front.
       expect(gantryPlacementState(level, pos), placed);
+    });
+  });
+
+  // The `update-shape` hook answers with the index of the new state *of the block*: the host takes
+  // the answer only while it is below the block's state count and then looks the state up as
+  // `states[index]` (`crates/pumpkin-core/src/block/blocks/dynamic.rs:194-198`, `state_id`). Both
+  // callbacks used to answer with `BlockRegistry.resolveState(...)`, a global state id that is
+  // always past that count for a plugin block, so the host discarded every answer and the state
+  // never changed. The expected indices come from the layout of the block itself (built from the
+  // manifest, like the registration builds it), never from a hard-coded number.
+  group('the update-shape answers are indices of the block', () {
+    final linearLayout = manifestLayout('linear_chassis');
+    final carriageLayout = manifestLayout('gantry_carriage');
+
+    test('the linear chassis answers with the index of its unglued state', () {
+      // An x-axis chassis with the east side (its positive axis side, `sticky_top`) glued.
+      const glued = BState('create:linear_chassis', {
+        'axis': 'x',
+        'sticky_top': 'true',
+        'sticky_bottom': 'false',
+      });
+      const sameAxis = BState('create:linear_chassis', {
+        'axis': 'x',
+        'sticky_top': 'false',
+        'sticky_bottom': 'false',
+      });
+      const otherAxis = BState('create:linear_chassis', {
+        'axis': 'y',
+        'sticky_top': 'false',
+        'sticky_bottom': 'false',
+      });
+      const otherKind = BState('create:secondary_linear_chassis', {
+        'axis': 'x',
+        'sticky_top': 'false',
+        'sticky_bottom': 'false',
+      });
+      final unglued = glued.setFlag('sticky_top', false);
+
+      final index = linearChassisShapeAnswer(
+        linearLayout,
+        glued,
+        Direction.east,
+        sameAxis,
+      );
+      expect(index, linearLayout.indexOf(unglued.props));
+      expect(index, isNotNull);
+      // An index of the block, not a global state id (which is always past the count).
+      expect(index!, lessThan(linearLayout.stateCount));
+
+      // The glue is already gone, or the neighbour is a chassis of another kind or axis: the state
+      // is kept.
+      expect(
+        linearChassisShapeAnswer(linearLayout, unglued, Direction.east, sameAxis),
+        isNull,
+      );
+      expect(
+        linearChassisShapeAnswer(linearLayout, glued, Direction.east, otherKind),
+        isNull,
+      );
+      expect(
+        linearChassisShapeAnswer(linearLayout, glued, Direction.east, otherAxis),
+        isNull,
+      );
+      // The callback does not answer for a radial chassis at all (it has no glueable side); this
+      // pins that the behaviour still returns early for it.
+      expect(
+        linearChassisShapeAnswer(
+          manifestLayout('radial_chassis'),
+          const BState('create:radial_chassis', {'axis': 'y'}),
+          Direction.north,
+          sameAxis,
+        ),
+        isNull,
+      );
+    });
+
+    test('the gantry carriage answers with the index of its cycled state', () {
+      // Facing north with `axis_along_first`: the valid shaft axis is y (the one left over from
+      // the rotation axis x and the facing axis z).
+      const facingNorth = BState(carriage, {
+        'facing': 'north',
+        'axis_along_first': 'true',
+      });
+      const shaftEast = BState(shaft, {
+        'facing': 'east',
+        'part': 'middle',
+        'powered': 'false',
+      });
+      final verticalShaft = shaftEast.setValue('facing', 'up');
+      final cycled = facingNorth.setFlag('axis_along_first', false);
+
+      final index = gantryCarriageShapeAnswer(
+        carriageLayout,
+        facingNorth,
+        Direction.south,
+        shaftEast,
+      );
+      expect(index, carriageLayout.indexOf(cycled.props));
+      expect(index, isNotNull);
+      expect(index!, lessThan(carriageLayout.stateCount));
+
+      // A shaft already on the valid axis, and a neighbour that is no shaft: the state is kept.
+      expect(
+        gantryCarriageShapeAnswer(
+          carriageLayout,
+          facingNorth,
+          Direction.south,
+          verticalShaft,
+        ),
+        isNull,
+      );
+      expect(
+        gantryCarriageShapeAnswer(
+          carriageLayout,
+          facingNorth,
+          Direction.south,
+          BState.air,
+        ),
+        isNull,
+      );
     });
   });
 }

@@ -17,6 +17,8 @@ import '../../core/worlds.dart';
 import '../config/config_service.dart';
 import 'command_parsing.dart';
 import 'railway_report.dart';
+// TEMPORARY (DeferredEventDrainLatency): the write-cost rig.
+import 'temp_write_bench.dart';
 
 /// What the commands need at run time. The module fills it in `onLoad`; the commands are declared
 /// earlier (in `register`).
@@ -40,27 +42,41 @@ final class DebugInfoRegistry implements DebugInformation {
 }
 
 /// Registers `create` (alias `c`) and `catnip`.
-void registerInfrastructureCommands(CreateRegistry registry, InfraCommandState st) {
+void registerInfrastructureCommands(
+  CreateRegistry registry,
+  InfraCommandState st,
+) {
   registry.command(
     'create',
     (c) => _buildCreate(c, st),
     description: "Create's utility commands",
     aliases: ['c'],
-    permission: const CommandPermission('create:command.create', description: 'Use /create'),
+    permission: const CommandPermission(
+      'create:command.create',
+      description: 'Use /create',
+    ),
   );
   registry.command(
     'catnip',
     (c) => _buildCatnip(c, st),
     description: "Catnip's config and utility commands",
-    permission: const CommandPermission('create:command.catnip', description: 'Use /catnip'),
+    permission: const CommandPermission(
+      'create:command.catnip',
+      description: 'Use /catnip',
+    ),
   );
 }
 
-CommandPermission _op(String node, String description) => CommandPermission.op(node, description: description);
+CommandPermission _op(String node, String description) =>
+    CommandPermission.op(node, description: description);
 
 void _buildCreate(CommandBuilder c, InfraCommandState st) {
   c.describe("Create's utility commands");
-  c.runs((ctx) => ctx.reply('/create <trains|debuginfo|highlight|passenger|coupling|clone|train|glue|util|config>'));
+  c.runs(
+    (ctx) => ctx.reply(
+      '/create <trains|debuginfo|highlight|passenger|coupling|clone|train|glue|util|config>',
+    ),
+  );
 
   // -- general purpose ----------------------------------------------------------
   c.sub(
@@ -78,16 +94,26 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
   );
   c.sub(
     'highlight',
-    description: 'Highlights a block, or the cause of a failed contraption assembly',
+    description:
+        'Highlights a block, or the cause of a failed contraption assembly',
     build: (s) => s
       ..runs((ctx) => _highlightAssembly(ctx, st))
       ..arg(
         'pos',
         ArgumentTypes.blockPos,
         runs: (ctx) => _highlight(ctx, st, ctx.blockPos('pos'), [ctx.player]),
-        build: (a) => a.arg('players', ArgumentTypes.players, runs: (ctx) {
-          return _highlight(ctx, st, ctx.blockPos('pos'), ctx.players('players'));
-        }),
+        build: (a) => a.arg(
+          'players',
+          ArgumentTypes.players,
+          runs: (ctx) {
+            return _highlight(
+              ctx,
+              st,
+              ctx.blockPos('pos'),
+              ctx.players('players'),
+            );
+          },
+        ),
       ),
   );
   c.sub(
@@ -101,7 +127,11 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
         'vehicle',
         ArgumentTypes.word,
         runs: (ctx) => _passenger(ctx, st, 0),
-        build: (v) => v.arg('seatIndex', ArgumentTypes.integer(min: 0), runs: (ctx) => _passenger(ctx, st, ctx.integer('seatIndex'))),
+        build: (v) => v.arg(
+          'seatIndex',
+          ArgumentTypes.integer(min: 0),
+          runs: (ctx) => _passenger(ctx, st, ctx.integer('seatIndex')),
+        ),
       ),
     ),
   );
@@ -115,7 +145,11 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
         build: (a) => a.arg(
           'cart1',
           ArgumentTypes.word,
-          build: (b) => b.arg('cart2', ArgumentTypes.word, runs: (ctx) => _couplingAdd(ctx, st)),
+          build: (b) => b.arg(
+            'cart2',
+            ArgumentTypes.word,
+            runs: (ctx) => _couplingAdd(ctx, st),
+          ),
         ),
       );
       s.sub(
@@ -123,17 +157,30 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
         build: (a) => a.arg(
           'cart1',
           ArgumentTypes.word,
-          build: (b) => b.arg('cart2', ArgumentTypes.word, runs: (ctx) => _couplingRemove(ctx, st)),
+          build: (b) => b.arg(
+            'cart2',
+            ArgumentTypes.word,
+            runs: (ctx) => _couplingRemove(ctx, st),
+          ),
         ),
       );
-      s.sub('removeAll', build: (a) => a.arg('cart', ArgumentTypes.word, runs: (ctx) => _couplingRemoveAll(ctx, st)));
+      s.sub(
+        'removeAll',
+        build: (a) => a.arg(
+          'cart',
+          ArgumentTypes.word,
+          runs: (ctx) => _couplingRemoveAll(ctx, st),
+        ),
+      );
     },
   );
   c.sub(
     'clone',
     description: 'Clones all blocks as well as super glue from the specified area to the target destination',
     permission: _op('create:command.clone', 'Use /create clone'),
-    runs: (ctx) => ctx.reply('Clones all blocks as well as super glue from the specified area to the target destination'),
+    runs: (ctx) => ctx.reply(
+      'Clones all blocks as well as super glue from the specified area to the target destination',
+    ),
     build: (s) => s.arg(
       'begin',
       ArgumentTypes.blockPos,
@@ -144,7 +191,8 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
           'destination',
           ArgumentTypes.blockPos,
           runs: (ctx) => _clone(ctx, st, true),
-          build: (d) => d.sub('skipBlocks', runs: (ctx) => _clone(ctx, st, false)),
+          build: (d) =>
+              d.sub('skipBlocks', runs: (ctx) => _clone(ctx, st, false)),
         ),
       ),
     ),
@@ -154,12 +202,23 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
     description: 'Removes or teleports to a train',
     permission: _op('create:command.train', 'Use /create train'),
     build: (s) {
-      s.sub('remove', build: (a) => a.arg('train', ArgumentTypes.word, runs: (ctx) => _trainRemove(ctx, st)));
+      s.sub(
+        'remove',
+        build: (a) => a.arg(
+          'train',
+          ArgumentTypes.word,
+          runs: (ctx) => _trainRemove(ctx, st),
+        ),
+      );
       s.sub(
         'tp',
         build: (a) => a
           ..requirePlayer()
-          ..arg('train', ArgumentTypes.word, runs: (ctx) => _trainTeleport(ctx, st)),
+          ..arg(
+            'train',
+            ArgumentTypes.word,
+            runs: (ctx) => _trainTeleport(ctx, st),
+          ),
       );
     },
   );
@@ -170,9 +229,13 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
     build: (s) => s.arg(
       'from',
       ArgumentTypes.blockPos,
-      build: (f) => f.arg('to', ArgumentTypes.blockPos, runs: (ctx) => _glue(ctx, st)),
+      build: (f) =>
+          f.arg('to', ArgumentTypes.blockPos, runs: (ctx) => _glue(ctx, st)),
     ),
   );
+
+  // TEMPORARY (DeferredEventDrainLatency): the write-cost rig. Delete with `temp_write_bench.dart`.
+  registerTempWriteBench(c, st);
 
   // -- utility ------------------------------------------------------------------
   c.sub(
@@ -183,7 +246,10 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
       u.sub(
         'replaceInCommandBlocks',
         description: 'Replaces text in the command blocks of an area',
-        permission: _op('create:command.replace_in_command_blocks', 'Use /create util replaceInCommandBlocks'),
+        permission: _op(
+          'create:command.replace_in_command_blocks',
+          'Use /create util replaceInCommandBlocks',
+        ),
         build: (r) => r.arg(
           'begin',
           ArgumentTypes.blockPos,
@@ -193,7 +259,11 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
             build: (e) => e.arg(
               'toReplace',
               ArgumentTypes.string,
-              build: (t) => t.arg('replaceWith', ArgumentTypes.string, runs: (ctx) => _replaceInCommandBlocks(ctx, st)),
+              build: (t) => t.arg(
+                'replaceWith',
+                ArgumentTypes.string,
+                runs: (ctx) => _replaceInCommandBlocks(ctx, st),
+              ),
             ),
           ),
         ),
@@ -221,10 +291,16 @@ PayloadBus _requireBus(InfraCommandState st) =>
     _bus(st) ?? (throw CommandException('The payload bus is not available.'));
 
 T _hook<T extends Object>(InfraCommandState st, String what) =>
-    st.services.find<T>() ?? (throw CommandException('$what is not available: that part of Create is not installed.'));
+    st.services.find<T>() ??
+    (throw CommandException(
+      '$what is not available: that part of Create is not installed.',
+    ));
 
 World _worldOf(CommandContext ctx) =>
-    ctx.sender.world() ?? (throw CommandException('This command needs a world, run it as a player or from a command block.'));
+    ctx.sender.world() ??
+    (throw CommandException(
+      'This command needs a world, run it as a player or from a command block.',
+    ));
 
 /// Finds an entity by [ref] in any world; players by name.
 Entity? _resolveEntity(CommandContext ctx, EntityRef ref) {
@@ -250,10 +326,12 @@ Entity _entityArg(CommandContext ctx, String key) {
   } on ArgumentParseException catch (e) {
     throw CommandException(e.message);
   }
-  return _resolveEntity(ctx, ref) ?? (throw CommandException('No entity was found for `${ctx.string(key)}`.'));
+  return _resolveEntity(ctx, ref) ??
+      (throw CommandException('No entity was found for `${ctx.string(key)}`.'));
 }
 
-Text _line(String s, int rgb) => Text(s).rgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+Text _line(String s, int rgb) =>
+    Text(s).rgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
 
 // ---------------------------------------------------------------------------- trains
 
@@ -317,7 +395,9 @@ Future<void> _trainTeleport(CommandContext ctx, InfraCommandState st) async {
   final player = ctx.player;
   final mode = player.getGamemode();
   if (mode != GameMode.creative && mode != GameMode.spectator) {
-    ctx.replyError('Can only teleport to train when in Creative or Spectator Mode!');
+    ctx.replyError(
+      'Can only teleport to train when in Creative or Spectator Mode!',
+    );
     return;
   }
   final train = hooks.findTrain(id);
@@ -343,7 +423,14 @@ Future<void> _trainTeleport(CommandContext ctx, InfraCommandState st) async {
   }
   final yaw = player.getYaw(), pitch = player.getPitch();
   final entity = player.asEntity();
-  await entity.teleport(pos: (target.position.$1.toDouble(), target.position.$2 + 5.0, target.position.$3.toDouble()), worldRef: world);
+  await entity.teleport(
+    pos: (
+      target.position.$1.toDouble(),
+      target.position.$2 + 5.0,
+      target.position.$3.toDouble(),
+    ),
+    worldRef: world,
+  );
   entity.setRotation(yaw: yaw, pitch: pitch);
   ctx.reply("Teleported to Train '${train.name}' successfully");
 }
@@ -361,19 +448,36 @@ void _debugInfo(CommandContext ctx, InfraCommandState st) {
 
 // ---------------------------------------------------------------------------- highlight
 
-Future<void> _highlight(CommandContext ctx, InfraCommandState st, BlockPos pos, List<Player> targets) async {
+Future<void> _highlight(
+  CommandContext ctx,
+  InfraCommandState st,
+  BlockPos pos,
+  List<Player> targets,
+) async {
   final world = _worldOf(ctx);
-  if (!world.isLoaded(pos: pos)) throw CommandException('That position is not loaded');
+  if (!world.isLoaded(pos: pos))
+    throw CommandException('That position is not loaded');
   final bus = _requireBus(st);
   for (final p in targets) {
-    bus.sendClientbound('create:block_highlight', p, {'pos': (pos.x, pos.y, pos.z)});
+    bus.sendClientbound('create:block_highlight', p, {
+      'pos': (pos.x, pos.y, pos.z),
+    });
   }
 }
 
 void _highlightAssembly(CommandContext ctx, InfraCommandState st) {
   final player = ctx.player;
-  void miss() => ctx.reply('Try looking at a Block that has failed to assemble a Contraption and try again.');
-  final hit = player.asEntity().rayTraceBlock(maxDistance: player.asEntity().asLiving()?.getAttributeValue(attr: Attribute.blockInteractionRange) ?? 4.5, includeFluids: false);
+  void miss() => ctx.reply(
+    'Try looking at a Block that has failed to assemble a Contraption and try again.',
+  );
+  final hit = player.asEntity().rayTraceBlock(
+    maxDistance:
+        player.asEntity().asLiving()?.getAttributeValue(
+          attr: Attribute.blockInteractionRange,
+        ) ??
+        4.5,
+    includeFluids: false,
+  );
   if (hit == null) return miss();
   final hooks = st.services.find<AssemblyExceptionHooks>();
   final world = _worldOf(ctx);
@@ -389,7 +493,11 @@ void _highlightAssembly(CommandContext ctx, InfraCommandState st) {
 
 // ---------------------------------------------------------------------------- passenger / coupling
 
-Future<void> _passenger(CommandContext ctx, InfraCommandState st, int index) async {
+Future<void> _passenger(
+  CommandContext ctx,
+  InfraCommandState st,
+  int index,
+) async {
   final rider = _entityArg(ctx, 'rider');
   final vehicle = _entityArg(ctx, 'vehicle');
   if (rider.getId() == vehicle.getId()) return;
@@ -401,14 +509,20 @@ Future<void> _passenger(CommandContext ctx, InfraCommandState st, int index) asy
   await vehicle.addPassenger(passenger: rider);
 }
 
-Future<(World, int, int)> _twoCarts(CommandContext ctx, String k1, String k2) async {
+Future<(World, int, int)> _twoCarts(
+  CommandContext ctx,
+  String k1,
+  String k2,
+) async {
   final cart1 = _entityArg(ctx, k1);
   final cart2 = _entityArg(ctx, k2);
   for (final e in [cart1, cart2]) {
-    if (!_isMinecart(e)) throw CommandException('Only Minecarts can be coupled');
+    if (!_isMinecart(e))
+      throw CommandException('Only Minecarts can be coupled');
   }
   final w1 = cart1.getWorld(), w2 = cart2.getWorld();
-  if (w1.getId() != w2.getId()) throw CommandException('Minecarts have to be in the same Dimension');
+  if (w1.getId() != w2.getId())
+    throw CommandException('Minecarts have to be in the same Dimension');
   return (w1, cart1.getId(), cart2.getId());
 }
 
@@ -436,10 +550,14 @@ Future<void> _couplingRemove(CommandContext ctx, InfraCommandState st) async {
   }
 }
 
-Future<void> _couplingRemoveAll(CommandContext ctx, InfraCommandState st) async {
+Future<void> _couplingRemoveAll(
+  CommandContext ctx,
+  InfraCommandState st,
+) async {
   final hooks = _hook<MinecartCouplingHooks>(st, 'Minecart couplings');
   final cart = _entityArg(ctx, 'cart');
-  if (!_isMinecart(cart)) throw CommandException('Only Minecarts can be coupled');
+  if (!_isMinecart(cart))
+    throw CommandException('Only Minecarts can be coupled');
   final count = await hooks.removeAll(cart.getWorld(), cart.getId());
   if (count == 0) {
     ctx.reply('Minecart has no Couplings Attached');
@@ -460,11 +578,16 @@ Future<void> _glue(CommandContext ctx, InfraCommandState st) async {
 
 void _requireLoaded(World world, List<BlockPos> positions) {
   for (final p in positions) {
-    if (!world.isLoaded(pos: p)) throw CommandException('That position is not loaded');
+    if (!world.isLoaded(pos: p))
+      throw CommandException('That position is not loaded');
   }
 }
 
-Future<void> _clone(CommandContext ctx, InfraCommandState st, bool cloneBlocks) async {
+Future<void> _clone(
+  CommandContext ctx,
+  InfraCommandState st,
+  bool cloneBlocks,
+) async {
   final world = _worldOf(ctx);
   final begin = ctx.blockPos('begin').toPos();
   final end = ctx.blockPos('end').toPos();
@@ -474,9 +597,15 @@ Future<void> _clone(CommandContext ctx, InfraCommandState st, bool cloneBlocks) 
   final destEnd = destination + size;
   final volume = source.xSpan * source.ySpan * source.zSpan;
   final limit = world.getGameRuleInt(GameRule.maxBlockModifications) ?? 0;
-  if (volume > limit) throw CommandException('Too many blocks in the specified area (maximum $limit, specified $volume)');
+  if (volume > limit)
+    throw CommandException(
+      'Too many blocks in the specified area (maximum $limit, specified $volume)',
+    );
   if (!world.isAreaLoaded(min: begin.toBlockPos(), max: end.toBlockPos()) ||
-      !world.isAreaLoaded(min: destination.toBlockPos(), max: destEnd.toBlockPos())) {
+      !world.isAreaLoaded(
+        min: destination.toBlockPos(),
+        max: destEnd.toBlockPos(),
+      )) {
     throw CommandException('That position is not loaded');
   }
   final offset = destination - source.minPos;
@@ -506,12 +635,17 @@ Future<int> cloneBlocksTo(World world, BlockBounds source, Pos offset) async {
         final state = world.getBlockStateId(pos: bp);
         final nbt = world.getBlockEntityNbt(pos: bp);
         barriers.add(BlockPlacementChange(to.toBlockPos(), barrier));
-        changes.add(BlockPlacementChange(to.toBlockPos(), state, blockEntityNbt: nbt));
+        changes.add(
+          BlockPlacementChange(to.toBlockPos(), state, blockEntityNbt: nbt),
+        );
       }
     }
   }
   // The target block entities lose their contents (Clearable.tryClear) by being replaced first.
-  await world.placeBlocks(barriers.reversed.toList(), flags: BlockUpdateFlags.clientsOnly);
+  await world.placeBlocks(
+    barriers.reversed.toList(),
+    flags: BlockUpdateFlags.clientsOnly,
+  );
   return world.placeBlocks(changes, flags: BlockUpdateFlags.normal);
 }
 
@@ -523,7 +657,10 @@ const Set<String> _commandBlocks = {
   'minecraft:repeating_command_block',
 };
 
-Future<void> _replaceInCommandBlocks(CommandContext ctx, InfraCommandState st) async {
+Future<void> _replaceInCommandBlocks(
+  CommandContext ctx,
+  InfraCommandState st,
+) async {
   final world = _worldOf(ctx);
   final from = ctx.blockPos('begin').toPos(), to = ctx.blockPos('end').toPos();
   _requireLoaded(world, [from.toBlockPos(), to.toBlockPos()]);
@@ -551,8 +688,14 @@ Future<void> _replaceInCommandBlocks(CommandContext ctx, InfraCommandState st) a
     final updated = command.replaceAll(regex, replaceWith);
     if (updated == command) continue;
     final newMap = {...map, 'Command': NbtValue.string(updated)};
-    final result = world.setBlockEntityNbt(pos: bp, nbtData: BinaryNbt.write(NbtValue.compound(newMap), name: parsed.name));
-    if (result case ErrorResult(:final value)) st.log.warn('Could not update the command block at ${shortPos(pos)}: $value');
+    final result = world.setBlockEntityNbt(
+      pos: bp,
+      nbtData: BinaryNbt.write(NbtValue.compound(newMap), name: parsed.name),
+    );
+    if (result case ErrorResult(:final value))
+      st.log.warn(
+        'Could not update the command block at ${shortPos(pos)}: $value',
+      );
   }
   if (blocks == 0) {
     ctx.reply('Couldn\'t find "$toReplace" anywhere.');
@@ -580,8 +723,13 @@ void _buildConfig(CommandBuilder c, InfraCommandState st) {
           runs: (ctx) => _openConfigValue(ctx, st),
           build: (p) => p.sub(
             'set',
-            description: 'Changes the value (server operators with permission level 4)',
-            build: (set) => set.arg('value', ArgumentTypes.string, runs: (ctx) => _setConfigValue(ctx, st)),
+            description:
+                'Changes the value (server operators with permission level 4)',
+            build: (set) => set.arg(
+              'value',
+              ArgumentTypes.string,
+              runs: (ctx) => _setConfigValue(ctx, st),
+            ),
           ),
         ),
       );
@@ -590,7 +738,9 @@ void _buildConfig(CommandBuilder c, InfraCommandState st) {
 }
 
 void _openConfig(CommandContext ctx, InfraCommandState st, EitherValue target) {
-  _requireBus(st).sendClientbound('catnip:open_config_screen', ctx.player, {'modOrConfigOrValueId': target});
+  _requireBus(st).sendClientbound('catnip:open_config_screen', ctx.player, {
+    'modOrConfigOrValueId': target,
+  });
 }
 
 void _openConfigTarget(CommandContext ctx, InfraCommandState st) {
@@ -602,17 +752,27 @@ void _openConfigTarget(CommandContext ctx, InfraCommandState st) {
     } on ArgumentParseException catch (e) {
       throw CommandException(e.message);
     }
-    _openConfig(ctx, st, EitherValue.right(EitherValue.left(_configIdFields(id))));
+    _openConfig(
+      ctx,
+      st,
+      EitherValue.right(EitherValue.left(_configIdFields(id))),
+    );
   } else {
     _openConfig(ctx, st, EitherValue.left(target));
   }
 }
 
-Map<String, Object?> _configIdFields(CatnipConfigId id) => {'modId': id.modId, 'side': id.side.index};
+Map<String, Object?> _configIdFields(CatnipConfigId id) => {
+  'modId': id.modId,
+  'side': id.side.index,
+};
 
 (CatnipConfigId, CatnipConfigPath) _valueId(CommandContext ctx) {
   try {
-    return (CatnipConfigId.parse(ctx.string('target')), CatnipConfigPath.parse(ctx.string('path')));
+    return (
+      CatnipConfigId.parse(ctx.string('target')),
+      CatnipConfigPath.parse(ctx.string('path')),
+    );
   } on ArgumentParseException catch (e) {
     throw CommandException(e.message);
   }
@@ -623,7 +783,12 @@ void _openConfigValue(CommandContext ctx, InfraCommandState st) {
   _openConfig(
     ctx,
     st,
-    EitherValue.right(EitherValue.right({'config': _configIdFields(id), 'path': path.components})),
+    EitherValue.right(
+      EitherValue.right({
+        'config': _configIdFields(id),
+        'path': path.components,
+      }),
+    ),
   );
 }
 
@@ -642,7 +807,8 @@ Future<void> _setConfigValue(CommandContext ctx, InfraCommandState st) async {
     return;
   }
   final error = st.config.setFromText(id, path, value);
-  if (error != null) throw CommandException('Failed to set the config value: $error');
+  if (error != null)
+    throw CommandException('Failed to set the config value: $error');
   ctx.reply('Set $id/$path to $value');
 }
 
@@ -656,20 +822,28 @@ void _buildFlySpeed(CommandBuilder u, InfraCommandState st) {
         'speed',
         ArgumentTypes.number(min: 0),
         runs: (ctx) => _flySpeed(ctx, ctx.player, ctx.number('speed')),
-        build: (a) => a.arg('target', ArgumentTypes.player, runs: (ctx) async {
-          for (final p in ctx.targetPlayers('target')) {
-            await _flySpeed(ctx, p, ctx.number('speed'));
-          }
-        }),
+        build: (a) => a.arg(
+          'target',
+          ArgumentTypes.player,
+          runs: (ctx) async {
+            for (final p in ctx.targetPlayers('target')) {
+              await _flySpeed(ctx, p, ctx.number('speed'));
+            }
+          },
+        ),
       );
       f.sub(
         'reset',
         runs: (ctx) => _flySpeed(ctx, ctx.player, 0.05),
-        build: (r) => r.arg('target', ArgumentTypes.player, runs: (ctx) async {
-          for (final p in ctx.targetPlayers('target')) {
-            await _flySpeed(ctx, p, 0.05);
-          }
-        }),
+        build: (r) => r.arg(
+          'target',
+          ArgumentTypes.player,
+          runs: (ctx) async {
+            for (final p in ctx.targetPlayers('target')) {
+              await _flySpeed(ctx, p, 0.05);
+            }
+          },
+        ),
       );
     },
   );
@@ -679,4 +853,3 @@ Future<void> _flySpeed(CommandContext ctx, Player player, double speed) async {
   player.setFlySpeed(speed: speed);
   ctx.reply("[Catnip]: Set ${player.getName()}'s fly speed to $speed");
 }
-

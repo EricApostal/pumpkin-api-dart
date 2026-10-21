@@ -6,6 +6,7 @@ import 'package:create/src/conveyance/behaviours/belt_interfaces.dart';
 import 'package:create/src/conveyance/behaviours/item_forms.dart';
 import 'package:create/src/conveyance/belt/belt_block_def.dart';
 import 'package:create/src/conveyance/belt/belt_geometry.dart';
+import 'package:create/src/conveyance/shapes.dart' show BeltShapes;
 import 'package:create/src/conveyance/belt/belt_handlers.dart';
 import 'package:create/src/conveyance/belt/belt_inventory.dart';
 import 'package:create/src/conveyance/belt/belt_ports.dart';
@@ -107,6 +108,7 @@ TransportedItemStack stackAt(double pos, [String key = 'minecraft:stone']) {
 }
 
 void main() {
+  _registrationTests();
   group('BeltInventory', () {
     test('items move along the belt at the belt speed', () async {
       final env = FakeBelt();
@@ -1176,4 +1178,32 @@ class _UnloadedBlockGetter extends BlockGetter {
 
   @override
   bool isWater(Pos p) => inner.isWater(p);
+
+}
+
+// -- Registration -----------------------------------------------------------------------------
+
+bool _isFullCube(BlockBox b) =>
+    b.minX <= 0 && b.minY <= 0 && b.minZ <= 0 && b.maxX >= 1 && b.maxY >= 1 && b.maxZ >= 1;
+
+void _registrationTests() {
+  test('the belt registers a shape that is not a full cube', () {
+    // `BeltBlock.getShape`/`getCollisionShape` are `BeltShapes`, never a full cube, and the host
+    // derives a state's light opacity from the *collision* shape a block registers
+    // (`derive_state_data`: `opacity = can_occlude && full_cube ? 15 : 0`). Registering the
+    // manifest default (a full cube) made every belt occlude light like stone: its own cell lost
+    // its sky light, and a client only sees that after a relog, when it loads the chunk's light
+    // data instead of relighting the block itself.
+    for (final shape in {
+      'registeredShape': BeltShapes.registeredShape,
+      'registeredCollision': BeltShapes.registeredCollision,
+    }.entries) {
+      expect(shape.value, isNotEmpty, reason: '${shape.key} is empty');
+      expect(
+        shape.value.any(_isFullCube),
+        isFalse,
+        reason: '${shape.key} is a full cube, which makes the belt occlude light',
+      );
+    }
+  });
 }

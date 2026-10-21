@@ -9,6 +9,28 @@
 import 'layered_ore.dart';
 import 'worldgen_random.dart';
 
+/// Identifies a vein for [VeinCache]: the feature (it owns the salt and the pattern pool), the
+/// world seed, the placement cell the origin is drawn from, and the y range of the block list.
+final class VeinKey {
+  final String feature;
+  final int worldSeed, cellX, cellZ, minY, maxY;
+
+  const VeinKey(this.feature, this.worldSeed, this.cellX, this.cellZ, this.minY, this.maxY);
+
+  @override
+  bool operator ==(Object other) =>
+      other is VeinKey &&
+      other.feature == feature &&
+      other.worldSeed == worldSeed &&
+      other.cellX == cellX &&
+      other.cellZ == cellZ &&
+      other.minY == minY &&
+      other.maxY == maxY;
+
+  @override
+  int get hashCode => Object.hash(feature, worldSeed, cellX, cellZ, minY, maxY);
+}
+
 /// A chunk being generated, in chunk local x/z and absolute y.
 abstract interface class OreChunk {
   /// Lowest and highest block y of the world.
@@ -89,6 +111,7 @@ int placeStriatedOresInChunk({
   required int chunkZ,
   required OreChunk chunk,
   required OreStateInfo info,
+  VeinCache? veins,
 }) {
   final clip = VeinClip(chunkX * 16, chunkX * 16 + 15, chunkZ * 16, chunkZ * 16 + 15, chunk.minY, chunk.maxY);
   var written = 0;
@@ -128,7 +151,9 @@ int placeStriatedOresInChunk({
           return true;
         }
         return false;
-      });
+      },
+          cache: veins,
+          key: veins == null ? null : VeinKey(feature.key, worldSeed, cx, cz, clip.minY, clip.maxY));
     }
   }
   return written;

@@ -135,8 +135,21 @@ final class Gen {
       case NetKind.either:
         return rnd.nextBool() ? EitherValue.left(value(t.key!, scope)) : EitherValue.right(value(t.value!, scope));
       case NetKind.custom:
-        if ((t.className ?? '').startsWith('SignalBoundary only')) {
-          return scope['type'] == 'create:signal' ? <String?>[for (var i = 0; i < 2; i++) rnd.nextBool() ? uuid() : null] : null;
+        if ((t.className ?? '').startsWith('TrackEdgePoint subclass data')) {
+          return switch (scope['type']) {
+            'create:signal' => <String, Object?>{
+              'group0': rnd.nextBool() ? uuid() : null,
+              'group1': rnd.nextBool() ? uuid() : null,
+            },
+            'create:station' => <String, Object?>{
+              'name': text(8),
+              'assembling': rnd.nextBool(),
+              'blockEntityPos': rnd.nextBool()
+                  ? (rnd.nextInt(1 << 26) - (1 << 25), rnd.nextInt(4096) - 2048, rnd.nextInt(1 << 26) - (1 << 25))
+                  : null,
+            },
+            _ => null,
+          };
         }
         return struct(t.fields!, null);
       case NetKind.dispatch:
@@ -147,11 +160,12 @@ final class Gen {
 
   Map<String, Object?> struct(List<NetField> fields, String? payloadId) {
     final out = <String, Object?>{};
-    final hasSignal = fields.any((f) => f.name == 'signalGroups');
+    final edgePoint = fields.any((f) => f.name == 'subclassData');
     for (final f in fields) {
       if (payloadId == 'create:sync_rail_graph' && f.name == 'dimensionPalette' && out['packetDeletesGraph'] == true) break;
-      if (hasSignal && f.name == 'type') {
-        out['type'] = rnd.nextBool() ? 'create:signal' : 'create:other';
+      if (edgePoint && f.name == 'type') {
+        out['type'] = const ['create:signal', 'create:station', 'create:observer', 'create:other'][
+            rnd.nextInt(4)];
         continue;
       }
       out[f.name] = value(f.type, out);

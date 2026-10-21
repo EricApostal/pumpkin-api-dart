@@ -377,33 +377,55 @@ WireCodec _compileMap(NetType type, String path) {
 
 WireCodec _compileCustom(NetType type, String path) {
   final name = type.className ?? '';
-  if (name.startsWith('SignalBoundary only')) return _signalGroups;
+  if (name.startsWith('TrackEdgePoint subclass data')) return _edgePointData;
   final fields = type.fields ?? (throw SchemaException('$path: custom type `$name` has no expansion'));
   return _Struct(fields, path);
 }
 
-/// `TrackEdgePoint` subclass data: only `create:signal` points append two optional group ids.
-const WireCodec _signalGroups = _Fn(
+/// The subclass data a `TrackEdgePoint` appends after the base fields, chosen by its type:
+/// `create:signal` (`SignalBoundary`) writes two optional group ids, `create:station`
+/// (`GlobalStation`) writes the station name, the assembling flag and an optional block entity
+/// position. `create:observer` (`TrackObserver`) and unknown types write nothing.
+const WireCodec _edgePointData = _Fn(
   0,
-  _readSignalGroups,
-  _writeSignalGroups,
+  _readEdgePointData,
+  _writeEdgePointData,
 );
 
-Object? _readSignalGroups(PacketReader r, WireScope scope) {
-  if (scope['type'] != 'create:signal') return null;
-  return <String?>[for (var i = 0; i < 2; i++) r.readBool() ? r.readUuid() : null];
-}
+Object? _readEdgePointData(PacketReader r, WireScope scope) => switch (scope['type']) {
+  'create:signal' => <String, Object?>{
+    'group0': r.readBool() ? r.readUuid() : null,
+    'group1': r.readBool() ? r.readUuid() : null,
+  },
+  'create:station' => <String, Object?>{
+    'name': r.readString(),
+    'assembling': r.readBool(),
+    'blockEntityPos': r.readBool() ? r.readBlockPos() : null,
+  },
+  _ => null,
+};
 
-void _writeSignalGroups(PacketWriter w, Object? v, WireScope scope) {
-  if (scope['type'] != 'create:signal') return;
-  if (v is! List || v.length != 2) throw _typeError('List of 2 uuid strings', v);
-  for (final g in v) {
-    if (g == null) {
-      w.writeBool(false);
-    } else {
-      w.writeBool(true);
-      w.writeUuid(_string(g));
-    }
+void _writeEdgePointData(PacketWriter w, Object? v, WireScope scope) {
+  switch (scope['type']) {
+    case 'create:signal':
+      if (v is! Map) throw _typeError('Map with group0/group1', v);
+      for (final g in [v['group0'], v['group1']]) {
+        if (g == null) {
+          w.writeBool(false);
+        } else {
+          w.writeBool(true);
+          w.writeUuid(_string(g));
+        }
+      }
+    case 'create:station':
+      if (v is! Map) throw _typeError('Map with name/assembling/blockEntityPos', v);
+      w.writeString(_string(v['name']));
+      w.writeBool(_bool(v['assembling']));
+      final pos = v['blockEntityPos'];
+      w.writeBool(pos != null);
+      if (pos != null) w.writeBlockPos(_ints3(pos));
+    default:
+      return;
   }
 }
 

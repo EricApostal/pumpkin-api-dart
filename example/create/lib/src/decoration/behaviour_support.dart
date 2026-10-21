@@ -11,13 +11,10 @@ import '../core/blocks.dart';
 import 'runtime.dart';
 
 /// `index of [state]` in the layout of [block], or `null` when a value is outside the block's domain.
-int? stateIndexOf(CreateBlock block, BState state) {
-  try {
-    return block.layout.indexOf({...block.definition.defaultState, ...state.props});
-  } catch (_) {
-    return null;
-  }
-}
+///
+/// Use this for a `update-shape` answer: the hook answers with a state index *of the block*, never
+/// with a global state id (see [stateIndexIn]).
+int? stateIndexOf(CreateBlock block, BState state) => stateIndexIn(block.layout, state);
 
 /// The `update-shape` answer for a change from [before] to [after]: `null` keeps the state; the
 /// state becoming air is handled by the caller (see [scheduleBreak]).

@@ -11,12 +11,14 @@ import '../api/block_state.dart';
 import '../api/blocks.dart' show manifestBlock;
 import '../api/wrenchable.dart';
 import '../common/direction.dart';
-import '../common/host_bridge.dart' show BlockStates, BlockDirectionToPure;
+import '../common/host_bridge.dart'
+    show BlockDirectionToPure, BlockStates, PosToHost;
 import '../common/pos.dart';
 import '../contraptions/bearing/bearing_placement.dart' show bearingShaftNeighbours;
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
 import '../core/registry.dart';
+import '../decoration/behaviour_support.dart' show stateIndexOf;
 import '../decoration/bracketed_behaviour.dart';
 import '../kinetics/behavior_builder.dart';
 import '../kinetics/block_defs.dart';
@@ -124,6 +126,18 @@ BlockBehavior _pipeBehavior(
   void propagate(World world, Pos p, BState state) =>
       FluidPropagator.propagateChangedPipe(fluidWorldOf(world), p, state);
 
+  /// `FluidPipeBlock.onPlace`: vanilla calls `onPlace` for every write that leaves the block with
+  /// another state, and the pipe schedules its own `tick()` one tick later at `TickPriority.HIGH`.
+  /// `tick()` is `propagateChangedPipe`, and its `wipePressure` re-creates the block entity's
+  /// connections from the state now in the world; the immediate [propagate] of a hook can run
+  /// before that write lands, so the entity (and the client data it publishes) would keep the
+  /// connections of the previous state.
+  void schedulePropagate(World world, Pos p) => world.scheduleBlockTick(
+    pos: p.toBlockPos(),
+    delayTicks: 1,
+    priority: TickPriority.high,
+  );
+
   Future<BState> place(
     World world,
     Pos p,
@@ -149,6 +163,7 @@ BlockBehavior _pipeBehavior(
         }
       }
       setFluidBlock(world, p, s);
+      schedulePropagate(world, p);
       return s;
     }
     if (straight || encased) return state;
@@ -159,7 +174,9 @@ BlockBehavior _pipeBehavior(
       level,
       p,
     );
-    if (updated != state) setFluidBlock(world, p, updated);
+    if (updated == state) return updated;
+    setFluidBlock(world, p, updated);
+    schedulePropagate(world, p);
     return updated;
   }
 
@@ -212,7 +229,10 @@ BlockBehavior _pipeBehavior(
           level,
           p,
         );
-        if (updated != state) setFluidBlock(world, p, updated);
+        if (updated != state) {
+          setFluidBlock(world, p, updated);
+          schedulePropagate(world, p);
+        }
       }
       propagate(world, p, updated);
     },
@@ -235,7 +255,14 @@ BlockBehavior _pipeBehavior(
               p,
             );
             if (updated == state) return null;
-            return BlockRegistry.resolveState(updated.key, updated.props);
+            // The hook answers with a state *index* of the block, not a state id: the host takes
+            // the answer only while it is below the block's state count and then looks the state
+            // up as `states[index]` (`dynamic.rs`, `state_id`). A global id (`resolveState`) is
+            // always past that count for a plugin block, so the host dropped the answer and the
+            // pipe kept the shape it was placed with: it could never bend.
+            final index = stateIndexOf(blockRef(), updated);
+            if (index != null) schedulePropagate(world, p);
+            return index;
           },
     onScheduledTick: (server, e) =>
         propagate(e.targetWorld, posOf(e.pos), stateOfEvent(e.stateIndex)),

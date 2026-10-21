@@ -54,6 +54,146 @@ counter). The plugin declares the mod to the host's NeoForge handshake by defaul
 which a real Create client needs to join at all; `"core": {"neoforge": false}`
 turns the declaration off for vanilla-only servers.
 
+## End-to-end tests against a real server
+
+`puro dart test` runs the pure-Dart tests and covers the pure parts of the port. The
+Create-specific questions that only a real run can answer — *was the client told?* — live
+in `test/e2e/` and are **off by default**, because they boot a real `pumpkin` process, a
+real client process and the built plugin component:
+
+```sh
+export PATH="$PATH:$HOME/.puro/bin"
+PUMPKIN_E2E=1 \
+PUMPKIN_BIN=/path/to/Pumpkin/target/fast/pumpkin \
+PUMPKIN_TESTER_BIN=/path/to/Pumpkin/target/fast/pumpkin-tester \
+  puro dart test test/e2e
+```
+
+Build the pieces first:
+
+```sh
+# the plugin component the server loads
+puro dart run pumpkin_tools build            # -> build/create.wasm
+
+# the server (from a Pumpkin checkout)
+cargo build --profile fast -p pumpkin --features plugin-v0_2
+
+# the simulated client (its `client` mode is the only thing that speaks the protocol)
+cargo build --profile fast -p pumpkin-tester
+```
+
+| Environment variable | Meaning |
+|---|---|
+| `PUMPKIN_E2E=1` | run the `test/e2e/` suite at all (anything else skips it with a reason) |
+| `PUMPKIN_BIN` (or `PUMPKIN_SERVER_BIN`) | the `pumpkin` binary to boot |
+| `PUMPKIN_TESTER_BIN` | the `pumpkin-tester` binary; defaults to the `pumpkin` binary's directory |
+| `PUMPKIN_PLUGIN_WASM` | the component to load; defaults to `build/create.wasm` |
+| `PUMPKIN_BUILD_PLUGIN=1` | build `build/create.wasm` first if it is missing |
+| `PUMPKIN_E2E_KEEP=1` | keep each run's scratch server directory and print its path; it holds `server.log` (the server's console output), `server.trace.jsonl`, and per client `client-<name>.trace.jsonl` and `client-<name>.log` |
+| `PUMPKIN_E2E_SETTLE_MS`, `PUMPKIN_E2E_STARTUP_SECONDS`, `PUMPKIN_E2E_STOP_SECONDS`, `PUMPKIN_E2E_JOIN_SECONDS`, `PUMPKIN_E2E_PORT` | timing and port overrides (defaults: 1500 ms of ticking, 300 s to start, 90 s to stop, 60 s to join, a free port) |
+
+How one test reads (`test/support/`):
+
+- `PumpkinLab.boot()` writes a scratch server directory with `plugins/create.wasm` and
+  its own `pumpkin.toml`, boots the binary headless, waits for its *own* log line
+  ("Server is now running") and checks the plugin was loaded — never a blind sleep;
+- console commands go to the process's stdin (the console reads it whenever stdin is not
+  a TTY), and `/list` is the barrier that says the commands before it have run;
+- `lab.connect('Watcher')` spawns the simulated client; **its trace is the authority on
+  what a client received**, and the server's own trace (`PUMPKIN_PACKET_TRACE`) says what
+  was enqueued, so "never sent" and "sent but never arrived" stay distinguishable;
+- `PumpkinTrace` reads both (`test/support/pumpkin_trace.dart`), groups packets into
+  bundles from the delimiters and compares two clients with `VisibilityDiff` — the
+  "it only shows up after a relogin" shape, which no server-side assertion can see.
+
+Three rules a new scenario has to follow, all of them learned from real runs:
+
+1. **Build the scenario where the client already is.** The server only sends block updates
+   and block entities to players that *track* the chunk, and a console `tp` does not change
+   what a player tracks (it never sends the destination's chunk), so
+   `lab.playerPosition('Watcher')` reads the position from the server and the blocks go
+   next to it. Blocks placed elsewhere produce no packets at all, and the failure looks like
+   a plugin that sent nothing.
+2. **Place through `placeBlock`, not `setblock` typed once.** Chunk generation is
+   asynchronous, so the first attempts answer "That position is not loaded";
+   `PumpkinServer.commandUntil`/`placeBlock` retry on the console's own reply.
+3. **Assert over the scenario's positions** (`VisibilityDiff.between(early, late, focus:
+   {...})`): a live world disagrees with itself between two sessions — ambient mob spawns
+   are `add_entity` lines the later client saw and the earlier one never did.
+
+The tests assert the client's side of Create's meaning: a merged tank with the payload and
+states the client was told (`tank_client_payload_test.dart`), a contraption arriving with
+its spawn payload in one bundle (`contraption_spawn_bundle_test.dart`), and the relogin
+diff (`relogin_client_diff_test.dart`). The trace format, the bundle grouping and the diff
+are covered by `test/pumpkin_trace_test.dart`, which is part of the fast default suite.
+
+## Differential against a Java server
+
+The end-to-end suite answers "what did a client get from *our* server". The differential
+answers the harder question a bug report leaves behind: **"what does a client get from the
+Java mod that it does not get from the plugin?"** One command runs the same rig against
+both servers, records both, decodes both and prints the first semantic difference:
+
+```sh
+cd example/create
+export PUMPKIN_BIN=/path/to/Pumpkin/target/fast/pumpkin
+export PUMPKIN_TESTER_BIN=/path/to/Pumpkin/target/fast/pumpkin-tester
+export PUMPKIN_PLUGIN_WASM=build/create.wasm
+export MCTRACE_BIN=/path/to/Pumpkin/target/fast/mctrace   # optional: the raw frames
+export MCTRACE_JAVA_DIR=$HOME/Documents/mctesting         # a NeoForge install with the working Create jar
+
+puro dart run tool/diff_servers.dart
+```
+
+How it is wired, and why each piece is needed:
+
+- **The Java arm is a real dedicated server, built from an install you already have.** The
+  harness symlinks that install's `libraries/` and `mods/`, writes its own
+  `server.properties` (`online-mode=false`, its own free port, a fixed seed, a fresh world)
+  and boots `java @libraries/.../unix_args.txt --nogui` in a scratch directory. The install
+  is read, never modified, and no port a running server of yours listens on is touched.
+- **The Pumpkin arm** is `PumpkinServer` from `test/support/pumpkin_server.dart` — the same
+  process the e2e tests boot.
+- **`mctrace` in front of each** records every frame in both directions, which is the only
+  way to see a Java server's traffic (there is no `PUMPKIN_PACKET_TRACE` in a NeoForge
+  server). It is optional: without the binary the comparison runs on the two clients' own
+  traces, and says so.
+- **A `pumpkin-tester client` joins each arm** through the proxy. It is the semantic record
+  (`test/support/pumpkin_trace.dart` reads it) and the thing that makes a server send
+  anything at all. On the Java arm it joins with `--mirror`, because a modded server refuses
+  a client whose NeoForge channel answer does not match its own declaration.
+- **The rig** is the contraption scenario in `tool/diff_servers.dart`: a bearing that
+  assembles one stone, driven by a creative motor, built in the air above the client (the
+  only position that means the same thing on two servers that generate their own worlds).
+
+What is compared is *semantics*, never bytes (`test/support/differential/trace_diff.dart`):
+events keyed by position, entity and channel; positions translated into rig coordinates
+(the two servers put the rig at different absolute coordinates); block state ids, entity
+ids, entity type ids and id-shaped payload leaves renamed through **each server's own**
+numbering, so only the equality pattern has to match; payloads decoded as NBT and compared
+leaf by leaf, so a difference is named as a path (`Contents.Value: 1 vs 2`) instead of as
+two blobs. Packets the trace does not model (keep-alives, time updates) are skipped, and
+the skip is counted in the report rather than hidden.
+
+Exit codes are the automation contract: **0** the two arms agree (a real finding — it would
+mean the difference is not in the play-phase packets at all), **1** they differ (the report
+names the first difference with both servers' own packets around it), **2** the run never
+got to compare (an arm failed to start or to join, and the report says which and why).
+`--json FILE` writes the same result for CI, `--out DIR` keeps each arm's client trace,
+wire capture and console log, and `--keep` keeps the scratch server directories.
+
+Two identical arms are how the comparison itself is checked — it must find no difference
+between two runs of the same server:
+
+```sh
+puro dart run tool/diff_servers.dart --reference pumpkin --candidate pumpkin
+```
+
+| Environment variable | Meaning |
+|---|---|
+| `MCTRACE_JAVA_DIR` | the NeoForge install to mirror (default `~/Documents/mctesting`) |
+| `MCTRACE_BIN` | the `mctrace` binary; defaults to `mctrace` next to `PUMPKIN_TESTER_BIN` |
+
 ## Known host limitations
 
 The port keeps the Java behaviour where the host can express it. The remaining

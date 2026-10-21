@@ -34,6 +34,51 @@ final e = await world.spawnFromNbt(entityNbt, (x, y, z));     // new uuid; null 
 created, after everything else was placed. `breakBlock` returns false for air or
 a cancelled event.
 
+### Block callbacks of a bulk write
+
+The host fires `BlockBehavior.onPlaced` for every block it writes, and each of
+those callbacks is a round trip of its own: measured on a live server, one such
+callback costs tens of milliseconds while the handler itself runs in
+microseconds. A batch of a few hundred blocks is therefore better off writing
+without the callback and running it once per position itself:
+
+```dart
+final changed = await world.placeBlocks(changes, flags: {
+  ...BlockUpdateFlags.normal,
+  BlockFlagsFlag.skipBlockAddedCallback,
+});
+for (final (pos, state) in changes) {
+  await CustomBlockBehaviors.firePlaced(
+    targetWorld: world,
+    pos: pos.toBlockPos(),
+    blockKey: state.key,
+    stateIndex: stateId - baseStateId,     // `state id = baseStateId + stateIndex`
+    oldStateId: oldStateIdAt(pos),
+  );
+}
+```
+
+`skipBlockAddedCallback` skips the whole `placed` hook of the host (`onPlace` of
+the block, its fluid, and the vanilla block entity a state with a block entity
+type would get). Nothing else changes: the flags still notify neighbours and
+clients, `state-replaced` still runs, and the light, neighbour and shape passes
+of the batch still run. `CustomBlockBehaviors.firePlaced` re-runs exactly the
+`onPlaced` handlers the plugin registered for the block, with the event data the
+host would have sent (`player: null` and `oldStateId` set, like a `placed` event;
+a `player-placed` event is a player's own write, not a batch). Blocks a plugin
+registered without a behavior are skipped, so only the plugin's own blocks cost
+anything.
+
+Two related notes:
+
+- `BlockBehavior.onUpdateShape` is asked once per neighbour per written block: an
+  `updateShape` handler that keeps the state (returns `null`) is a round trip
+  that changes nothing, so do not register one for a block whose shape update is
+  only "keep the state".
+- A shape pass is skipped altogether by `BlockFlagsFlag.skipShapeUpdate` (the
+  neighbours are then not asked at all - vanilla `fill`-style), which is only
+  right when the batch already carries every resulting state.
+
 ## Structure templates
 
 Vanilla `.nbt` structure format. Template positions are relative to the origin

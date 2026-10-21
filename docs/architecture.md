@@ -50,3 +50,9 @@ PUMPKIN_BIN=/path/to/pumpkin tool/smoke_test.sh build/my_plugin.wasm "mycommand 
 
 Use a release build of Pumpkin: compiling a plugin on first load is far slower in
 debug builds.
+
+A plugin whose tests need to assert on what a *client* was told does not have to
+guess: `example/create/test/support/` boots a real server with the plugin, spawns
+the `pumpkin-tester` client against it, reads the packet traces of both, and
+compares two clients (the "it only shows up after a relogin" diff). See
+`example/create/README.md`, "End-to-end tests against a real server".

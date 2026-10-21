@@ -258,6 +258,10 @@ extension BlockBehaviorRegistration on Context {
     );
 
     bool mine(String block) => registryKeysMatch(block, blockKey);
+    // The plugin can fire the placed event itself for a bulk write that skipped it
+    // (`CustomBlockBehaviors.firePlaced`): the host does not fire it there.
+    CustomBlockBehaviors.install(this);
+    CustomBlockBehaviors.record(blockKey, behavior);
     final p = behavior.priority;
     final subscriptions = <EventSubscription>[];
 
@@ -477,6 +481,80 @@ extension BlockBehaviorRegistration on Context {
       );
     }
     return subscriptions;
+  }
+}
+
+/// The [BlockBehavior]s a plugin registered, so it can fire a block event itself.
+///
+/// [BlockBehaviorRegistration.registerBlockBehavior] routes the host's events to
+/// the handlers, but the host only fires them for the writes it makes itself,
+/// one callback per block. A bulk write ([WorldBulkBlocks.placeBlocks]) with
+/// [BlockFlagsFlag.skipBlockAddedCallback] writes every block of the batch in one
+/// host call without those callbacks - each callback is a host-to-plugin round
+/// trip that costs far more than the write itself - so the plugin fires the
+/// `placed` handling of what it wrote itself, once per position and in one
+/// callback of its own: [firePlaced].
+///
+/// The handlers get the same [CustomBlockPlacedEventData] the host would send for
+/// a `placed` event: the position, the block, its `stateIndex` within the block,
+/// the state that was there before and `player: null` (`player-placed` is a
+/// player's own write, which a bulk write is not).
+abstract final class CustomBlockBehaviors {
+  static Context? _context;
+  static final Map<String, List<BlockBehavior>> _byBlock = {};
+
+  /// Remembers the load context ([BlockBehaviorRegistration] passes it in), so a
+  /// handler can be given a [Server] outside a host event.
+  static void install(Context context) => _context = context;
+
+  /// Records [behavior] as a handler of [blockKey].
+  static void record(String blockKey, BlockBehavior behavior) =>
+      _byBlock.putIfAbsent(blockKey, () => <BlockBehavior>[]).add(behavior);
+
+  /// The behaviors registered for [blockKey] (`registryKeysMatch`, so a key
+  /// without the `minecraft:` namespace still matches).
+  static List<BlockBehavior> forBlock(String blockKey) => [
+    for (final entry in _byBlock.entries)
+      if (registryKeysMatch(entry.key, blockKey)) ...entry.value,
+  ];
+
+  /// Forgets every behavior (tests, plugin reloads).
+  static void clear() {
+    _byBlock.clear();
+    _context = null;
+  }
+
+  /// Runs the `onPlaced` of every behavior registered for [blockKey], as the host
+  /// would have for the block it wrote at [pos] itself.
+  ///
+  /// [stateIndex] is the state's index within the block and [oldStateId] the
+  /// state that was at [pos] before the write (`null` for "not known"). The
+  /// handlers run in registration order. Nothing happens when the plugin
+  /// registered no behavior for [blockKey], and a handler does not run for a
+  /// block another plugin registered.
+  static Future<void> firePlaced({
+    required World targetWorld,
+    required BlockPos pos,
+    required String blockKey,
+    required int stateIndex,
+    int? oldStateId,
+  }) async {
+    final behaviors = forBlock(blockKey);
+    if (behaviors.isEmpty) return;
+    final server = _context?.getServer();
+    if (server == null) return;
+    final event = CustomBlockPlacedEventData(
+      targetWorld: targetWorld,
+      pos: pos,
+      block: blockKey,
+      stateIndex: stateIndex,
+      player: null,
+      oldStateId: oldStateId,
+      moved: false,
+    );
+    for (final behavior in behaviors) {
+      await behavior.onPlaced?.call(server, event);
+    }
   }
 }
 

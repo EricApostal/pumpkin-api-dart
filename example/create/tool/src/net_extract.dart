@@ -230,9 +230,9 @@ NetPayload applyOverride(NetPayload p, SourceIndex idx, Decoder dec, JavaClass a
           NetField('edgeLocation1', nodeLoc),
           NetField('position', _double),
           NetField(
-              'signalGroups',
+              'subclassData',
               NetType(NetKind.custom,
-                  className: 'SignalBoundary only (type create:signal): 2x [bool present, uuid group]; other types write nothing',
+                  className: 'TrackEdgePoint subclass data (type create:signal: 2x [bool present, uuid group]; type create:station: name, bool assembling, [bool present, blockPos]; other types write nothing)',
                   fields: [])),
         ]);
         return _with(p,
@@ -280,7 +280,7 @@ NetPayload applyOverride(NetPayload p, SourceIndex idx, Decoder dec, JavaClass a
             verified: true,
             note: 'Hand decoded from TrackGraphSyncPacket.write(): every field after fullWipe is absent when '
                 'packetDeletesGraph is true. The dimension palette is written first (int count, then identifiers), '
-                'followed by the lists in the order shown. Only SignalBoundary edge points append group data.');
+                'followed by the lists in the order shown. SignalBoundary and GlobalStation edge points append subclass data (see the subclassData field).');
       }
   }
   return p;

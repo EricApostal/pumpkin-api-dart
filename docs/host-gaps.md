@@ -9,11 +9,35 @@ works.** `set-plugin-synced-entry` reaches every tracking client
 (`wit/v0.2/world.wit:585-602`, `crates/pumpkin-wasm-host-v0_2/src/entity.rs:770-800`).
 Only `set-plugin-spawn-data` is spawn-time-only, which matches NeoForge.
 
-## Re-entrant world writes from a plugin event (deadlock)
+## Re-entrant world writes from a plugin event (fixed in the host)
 
-**Any `NOTIFY_ALL` world write from inside a host-initiated guest call deadlocks the
-plugin permanently.** Three variants were tried plugin-side and all are unsafe; there
-is no execution point in a plugin that is outside a host-initiated guest call.
+**Fixed in the host**: the deadlock below was real, and the host no longer re-enters the
+plugin from a plugin-initiated write. `PluginManager::fire_blocking` queues the event when
+`plugin::in_guest_call()` reports a guest call on the current thread (the plugin runtime
+installs that probe at startup, `pumpkin_plugin_runtime::is_running_guest_call`), and the
+next dispatch outside a guest call delivers it through `Payload::duplicate`, which the
+`Event` derive implements from `Clone`. The write itself still happens where it always
+did, so `tryPickupFluid` returns the fluid to the plugin immediately and the tank fills;
+only the notification of the change waits for the next host-side event. A handler
+therefore cannot cancel or reshape a write the plugin itself started: its answer arrives
+after the fact.
+
+Measurements from before the fix, kept because they show what the trap looks like: with
+the write inline the tank never fills; deferred to a microtask the microtask is never
+drained (no event loop outside a guest call); deferred to the world tick it deadlocks
+identically, because the world tick is *also* a guest call. Deferring only
+`updateComparators` let the first 8 mB reach the tank and then froze.
+
+Where the nested call was lost, from the instrumentation that found it: the guest's wasm
+runs in a task that Wasmtime polls *outside* the `scope(context, …)` the store driver
+applies to the guest-call job, so `ReentryContext::current()` is empty during the whole
+guest execution and `inherited_context()` finds nothing. The nested call still recovered
+a chain through `polled_call_context()` (it runs on the thread polling the driver) and
+queued its job on the driver, but the driver cannot run it: that same thread is executing
+the guest synchronously inside the write. The nested call never returns, so neither does
+the guest.
+
+Original report, with the chain as measured then:
 
 ```
 host → guest (sync export, pumpkin-plugin-runtime/src/executor.rs:673 call_guest)
@@ -26,19 +50,16 @@ host → guest (sync export, pumpkin-plugin-runtime/src/executor.rs:673 call_gue
   → the guest never returns: ticks stop, flows freeze, shutdown never completes
 ```
 
-Measured: with the write inline the tank never fills; deferred to a microtask the
-microtask is never drained (no event loop outside a guest call); deferred to the world
-tick it deadlocks identically, because the world tick is *also* a guest call. Deferring
-only `updateComparators` let the first 8 mB reach the tank and then froze.
+`tryPickupFluid` from a vanilla water source reached `break_block` rather than the
+`set_block_state` above (`Fluid::from_state_id` does not call vanilla water dynamic), and
+`break_block`'s own `BlockBreakEvent` is what hung — same deadlock, one event earlier.
 
 Concrete victim: fluid transfer out of a world source
 (`open_ended_pipe.dart:131` → `fluid_host.dart:376` → `world.rs:857`). Same class as the
-`setBlockState`-inside-`onPlaced` deadlock, so the fix should cover the general
-plugin-initiated write path, not one call: either do not fire plugin events re-entrantly
-from a plugin-initiated write, or make the nested admission succeed.
+`setBlockState`-inside-`onPlaced` deadlock, so the fix covers the general
+plugin-initiated write path, not one call.
 
-The Dart side is already faithful to Java here — no plugin change is needed once the
-host is fixed.
+The Dart side is faithful to Java — no plugin change was needed.
 
 ## Entity effects
 

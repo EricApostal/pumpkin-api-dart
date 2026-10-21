@@ -300,6 +300,11 @@ class TrackBlockEntity {
     if (level == null) return;
     final yLevels = bc.rasterise();
 
+    // The curve's columns are read first and written in one batch: the fake track set is a run of
+    // blocks just like the track run, and one host call per column is what made a long curve slow.
+    final changes = <(Pos, BState)>[];
+    final keepAlive = <Pos>[];
+
     for (final entry in yLevels.entries) {
       final yValue = entry.value;
       final floor = yValue.floor();
@@ -317,8 +322,13 @@ class TrackBlockEntity {
       if (level.hasNonWaterFluid(targetPos)) continue;
 
       if (!present && level.canBeReplaced(targetPos)) {
-        await level.setBlock(targetPos, withWater(level, fakeTrackDefaultState, targetPos)!);
+        changes.add((targetPos, withWater(level, fakeTrackDefaultState, targetPos)!));
       }
+      keepAlive.add(targetPos);
+    }
+
+    if (changes.isNotEmpty) await level.setBlocks(changes);
+    for (final targetPos in keepAlive) {
       FakeTrackBlock.keepAlive(level, targetPos);
     }
   }

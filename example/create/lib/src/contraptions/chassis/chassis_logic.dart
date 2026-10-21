@@ -5,6 +5,8 @@
 // Java: `content/contraptions/chassis/{AbstractChassisBlock,LinearChassisBlock,RadialChassisBlock}`.
 import 'dart:collection';
 
+import 'package:pumpkin_api/pumpkin_api_core.dart' show BlockStateLayout;
+
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../schematics/state_transform.dart' as vanilla;
@@ -151,6 +153,22 @@ BState linearChassisUpdateShape(BState state, Direction side, BState other) {
       state['axis'] != other['axis'])
     return state;
   return state.setValue(prop, 'false');
+}
+
+/// `LinearChassisBlock.updateShape` answered for the `update-shape` hook: the index of the new
+/// state in [layout] (the layout of the chassis block), or `null` when the neighbouring chassis
+/// leaves the state unchanged.
+///
+/// The hook answers with a state index *of the block*, not a global state id (see [stateIndexIn]).
+int? linearChassisShapeAnswer(
+  BlockStateLayout layout,
+  BState state,
+  Direction side,
+  BState other,
+) {
+  final next = linearChassisUpdateShape(state, side, other);
+  if (next == state) return null;
+  return stateIndexIn(layout, next);
 }
 
 /// `AbstractChassisBlock.useItemOn` / `useWithoutItem`: the new state after a glue click, or `null`

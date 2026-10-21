@@ -91,6 +91,25 @@ abstract class TrackLevel extends BlockGetter {
   /// `level.setBlockAndUpdate(pos, state)`.
   Future<void> setBlockAndUpdate(Pos pos, BState state) => setBlock(pos, state);
 
+  /// `level.setBlock(pos, state, Block.UPDATE_ALL)` for a whole run of positions: one call for
+  /// the batch instead of one per block.
+  ///
+  /// Java writes a placement as a straight run of `setBlock`s because a level write is a memory
+  /// store. Here every `setBlock` is a host call, and one placement writes the straights of both
+  /// ends, the curve and the fake tracks - a long run is hundreds of round trips inside a single
+  /// tick, which is the TPS spike a player sees while a track fills in. The host writes a batch
+  /// in one call (`World.placeBlocks`: all blocks first, then the neighbour, shape and light
+  /// updates once).
+  ///
+  /// The changes are applied in order and a later entry for the same position wins, so a caller
+  /// can collect the writes of one phase and flush them together. The default implementation is
+  /// the per-block loop, so a level that does not care (tests) behaves exactly as before.
+  Future<void> setBlocks(List<(Pos, BState)> changes) async {
+    for (final (pos, state) in changes) {
+      await setBlock(pos, state);
+    }
+  }
+
   /// `level.removeBlockEntity(pos)`. Awaits the host: removing the entity fires its unload event.
   Future<void> removeBlockEntity(Pos pos);
 
@@ -227,32 +246,61 @@ final class MemoryTrackLevel extends TrackLevel {
     : blocks = blocks ?? <Pos, BState>{},
       _random = random ?? math.Random(0);
 
+  /// Level calls a placement made, counted so a test can see the cost of one placement: every
+  /// `stateAt` / `canBeReplaced` / `hasTag` / `isWater` is one host call in game, and every entry
+  /// of [writeCounts] is one `setBlock` (three host calls: state, write, shape invalidation) or
+  /// one batched [setBlocks] (a single `World.placeBlocks` call). A track placement used to make
+  /// one of each per block; the counts are what the TPS spike was made of.
+  int readCount = 0;
+  final List<int> writeCounts = [];
+
   @override
   String get dimension => 'minecraft:overworld';
 
   @override
-  BState stateAt(Pos p) => blocks[p] ?? BState.air;
+  BState stateAt(Pos p) {
+    readCount++;
+    return blocks[p] ?? BState.air;
+  }
 
   @override
-  bool isLoaded(Pos p) => true;
+  bool isLoaded(Pos p) {
+    readCount++;
+    return true;
+  }
 
   @override
-  bool isFaceSturdy(Pos p, Direction face) => false;
+  bool isFaceSturdy(Pos p, Direction face) {
+    readCount++;
+    return false;
+  }
 
   @override
-  List<BlockBox> collisionBoxes(Pos p) => const [];
+  List<BlockBox> collisionBoxes(Pos p) {
+    readCount++;
+    return const [];
+  }
 
   @override
-  bool supportShapeEmpty(Pos p) => true;
+  bool supportShapeEmpty(Pos p) {
+    readCount++;
+    return true;
+  }
 
   @override
   bool canBeReplaced(Pos p) => stateAt(p).isAir;
 
   @override
-  bool hasTag(Pos p, String tag) => false;
+  bool hasTag(Pos p, String tag) {
+    readCount++;
+    return false;
+  }
 
   @override
-  bool isWater(Pos p) => false;
+  bool isWater(Pos p) {
+    readCount++;
+    return false;
+  }
 
   @override
   TrackBlockEntity? getTrackBlockEntity(Pos pos) => null;
@@ -264,7 +312,19 @@ final class MemoryTrackLevel extends TrackLevel {
   TrackLevel? getLevel(String dimension) => this;
 
   @override
-  Future<void> setBlock(Pos pos, BState state) async => blocks[pos] = state;
+  Future<void> setBlock(Pos pos, BState state) async {
+    writeCounts.add(1);
+    blocks[pos] = state;
+  }
+
+  /// One batched write: the count entry says how many blocks it carried.
+  @override
+  Future<void> setBlocks(List<(Pos, BState)> changes) async {
+    writeCounts.add(changes.length);
+    for (final (pos, state) in changes) {
+      blocks[pos] = state;
+    }
+  }
 
   @override
   Future<void> removeBlockEntity(Pos pos) async {}

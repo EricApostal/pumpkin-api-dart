@@ -1,0 +1,7 @@
+{"dir":"recv","client":"Watcher","kind":"chunk","chunk":[0,0]}
+{"dir":"recv","client":"Watcher","kind":"block_update","pos":[0,70,1],"state":38191}
+{"dir":"recv","client":"Watcher","kind":"bundle_start"}
+{"dir":"recv","client":"Watcher","kind":"add_entity","entity":42,"type":1500,"pos":[0,70,0],"bundle":true}
+{"dir":"recv","client":"Watcher","kind":"custom_payload","channel":"neoforge:advanced_add_entity","data":"0a00","bundle":true}
+{"dir":"recv","client":"Watcher","kind":"other","id":80}
+{"dir":"recv","client":"Watcher","kind":"bundle_end"}

@@ -1,6 +1,7 @@
 import 'package:create/src/common/common.dart';
 import 'package:create/src/manifest/manifest.dart';
 import 'package:create/src/protocol/codec_compiler.dart' show PayloadSchemas;
+import 'package:create/src/protocol/payload_hub.dart';
 import 'package:create/src/trains/graph/dimension_palette.dart';
 import 'package:create/src/trains/graph/edge_point_type.dart';
 import 'package:create/src/trains/graph/track_edge.dart';
@@ -325,10 +326,69 @@ void main() {
       boundary.groups.set(false, '00000000-0000-4000-8000-000000000022');
       packet.addedEdgePoints.add(boundary);
 
+      // A `create:station` point appends its name, assembling flag and block entity position
+      // (`GlobalStation.write(FriendlyByteBuf)`); a `create:observer` point appends nothing.
+      final station = EdgePointType.STATION.create();
+      station.setId('00000000-0000-4000-8000-000000000030');
+      station.setLocation(
+        Couple.create(
+          TrackNodeLocation(0, 0, 0).inDimension(overworldId),
+          TrackNodeLocation(0, 0, 8).inDimension(overworldId),
+        ),
+        0.25,
+      );
+      station.name = 'Track Station';
+      station.assembling = true;
+      packet.addedEdgePoints.add(station);
+
+      final observer = EdgePointType.OBSERVER.create();
+      observer.setId('00000000-0000-4000-8000-000000000031');
+      observer.setLocation(
+        Couple.create(
+          TrackNodeLocation(0, 0, 0).inDimension(overworldId),
+          TrackNodeLocation(0, 0, 4).inDimension(overworldId),
+        ),
+        0.75,
+      );
+      packet.addedEdgePoints.add(observer);
+
       final schema = PayloadSchemas.manifest['create:sync_rail_graph'];
       final bytes = packet.toBytes();
       final fields = schema.decode(bytes);
       expect(schema.encode(fields), bytes);
+    });
+
+    // The send path (`HostRailwayNetwork.sendToAll`/`sendTo`) decodes the pure packet's bytes with
+    // the manifest schema and re-encodes them for the client. A graph containing a station edge
+    // point used to be undecodable there (the schema only accounted for `create:signal` subclass
+    // data), so every `create:sync_rail_graph` of a network with a station was dropped -- the
+    // client then had no rail graph, which breaks the station screen and the track previews.
+    test('a graph with a station edge point survives the send path', () {
+      final hub = PayloadHub<Object>(
+        schemas: PayloadSchemas.manifest,
+        sink: (level, message) => fail('$level: $message'),
+        describePlayer: (player) => '$player',
+      );
+
+      final packet = TrackGraphSyncPacket('00000000-0000-4000-8000-000000000040', 3);
+      final station = EdgePointType.STATION.create();
+      station.setId('00000000-0000-4000-8000-000000000041');
+      station.setLocation(
+        Couple.create(
+          TrackNodeLocation(0, 0, 0).inDimension(overworldId),
+          TrackNodeLocation(0, 0, 4).inDimension(overworldId),
+        ),
+        0.5,
+      );
+      station.name = 'Track Station';
+      packet.addedEdgePoints.add(station);
+      for (var i = 0; i < 13; i++) {
+        packet.removedEdgePoints.add('00000000-0000-4000-8000-0000000005${i.toString().padLeft(2, '0')}');
+      }
+
+      final bytes = packet.toBytes();
+      final fields = hub.decode('create:sync_rail_graph', bytes);
+      expect(hub.encode('create:sync_rail_graph', fields), bytes);
     });
 
     test('edge group and roll call bytes round-trip', () {

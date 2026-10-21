@@ -89,6 +89,8 @@ final class CreateWorldgen {
   final Logger log;
   final WorldgenSeeds seeds = WorldgenSeeds();
   final HostOreStateInfo _info = HostOreStateInfo();
+  /// One vein is asked for by every chunk it reaches into; the cache keeps the draw once.
+  final VeinCache _veins = VeinCache();
 
   CreateWorldgen(this.configs, this.log);
 
@@ -155,6 +157,7 @@ final class CreateWorldgen {
           chunkZ: event.chunkZ,
           chunk: _HostChunk(event.chunk),
           info: _info,
+          veins: _veins,
         );
       } on Object catch (e, s) {
         log.error('Placing ${feature.key} in chunk ${event.chunkX},${event.chunkZ} failed', error: e, stackTrace: s);

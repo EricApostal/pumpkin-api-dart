@@ -138,7 +138,15 @@ final class HostBlockGetter extends BlockGetter {
   /// The state id at [p]. Inside a batch ([beginBatch]) a position is read once: the structure
   /// search asks for the same block tens of times, and each read is a wasm call.
   int idAt(Pos p) {
-    if (_batchDepth == 0) return world.getBlockStateId(pos: p.toBlockPos());
+    if (_batchDepth == 0) {
+      if (!Perf.enabled) return world.getBlockStateId(pos: p.toBlockPos());
+      final watch = Stopwatch()..start();
+      try {
+        return world.getBlockStateId(pos: p.toBlockPos());
+      } finally {
+        Perf.record('host.getBlockStateId', watch.elapsedMicroseconds);
+      }
+    }
     final cached = _batchIds[p];
     if (cached != null) return cached;
     final id = world.getBlockStateId(pos: p.toBlockPos());
@@ -215,8 +223,17 @@ final class HostBlockGetter extends BlockGetter {
 
   @override
   bool isWater(Pos p) {
-    final f = world.getFluidState(pos: p.toBlockPos());
-    return f != null && f.fluid == 'minecraft:water' && f.isSource;
+    if (!Perf.enabled) {
+      final f = world.getFluidState(pos: p.toBlockPos());
+      return f != null && f.fluid == 'minecraft:water' && f.isSource;
+    }
+    final watch = Stopwatch()..start();
+    try {
+      final f = world.getFluidState(pos: p.toBlockPos());
+      return f != null && f.fluid == 'minecraft:water' && f.isSource;
+    } finally {
+      Perf.record('host.getFluidState', watch.elapsedMicroseconds);
+    }
   }
 }
 

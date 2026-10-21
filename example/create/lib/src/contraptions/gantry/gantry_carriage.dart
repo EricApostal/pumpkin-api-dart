@@ -30,8 +30,9 @@ export 'gantry_logic.dart'
         getGantryPinionModifier;
 
 /// The gantry carriage definition.
-List<CreateBlock> buildGantryBlocks() => [
-  manifestBlock(
+List<CreateBlock> buildGantryBlocks() {
+  late final CreateBlock carriage;
+  carriage = manifestBlock(
     'gantry_carriage',
     // `GantryCarriageBlock.getFacingForPlacement` on `DirectionalAxisKineticBlock`: the clicked
     // face; the `axis_along_first` cycling follows in `onPlaced`.
@@ -77,17 +78,17 @@ List<CreateBlock> buildGantryBlocks() => [
         if (facing == null || facing.opposite != toDirection(e.direction))
           return null;
         final other = HostBlockGetter.stateOfId(e.neighborStateId);
-        final next = cycleGantryAxisIfNecessary(
+        return gantryCarriageShapeAnswer(
+          carriage.layout,
           state,
           toDirection(e.direction),
           other,
         );
-        if (next == state) return null;
-        return BlockRegistry.resolveState(state.key, next.props);
       },
     ),
-  ),
-];
+  );
+  return [carriage];
+}
 
 /// `GantryCarriageBlockEntity`.
 class GantryCarriageBlockEntity extends KineticBlockEntity

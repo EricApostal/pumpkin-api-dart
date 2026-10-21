@@ -27,6 +27,13 @@ CreateBlock buildBeltBlock() {
   return createBlockFromManifest(
     'belt',
     blockEntityType: 'create:belt',
+    // `BeltBlock.getShape`/`getCollisionShape` are `BeltShapes`, never a full cube. The host
+    // derives a state's flags and light opacity from the shape a block registers, and the
+    // manifest default is a full cube, which made a belt occlude light like stone: its own cell
+    // lost its sky light and only got it back from the client's own relight. A client takes the
+    // server's light data when it loads a chunk (a relog), so the belt went dark exactly then.
+    collisionShape: BlockShape.boxes(BeltShapes.registeredCollision),
+    selectionShape: BlockShape.boxes(BeltShapes.registeredShape),
     placement: [
       // `BeltBlock extends HorizontalKineticBlock`: `getHorizontalDirection().getOpposite()`.
       PlacementRule.horizontalFacing('facing', opposite: true),

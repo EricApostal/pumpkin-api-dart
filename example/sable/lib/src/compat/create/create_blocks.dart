@@ -155,7 +155,13 @@ abstract final class CreateCompatBlocks {
   // plugin installs the real ones in `create_host.dart`.
 
   /// The block entity at a position, or `null`. Installed by the plugin.
-  static Object? Function(String worldId, Pos pos)? blockEntityLookup;
+  ///
+  /// The identifier is the **dimension key** of the level the listener runs for
+  /// (`SableLevel.dimensionId`, `minecraft:overworld`), not a world id — Create's
+  /// `BlockEntityStore` is keyed by `World.getId()` (the folder name `world`), so the installed
+  /// lookup has to resolve the identifier through the world table (`Worlds.worldIdOf`) before it
+  /// reads the store. Passing it straight through silently finds nothing.
+  static Object? Function(String dimensionId, Pos pos)? blockEntityLookup;
 
   /// Reads the belt data of a block entity, `null` when it is not a belt.
   static BeltStateReader? beltStateReader;

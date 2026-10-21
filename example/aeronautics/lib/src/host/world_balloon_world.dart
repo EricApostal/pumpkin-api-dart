@@ -27,8 +27,11 @@ final class WorldSableLevel implements SableLevel {
 
   WorldSableLevel(this.world);
 
+  /// `Level.dimension().identifier().toString()`: the dimension key (`minecraft:overworld`).
+  /// Not the world id (`World.getId()`, the folder name `world`) — Sable puts this value on the
+  /// wire (`sable:dimension_physics`) and into `/execute in <dimension>` suggestions.
   @override
-  String get dimensionId => world.getId();
+  String get dimensionId => world.getDimension();
 
   @override
   bool get isClientSide => false;

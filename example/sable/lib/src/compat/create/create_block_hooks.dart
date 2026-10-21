@@ -98,7 +98,8 @@ final class BeltBlockCallback implements BlockSubLevelCollisionCallback {
     return velocity == null ? CollisionResult.none : CollisionResult(velocity, false);
   }
 
-  /// The world id of the physics step the callback runs in.
+  /// The identifier of the world the physics step runs in: a dimension key or a world id, the
+  /// same string [CreateCompatBlocks.blockEntityLookup] is given (which resolves it).
   static String currentStepWorldId = '';
 }
 

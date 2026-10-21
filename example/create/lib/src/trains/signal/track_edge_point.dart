@@ -23,12 +23,17 @@ import '../util/ctag.dart';
 /// What the pure code knows of the block entity that targets an edge point.
 final class EdgePointOwnerInfo {
   final Pos pos;
-  final String worldId;
+
+  /// The dimension key of the block entity's level (`getLevel().dimension()`,
+  /// `minecraft:overworld`), not its world id (`World.getId()`, the folder name `world`).
+  /// It is what [SingleBlockEntityEdgePoint.blockEntityDimension] stores and what goes into the
+  /// graph packet's dimension palette.
+  final String dimension;
 
   /// The block state values of the block at [pos] (`BlockState.getValue`), as text.
   final Map<String, String> properties;
 
-  const EdgePointOwnerInfo(this.pos, this.worldId, [this.properties = const {}]);
+  const EdgePointOwnerInfo(this.pos, this.dimension, [this.properties = const {}]);
 }
 
 /// The few places where the pure edge points reach into the host. The trains module installs
@@ -47,7 +52,10 @@ abstract final class EdgePointHooks {
   static FilterItemStack? Function(Object blockEntity) observerFilter = (_) => null;
 
   /// `BlockEntityBehaviour.get(level, pos, TrackTargetingBehaviour.TYPE)?.invalidateEdgePoint(data)`.
-  static void Function(Object? level, String worldId, Pos pos, CTag migrationData)? invalidateTargeting;
+  ///
+  /// The identifier is the block entity's dimension key (`getBlockEntityDimension()`), so the
+  /// installed hook has to resolve it to a world id before it reads the block entity store.
+  static void Function(Object? level, String dimension, Pos pos, CTag migrationData)? invalidateTargeting;
 }
 
 abstract class TrackEdgePoint {
@@ -71,15 +79,15 @@ abstract class TrackEdgePoint {
   /// [level] is whatever the caller has as a level (the world, `null` when not available).
   void invalidate(Object? level);
 
-  /// `invalidateAt(level, blockEntityPos)`; [worldId] is the dimension of the block entity.
-  void invalidateAt(Object? level, String worldId, Pos blockEntityPos) {
+  /// `invalidateAt(level, blockEntityPos)`; [dimension] is the dimension key of the block entity.
+  void invalidateAt(Object? level, String dimension, Pos blockEntityPos) {
     final hook = EdgePointHooks.invalidateTargeting;
     if (hook == null) return;
     final migrationData = CTag();
     final dimensions = DimensionPalette();
     write(migrationData, dimensions);
     dimensions.write(migrationData);
-    hook(level, worldId, blockEntityPos, migrationData);
+    hook(level, dimension, blockEntityPos, migrationData);
   }
 
   void blockEntityAdded(Object blockEntity, bool front);

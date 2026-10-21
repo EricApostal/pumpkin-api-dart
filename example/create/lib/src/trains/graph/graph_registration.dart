@@ -51,11 +51,21 @@ void installEdgePointHooks(CreateContext ctx) {
       final props = world == null
           ? const <String, String>{}
           : (Lvl(world).info(pos)?.properties ?? const {});
-      return EdgePointOwnerInfo(pos, blockEntity.worldId, props);
+      // `getLevel().dimension()`: the dimension key, not `blockEntity.worldId` (the store's world
+      // id, the folder name). The edge point writes this into the graph's dimension palette, and
+      // the client resolves the node's block entity by it.
+      //
+      // `world` is `null` only while its world is not loaded, and an edge point is rebuilt when the
+      // world loads; until then the world id keeps the point addressable.
+      final dimension = world?.getDimension() ?? blockEntity.worldId;
+      return EdgePointOwnerInfo(pos, dimension, props);
     }
     throw ArgumentError('Not a block entity: $blockEntity');
   };
-  EdgePointHooks.invalidateTargeting = (level, worldId, pos, migrationData) {
+  EdgePointHooks.invalidateTargeting = (level, dimension, pos, migrationData) {
+    // The hook is handed a dimension key (`getBlockEntityDimension()`); the store is keyed by the
+    // world id. `Worlds.byId` resolves both strings (`Server.getWorldByName` accepts either).
+    final worldId = ctx.worlds.worldIdOf(dimension) ?? dimension;
     final be = store.at(worldId, pos.toBlockPos());
     final behaviour = be
         ?.getBehaviour<TrackTargetingBehaviour<TrackEdgePoint>>();

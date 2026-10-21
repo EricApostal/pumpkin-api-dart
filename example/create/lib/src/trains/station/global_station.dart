@@ -128,7 +128,8 @@ class GlobalStation extends SingleBlockEntityEdgePoint {
     final hooks = mailHooks;
     if (hooks == null) return;
 
-    final worldId = getBlockEntityDimension();
+    // `getBlockEntityDimension()`: a dimension key (`minecraft:overworld`), not a world id.
+    final dimension = getBlockEntityDimension();
 
     for (final Carriage carriage in train.carriages) {
       final carriageInventory = hooks.carriageInventory(carriage);
@@ -140,7 +141,7 @@ class GlobalStation extends SingleBlockEntityEdgePoint {
         final pos = entry.key;
 
         PackageInventory postboxInventory = port.offlineBuffer;
-        final box = hooks.loadedPostbox(worldId, pos);
+        final box = hooks.loadedPostbox(dimension, pos);
         if (box != null) postboxInventory = box.inventory;
 
         for (var slot = 0; slot < postboxInventory.getSlots(); slot++) {
@@ -176,7 +177,7 @@ class GlobalStation extends SingleBlockEntityEdgePoint {
           if (!hooks.matchAddress(stack, port.address)) continue;
 
           PackageInventory postboxInventory = port.offlineBuffer;
-          final box = hooks.loadedPostbox(worldId, pos);
+          final box = hooks.loadedPostbox(dimension, pos);
           if (box != null) postboxInventory = box.inventory;
 
           final result = postboxInventory.insertItemStacked(stack.copy());

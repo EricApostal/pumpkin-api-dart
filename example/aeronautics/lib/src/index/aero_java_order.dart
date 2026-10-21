@@ -36,6 +36,33 @@ const List<String> aeroDyeColorOrder = [
   'black',
 ];
 
+/// A still fluid of the mod, its flowing variant, and what the pair owns.
+///
+/// Registrate's `FluidBuilder` registers all of it from one `standardFluid`
+/// call (`FluidBuilder.java:597-614`), so the port keeps them together too: the
+/// host rejects a still fluid whose flowing variant never registers
+/// (`FluidRegistrationError::UnknownFluid`).
+final class AeroFluidPair {
+  const AeroFluidPair({
+    required this.still,
+    required this.flowing,
+    required this.block,
+    required this.bucket,
+  });
+
+  /// The source fluid, registered first.
+  final String still;
+
+  /// The flowing variant, `flowing_<path of still>` in Java.
+  final String flowing;
+
+  /// The `LiquidBlock` holding the fluid; it belongs to the source entry.
+  final String block;
+
+  /// The bucket item, `<name>_bucket`.
+  final String bucket;
+}
+
 /// The Java order of everything Aeronautics registers.
 abstract final class AeroJavaOrder {
   /// The block keys in registration order (43).
@@ -120,11 +147,41 @@ abstract final class AeroJavaOrder {
   static const List<String> crystallizationContexts = ['aeronautics:standard', 'aeronautics:soul'];
 
   /// The fluid keys of `aeronautics:levitite_blend`
-  /// (`AeroFluidsNeoForge.java:24-52`). `standardFluid` registers the still
-  /// fluid, its flowing variant and the block, all under the one path.
+  /// (`AeroFluidsNeoForge.java:24-52`).
+  ///
+  /// `standardFluid("levitite_blend", ...)` (`CreateRegistrate.java:241-249`) is
+  /// Registrate's `fluid(name, ...)`: **one** builder registering the source as
+  /// `name` and the flowing variant as `flowing_<name>`. The builder's own entry
+  /// is `"flowing_" + name` (`FluidBuilder.java:291`), the source is accepted
+  /// into the fluid registry first (`:609`) and the flowing entry last (`:614`).
+  /// Create's generated data spells the same names (`create:flowing_honey`,
+  /// `Create/src/generated/resources/data/c/tags/fluid/honey.json:3`), as does
+  /// vanilla (`minecraft:flowing_water`).
+  ///
+  /// What the pair owns, all from that one call: the `LiquidBlock` named after
+  /// the source (`FluidBuilder.java:426`) and the `<name>_bucket` item
+  /// (`:293,494`). The flowing entry has no block and no bucket of its own.
   static const String levititeBlendStill = 'aeronautics:levitite_blend';
-  static const String levititeBlendFlowing = 'aeronautics:levitite_blend_flowing';
+  static const String levititeBlendFlowing = 'aeronautics:flowing_levitite_blend';
   static const String levititeBlendBucket = 'aeronautics:levitite_blend_bucket';
+
+  /// The fluid entries in Java registration (and so id) order: each source
+  /// before its flowing variant (`FluidBuilder.java:597-614`).
+  static const List<String> fluidOrder = [levititeBlendStill, levititeBlendFlowing];
+
+  /// The still fluids of the mod with their flowing variant and the block and
+  /// bucket the pair owns, in [fluidOrder]. `registerAeronautics` registers from
+  /// this table, so a still fluid cannot be registered without its flowing
+  /// entry: the host rejects one that never registers
+  /// (`FluidRegistrationError::UnknownFluid`, `fluid_registry.rs:279-287`).
+  static const List<AeroFluidPair> fluidPairs = [
+    AeroFluidPair(
+      still: levititeBlendStill,
+      flowing: levititeBlendFlowing,
+      block: levititeBlendStill,
+      bucket: levititeBlendBucket,
+    ),
+  ];
 
   /// The state properties of every block of [blocks]: `name -> values`, the
   /// values in `Property.getPossibleValues()` order.
@@ -200,12 +257,49 @@ abstract final class AeroJavaOrder {
     // `Block::new` (`AeroBlocks.java:382,402`): no state.
     'aeronautics:levitite': {},
     'aeronautics:pearlescent_levitite': {},
-    // The fluid block of `levitite_blend` (`AeroFluidsNeoForge.java:24-52`):
-    // a liquid block, no state of its own.
-    'aeronautics:levitite_blend': {},
+    // The fluid block of `levitite_blend`, a vanilla `LiquidBlock`
+    // (`FluidBuilder.java:405-426,601`, `AeroFluidsNeoForge.java:24`): its one
+    // property is `LEVEL` (`LiquidBlock.java:39,225`), an int from 0 to 15
+    // (`BlockStateProperties.java:116`), default 0 (`LiquidBlock.java:58`) -- 16
+    // states, not one. It is the last block of [blocks], so only its own states
+    // move, but the count has to be right before anything is appended after it.
+    'aeronautics:levitite_blend': {
+      'level': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'],
+    },
   };
 
   /// The state properties of [key], or `null` for a key the Java table does not
   /// know.
   static Map<String, List<String>>? propertiesOf(String key) => stateProperties[key];
+}
+
+/// What is wrong with a set of fluid registrations, `[]` when nothing is.
+///
+/// [flowingVariantOf] maps every registered fluid key to the flowing variant it
+/// names (`null` for a fluid that names none), in registration (id) order.
+///
+/// The host rejects a still fluid whose variant never registers
+/// (`FluidRegistrationError::UnknownFluid`, `fluid_registry.rs:279-287`) and
+/// numbers fluids in registration order, so the two entries of a pair must both
+/// be there, the flowing one after the still one (`FluidBuilder.java:597-614`).
+/// A VM test can only read this module's own table; the module calls this with
+/// the real registry at load (`aeronautics_module.dart`), which is what makes
+/// the omission impossible rather than merely tested.
+List<String> fluidPairProblems(Map<String, String?> flowingVariantOf) {
+  final keys = flowingVariantOf.keys.toList();
+  final problems = <String>[];
+  for (final entry in flowingVariantOf.entries) {
+    final flowing = entry.value;
+    if (flowing == null) continue;
+    final index = keys.indexOf(flowing);
+    if (index < 0) {
+      problems.add('`${entry.key}` names flowing variant `$flowing`, which is not registered');
+      continue;
+    }
+    final still = keys.indexOf(entry.key);
+    if (index < still) {
+      problems.add('`$flowing` is registered before `${entry.key}`, but Java registers the source first');
+    }
+  }
+  return problems;
 }

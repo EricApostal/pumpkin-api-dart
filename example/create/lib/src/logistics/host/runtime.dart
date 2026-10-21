@@ -20,9 +20,6 @@ import '../model/stack.dart';
 import '../model/stack_wire.dart';
 import 'stack_io.dart';
 
-/// The overworld, whose ticks drive the networks (`GlobalLogisticsManager.tick`).
-const String overworldId = 'minecraft:overworld';
-
 final class LgRuntime {
   final CreateContext ctx;
   final Random random = Random();
@@ -142,10 +139,20 @@ final class LgRuntime {
 
   // -- the global networks ------------------------------------------------------------------------------
 
-  void _markGlobalDirty() => ctx.savedData.markDirty(overworldId, savedType);
+  /// The world id (`World.getId()`, the folder name) of the overworld, remembered when it loads.
+  ///
+  /// [WorldSavedData] is keyed by the world id (that is what `flushWorld` looks a world up by), so
+  /// queueing the write with a dimension key would queue one that is never flushed.
+  String? _overworldWorldId;
+
+  void _markGlobalDirty() {
+    final worldId = _overworldWorldId;
+    if (worldId != null) ctx.savedData.markDirty(worldId, savedType);
+  }
 
   /// Loads the saved networks when the overworld appears.
   void loadGlobal(World overworld) {
+    _overworldWorldId = ctx.worlds.touch(overworld);
     final data = ctx.savedData.get(overworld, savedType);
     global.load(data);
   }

@@ -52,8 +52,17 @@ CreateBlock _levititeBlock(String key) => CreateBlock(
 /// variant, this block and the bucket; the block is a liquid block the host
 /// places through the fluid registry (`FluidSpec.placement`), so it is declared
 /// here only for its id position.
+///
+/// It is a vanilla `LiquidBlock` (`FluidBuilder.java:405-426,601`), whose one
+/// property is `LEVEL` (`LiquidBlock.java:39,225`), an int from 0 to 15
+/// (`BlockStateProperties.java:116`) with default 0 (`LiquidBlock.java:58`):
+/// sixteen states. The host reads `level` off the block when it places fluid
+/// (`fluid_registry.rs:fluid_state_of`), so a block without it would take a state
+/// a Java client numbers differently.
 CreateBlock buildLevititeBlendBlock() => CreateBlock(
   key: levititeBlendBlockKey,
+  properties: [CreateProps.level('level', 15)],
+  defaultState: {'level': '0'},
   hardness: 100,
   blastResistance: 100,
   replaceable: true,

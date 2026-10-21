@@ -101,6 +101,10 @@ final class CcTweakedPlugin extends Plugin {
   }
 
   /// Makes the in-game clock of the computers follow the overworld.
+  ///
+  /// The name is the overworld's dimension key; the host's `getWorldByName` accepts a world id or
+  /// a dimension key (`find(|w| w.get_world_name() == name || w.dimension.minecraft_name == name)`),
+  /// so this resolves without a world-id lookup.
   void _syncWorldTime(Server server) {
     final world = server.getWorldByName(name: 'minecraft:overworld');
     if (world == null) return;

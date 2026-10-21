@@ -21,6 +21,10 @@ abstract interface class SimulatedHost {
   static SimulatedHost? instance;
 
   /// The sable level of a world, or `null` when it is not loaded.
+  ///
+  /// [worldId] may be a world id (`World.getId()`, the folder name `world`) or a dimension key
+  /// (`World.getDimension()`, `minecraft:overworld`); the host resolves both through its world
+  /// table. The level itself is keyed by its dimension (`SableLevel.dimensionId`).
   SableLevel? levelOf(String worldId);
 
   /// The world of [worldId] as the assembly sees it.

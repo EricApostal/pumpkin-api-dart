@@ -9,7 +9,8 @@ part 'model.mapper.dart';
 /// A place a player can be sent to.
 @MappableClass()
 class Location with LocationMappable {
-  /// The world's name, like `minecraft:overworld`.
+  /// The dimension key, like `minecraft:overworld` (`World.getDimension()`), not the world id
+  /// (`World.getId()`, the folder name `world`).
   final String world;
   final double x;
   final double y;

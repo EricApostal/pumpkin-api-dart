@@ -104,6 +104,8 @@ final class _RailwayStorage implements RailwayStorage {
 
   @override
   RailwaySavedData load() {
+    // `overworldId` is the overworld's dimension key; `Worlds.byId` resolves it to the world
+    // (the host's `getWorldByName` accepts a world id or a dimension key).
     final world = ctx.worlds.byId(overworldId);
     if (world == null) return RailwaySavedData();
     final data = ctx.savedData.get(world, railwaySavedDataType);

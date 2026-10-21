@@ -42,7 +42,9 @@ class Announcement with AnnouncementMappable {
   /// Only players with this permission see it. Empty: everybody.
   final String? permission;
 
-  /// Only players in this world (`overworld`, `the_nether`) see it.
+  /// Only players in this dimension (`overworld`, `the_nether`, `minecraft:the_end`) see it: the
+  /// dimension key with the `minecraft:` prefix optional, not the world id (`World.getId()`, the
+  /// folder name `world`).
   final String? world;
 
   const Announcement({

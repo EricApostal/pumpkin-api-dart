@@ -16,6 +16,7 @@ import 'host/runtime.dart';
 import 'itemhatch/item_hatch_part.dart';
 import 'link/link_part.dart';
 import 'logistics_part.dart';
+import 'model/overworld.dart';
 import 'package/package_part.dart';
 import 'packager/packager_part.dart';
 import 'port/package_port_part.dart';
@@ -68,11 +69,14 @@ final class LogisticsModule extends CreateModule {
     installLogisticsServices(ctx.services);
 
     // The networks live in the overworld's saved data; its ticks drive the promise timers.
+    // The overworld is named by its dimension key, not by `World.getId()` (the folder name).
     ctx.listen(Events.worldLoad, (server, e) {
-      if (e.targetWorld.getId() == overworldId) rt.loadGlobal(e.targetWorld);
+      if (isOverworldDimension(e.targetWorld.getDimension())) {
+        rt.loadGlobal(e.targetWorld);
+      }
     });
     ctx.onWorldTick((t) {
-      if (t.worldId != overworldId) return;
+      if (!isOverworldDimension(t.world.getDimension())) return;
       rt.tick++;
       rt.global.tick();
     });
@@ -83,7 +87,7 @@ final class LogisticsModule extends CreateModule {
     final rt = Lg.i;
     for (final world in runtime.server.allWorlds) {
       try {
-        if (world.getId() == overworldId) {
+        if (isOverworldDimension(world.getDimension())) {
           rt.loadGlobal(world);
           break;
         }

@@ -168,7 +168,12 @@ final class SlidingDoorMovementBehaviour extends MovementBehaviour {
           if (station == null) return null;
           final pos = station.getBlockEntityPos();
           if (pos == null) return null;
-          return _doorControlAt(station.getBlockEntityDimension(), pos);
+          // `getBlockEntityDimension()` is a dimension key; `_doorControlAt` keys the block
+          // entity store, which is keyed by the world id. `Worlds.byId` resolves both strings.
+          final stationWorldId =
+              DecorationHost.rt.ctx.worlds.worldIdOf(station.getBlockEntityDimension()) ??
+              station.getBlockEntityDimension();
+          return _doorControlAt(stationWorldId, pos);
         }
       }
     }

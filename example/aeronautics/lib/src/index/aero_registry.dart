@@ -61,11 +61,6 @@ const List<String> aeroLiftingGasTypes = AeroJavaOrder.liftingGasTypes;
 const String aeroCrystallizationContextRegistry = AeroJavaOrder.crystallizationContextRegistry;
 const List<String> aeroCrystallizationContexts = AeroJavaOrder.crystallizationContexts;
 
-/// The fluid keys of `aeronautics:levitite_blend` — `AeroJavaOrder.levititeBlend*`.
-const String aeroLevititeBlendStill = AeroJavaOrder.levititeBlendStill;
-const String aeroLevititeBlendFlowing = AeroJavaOrder.levititeBlendFlowing;
-const String aeroLevititeBlendBucket = AeroJavaOrder.levititeBlendBucket;
-
 /// Registers the mod's content into [registry] and pins every id order.
 ///
 /// [lookup] resolves a block entity by world and position; the module passes the
@@ -147,33 +142,38 @@ void registerAeronautics(
   registry.syncedRegistry(aeroCrystallizationContextRegistry, aeroCrystallizationContexts);
 
   // -- Fluid ----------------------------------------------------------------------
-  // The bucket item comes with the fluid in Java: `AeroFluidsNeoForge`'s
-  // `standardFluid("levitite_blend", ...)` registers the still, the flowing and
-  // the bucket together (`AeroFluidsNeoForge.java:24-52`). `aeroItemOrder` keeps
-  // it last in the item registry.
-  registry.item(const ItemRegistration(key: aeroLevititeBlendBucket));
-  registry.fluid(
-    const FluidSpec(
-      key: aeroLevititeBlendFlowing,
-      tickRate: 25,
-      levelDecreasePerBlock: 2,
-      density: 1400,
-      viscosity: 1500,
-    ),
-  );
-  registry.fluid(
-    const FluidSpec(
-      key: aeroLevititeBlendStill,
-      flowingVariant: aeroLevititeBlendFlowing,
-      placement: FluidPlacement(block: aeroLevititeBlendStill, flowing: false),
-      bucketItem: aeroLevititeBlendBucket,
-      tickRate: 25,
-      levelDecreasePerBlock: 2,
-      slopeFindDistance: 3,
-      density: 1400,
-      viscosity: 1500,
-    ),
-  );
+  // `AeroFluidsNeoForge`'s `standardFluid("levitite_blend", ...)`
+  // (`AeroFluidsNeoForge.java:23-52`) registers the source, its flowing variant
+  // and the bucket in one call: the source enters the fluid registry first and
+  // the flowing entry last (`FluidBuilder.java:597-614`), the bucket item is
+  // `<name>_bucket` (`:293,494`). The host numbers fluids in registration order
+  // and rejects a still fluid whose flowing variant never registers, so both
+  // entries come from the one table, source first.
+  for (final pair in AeroJavaOrder.fluidPairs) {
+    registry.item(ItemRegistration(key: pair.bucket));
+    registry.fluid(
+      FluidSpec(
+        key: pair.still,
+        flowingVariant: pair.flowing,
+        placement: FluidPlacement(block: pair.block, flowing: false),
+        bucketItem: pair.bucket,
+        tickRate: 25,
+        levelDecreasePerBlock: 2,
+        slopeFindDistance: 3,
+        density: 1400,
+        viscosity: 1500,
+      ),
+    );
+    registry.fluid(
+      FluidSpec(
+        key: pair.flowing,
+        tickRate: 25,
+        levelDecreasePerBlock: 2,
+        density: 1400,
+        viscosity: 1500,
+      ),
+    );
+  }
 
   // -- Channels -------------------------------------------------------------------
   // The channel table lives in `aeronautics_channels.dart` (`AeroPacketManager`)
@@ -204,6 +204,7 @@ void registerAeronautics(
   registry.useOrder(RegistryKind.blockEntityTypes, aeroBlockEntityOrder);
   registry.useOrder(RegistryKind.entityTypes, aeroEntityTypeOrder);
   registry.useOrder(RegistryKind.dataComponents, aeroDataComponentOrder);
+  registry.useOrder(RegistryKind.fluids, AeroJavaOrder.fluidOrder);
 }
 
 /// The block definitions, in [aeroBlockOrder].

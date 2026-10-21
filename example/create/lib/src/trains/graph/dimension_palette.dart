@@ -1,11 +1,14 @@
 // `DimensionPalette` (pure): the dimensions a graph packet or a saved graph refers to by index.
-// A dimension is the world id (`minecraft:overworld`), see `World.getId()`.
+// A dimension here is the **dimension key** (`minecraft:overworld`, `minecraft:the_nether`), as
+// `Level.dimension().identifier()` gives it — *not* a world id: `World.getId()` is the folder name
+// (`world`, `world_nether`), a different string. See `World.getDimension()`.
 import 'package:pumpkin_api/pumpkin_api_core.dart';
 
 import '../../core/byte_buf.dart';
 import '../util/ctag.dart';
 
-/// The id of the overworld (`Level.OVERWORLD`).
+/// The dimension key of the overworld (`Level.OVERWORLD`): `minecraft:overworld`, not the
+/// overworld's world id (`World.getId()`, the folder name `world`).
 const String overworldId = 'minecraft:overworld';
 
 class DimensionPalette {

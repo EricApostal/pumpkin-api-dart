@@ -42,15 +42,26 @@ final class Worlds {
   final Map<String, World> _worlds = {};
   Context? _host;
 
-  /// The kept world with [id] (`World.getId()`), or `null` if it is unknown or
-  /// unloaded. Re-acquires the handle from the host if the cached one was
-  /// released.
+  /// The kept world with [id], or `null` if it is unknown or unloaded. Re-acquires the handle
+  /// from the host if the cached one was released.
+  ///
+  /// [id] may be either a world id (`World.getId()`, the folder name `world`) or a dimension key
+  /// (`World.getDimension()`, `minecraft:overworld`); see [_resolve]. A caller that knows which one
+  /// it holds should say so in its own documentation — the two are different strings.
   World? byId(String id) {
     final world = _worlds[id];
     if (world != null && world.isValid) return world;
     _worlds.remove(id)?.dispose();
     return _resolve(id);
   }
+
+  /// The world id (`World.getId()`, the folder name) of the world named by [id], which may be a
+  /// world id or a dimension key ([byId] resolves both). `null` when the world is unknown or
+  /// unloaded.
+  ///
+  /// Use it where a value that may be a dimension key has to key something that is keyed by the
+  /// world id: the block entity store, the per-world saved data (`WorldSavedData`).
+  String? worldIdOf(String id) => byId(id)?.getId();
 
   /// The ids of all known worlds.
   Iterable<String> get ids => _worlds.keys;
@@ -76,11 +87,18 @@ final class Worlds {
 
   /// Asks the host for a fresh handle of the world [id] and keeps it.
   ///
-  /// [id] is either a world id (`World.getId()`, the folder name) or a dimension key
-  /// (`World.getDimension()`, e.g. `minecraft:overworld`). The host resolves both
-  /// (`Server.getWorldByName`), and the trains module keys everything by the dimension
-  /// (`Level.dimension()`, the graph's node dimensions), so `byId('minecraft:overworld')` and
+  /// [id] is either a world id (`World.getId()`, the folder name `world`) or a dimension key
+  /// (`World.getDimension()`, e.g. `minecraft:overworld`). The host resolves both: the binding's
+  /// `Server.getWorldByName` is
+  /// `find(|w| w.get_world_name() == name || w.dimension.minecraft_name == name)`
+  /// (`crates/pumpkin-wasm-host-v0_2/src/server.rs`), so `byId('minecraft:overworld')` and
   /// `byId('world')` reach the same world.
+  ///
+  /// That dual resolution is host behaviour, not something this table invents: the cache is keyed
+  /// by the string the caller asked for, so one world may have two entries, and both are dropped
+  /// on unload (see [install]). The trains module keys everything by the dimension
+  /// (`Level.dimension()`, the graph's node dimensions) and the block entity store by the world
+  /// id; [worldIdOf] is the explicit bridge between the two.
   World? _resolve(String id) {
     final host = _host;
     if (host == null) return null;
@@ -120,7 +138,11 @@ final class Worlds {
     _host = context;
     context.listen(Events.worldLoad, (server, e) => touch(e.targetWorld));
     context.listen(Events.worldUnload, (server, e) {
-      if (!e.cancelled) forget(e.targetWorld.getId());
+      if (e.cancelled) return;
+      // A world may be cached under its world id and under its dimension key (see [_resolve]);
+      // drop both, or the dimension-key entry keeps a handle to an unloaded world.
+      forget(e.targetWorld.getId());
+      forget(e.targetWorld.getDimension());
     });
   }
 

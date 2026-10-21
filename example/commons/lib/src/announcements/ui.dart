@@ -32,7 +32,9 @@ final class AnnouncementDisplay {
       isVisibleTo(
         announcement,
         hasPermission: (node) => player.hasPermission(node: node),
-        worldName: player.getWorld().getName(),
+        // The dimension key (`minecraft:overworld`), which is what the config names: the world id
+        // (`World.getId()`, the folder name `world`) is a different string and never matches.
+        worldName: player.getWorld().getDimension(),
       );
 
   /// Whether any online player sees [announcement].

@@ -14,7 +14,8 @@ import 'train.dart';
 /// The level (dimension) a train, carriage or navigation is ticked in (`Level` /
 /// `ServerLevel`).
 abstract interface class TrainLevel implements ScheduleLevel {
-  /// `level.dimension()`: the world id (`minecraft:overworld`).
+  /// `level.dimension()`: the dimension key (`minecraft:overworld`), not the world id
+  /// (`World.getId()`, the folder name `world`).
   String get dimension;
 
   /// `level.getGameTime()`.

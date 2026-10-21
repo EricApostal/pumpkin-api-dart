@@ -24,6 +24,13 @@ final class Lvl {
 
   String get id => world.getId();
 
+  /// `level.dimension()`: the dimension key (`minecraft:overworld`).
+  ///
+  /// Not [id]: that is the world id (`World.getId()`, the folder name `world`), a different
+  /// string. Anything that goes on the wire or into a resource location (`click_to_link_data`'s
+  /// `selected_dim`, a rail graph node's dimension) needs this one.
+  String get dimension => world.getDimension();
+
   bool isLoaded(Pos pos) => world.isLoaded(pos: pos.toBlockPos());
 
   /// The state id at [pos].

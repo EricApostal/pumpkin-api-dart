@@ -57,8 +57,8 @@ final class Rotation {
   void reset() => _last = null;
 }
 
-/// Names of worlds with the `minecraft:` prefix removed and lower case, so
-/// `minecraft:overworld`, `Overworld` and `overworld` are the same world.
+/// Dimension keys with the `minecraft:` prefix removed and lower case, so
+/// `minecraft:overworld`, `Overworld` and `overworld` are the same dimension.
 String normalizeWorld(String name) {
   final lower = name.trim().toLowerCase();
   return lower.startsWith('minecraft:') ? lower.substring(10) : lower;

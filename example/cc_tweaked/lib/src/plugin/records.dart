@@ -31,7 +31,9 @@ final class PeripheralSpec {
 /// Where a computer stands in the world (a computer block, as opposed to one
 /// made with `/cc new`).
 final class ComputerLocation {
-  /// The world id, for example `minecraft:overworld`.
+  /// The world id (`World.getId()`, the folder name `world`), which is what the plugin keys
+  /// block entities by. It is not a dimension key (`World.getDimension()`,
+  /// `minecraft:overworld`).
   final String world;
   final int x;
   final int y;
@@ -40,7 +42,9 @@ final class ComputerLocation {
   const ComputerLocation(this.world, this.x, this.y, this.z);
 
   factory ComputerLocation.fromJson(Map<String, Object?> json) => ComputerLocation(
-    json['world'] is String ? json['world']! as String : 'minecraft:overworld',
+    // A record without a world (hand-edited or corrupt) falls back to the host's own fallback
+    // world name (`get_world_name` unwraps to `world`), not to a dimension key.
+    json['world'] is String ? json['world']! as String : 'world',
     (json['x']! as num).toInt(),
     (json['y']! as num).toInt(),
     (json['z']! as num).toInt(),

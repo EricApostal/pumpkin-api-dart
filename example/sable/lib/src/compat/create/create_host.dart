@@ -201,13 +201,23 @@ abstract final class CreateHostCompat {
   /// Installs the lookups the pure listeners use and, when Create is loaded,
   /// registers the fan propeller.
   ///
+  /// [worldIdOf] maps a world identifier to the key the block entity store uses. The listeners and
+  /// the physics step name their level by `SableLevel.dimensionId` (a dimension key,
+  /// `minecraft:overworld`); [BlockEntityStore] is keyed by `World.getId()` (the folder name,
+  /// `world`). The Create plugin passes `(id) => ctx.worlds.worldIdOf(id) ?? id`. It is required:
+  /// without it the lookups are handed a dimension key where the store expects a world id and
+  /// silently find nothing.
+  ///
   /// Call it after `CreateCompat.install()`.
-  static void install({BlockEntityStore? blockEntities}) {
+  static void install({
+    BlockEntityStore? blockEntities,
+    required String Function(String identifier) worldIdOf,
+  }) {
     if (_installed) return;
     _installed = true;
     blockEntitiesOverride = blockEntities;
 
-    CreateCompatBlocks.blockEntityLookup = _blockEntityAt;
+    CreateCompatBlocks.blockEntityLookup = (identifier, pos) => _blockEntityAt(worldIdOf, identifier, pos);
     CreateCompatBlocks.beltStateReader = _beltState;
     CreateCompatBlocks.chainConveyorValidate = _validateChainConveyor;
     CreateCompatBlocks.chainConveyorCheckInvalid = _invalidateChainConveyor;
@@ -230,14 +240,17 @@ abstract final class CreateHostCompat {
   }
 
   /// Sets the world the belt collision callback runs in, for the duration of a
-  /// physics step.
-  static void beginStep(String worldId) => BeltBlockCallback.currentStepWorldId = worldId;
+  /// physics step. [identifier] is a dimension key or a world id (the installed lookup resolves it).
+  static void beginStep(String identifier) => BeltBlockCallback.currentStepWorldId = identifier;
 
   /// Clears the world of the physics step.
   static void endStep() => BeltBlockCallback.currentStepWorldId = '';
 
-  static Object? _blockEntityAt(String worldId, Pos pos) =>
-      blockEntities?.at(worldId, BlockPos(x: pos.$1, y: pos.$2, z: pos.$3));
+  static Object? _blockEntityAt(
+    String Function(String identifier) worldIdOf,
+    String identifier,
+    Pos pos,
+  ) => blockEntities?.at(worldIdOf(identifier), BlockPos(x: pos.$1, y: pos.$2, z: pos.$3));
 
   static BeltTangentState? _beltState(Object blockEntity) {
     if (blockEntity is! BeltBlockEntity) return null;

@@ -13,7 +13,13 @@ import '../math/pose.dart';
 
 /// A dimension of the server, as the sub-level model sees it.
 abstract interface class SableLevel {
-  /// `Level.dimension().identifier().toString()`.
+  /// `Level.dimension().identifier().toString()`: the **dimension key** (`minecraft:overworld`,
+  /// `minecraft:the_nether`).
+  ///
+  /// Not the world id: `World.getId()` is the folder name (`world`, `world_nether`), a different
+  /// string. Sable puts this value on the wire (`sable:dimension_physics`, the `/execute in`
+  /// suggestion) and keys its containers and physics by it, so a host adapter that returns the
+  /// folder name makes those lookups miss.
   String get dimensionId;
 
   /// `Level.isClientSide`.

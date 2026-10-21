@@ -41,7 +41,11 @@ abstract interface class MailTransferHooks {
   PackageInventory? carriageInventory(Object carriage);
 
   /// The postbox at [pos] when its chunk is loaded and it is one, else `null`.
-  PostboxHandle? loadedPostbox(String worldId, Pos pos);
+  ///
+  /// [dimension] is the station's dimension key (`GlobalStation.getBlockEntityDimension()`,
+  /// `minecraft:overworld`); the implementation resolves it to the world it reads the block
+  /// entity store with.
+  PostboxHandle? loadedPostbox(String dimension, Pos pos);
 
   /// The stack limit of an item (the offline buffer's merge rule).
   int maxStackSize(CTag stack);

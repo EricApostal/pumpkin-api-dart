@@ -41,7 +41,7 @@ Each entry of `messages`:
 | `url` | Chat only: a link that opens when the line is clicked (`command` wins) |
 | `hover` | Chat only: text shown when the line is hovered |
 | `permission` | Only players with this permission node see it |
-| `world` | Only players in this world see it (`overworld`, `the_nether`, `minecraft:the_end`...) |
+| `world` | Only players in this dimension see it (`overworld`, `the_nether`, `minecraft:the_end`... — the dimension key, `minecraft:` optional; the world folder name like `world` is not a dimension) |
 
 Modes:
 

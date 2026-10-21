@@ -109,8 +109,10 @@ final class OffroadSableLevel implements SableLevel {
 
   final World world;
 
+  /// `Level.dimension().identifier().toString()`: the dimension key (`minecraft:overworld`), not
+  /// the world id (`World.getId()`, the folder name `world`). See `SableLevel.dimensionId`.
   @override
-  String get dimensionId => world.getId();
+  String get dimensionId => world.getDimension();
 
   @override
   bool get isClientSide => false;

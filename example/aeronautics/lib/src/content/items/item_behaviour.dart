@@ -94,7 +94,10 @@ final class ItemBehaviour {
 
     final body = entity.asEntity();
     final world = body.getWorld();
-    if (world.getName() != overworldDimension) return;
+    // `level.dimension().equals(Level.OVERWORLD)`. Not `world.getName()`: the host's
+    // `get_name` is `get_world_name()` (the folder name, `world`), so the comparison against a
+    // dimension key would never match and the conversion would never start.
+    if (world.getDimension() != overworldDimension) return;
     if (!Tags.item(itemKey, convertsToCloudSkipperTag)) return;
 
     final pos = body.getPosition();

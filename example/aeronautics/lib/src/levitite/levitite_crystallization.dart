@@ -23,7 +23,8 @@ import 'package:create/src/common/pos.dart' show Pos;
 
 /// The world the crystallisation reads and writes.
 abstract interface class LevititeWorld {
-  /// `World.getId()` / the dimension id; keys the ticker lists.
+  /// The world id (`World.getId()`, the folder name `world`); keys the ticker lists. It is not a
+  /// dimension key (`World.getDimension()`).
   String get id;
 
   /// The block key at [pos] (`minecraft:air` when empty).

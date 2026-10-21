@@ -51,11 +51,15 @@ final class PortMailTransferHooks implements MailTransferHooks {
   }
 
   @override
-  PostboxHandle? loadedPostbox(String worldId, Pos pos) {
+  PostboxHandle? loadedPostbox(String dimension, Pos pos) {
     // `level != null && level.isLoaded(pos) && level.getBlockEntity(pos) instanceof
     // PostboxBlockEntity`. The store only holds loaded block entities.
-    if (rt.world(worldId) == null) return null;
-    final postbox = rt.store.typed<PostboxBlockEntity>(worldId, pos.toBlockPos());
+    //
+    // [dimension] is the station's dimension key; the store is keyed by the world id, so resolve
+    // it first (`Worlds.byId` accepts both strings, the host's `getWorldByName` resolves both).
+    final world = rt.world(dimension);
+    if (world == null) return null;
+    final postbox = rt.store.typed<PostboxBlockEntity>(world.getId(), pos.toBlockPos());
     return postbox == null ? null : _PostboxHandle(postbox);
   }
 

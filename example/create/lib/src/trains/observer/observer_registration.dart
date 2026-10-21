@@ -5,7 +5,6 @@ import '../../api/wrenchable.dart';
 import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart';
-import '../graph/dimension_palette.dart' show overworldId;
 import '../signal/track_edge_point.dart';
 import '../support/runtime.dart';
 import 'filter_item_stack.dart';
@@ -33,18 +32,20 @@ void loadObserver(CreateContext ctx) {
   EdgePointHooks.observerFilter = (be) =>
       be is TrackObserverBlockEntity ? FilterItemStack.ofItem(be.filtering.filter) : previous(be);
 
-  // list and attribute filters are the logistics module's: ask its filter service when it is there
+  // list and attribute filters are the logistics module's: ask its filter service when it is there.
+  // The filter test is not world scoped (`ItemFilterApi.testItem` ignores the identifier), so it
+  // gets the empty one — never a dimension key in a world-id slot.
   FilterItemStack.itemMatcher = (filterItem, candidate) {
     final api = Tr.loaded ? Tr.i.service<ItemFilterApi>() : null;
     return api != null
-        ? api.testItem(overworldId, FilterItemValue.key(filterItem), candidate)
+        ? api.testItem('', FilterItemValue.key(filterItem), candidate)
         : filterItem == candidate;
   };
   FilterItemStack.fluidMatcher = (filterItem, fluid) {
     final api = Tr.loaded ? Tr.i.service<ItemFilterApi>() : null;
     if (api != null) {
       return api.testFluid(
-        overworldId,
+        '',
         FilterItemValue.key(filterItem),
         fluid,
       );

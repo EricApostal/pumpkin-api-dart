@@ -5,7 +5,9 @@ import '../util/ctag.dart';
 import 'track_edge_point.dart';
 
 abstract class SingleBlockEntityEdgePoint extends TrackEdgePoint {
-  /// The world id of the block entity (`blockEntityDimension`).
+  /// The dimension key of the block entity's level (`getLevel().dimension()`,
+  /// `minecraft:overworld`), the value the graph packet and the saved data carry. It is *not* the
+  /// block entity's world id (`World.getId()`, the folder name `world`).
   String blockEntityDimension = overworldId;
 
   /// `null` until a block entity attached.
@@ -19,7 +21,7 @@ abstract class SingleBlockEntityEdgePoint extends TrackEdgePoint {
   void blockEntityAdded(Object blockEntity, bool front) {
     final info = EdgePointHooks.describe(blockEntity);
     blockEntityPos = info.pos;
-    blockEntityDimension = info.worldId;
+    blockEntityDimension = info.dimension;
   }
 
   @override

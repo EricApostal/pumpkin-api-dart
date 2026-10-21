@@ -419,6 +419,9 @@ abstract final class ClickToLink {
   static const String component = 'create:click_to_link_data';
   static const String item = 'create:display_link';
 
+  /// `ClickToLinkData(pos, selectedDim)`: [dimension] is the dimension key
+  /// (`level.dimension()`, `minecraft:overworld`), never the world id (`World.getId()`, the
+  /// folder name) — the value is an `Identifier` on the wire.
   static Uint8List encodeData(Pos pos, String dimension) =>
       PacketBuffer.encode((w) {
         w.writeBlockPos((pos.x, pos.y, pos.z));
@@ -462,7 +465,11 @@ abstract final class ClickToLink {
         return e.cancel();
       }
 
-      final dimension = world.getId();
+      // `ClickToLinkBlockItem.useOn`: `Identifier placedDim = level.dimension().identifier()`.
+      // The component's `selected_dim` is a resource location (the Java client parses it with
+      // `Identifier.CODEC`) and it also goes into the block entity's `TargetDimension`, so it
+      // must be the dimension key, not `World.getId()` (the folder name `world`).
+      final dimension = lvl.dimension;
       if (data == null) {
         held.setCustomComponent(component, encodeData(pos, dimension));
         await player.setItemInHand(hand: e.hand, stack: held);

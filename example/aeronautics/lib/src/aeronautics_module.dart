@@ -100,6 +100,26 @@ final class AeronauticsModule extends CreateModule {
       },
     );
     checkAeroStateProperties(registry);
+    checkAeroFluidPairs(registry);
+  }
+
+  /// Throws unless every still fluid names a flowing variant that is registered,
+  /// and that variant follows it in id order.
+  ///
+  /// The host rejects a still fluid whose flowing variant never registers
+  /// (`FluidRegistrationError::UnknownFluid`) and numbers fluids in registration
+  /// order, so a pair split across the two rules would fail the load or shift the
+  /// ids. `CreateRegistry` is behind the wasm-only `pumpkin_api`, so this runs
+  /// here, on the real path, rather than in a VM test.
+  static void checkAeroFluidPairs(CreateRegistry registry) {
+    final problems = fluidPairProblems({
+      for (final entry in registry.fluids.entries) entry.key: entry.value.flowingVariant,
+    });
+    if (problems.isEmpty) return;
+    throw StateError(
+      'The fluid registration is not the Java pair: ${problems.join('; ')} '
+      '(`aero_java_order.dart`).',
+    );
   }
 
   /// Throws unless every block of [registry] has the state properties the Java

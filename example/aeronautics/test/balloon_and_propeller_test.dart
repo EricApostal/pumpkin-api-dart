@@ -16,8 +16,10 @@ final class TestBalloonWorld implements BalloonWorld {
 
   final Map<(int, int, int), String> blocks;
 
+  /// The world id of the fake world (the balloon map's key: `World.getId()`, the folder name
+  /// `world`), not a dimension key — the model never needs the latter.
   @override
-  final String id = 'minecraft:overworld';
+  final String id = 'world';
 
   @override
   bool get isServerSide => true;

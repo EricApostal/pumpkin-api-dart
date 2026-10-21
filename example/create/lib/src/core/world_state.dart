@@ -55,6 +55,11 @@ final class WorldSavedData {
   }
 
   /// Queues [type] of [worldId] for writing.
+  ///
+  /// [worldId] is a **world id** (`World.getId()`, the folder name `world`), the same string
+  /// [flushWorld] looks the world up by — never a dimension key (`World.getDimension()`,
+  /// `minecraft:overworld`): [flushWorld] would not find the entry and the write would silently
+  /// never happen.
   void markDirty<T extends Object>(String worldId, SavedDataType<T> type) =>
       _dirty[_id(worldId, type.name)] = (worldId, type as SavedDataType<Object>);
 

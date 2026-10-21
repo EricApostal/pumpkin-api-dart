@@ -98,8 +98,10 @@ final class TurtleBrain {
   final ItemInfo itemInfo;
   late final Slots inventory = Slots(inventorySize, itemInfo);
 
-  /// Where the turtle stands: set by the plugin, updated by moves.
-  String worldId = 'minecraft:overworld';
+  /// Where the turtle stands: set by the plugin from its `ComputerLocation` (a world id,
+  /// `World.getId()`, the folder name `world`), updated by moves. The initial value is the host's
+  /// fallback world name, not a dimension key: `get_world_name` unwraps to `world`.
+  String worldId = 'world';
   WorldPos pos = const WorldPos(0, 0, 0);
   Dir facing = Dir.north;
 

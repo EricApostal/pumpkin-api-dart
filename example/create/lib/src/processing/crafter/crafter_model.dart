@@ -9,6 +9,7 @@ import '../../api/block_state.dart';
 import '../../common/direction.dart';
 import '../../common/pos.dart';
 import '../../common/vec_helper.dart';
+import '../../conveyance/nbt_names.dart' show enumByNameIgnoreCase;
 import '../common/stack.dart';
 
 /// The key of the crafter block.
@@ -46,13 +47,8 @@ enum CrafterPhase {
   /// The name Java writes to NBT (`Phase`).
   String get javaName => name.toUpperCase();
 
-  static CrafterPhase? fromJavaName(String? name) {
-    if (name == null) return null;
-    for (final p in CrafterPhase.values) {
-      if (p.javaName == name) return p;
-    }
-    return null;
-  }
+  static CrafterPhase? fromJavaName(String? name) =>
+      enumByNameIgnoreCase(name, values, nameOf: (p) => p.javaName);
 }
 
 /// `MechanicalCrafterBlock.pointingFromFacing`.

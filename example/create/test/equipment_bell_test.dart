@@ -16,10 +16,11 @@ void main() {
   });
 
   test('unknown or missing Ringing names fall back to down', () {
-    // `readEnum` compares `e.name().equals(name)` case-sensitively.
     expect(ringDirectionFromNbtName('SIDEWAYS'), Dir.down);
     expect(ringDirectionFromNbtName(''), Dir.down);
-    expect(ringDirectionFromNbtName('north'), Dir.down);
+    // The port also accepts the lower-case spelling of an older save, which
+    // Java's case-sensitive `e.name().equals(name)` would drop to `down`.
+    expect(ringDirectionFromNbtName('north'), Dir.north);
     expect(ringDirectionFromNbtName('NORTH'), Dir.north);
   });
 }

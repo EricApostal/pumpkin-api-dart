@@ -20,6 +20,7 @@ import '../data/contraption_pickup_limiting.dart';
 import '../entity/contraption_entity.dart';
 import '../entity/host_contraption_entities.dart';
 import '../entity/oriented_contraption_entity.dart';
+import '../entity/oriented_contraption_nbt.dart';
 import '../minecart/minecart_access.dart';
 
 /// `AllDataComponents.MINECART_CONTRAPTION_DATA`.
@@ -131,9 +132,9 @@ Future<void> addContraptionToMinecart(
 
   // `readEnum(contraptionTag, "InitialOrientation", Direction.class)`: the Java enum name, falling
   // back to `Direction.values()[0]` ([Direction.down]).
-  final initialOrientation =
-      Direction.byName(tag.getString('InitialOrientation').toLowerCase()) ??
-      Direction.values[0];
+  final initialOrientation = initialOrientationFromNbt(
+    tag.getString('InitialOrientation'),
+  );
   final contraption = Contraption.fromNbt(level, tag, spawnData: false);
 
   final entity = factory.createOriented(
@@ -289,7 +290,7 @@ ItemStack? createMinecartContraptionItem(
   // `OrientedContraptionEntity` writes and reads.
   tag.putString(
     'InitialOrientation',
-    entity.getInitialOrientation().name.toUpperCase(),
+    minecartInitialOrientationNbtName(entity.getInitialOrientation()),
   );
 
   final stack = ItemStack.create(registryKey: itemKey, count: 1);

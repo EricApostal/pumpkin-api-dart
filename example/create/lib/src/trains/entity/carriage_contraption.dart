@@ -198,8 +198,9 @@ class CarriageContraption {
   /// The train part of `readNBT(world, nbt, spawnData)`.
   void readNBT(CTag nbt) {
     // `readEnum`: the constant named in the tag, or the first constant (`down`) -- Java's
-    // `getEnumConstants()[0]`. The name comparison is case insensitive (`enumDartName`), so a
-    // contraption saved by a build that wrote the lower case `Direction.getName()` still reads.
+    // `getEnumConstants()[0]`. The shared reader (`directionFromNbtName`) also matches the name
+    // case insensitively, so a contraption saved by a build that wrote the lower case
+    // `Direction.getName()` still reads.
     assemblyDirection = directionFromNbtName(nbt.getString('AssemblyDirection'));
     forwardControls = nbt.getBoolean('FrontControls');
     backwardControls = nbt.getBoolean('BackControls');

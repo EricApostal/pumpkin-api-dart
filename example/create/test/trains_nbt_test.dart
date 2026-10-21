@@ -945,7 +945,7 @@ void main() {
         }
 
         // A lower case name -- what the pre-fix build wrote, and so what a carriage in an existing
-        // world carries -- still reads as the direction it names (`enumDartName` compares case
+        // world carries -- still reads as the direction it names (`enumFromNbtName` compares case
         // insensitively). Java would fall back to `down` for it, which is exactly the crash.
         final legacy = CarriageContraption(Direction.north)
           ..readNBT(CTag()..putString('AssemblyDirection', 'north'));

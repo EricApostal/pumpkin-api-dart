@@ -1,4 +1,5 @@
 // The sequenced gearshift's instruction model and `SequenceContext` (pure).
+import '../conveyance/nbt_names.dart' show enumByNameIgnoreCase;
 import 'settings.dart';
 
 /// `SequencerInstructions`.
@@ -34,12 +35,9 @@ enum SequencerInstructions {
 
   bool get needsPropagation => this == turnAngle || this == turnDistance;
 
-  static SequencerInstructions fromJavaName(String? name) {
-    for (final v in values) {
-      if (v.javaName == name) return v;
-    }
-    return SequencerInstructions.turnAngle;
-  }
+  static SequencerInstructions fromJavaName(String? name) =>
+      enumByNameIgnoreCase(name, values, nameOf: (v) => v.javaName) ??
+      SequencerInstructions.turnAngle;
 }
 
 /// `InstructionSpeedModifiers`.
@@ -54,12 +52,9 @@ enum InstructionSpeedModifiers {
 
   const InstructionSpeedModifiers(this.value, this.javaName);
 
-  static InstructionSpeedModifiers fromJavaName(String? name) {
-    for (final v in values) {
-      if (v.javaName == name) return v;
-    }
-    return InstructionSpeedModifiers.forwardFast;
-  }
+  static InstructionSpeedModifiers fromJavaName(String? name) =>
+      enumByNameIgnoreCase(name, values, nameOf: (v) => v.javaName) ??
+      InstructionSpeedModifiers.forwardFast;
 
   static InstructionSpeedModifiers byModifier(int modifier) {
     for (final v in values) {

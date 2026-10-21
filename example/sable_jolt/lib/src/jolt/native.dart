@@ -419,6 +419,12 @@ WasmI32 _i32(int value) => WasmI32.fromInt(value);
 WasmF64 _f64(double value) => WasmF64.fromDouble(value);
 
 /// The Jolt module's exported functions.
+///
+/// Every wrapper around a `WasmVoid`-returning import is **block-bodied**, never
+/// an arrow body. An arrow body returns the import's result as a `WasmVoid`
+/// expression, which dart2wasm cannot materialize: the compiled call ends in
+/// `unreachable`, so any such call (for example `jolt_world_destroy` at unload)
+/// traps the plugin. A block body discards the result instead.
 final class WasmJoltAbi implements JoltAbi {
   static bool _initialized = false;
 
@@ -440,30 +446,38 @@ final class WasmJoltAbi implements JoltAbi {
   int alloc(int bytes) => _alloc(_i32(bytes)).toIntUnsigned();
 
   @override
-  void free(int pointer) => _free(_i32(pointer));
+  void free(int pointer) {
+    _free(_i32(pointer));
+  }
 
   @override
   int worldCreate(double gx, double gy, double gz, double drag) =>
       _worldCreate(_f64(gx), _f64(gy), _f64(gz), _f64(drag)).toIntUnsigned();
 
   @override
-  void worldDestroy(int world) => _worldDestroy(_i32(world));
+  void worldDestroy(int world) {
+    _worldDestroy(_i32(world));
+  }
 
   @override
-  void worldSetGravity(int world, double gx, double gy, double gz) =>
-      _worldSetGravity(_i32(world), _f64(gx), _f64(gy), _f64(gz));
+  void worldSetGravity(int world, double gx, double gy, double gz) {
+    _worldSetGravity(_i32(world), _f64(gx), _f64(gy), _f64(gz));
+  }
 
   @override
-  void worldSetDrag(int world, double drag) =>
-      _worldSetDrag(_i32(world), _f64(drag));
+  void worldSetDrag(int world, double drag) {
+    _worldSetDrag(_i32(world), _f64(drag));
+  }
 
   @override
-  void worldSetSolver(int world, int velocitySteps, int positionSteps) =>
-      _worldSetSolver(_i32(world), _i32(velocitySteps), _i32(positionSteps));
+  void worldSetSolver(int world, int velocitySteps, int positionSteps) {
+    _worldSetSolver(_i32(world), _i32(velocitySteps), _i32(positionSteps));
+  }
 
   @override
-  void worldStep(int world, double timeStep) =>
-      _worldStep(_i32(world), _f64(timeStep));
+  void worldStep(int world, double timeStep) {
+    _worldStep(_i32(world), _f64(timeStep));
+  }
 
   @override
   int subLevelCreate(
@@ -522,183 +536,87 @@ final class WasmJoltAbi implements JoltAbi {
       ).toIntUnsigned();
 
   @override
-  void bodyDestroy(int world, int body) =>
-      _bodyDestroy(_i32(world), _i32(body));
+  void bodyDestroy(int world, int body) {
+    _bodyDestroy(_i32(world), _i32(body));
+  }
 
   @override
   int bodyIsValid(int world, int body) =>
       _bodyIsValid(_i32(world), _i32(body)).toIntUnsigned();
 
   @override
-  void bodySetPose(
-    int world,
-    int body,
-    double px,
-    double py,
-    double pz,
-    double qx,
-    double qy,
-    double qz,
-    double qw,
-  ) =>
-      _bodySetPose(
-        _i32(world),
-        _i32(body),
-        _f64(px),
-        _f64(py),
-        _f64(pz),
-        _f64(qx),
-        _f64(qy),
-        _f64(qz),
-        _f64(qw),
-      );
+  void bodySetPose(int world, int body, double px, double py, double pz, double qx, double qy, double qz, double qw,) {
+    _bodySetPose(_i32(world), _i32(body), _f64(px), _f64(py), _f64(pz), _f64(qx), _f64(qy), _f64(qz), _f64(qw),);
+  }
 
   @override
-  void bodyGetPose(int world, int body, int out) =>
-      _bodyGetPose(_i32(world), _i32(body), _i32(out));
+  void bodyGetPose(int world, int body, int out) {
+    _bodyGetPose(_i32(world), _i32(body), _i32(out));
+  }
 
   @override
-  void bodySetCom(int world, int body, double x, double y, double z) =>
-      _bodySetCom(_i32(world), _i32(body), _f64(x), _f64(y), _f64(z));
+  void bodySetCom(int world, int body, double x, double y, double z) {
+    _bodySetCom(_i32(world), _i32(body), _f64(x), _f64(y), _f64(z));
+  }
 
   @override
-  void bodySetMass(int world, int body, double mass, int inertia) =>
-      _bodySetMass(_i32(world), _i32(body), _f64(mass), _i32(inertia));
+  void bodySetMass(int world, int body, double mass, int inertia) {
+    _bodySetMass(_i32(world), _i32(body), _f64(mass), _i32(inertia));
+  }
 
   @override
-  void bodyWake(int world, int body) => _bodyWake(_i32(world), _i32(body));
+  void bodyWake(int world, int body) {
+    _bodyWake(_i32(world), _i32(body));
+  }
 
   @override
   int bodyIsActive(int world, int body) =>
       _bodyIsActive(_i32(world), _i32(body)).toIntUnsigned();
 
   @override
-  void bodyAddVelocities(
-    int world,
-    int body,
-    double lx,
-    double ly,
-    double lz,
-    double ax,
-    double ay,
-    double az,
-    bool wake,
-  ) =>
-      _bodyAddVelocities(
-        _i32(world),
-        _i32(body),
-        _f64(lx),
-        _f64(ly),
-        _f64(lz),
-        _f64(ax),
-        _f64(ay),
-        _f64(az),
-        _i32(wake ? 1 : 0),
-      );
+  void bodyAddVelocities(int world, int body, double lx, double ly, double lz, double ax, double ay, double az, bool wake,) {
+    _bodyAddVelocities(_i32(world), _i32(body), _f64(lx), _f64(ly), _f64(lz), _f64(ax), _f64(ay), _f64(az), _i32(wake ? 1 : 0),);
+  }
 
   @override
-  void bodyGetLinearVelocity(int world, int body, int out) =>
-      _bodyGetLinearVelocity(_i32(world), _i32(body), _i32(out));
+  void bodyGetLinearVelocity(int world, int body, int out) {
+    _bodyGetLinearVelocity(_i32(world), _i32(body), _i32(out));
+  }
 
   @override
-  void bodyGetAngularVelocity(int world, int body, int out) =>
-      _bodyGetAngularVelocity(_i32(world), _i32(body), _i32(out));
+  void bodyGetAngularVelocity(int world, int body, int out) {
+    _bodyGetAngularVelocity(_i32(world), _i32(body), _i32(out));
+  }
 
   @override
-  void bodyAddImpulse(
-    int world,
-    int body,
-    double lx,
-    double ly,
-    double lz,
-    double fx,
-    double fy,
-    double fz,
-    bool wake,
-  ) =>
-      _bodyAddImpulse(
-        _i32(world),
-        _i32(body),
-        _f64(lx),
-        _f64(ly),
-        _f64(lz),
-        _f64(fx),
-        _f64(fy),
-        _f64(fz),
-        _i32(wake ? 1 : 0),
-      );
+  void bodyAddImpulse(int world, int body, double lx, double ly, double lz, double fx, double fy, double fz, bool wake,) {
+    _bodyAddImpulse(_i32(world), _i32(body), _f64(lx), _f64(ly), _f64(lz), _f64(fx), _f64(fy), _f64(fz), _i32(wake ? 1 : 0),);
+  }
 
   @override
-  void bodyAddImpulseAndTorque(
-    int world,
-    int body,
-    double fx,
-    double fy,
-    double fz,
-    double tx,
-    double ty,
-    double tz,
-    bool wake,
-  ) =>
-      _bodyAddImpulseAndTorque(
-        _i32(world),
-        _i32(body),
-        _f64(fx),
-        _f64(fy),
-        _f64(fz),
-        _f64(tx),
-        _f64(ty),
-        _f64(tz),
-        _i32(wake ? 1 : 0),
-      );
+  void bodyAddImpulseAndTorque(int world, int body, double fx, double fy, double fz, double tx, double ty, double tz, bool wake,) {
+    _bodyAddImpulseAndTorque(_i32(world), _i32(body), _f64(fx), _f64(fy), _f64(fz), _f64(tx), _f64(ty), _f64(tz), _i32(wake ? 1 : 0),);
+  }
 
   @override
-  void bodyAddForce(int world, int body, double fx, double fy, double fz) =>
-      _bodyAddForce(_i32(world), _i32(body), _f64(fx), _f64(fy), _f64(fz));
+  void bodyAddForce(int world, int body, double fx, double fy, double fz) {
+    _bodyAddForce(_i32(world), _i32(body), _f64(fx), _f64(fy), _f64(fz));
+  }
 
   @override
-  void bodyAddForceAt(
-    int world,
-    int body,
-    double px,
-    double py,
-    double pz,
-    double fx,
-    double fy,
-    double fz,
-  ) =>
-      _bodyAddForceAt(
-        _i32(world),
-        _i32(body),
-        _f64(px),
-        _f64(py),
-        _f64(pz),
-        _f64(fx),
-        _f64(fy),
-        _f64(fz),
-      );
+  void bodyAddForceAt(int world, int body, double px, double py, double pz, double fx, double fy, double fz,) {
+    _bodyAddForceAt(_i32(world), _i32(body), _f64(px), _f64(py), _f64(pz), _f64(fx), _f64(fy), _f64(fz),);
+  }
 
   @override
-  void bodyAddTorque(int world, int body, double tx, double ty, double tz) =>
-      _bodyAddTorque(_i32(world), _i32(body), _f64(tx), _f64(ty), _f64(tz));
+  void bodyAddTorque(int world, int body, double tx, double ty, double tz) {
+    _bodyAddTorque(_i32(world), _i32(body), _f64(tx), _f64(ty), _f64(tz));
+  }
 
   @override
-  void bodyVelocityAtPoint(
-    int world,
-    int body,
-    double px,
-    double py,
-    double pz,
-    int out,
-  ) =>
-      _bodyVelocityAtPoint(
-        _i32(world),
-        _i32(body),
-        _f64(px),
-        _f64(py),
-        _f64(pz),
-        _i32(out),
-      );
+  void bodyVelocityAtPoint(int world, int body, double px, double py, double pz, int out,) {
+    _bodyVelocityAtPoint(_i32(world), _i32(body), _f64(px), _f64(py), _f64(pz), _i32(out),);
+  }
 
   @override
   double bodyMass(int world, int body) =>
@@ -719,66 +637,32 @@ final class WasmJoltAbi implements JoltAbi {
       ).toIntUnsigned();
 
   @override
-  void voxelColliderAddBox(
-    int index,
-    double minX,
-    double minY,
-    double minZ,
-    double maxX,
-    double maxY,
-    double maxZ,
-  ) =>
-      _voxelColliderAddBox(
-        _i32(index),
-        _f64(minX),
-        _f64(minY),
-        _f64(minZ),
-        _f64(maxX),
-        _f64(maxY),
-        _f64(maxZ),
-      );
+  void voxelColliderAddBox(int index, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,) {
+    _voxelColliderAddBox(_i32(index), _f64(minX), _f64(minY), _f64(minZ), _f64(maxX), _f64(maxY), _f64(maxZ),);
+  }
 
   @override
-  void voxelColliderClearBoxes(int index) =>
-      _voxelColliderClearBoxes(_i32(index));
+  void voxelColliderClearBoxes(int index) {
+    _voxelColliderClearBoxes(_i32(index));
+  }
 
   @override
   int voxelColliderCount() => _voxelColliderCount().toIntUnsigned();
 
   @override
-  void chunkAdd(
-    int world,
-    int x,
-    int y,
-    int z,
-    int data,
-    bool global,
-    int body,
-  ) =>
-      _chunkAdd(
-        _i32(world),
-        _i32(x),
-        _i32(y),
-        _i32(z),
-        _i32(data),
-        _i32(global ? 1 : 0),
-        _i32(body),
-      );
+  void chunkAdd(int world, int x, int y, int z, int data, bool global, int body,) {
+    _chunkAdd(_i32(world), _i32(x), _i32(y), _i32(z), _i32(data), _i32(global ? 1 : 0), _i32(body),);
+  }
 
   @override
-  void chunkRemove(int world, int x, int y, int z, bool global, int body) =>
-      _chunkRemove(
-        _i32(world),
-        _i32(x),
-        _i32(y),
-        _i32(z),
-        _i32(global ? 1 : 0),
-        _i32(body),
-      );
+  void chunkRemove(int world, int x, int y, int z, bool global, int body) {
+    _chunkRemove(_i32(world), _i32(x), _i32(y), _i32(z), _i32(global ? 1 : 0), _i32(body),);
+  }
 
   @override
-  void blockChange(int world, int x, int y, int z, int packed) =>
-      _blockChange(_i32(world), _i32(x), _i32(y), _i32(z), _i32(packed));
+  void blockChange(int world, int x, int y, int z, int packed) {
+    _blockChange(_i32(world), _i32(x), _i32(y), _i32(z), _i32(packed));
+  }
 
   @override
   int jointCreateHinge(
@@ -891,103 +775,48 @@ final class WasmJoltAbi implements JoltAbi {
       ).toIntUnsigned();
 
   @override
-  void jointDestroy(int world, int joint) =>
-      _jointDestroy(_i32(world), _i32(joint));
+  void jointDestroy(int world, int joint) {
+    _jointDestroy(_i32(world), _i32(joint));
+  }
 
   @override
   int jointIsValid(int world, int joint) =>
       _jointIsValid(_i32(world), _i32(joint)).toIntUnsigned();
 
   @override
-  void jointSetFrame(
-    int world,
-    int joint,
-    int side,
-    double x,
-    double y,
-    double z,
-    double qx,
-    double qy,
-    double qz,
-    double qw,
-  ) =>
-      _jointSetFrame(
-        _i32(world),
-        _i32(joint),
-        _i32(side),
-        _f64(x),
-        _f64(y),
-        _f64(z),
-        _f64(qx),
-        _f64(qy),
-        _f64(qz),
-        _f64(qw),
-      );
+  void jointSetFrame(int world, int joint, int side, double x, double y, double z, double qx, double qy, double qz, double qw,) {
+    _jointSetFrame(_i32(world), _i32(joint), _i32(side), _f64(x), _f64(y), _f64(z), _f64(qx), _f64(qy), _f64(qz), _f64(qw),);
+  }
 
   @override
-  void jointSetAxis(int world, int joint, int side, double x, double y, double z) =>
-      _jointSetAxis(
-        _i32(world),
-        _i32(joint),
-        _i32(side),
-        _f64(x),
-        _f64(y),
-        _f64(z),
-      );
+  void jointSetAxis(int world, int joint, int side, double x, double y, double z) {
+    _jointSetAxis(_i32(world), _i32(joint), _i32(side), _f64(x), _f64(y), _f64(z),);
+  }
 
   @override
-  void jointSetMotor(
-    int world,
-    int joint,
-    int axis,
-    double target,
-    double stiffness,
-    double damping,
-    bool hasMaxForce,
-    double maxForce,
-  ) =>
-      _jointSetMotor(
-        _i32(world),
-        _i32(joint),
-        _i32(axis),
-        _f64(target),
-        _f64(stiffness),
-        _f64(damping),
-        _i32(hasMaxForce ? 1 : 0),
-        _f64(maxForce),
-      );
+  void jointSetMotor(int world, int joint, int axis, double target, double stiffness, double damping, bool hasMaxForce, double maxForce,) {
+    _jointSetMotor(_i32(world), _i32(joint), _i32(axis), _f64(target), _f64(stiffness), _f64(damping), _i32(hasMaxForce ? 1 : 0), _f64(maxForce),);
+  }
 
   @override
-  void jointSetLimit(
-    int world,
-    int joint,
-    int axis,
-    double min,
-    double max,
-  ) =>
-      _jointSetLimit(
-        _i32(world),
-        _i32(joint),
-        _i32(axis),
-        _f64(min),
-        _f64(max),
-      );
+  void jointSetLimit(int world, int joint, int axis, double min, double max,) {
+    _jointSetLimit(_i32(world), _i32(joint), _i32(axis), _f64(min), _f64(max),);
+  }
 
   @override
-  void jointLockAxes(int world, int joint, int mask) =>
-      _jointLockAxes(_i32(world), _i32(joint), _i32(mask));
+  void jointLockAxes(int world, int joint, int mask) {
+    _jointLockAxes(_i32(world), _i32(joint), _i32(mask));
+  }
 
   @override
-  void jointSetContactsEnabled(int world, int joint, bool enabled) =>
-      _jointSetContactsEnabled(
-        _i32(world),
-        _i32(joint),
-        _i32(enabled ? 1 : 0),
-      );
+  void jointSetContactsEnabled(int world, int joint, bool enabled) {
+    _jointSetContactsEnabled(_i32(world), _i32(joint), _i32(enabled ? 1 : 0),);
+  }
 
   @override
-  void jointGetImpulses(int world, int joint, int out) =>
-      _jointGetImpulses(_i32(world), _i32(joint), _i32(out));
+  void jointGetImpulses(int world, int joint, int out) {
+    _jointGetImpulses(_i32(world), _i32(joint), _i32(out));
+  }
 }
 
 /// The Jolt module's linear memory.

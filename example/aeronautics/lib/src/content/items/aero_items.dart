@@ -9,6 +9,7 @@
 //
 // Host: this file uses `pumpkin_api` (item registration).
 // ignore_for_file: implementation_imports
+import 'package:create/src/core/nbt.dart' show NbtValue, NetworkNbt;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 /// The default components the host can encode, by item key.
@@ -22,6 +23,34 @@ const String musicDiscCloudSkipperKey = 'aeronautics:music_disc_cloud_skipper';
 
 /// `AeroItems.ENDSTONE_POWDER`.
 const String endStonePowderKey = 'aeronautics:end_stone_powder';
+
+/// `Registries.JUKEBOX_SONG`: a vanilla datapack registry, not one the host
+/// numbers. The client resolves `jukebox_playable` while it binds item
+/// components at the end of configuration, so the entry has to arrive with the
+/// registry data or the client disconnects with "Missing element".
+const String jukeboxSongRegistry = 'minecraft:jukebox_song';
+
+/// `AeroJukeboxSongs.CLOUD_SKIPPER` (`data/AeroJukeboxSongs.java:24-34`).
+const String cloudSkipperSongKey = 'aeronautics:cloud_skipper';
+
+/// `AeroJukeboxSongs.bootstrap`: the `aeronautics:cloud_skipper` entry as the
+/// network NBT of `JukeboxSong.DIRECT_CODEC` (`JukeboxSong.java:21-29`).
+///
+/// `sound_event` is `AeroSoundEvents.MUSIC_DISC_CLOUD_SKIPPER`
+/// (`aeronautics:music_disc.cloud_skipper`, `index/AeroSoundEvents.java:101`),
+/// the description is its translation key, and `225.0`/`12` are the length in
+/// seconds and the comparator output. The field order and the double for the
+/// length follow the vanilla entries the host already sends.
+List<int> cloudSkipperSongNbt() => NetworkNbt.encode(
+  NbtValue.compound({
+    'sound_event': const NbtValue.string('aeronautics:music_disc.cloud_skipper'),
+    'description': NbtValue.compound({
+      'translate': const NbtValue.string('jukebox_song.aeronautics.cloud_skipper'),
+    }),
+    'length_in_seconds': const NbtValue.double64(225.0),
+    'comparator_output': const NbtValue.int32(12),
+  }),
+);
 
 /// `AeroArmorMaterials.AVIATORS_GOGGLES`'s durability, as `BaseArmorItem` gets
 /// it: `ArmorType.HELMET.getDurability(15)` = `15 * 11`
@@ -54,7 +83,10 @@ List<ItemRegistration> aeroItems() => [
     maxStackSize: 1,
     // `.properties(p -> p.stacksTo(1).rarity(Rarity.RARE)...)`; `Rarity.RARE`
     // is ordinal 2. TODO(parity): `jukeboxPlayable(AeroJukeboxSongs.CLOUD_SKIPPER)`
-    // and the `aeronautics:levitating` component (see above).
+    // (the host's `JukeboxPlayableImpl` only knows the vanilla songs, so it
+    // would encode an empty song id) and the `aeronautics:levitating` component
+    // (see above). The song itself is served as a datapack entry, see
+    // `cloudSkipperSongNbt`.
     components: _components({'minecraft:rarity': 'rare'}).encoded,
   ),
   const ItemRegistration(key: endStonePowderKey),

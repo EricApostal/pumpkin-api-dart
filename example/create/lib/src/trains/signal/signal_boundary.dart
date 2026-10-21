@@ -5,6 +5,7 @@ import 'package:pumpkin_api/pumpkin_api_core.dart';
 
 import '../../common/data.dart';
 import '../../common/pos.dart';
+import '../../conveyance/nbt_names.dart' show enumFromNbtName;
 import '../graph/dimension_palette.dart';
 import '../graph/edge_point_type.dart';
 import '../graph/track_graph.dart';
@@ -253,10 +254,10 @@ class SignalBoundary extends TrackEdgePoint {
       sidesToUpdate.set(i == 1, nbt.contains('Update$i'));
     }
     for (var i = 1; i <= 2; i++) {
-      types.set(i == 1, readEnumByName(nbt.getString('Type$i'), SignalType.values));
+      types.set(i == 1, enumFromNbtName(nbt.getString('Type$i'), SignalType.values));
     }
     for (var i = 1; i <= 2; i++) {
-      cachedStates.set(i == 1, readEnumByName(nbt.getString('State$i'), SignalState.values));
+      cachedStates.set(i == 1, enumFromNbtName(nbt.getString('State$i'), SignalState.values));
     }
   }
 

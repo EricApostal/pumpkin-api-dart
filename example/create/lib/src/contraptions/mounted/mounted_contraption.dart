@@ -6,6 +6,7 @@ import 'dart:collection';
 
 import '../../api/block_state.dart';
 import '../../common/common.dart';
+import '../../conveyance/nbt_names.dart' show enumByNameIgnoreCase;
 import '../core/contraption.dart';
 import '../core/level.dart';
 import '../core/nbt_map.dart';
@@ -22,12 +23,9 @@ enum CartMovementMode {
 
   final String javaName;
 
-  static CartMovementMode byName(String? name) {
-    for (final m in values) {
-      if (m.javaName == name) return m;
-    }
-    return rotate;
-  }
+  static CartMovementMode byName(String? name) =>
+      enumByNameIgnoreCase(name, values, nameOf: (m) => m.javaName) ??
+      rotate;
 }
 
 /// `CartAssemblerBlock.RAIL_SHAPE` / the anchor's axis.

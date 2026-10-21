@@ -10,6 +10,7 @@ import '../core/structure_transform.dart';
 import '../minecart/capability/minecart_controller.dart' show OrientedCouplingId;
 import 'contraption_collider.dart' show OrientedLike;
 import 'contraption_entity.dart';
+import 'oriented_contraption_nbt.dart';
 
 /// Hooks the mounted (minecart) and bearing modules install for the oriented entity.
 abstract final class OrientedContraptionHooks {
@@ -165,11 +166,9 @@ class OrientedContraptionEntity extends AbstractContraptionEntity
     super.readAdditional(compound, spawnData: spawnData);
 
     if (compound.contains('InitialOrientation')) {
-      initialOrientation =
-          Direction.byName(
-            compound.getString('InitialOrientation').toLowerCase(),
-          ) ??
-          Direction.south;
+      initialOrientation = initialOrientationFromNbt(
+        compound.getString('InitialOrientation'),
+      );
     }
     yaw = compound.getDouble('Yaw');
     pitch = compound.getDouble('Pitch');
@@ -200,11 +199,9 @@ class OrientedContraptionEntity extends AbstractContraptionEntity
     // `Vec3.ZERO`).
     compound.putVec('CachedMotion', motionBeforeStall);
 
-    if (initialOrientation.axis.isHorizontal) {
-      compound.putString(
-        'InitialOrientation',
-        initialOrientation.serializedName,
-      );
+    final orientation = initialOrientationNbtName(initialOrientation);
+    if (orientation != null) {
+      compound.putString('InitialOrientation', orientation);
     }
     if (forceAngle) {
       compound.putFloat('ForceYaw', yaw);

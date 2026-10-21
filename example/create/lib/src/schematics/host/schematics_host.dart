@@ -22,6 +22,7 @@ import '../../core/module.dart';
 import '../../core/nbt.dart';
 import '../../core/pos.dart';
 import '../../core/registry.dart' show RegistryKind;
+import '../../conveyance/nbt_names.dart' show enumFromNbtName, enumNbtName;
 import '../../infrastructure/config/create_configs.dart';
 import '../checklist_stacks.dart';
 import '../item_requirement.dart';
@@ -397,11 +398,7 @@ final class SchematicannonBlockEntity extends CreateBlockEntity
     _readInventory(tag.getCompound('Inventory'), core.inventory);
     core.statusMsg = tag.getString('Status') ?? 'idle';
     core.remainingFuel = tag.getInt('RemainingFuel') ?? 0;
-    core.state = switch (tag.getString('State')) {
-      'RUNNING' => CannonState.running,
-      'PAUSED' => CannonState.paused,
-      _ => CannonState.stopped,
-    };
+    core.state = enumFromNbtName(tag.getString('State'), CannonState.values);
     core.blocksPlaced = tag.getInt('AmountPlaced') ?? 0;
     core.blocksToPlace = tag.getInt('AmountToPlace') ?? 0;
     core.schematicProgress = tag.getDouble('Progress') ?? 0;
@@ -443,7 +440,7 @@ final class SchematicannonBlockEntity extends CreateBlockEntity
     tag.putFloat('PaperProgress', core.bookPrintingProgress);
     tag.putInt('RemainingFuel', core.remainingFuel);
     tag.putString('Status', core.statusMsg);
-    tag.putString('State', core.state.name.toUpperCase());
+    tag.putString('State', enumNbtName(core.state.name));
     tag.putInt('AmountPlaced', core.blocksPlaced);
     tag.putInt('AmountToPlace', core.blocksToPlace);
     final missing = core.missingItem;

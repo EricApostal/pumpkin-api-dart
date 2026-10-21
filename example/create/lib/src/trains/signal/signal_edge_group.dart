@@ -1,10 +1,10 @@
 // `SignalEdgeGroup` (pure): a stretch of track between signals that at most one train may occupy.
 import '../entity/train.dart';
+import '../../conveyance/nbt_names.dart' show enumFromNbtName;
 import '../manager/create.dart';
 import '../util/ctag.dart';
 import 'edge_group_color.dart';
 import 'signal_boundary.dart';
-import 'signal_types.dart';
 
 class SignalEdgeGroup {
   String id;
@@ -104,7 +104,7 @@ class SignalEdgeGroup {
 
   static SignalEdgeGroup read(CTag tag) {
     final group = SignalEdgeGroup(tag.getUuid('Id') ?? (throw const FormatException('SignalEdgeGroup without Id')));
-    group.color = readEnumByName(tag.getString('Color'), EdgeGroupColor.values);
+    group.color = enumFromNbtName(tag.getString('Color'), EdgeGroupColor.values);
     for (final nbt in tag.getCompoundList('Connected')) {
       final key = nbt.getUuid('Key');
       final value = nbt.getUuid('Value');

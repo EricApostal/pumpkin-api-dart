@@ -23,6 +23,7 @@ import 'basin_block.dart';
 import 'basin_filter.dart';
 import 'basin_operating_block_entity.dart';
 import 'basin_recipe_ops.dart';
+import 'basin_spoutput_nbt.dart';
 
 /// `BasinInventory`: one stack per item type, and the first empty slot only (prevents
 /// overfilling in the simulated pass of the recipe matching).
@@ -585,11 +586,15 @@ class BasinBlockEntity extends CreateBlockEntity
       _tankSegment(outputTankA.fluid),
       _tankSegment(outputTankB.fluid),
     ]);
+    // The Java enum names (`Direction.name()`): `writeEnum` of `PreferredSpoutput` and
+    // `StringTag.valueOf(d.name())` of the `DisabledSpoutput` list.
     final preferred = preferredSpoutput;
-    if (preferred != null) tag.putString('PreferredSpoutput', preferred.name);
-    // `DisabledSpoutput` is a list of direction names in Java, not one joined string.
+    final preferredName = preferredSpoutputNbtName(preferred);
+    if (preferredName != null)
+      tag.putString('PreferredSpoutput', preferredName);
     tag.putList('DisabledSpoutput', [
-      for (final d in disabledSpoutputs) NbtTagStringTag(d.name),
+      for (final name in disabledSpoutputNbtNames(disabledSpoutputs))
+        NbtTagStringTag(name),
     ]);
     tag.putList('Overflow', [
       for (final stack in spoutputBuffer) StackNbt.write(stack),
@@ -615,27 +620,26 @@ class BasinBlockEntity extends CreateBlockEntity
     _readTanks(tag.getList('OutputTanks'), [outputTankA, outputTankB]);
 
     final preferred = tag.getString('PreferredSpoutput');
-    preferredSpoutput = preferred == null ? null : Direction.byName(preferred);
+    preferredSpoutput =
+        preferred == null ? null : preferredSpoutputFromNbt(preferred);
     disabledSpoutputs.clear();
     // A list of names (Java); the comma-joined string of earlier versions still parses.
     final legacyDisabled = tag.getString('DisabledSpoutput');
     if (legacyDisabled != null) {
-      for (final name in legacyDisabled.split(',')) {
-        if (name.isEmpty) continue;
-        final direction = Direction.byName(name);
-        if (direction != null) disabledSpoutputs.add(direction);
-      }
+      disabledSpoutputs.addAll(
+        disabledSpoutputsFromNbt(legacyDisabled.split(',')),
+      );
     } else {
-      for (final element
-          in tag.getList('DisabledSpoutput') ?? const <Object>[]) {
-        final name = switch (element) {
-          NbtTagStringTag(:final value) => value,
-          _ => null,
-        };
-        if (name == null) continue;
-        final direction = Direction.byName(name);
-        if (direction != null) disabledSpoutputs.add(direction);
-      }
+      disabledSpoutputs.addAll(
+        disabledSpoutputsFromNbt([
+          for (final element
+              in tag.getList('DisabledSpoutput') ?? const <Object>[])
+            switch (element) {
+              NbtTagStringTag(:final value) => value,
+              _ => null,
+            },
+        ]),
+      );
     }
     spoutputBuffer
       ..clear()

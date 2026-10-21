@@ -8,6 +8,7 @@ import 'package:create/src/contraptions/core/movement.dart';
 import 'package:create/src/core/nbt.dart';
 import 'package:create/src/contraptions/core/nbt_map.dart';
 import 'package:create/src/contraptions/core/structure_info.dart';
+import 'package:create/src/contraptions/entity/oriented_contraption_nbt.dart';
 import 'package:create/src/contraptions/storage/mounted_storage.dart';
 import 'package:create/src/contraptions/storage/stacks.dart';
 import 'package:create/src/contraptions/storage/storage_manager.dart';
@@ -525,6 +526,39 @@ void main() {
       expect(
         manager.fluidStorages[(4, 5, 6)]!.fluidInTank(0),
         const StoredFluid('minecraft:water', 300),
+      );
+    });
+  });
+
+  // `OrientedContraptionEntity`'s `InitialOrientation` (and the minecart item's
+  // copy of it): Java writes `Direction.name()` and reads it with `readEnum`, so
+  // the intended direction must come back instead of the fallback `down`.
+  group('InitialOrientation', () {
+    test('the Java name resolves to the intended direction, not the fallback', () {
+      expect(initialOrientationNbtName(Direction.north), 'NORTH');
+      expect(initialOrientationFromNbt('NORTH'), Direction.north);
+      expect(
+        initialOrientationFromNbt('NORTH'),
+        isNot(Direction.values.first),
+      );
+    });
+
+    test('a vertical direction writes no key', () {
+      expect(initialOrientationNbtName(Direction.up), isNull);
+      expect(initialOrientationNbtName(Direction.down), isNull);
+    });
+
+    test('an unknown name falls back to the first constant, as readEnum', () {
+      expect(initialOrientationFromNbt('sideways'), Direction.down);
+    });
+
+    test('the minecart item writes the same Java name', () {
+      expect(minecartInitialOrientationNbtName(Direction.east), 'EAST');
+      expect(
+        initialOrientationFromNbt(
+          minecartInitialOrientationNbtName(Direction.east),
+        ),
+        Direction.east,
       );
     });
   });

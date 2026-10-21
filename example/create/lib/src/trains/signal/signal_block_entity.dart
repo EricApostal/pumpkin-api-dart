@@ -6,6 +6,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
 import '../../core/block_entity.dart';
+import '../../conveyance/nbt_names.dart' show enumFromNbtName;
 import '../graph/edge_point_type.dart';
 import '../support/level.dart';
 import '../track/track_targeting_behaviour.dart';
@@ -43,9 +44,9 @@ class SignalBlockEntity extends CreateBlockEntity {
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    _state = readEnumByName(tag.getString('State') ?? '', SignalState.values);
-    _overlay = readEnumByName(
-      tag.getString('Overlay') ?? '',
+    _state = enumFromNbtName(tag.getString('State'), SignalState.values);
+    _overlay = enumFromNbtName(
+      tag.getString('Overlay'),
       OverlayState.values,
     );
     lastReportedPower = tag.getBool('Power') ?? false;

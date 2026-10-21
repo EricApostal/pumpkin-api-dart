@@ -348,10 +348,16 @@ CreateBlock buildWheelMountBlock() => CreateBlock(
   tags: const ['create:safe_nbt'],
   placement: const [
     // `getPreferredHorizontalFacing` is not in the port's placement rules; Java
-    // falls back to the look direction (opposite unless sneaking) in that case,
-    // which is exactly these two rules.
-    PlacementRule.lookingDirection('facing', opposite: true, whenSneaking: false),
-    PlacementRule.lookingDirection('facing', whenSneaking: true),
+    // falls back to the horizontal look direction (opposite unless sneaking) in
+    // that case, which is exactly these two rules.
+    //
+    // `horizontalFacing`, not `lookingDirection`: Java is a `HorizontalKineticBlock`
+    // whose `HORIZONTAL_FACING` has no `down`/`up`, and it reads
+    // `context.getHorizontalDirection()`. `lookingDirection` yields `down` when the
+    // player looks down, which the host rejects — "property 'facing' has no value
+    // 'down', which its placement rule can give".
+    PlacementRule.horizontalFacing('facing', opposite: true, whenSneaking: false),
+    PlacementRule.horizontalFacing('facing', whenSneaking: true),
   ],
   blockEntityType: wheelMountKey,
   behavior: BlockBehavior(

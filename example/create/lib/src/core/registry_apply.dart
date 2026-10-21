@@ -32,13 +32,27 @@ Future<AppliedIds> applyRegistry(
 }) async {
   final ids = AppliedIds();
 
+  // Records the id the host assigned. [expected] is the id this plugin would get if it were the
+  // only one registering (`vanilla count + position here`); a plugin that registered [kind]
+  // first shifts it, because the host numbers every plugin's entries in load order.
+  //
+  // That shift never reaches the client: the host sends the registry as vanilla entries followed
+  // by every plugin's entries in that same order, and the client adopts the ids from the
+  // `neoforge:frozen_registry` snapshot (`RegistryManager.applySnapshot` ->
+  // `BaseMappedRegistry.registerIdMapping`) instead of numbering from its own registration
+  // order. What has to hold is that the registry is synced at all: a declaration has to vouch
+  // for it, and the host refuses to send a registry whose vouched entries come after entries of
+  // a plugin that did not vouch (`net::neoforge::registries::syncable`). That is where a real
+  // divergence is reported, so this is a diagnostic, not a problem.
   void check(RegistryKind kind, String key, int id, int expected) {
     ids._ids[kind]![key] = id;
-    if (logIds) log.info('${kind.name} $key = $id');
-    if (id != expected) {
-      log.warn(
-        '`$key` got id $id in ${kind.name}, expected $expected: another plugin registered ${kind.name} first, '
-        'so a NeoForge client would number it differently.',
+    if (logIds) {
+      log.info(
+        id == expected
+            ? '${kind.name} $key = $id'
+            : '${kind.name} $key = $id (not $expected: another plugin registered ${kind.name} '
+                  'first, and the host numbers entries in load order; the client takes the id '
+                  'from the registry sync, so it still matches)',
       );
     }
   }

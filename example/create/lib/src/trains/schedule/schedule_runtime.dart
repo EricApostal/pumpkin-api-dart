@@ -2,6 +2,7 @@
 // is PRE_TRANSIT (about to start the current entry's instruction), IN_TRANSIT (navigating to its
 // destination) or POST_TRANSIT (at the station, waiting for the conditions of the entry).
 // ignore_for_file: constant_identifier_names
+import '../../conveyance/nbt_names.dart' show enumFromNbtName;
 import '../../redstone/support/text.dart' show Txt;
 import '../entity/train.dart';
 import '../graph/discovered_path.dart';
@@ -392,7 +393,7 @@ class ScheduleRuntime {
     isAutoSchedule = tag.getBooleanOr('AutoSchedule', false);
     currentEntry = tag.getInt('CurrentEntry') < 0 ? 0 : tag.getInt('CurrentEntry');
     if (tag.contains('Schedule')) schedule = Schedule.fromTag(tag.getCompound('Schedule'));
-    state = _readEnum(tag, 'State');
+    state = enumFromNbtName(tag.getString('State'), State.values);
     for (final i in tag.getIntArray('ConditionProgress')) {
       conditionProgress.add(i);
     }
@@ -439,13 +440,5 @@ class ScheduleRuntime {
     final tag = conditionContext[0];
     final ScheduleWaitCondition condition = list[progress];
     return condition.getWaitingStatus(level, train, tag);
-  }
-
-  static State _readEnum(CTag tag, String key) {
-    final name = tag.getString(key);
-    for (final e in State.values) {
-      if (e.name == name) return e;
-    }
-    return State.values.first;
   }
 }

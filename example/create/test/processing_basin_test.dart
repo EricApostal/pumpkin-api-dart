@@ -1,6 +1,8 @@
 import 'dart:math';
 
+import 'package:create/src/common/direction.dart';
 import 'package:create/src/processing/basin/basin_recipe_ops.dart';
+import 'package:create/src/processing/basin/basin_spoutput_nbt.dart';
 import 'package:create/src/processing/common/stack.dart';
 import 'package:create/src/processing/common/storage.dart';
 import 'package:create/src/processing/recipe/crafting_recipes.dart';
@@ -227,6 +229,38 @@ void main() {
       b.input.insert(0, const PStack('minecraft:wheat', 3));
       b.heat = HeatLevel.none;
       expect(BasinRecipeOps.matches(b, bread, tags, Random(0)), isTrue);
+    });
+  });
+
+  // `BasinBlockEntity`'s spout outputs (`PreferredSpoutput` / `DisabledSpoutput`):
+  // the value is written as the Java enum name (`Direction.name()`), so Java's
+  // `readEnum` resolves the intended direction instead of falling back to `down`.
+  group('spout output NBT', () {
+    test('PreferredSpoutput is the Java name, and reads back as itself', () {
+      expect(preferredSpoutputNbtName(Direction.north), 'NORTH');
+      expect(preferredSpoutputFromNbt('NORTH'), Direction.north);
+      expect(
+        preferredSpoutputFromNbt('NORTH'),
+        isNot(Direction.values.first),
+      );
+      expect(preferredSpoutputNbtName(null), isNull);
+    });
+
+    test('an unknown preferred name is the first constant, as readEnum', () {
+      expect(preferredSpoutputFromNbt('sideways'), Direction.values.first);
+    });
+
+    test('DisabledSpoutput is a list of Java names', () {
+      expect(
+        disabledSpoutputNbtNames([Direction.west, Direction.up]),
+        ['WEST', 'UP'],
+      );
+      expect(
+        disabledSpoutputsFromNbt(['WEST', 'up']),
+        {Direction.west, Direction.up},
+      );
+      // `Direction.valueOf` would throw; the port skips the name.
+      expect(disabledSpoutputsFromNbt(['sideways']), isEmpty);
     });
   });
 }

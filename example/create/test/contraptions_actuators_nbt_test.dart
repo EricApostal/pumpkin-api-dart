@@ -138,6 +138,17 @@ void main() {
       expect(restored.offset, 0);
       expect(restored.facing, Direction.down);
     });
+
+    test('the Java name resolves to the intended hand, not the fallback', () {
+      // `ClockworkContraption.java:110` writes `handType.name()`; `.java:118`
+      // reads it with `readEnum` (first constant `HOUR` on an unknown name).
+      expect(HandType.hour.javaName, 'HOUR');
+      expect(HandType.minute.javaName, 'MINUTE');
+      expect(HandType.fromName('MINUTE'), HandType.minute);
+      expect(HandType.fromName('MINUTE'), isNot(HandType.values.first));
+      expect(HandType.fromName('minute'), HandType.minute);
+      expect(HandType.fromName('sideways'), HandType.hour);
+    });
   });
 
   group('StabilizedContraption', () {

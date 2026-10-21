@@ -116,10 +116,11 @@ final class CcTweakedPlugin extends Plugin {
   }
 
   /// Adds CC: Tweaked's items to the host's item registry, in the order of the
-  /// registry sync, so their ids (vanilla count + position) are the ones the
-  /// client is told. They are plain items (no default components): the block items
-  /// are linked to their blocks by [_registerBlocks]; the data components they
-  /// carry are set on stacks (`CcComponents`), see docs/host-requirements.md.
+  /// registry sync, so the ids the host gives them are the ones the registry
+  /// sync sends (the client adopts them by name, not by re-numbering). They are
+  /// plain items (no default components): the block items are linked to their
+  /// blocks by [_registerBlocks]; the data components they carry are set on
+  /// stacks (`CcComponents`), see docs/host-requirements.md.
   void _registerItems() {
     final registry = ItemRegistries.host;
     final first = registry.vanillaCount;
@@ -130,8 +131,14 @@ final class CcTweakedPlugin extends Plugin {
         final id = registry.register(
           ItemRegistration(key: key, maxStackSize: _singleItems.contains(path) ? 1 : null),
         );
+        // Not `first + i` when another plugin registered items first: the host numbers every
+        // plugin's entries in load order. The client takes the id from the snapshot, so this is
+        // only worth a debug line.
         if (id != first + i) {
-          logger.warn('$key got id $id, the registry sync expects ${first + i}: another plugin registered items first.');
+          logger.debug(
+            '$key got host id $id, not ${first + i}: another plugin registered items first '
+            '(the client takes the id from the registry sync, so it still matches).',
+          );
         }
       } on ItemRegistryException catch (e) {
         logger.warn('Could not register $key: $e');

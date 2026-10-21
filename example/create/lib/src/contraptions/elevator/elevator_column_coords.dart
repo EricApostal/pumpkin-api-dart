@@ -3,6 +3,8 @@
 //
 // Java: `content/contraptions/elevator/ElevatorColumn.ColumnCoords`.
 import '../../common/common.dart';
+import '../../conveyance/nbt_names.dart'
+    show directionFromNbtName, directionNbtName;
 import '../core/nbt_map.dart';
 
 /// `ElevatorColumn.ColumnCoords`: the column of a contact: its block x/z and the side the contact
@@ -22,13 +24,12 @@ final class ColumnCoords {
   NbtMap write() => NbtMap()
     ..putInt('X', x)
     ..putInt('Z', z)
-    ..putString('Side', side.name.toUpperCase());
+    ..putString('Side', directionNbtName(side));
 
   static ColumnCoords read(NbtMap tag) => ColumnCoords(
     tag.getInt('X'),
     tag.getInt('Z'),
-    Direction.byName(tag.getString('Side').toLowerCase()) ??
-        Direction.values[0],
+    directionFromNbtName(tag.getString('Side')),
   );
 
   @override

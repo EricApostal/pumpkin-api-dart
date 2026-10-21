@@ -4,6 +4,8 @@
 import 'dart:math' as math;
 
 import '../../common/common.dart';
+import '../../conveyance/nbt_names.dart'
+    show enumByNameIgnoreCase, enumNbtName;
 import '../core/contraption.dart';
 import '../core/movement.dart';
 import '../core/nbt_map.dart';
@@ -48,7 +50,10 @@ class ControlledContraptionEntity extends AbstractContraptionEntity {
           posContaining(host.position);
     }
     if (compound.contains('Axis')) {
-      rotationAxis = Axis.byName(compound.getString('Axis').toLowerCase());
+      rotationAxis = enumByNameIgnoreCase(
+        compound.getString('Axis'),
+        Axis.values,
+      );
     }
     angle = compound.getDouble('Angle');
   }
@@ -64,9 +69,10 @@ class ControlledContraptionEntity extends AbstractContraptionEntity {
       );
     final axis = rotationAxis;
     // Create writes `rotationAxis.name()`: the enum constant, i.e. `X`/`Y`/`Z`.
-    // Its reader is case-sensitive (`e.name().equals(name)`), so `x` falls back to `Axis.X`.
+    // `readEnum` matches it exactly (an unknown name falls back to `Axis.X`); the port
+    // also accepts the lower-case spelling of an older save.
     if (axis != null)
-      compound.putString('Axis', axis.serializedName.toUpperCase());
+      compound.putString('Axis', enumNbtName(axis.serializedName));
     compound.putFloat('Angle', angle);
   }
 

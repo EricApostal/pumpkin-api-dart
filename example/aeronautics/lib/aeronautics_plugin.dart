@@ -11,6 +11,7 @@ export 'src/content/blocks/hot_air/hot_air_burner_block.dart';
 export 'src/content/blocks/hot_air/steam_vent.dart';
 export 'src/content/blocks/levitite/levitite_blocks.dart';
 export 'src/content/blocks/mounted_potato_cannon/mounted_potato_cannon.dart';
+export 'src/content/blocks/mounted_potato_cannon/mounted_potato_cannon_logic.dart';
 export 'src/content/blocks/propeller/gyroscopic_propeller_bearing_block.dart';
 export 'src/content/blocks/propeller/propeller_bearing_block.dart';
 export 'src/content/blocks/propeller/propeller_bearing_contraption_entity.dart';

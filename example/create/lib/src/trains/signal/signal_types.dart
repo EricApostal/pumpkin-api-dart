@@ -36,11 +36,3 @@ enum SignalState {
 
   bool isGreenLight(double renderTime) => this == GREEN;
 }
-
-/// `NBTHelper.readEnum` of the 26.x port: the constant with the saved name, else the first one.
-E readEnumByName<E extends Enum>(String name, List<E> values) {
-  for (final e in values) {
-    if (e.name == name) return e;
-  }
-  return values.first;
-}

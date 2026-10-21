@@ -8,6 +8,7 @@ import 'dart:collection';
 
 import '../../api/block_state.dart';
 import '../../common/common.dart';
+import '../../conveyance/nbt_names.dart' show enumFromNbtName;
 import '../core/contraption.dart';
 import '../core/level.dart';
 import '../core/nbt_map.dart';
@@ -187,7 +188,8 @@ class ClockworkContraption extends Contraption {
     final tag = super.writeNbt(spawnPacket: spawnPacket);
     tag.putInt('facing', facing.data3d);
     tag.putInt('offset', offset);
-    tag.putString('HandType', handType.name);
+    // `ClockworkContraption.java:110`: `handType.name()` (`HOUR`/`MINUTE`).
+    tag.putString('HandType', handType.javaName);
     return tag;
   }
 
@@ -214,12 +216,14 @@ enum HandType {
 
   const HandType(this.javaName);
 
+  /// The Java constant name (`HOUR`/`MINUTE`): the Dart identifier is the
+  /// lower-case form, so NBT and the reader use this instead of `name`.
   final String javaName;
 
-  String get name => javaName;
-
+  /// `ClockworkContraption.readEnum`: the constant named [name], else the first
+  /// constant (`HOUR`).
   static HandType fromName(String name) =>
-      name == 'MINUTE' ? HandType.minute : HandType.hour;
+      enumFromNbtName(name, values, nameOf: (h) => h.javaName);
 }
 
 /// `StabilizedContraption`: the sub-structure a bearing leaves in place.

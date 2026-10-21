@@ -10,6 +10,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
 import '../../common/common.dart';
+import '../../conveyance/nbt_names.dart'
+    show directionFromNbtName, directionNbtName;
 import '../../kinetics/api.dart' show SequenceContext;
 import '../blocks/actuator_contract.dart';
 import '../blocks/actuator_runtime.dart';
@@ -178,7 +180,7 @@ class GantryContraptionEntity extends AbstractContraptionEntity {
   @override
   void writeAdditional(NbtMap compound, {bool spawnPacket = false}) {
     super.writeAdditional(compound, spawnPacket: spawnPacket);
-    compound.putString('GantryAxis', movementAxis.name.toUpperCase());
+    compound.putString('GantryAxis', directionNbtName(movementAxis));
     if (sequencedOffsetLimit >= 0)
       compound.putDouble('SequencedOffsetLimit', sequencedOffsetLimit);
   }
@@ -187,9 +189,7 @@ class GantryContraptionEntity extends AbstractContraptionEntity {
   void readAdditional(NbtMap compound, {bool spawnData = false}) {
     // `readEnum(compound, "GantryAxis", Direction.class)`: the Java enum name (upper case), with
     // `Direction.values()[0]` ([Direction.down]) as the fallback.
-    movementAxis =
-        Direction.byName(compound.getString('GantryAxis').toLowerCase()) ??
-        Direction.values[0];
+    movementAxis = directionFromNbtName(compound.getString('GantryAxis'));
     sequencedOffsetLimit = compound.contains('SequencedOffsetLimit')
         ? compound.getDouble('SequencedOffsetLimit')
         : -1;

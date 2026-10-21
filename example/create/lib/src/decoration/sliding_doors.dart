@@ -6,6 +6,7 @@ import '../api/blocks.dart';
 import '../common/direction.dart';
 import '../common/host_bridge.dart';
 import '../core/block_entity.dart';
+import '../conveyance/nbt_names.dart' show enumFromNbtName, enumNbtName;
 import 'door.dart';
 import 'door_host.dart';
 import 'runtime.dart';
@@ -73,12 +74,12 @@ final class DoorControlBehaviour extends BlockEntityBehaviour {
 
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
-    tag.putString('DoorControl', mode.name.toUpperCase());
+    tag.putString('DoorControl', enumNbtName(mode.name));
   }
 
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     final name = tag.getString('DoorControl') ?? '';
-    mode = DoorControl.values.firstWhere((m) => m.name.toUpperCase() == name, orElse: () => DoorControl.all);
+    mode = enumFromNbtName(name, DoorControl.values);
   }
 }

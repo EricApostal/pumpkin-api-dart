@@ -4,6 +4,7 @@
 // `content/kinetics/mechanicalArm/ArmInteractionPoint.java` (`Mode`),
 // `ArmBlockEntity.java` (`Phase`, `SelectionMode`).
 import '../../common/pos.dart';
+import '../../conveyance/nbt_names.dart' show enumByNameIgnoreCase;
 
 /// `ArmInteractionPoint.Mode`.
 enum ArmPointMode {
@@ -17,7 +18,8 @@ enum ArmPointMode {
   String get javaName => name.toUpperCase();
 
   static ArmPointMode fromJavaName(String? name) =>
-      name == 'TAKE' ? ArmPointMode.take : ArmPointMode.deposit;
+      enumByNameIgnoreCase(name, values, nameOf: (m) => m.javaName) ??
+      ArmPointMode.deposit;
 
   ArmPointMode get cycled =>
       this == ArmPointMode.deposit ? ArmPointMode.take : ArmPointMode.deposit;
@@ -39,12 +41,9 @@ enum ArmPhase {
     ArmPhase.dancing => 'DANCING',
   };
 
-  static ArmPhase fromJavaName(String? name) {
-    for (final p in ArmPhase.values) {
-      if (p.javaName == name) return p;
-    }
-    return ArmPhase.searchInputs;
-  }
+  static ArmPhase fromJavaName(String? name) =>
+      enumByNameIgnoreCase(name, values, nameOf: (p) => p.javaName) ??
+      ArmPhase.searchInputs;
 }
 
 /// `ArmBlockEntity.SelectionMode`.

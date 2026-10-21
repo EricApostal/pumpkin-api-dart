@@ -80,6 +80,17 @@ void registerAeronautics(
     registry.item(item);
   }
 
+  // -- Datapack registries --------------------------------------------------------
+  // `AeroGeneratedEntries.gatherRegistryEntries` adds `AeroJukeboxSongs` to
+  // `Registries.JUKEBOX_SONG` (`data/AeroGeneratedEntries.java:28`). The disc's
+  // `jukebox_playable` names that entry, and the client resolves it while it
+  // binds item components when configuration finishes
+  // (`RegistryDataCollector.updateComponents`), so the entry has to be part of
+  // the registry data the host sends; without it the client disconnects with
+  // "Missing element ResourceKey[minecraft:jukebox_song / aeronautics:cloud_skipper]".
+  registry.datapackRegistry(jukeboxSongRegistry);
+  registry.datapackEntry(jukeboxSongRegistry, cloudSkipperSongKey, cloudSkipperSongNbt());
+
   // -- Block entity types --------------------------------------------------------
   void type(String key, List<String> validBlocks, CreateBlockEntity Function(String worldId, BlockPos pos) create) {
     registry.blockEntityType(BlockEntityTypeSpec(key: key, validBlocks: validBlocks, create: create));

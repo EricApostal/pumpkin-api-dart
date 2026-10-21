@@ -567,14 +567,8 @@ class EjectorBlockEntity extends KineticBlockEntity {
     }
     powered = tag.getBool('Powered') ?? false;
     final stateName = tag.getString('State');
-    final dartState = enumDartName([
-      for (final s in _EjectorState.values) s.name,
-    ], stateName ?? '');
-    _state = _EjectorState.values.firstWhere(
-      (s) => s.name == dartState,
-      // Java's `readState` falls back to the first constant (`CHARGED`).
-      orElse: () => _EjectorState.charged,
-    );
+    // Java's `readState` falls back to the first constant (`CHARGED`).
+    _state = enumFromNbtName(stateName, _EjectorState.values);
     final lid = tag.getCompound('Lid');
     if (lid != null) {
       lidProgress = lid.getDouble('Value') ?? 0;

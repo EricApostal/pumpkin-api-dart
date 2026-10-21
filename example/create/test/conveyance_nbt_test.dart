@@ -5,6 +5,7 @@
 // `writeFlapsAndSides`, `EjectorBlockEntity.State`.
 import 'package:create/src/common/direction.dart';
 import 'package:create/src/conveyance/nbt_names.dart';
+import 'package:create/src/processing/arm/arm_model.dart' show ArmPhase;
 import 'package:test/test.dart';
 
 void main() {
@@ -15,23 +16,64 @@ void main() {
       expect(directionNbtName(Direction.north), 'NORTH');
     });
 
-    test('an unknown constant has no Dart name', () {
-      expect(enumDartName(['charged', 'launching'], 'SIDEWAYS'), isNull);
+    test('an unknown constant has no match', () {
+      expect(enumByNameIgnoreCase('SIDEWAYS', Direction.values), isNull);
     });
 
     test(
       'names are matched case insensitively, for older lower-case saves',
       () {
-        expect(
-          enumDartName(['charged', 'launching'], 'LAUNCHING'),
-          'launching',
-        );
-        expect(
-          enumDartName(['charged', 'launching'], 'launching'),
-          'launching',
-        );
+        expect(enumByNameIgnoreCase('NORTH', Direction.values), Direction.north);
+        expect(enumByNameIgnoreCase('north', Direction.values), Direction.north);
       },
     );
+  });
+
+  // The test that would have caught the train crash: an enum value is written as
+  // its Java constant name and resolved the way Java's `readEnum` resolves it, so
+  // the intended constant comes back instead of the first one.
+  group('readEnum semantics', () {
+    test('resolves the Java constant name, not the first constant', () {
+      expect(enumFromNbtName('NORTH', Direction.values), Direction.north);
+      expect(
+        enumFromNbtName('NORTH', Direction.values),
+        isNot(Direction.values.first),
+      );
+    });
+
+    test('an unknown or missing name is the first constant, as Java', () {
+      expect(enumFromNbtName('sideways', Direction.values), Direction.down);
+      expect(enumFromNbtName(null, Direction.values), Direction.down);
+    });
+
+    test('matches case insensitively, for older lower-case saves', () {
+      expect(enumFromNbtName('north', Direction.values), Direction.north);
+    });
+
+    test('nameOf carries an enum whose Dart identifier differs', () {
+      expect(
+        enumFromNbtName(
+          'SEARCH_OUTPUTS',
+          ArmPhase.values,
+          nameOf: (p) => p.javaName,
+        ),
+        ArmPhase.searchOutputs,
+      );
+      expect(
+        enumFromNbtName(
+          'SEARCH_OUTPUTS',
+          ArmPhase.values,
+          nameOf: (p) => p.javaName,
+        ),
+        isNot(ArmPhase.values.first),
+      );
+    });
+
+    test('enumByNameIgnoreCase is null when nothing matches', () {
+      expect(enumByNameIgnoreCase('sideways', Direction.values), isNull);
+      expect(enumByNameIgnoreCase(null, Direction.values), isNull);
+      expect(enumByNameIgnoreCase('EAST', Direction.values), Direction.east);
+    });
   });
 
   group('StackEnteredFrom', () {

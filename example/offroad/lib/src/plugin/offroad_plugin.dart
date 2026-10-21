@@ -42,6 +42,7 @@ final class OffroadPlugin extends Plugin {
       Permissions.registryBlockEntities,
       Permissions.registryEntities,
       Permissions.registryExtra,
+      Permissions.registryComponents,
       Permissions.neoforge,
     ],
   );

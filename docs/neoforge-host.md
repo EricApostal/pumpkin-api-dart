@@ -32,7 +32,7 @@ The protocol itself is described in [neoforge-protocol.md](neoforge-protocol.md)
 * The plugin adds blocks, items, menus, entity types ... that a **client mod**
   also has (a port of a NeoForge mod such as CC: Tweaked or Create): declare the
   mod, its channels and the registries the host does not know, so the client
-  accepts the server and numbers the entries the same way.
+  accepts the server and takes the server's ids for the entries.
 * The plugin only works with vanilla clients (commands, events, plugin menus):
   nothing to do. Do not declare.
 * A plugin that wants to detect NeoForge players: `player.isNeoForge`
@@ -69,6 +69,19 @@ not per plugin:
 * **Ids are positions.** If entries of a mod that named nothing come before
   entries that did, the registry is left out entirely rather than renumbering the
   later ones on the client (a warning names the registry).
+* **A second plugin shifts the ids, and that is fine.** The snapshot is the
+  vanilla entries followed by *every* plugin's entries in load order, so the
+  entries of a plugin that loaded later do not start at `vanilla count`: they
+  start after the entries of the plugins before it. The client does not number
+  anything itself — `RegistryManager.applySnapshot` puts each entry at the id the
+  snapshot gives it (`registerIdMapping`) — so the ids still match. What the
+  client does with them is described in
+  [neoforge-protocol.md](neoforge-protocol.md#neoforge-263-network-negotiation-and-registry-synchronisation).
+  The order is a function of the plugin set alone (names and declared
+  dependencies, `PluginManager::topological_sort`), so a restart gives the same
+  ids; a plugin must not rely on being first, and a check that fails because
+  another plugin registered first is checking something the protocol does not
+  require.
 
 An incremental port therefore does not need an allowlist and cannot brick a
 connection by registering a name the client lacks: it declares its mod (channels

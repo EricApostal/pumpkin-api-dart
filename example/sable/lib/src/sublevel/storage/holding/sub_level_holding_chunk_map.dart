@@ -9,6 +9,7 @@
 // loaded.
 //
 // Pure: no host imports.
+import '../../api/sub_level_helper.dart';
 import '../../host/sub_level_host.dart';
 import '../../math/bounding_box.dart';
 import '../../math/vector.dart';
@@ -61,6 +62,13 @@ final class SubLevelHoldingChunkMap {
   SubLevelHoldingChunkMap(this.container, this.level, this.storage);
 
   /// Packs a chunk position into a map key.
+  ///
+  /// This is an in-process map key only, not `ChunkPos.pack`: the halves are
+  /// swapped relative to the wire packing (`SableBufferUtils.packChunk`) and
+  /// [unpack] matches, so nothing crosses a boundary with it.
+  /// TODO(parity): `SubLevelHoldingChunkMap.java` uses `ChunkPos.pack`, which
+  /// puts x low and z high. Changing the order here would change no behaviour,
+  /// only the map's iteration order, so it is left as the port's own key.
   static int pack(int x, int z) => (x << 32) | (z & 0xFFFFFFFF);
 
   /// The chunk position of a packed key.
@@ -124,8 +132,10 @@ final class SubLevelHoldingChunkMap {
       }
       if (visited.contains(subLevel)) continue;
 
-      // DEPENDS ON W3: the full dependency chain comes from the assembly code.
-      final chain = <ServerSubLevel>[subLevel];
+      // `SubLevelHoldingChunkMap.java:177`: a sub-level is never unloaded on
+      // its own; everything it depends on (intersecting sub-levels and the
+      // actors' loading dependencies) is unloaded with it.
+      final chain = SubLevelHelper.getLoadingDependencyChain(subLevel).toList();
       visited.addAll(chain);
 
       final uuids = [for (final chained in chain) chained.uniqueId];
@@ -160,8 +170,9 @@ final class SubLevelHoldingChunkMap {
       final currentPosition = subLevel.logicalPose.position();
       final moveToChunk = (currentPosition.x.floor() >> 4, currentPosition.z.floor() >> 4);
 
-      // DEPENDS ON W3: the loading dependency chain.
-      final chain = <ServerSubLevel>[subLevel];
+      // `SubLevelHoldingChunkMap.java:234`: save the whole dependency chain
+      // into the chunk the first sub-level is in.
+      final chain = SubLevelHelper.getLoadingDependencyChain(subLevel).toList();
       moved.addAll(chain);
 
       final uuids = [for (final chained in chain) chained.uniqueId];
@@ -394,8 +405,8 @@ final class SubLevelHoldingChunkMap {
   /// Moves [subLevel] into the holding chunk at [pos] (the chunk under it
   /// unloaded).
   void moveToUnloaded(ServerSubLevel subLevel, (int, int) pos) {
-    // DEPENDS ON W3: the dependency chain.
-    final chain = <ServerSubLevel>[subLevel];
+    // `SubLevelHoldingChunkMap.java:615`: move the whole dependency chain.
+    final chain = SubLevelHelper.getLoadingDependencyChain(subLevel).toList();
     final uuids = [for (final chained in chain) chained.uniqueId];
 
     final holdingChunk = _getOrLoadHoldingChunk(pos.$1, pos.$2, true)!;

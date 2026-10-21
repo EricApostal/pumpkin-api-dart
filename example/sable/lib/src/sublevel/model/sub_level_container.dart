@@ -118,6 +118,12 @@ abstract class SubLevelContainer {
   void destroyAllBlocks(SubLevel subLevel) {}
 
   /// Processes and follows through on queued sub-level removals.
+  ///
+  /// TODO(parity): `SubLevelContainer.java:139-160` iterates `allSubLevels`
+  /// directly while `removeSubLevel` removes from it, so a Java tick that
+  /// removes one sub-level would throw `ConcurrentModificationException` on the
+  /// next element. The copy below is the only change; the order and the effects
+  /// are identical.
   void processSubLevelRemovals() {
     for (final subLevel in allSubLevels.toList()) {
       if (!subLevel.isRemoved() && isInvalid(subLevel)) {

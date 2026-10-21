@@ -6,6 +6,8 @@
 // systems.
 //
 // Pure: no host imports.
+import '../api/sub_level_helper.dart';
+import '../config/sable_config.dart';
 import '../host/sub_level_host.dart';
 import '../math/pose.dart';
 import '../storage/holding/saved_pointer.dart';
@@ -17,6 +19,9 @@ import 'sub_level_container.dart';
 import '../api/sub_level_ticket.dart';
 import '../api/sub_level_ticket_loading_system.dart';
 import 'server_sub_level.dart';
+import 'sub_level.dart';
+import '../system/physics_system.dart';
+import 'server_level_plot.dart';
 
 /// Holds all sub-levels and plots in a server level.
 final class ServerSubLevelContainer extends SubLevelContainer {
@@ -50,6 +55,12 @@ final class ServerSubLevelContainer extends SubLevelContainer {
   /// The runtime ID counter (Java asks the physics system).
   int _nextRuntimeId = 0;
 
+  /// The config every sub-level of this container is created with.
+  ///
+  /// Java reads the global `SableConfig` statics; the Dart model carries the
+  /// config object so a test or a reloaded config is seen by the sub-levels.
+  final SableConfigLike? config;
+
   /// Creates a container.
   ServerSubLevelContainer(
     super.level,
@@ -57,8 +68,9 @@ final class ServerSubLevelContainer extends SubLevelContainer {
     super.logSideLength,
     super.logPlotSize,
     super.originX,
-    super.originZ,
-  );
+    super.originZ, {
+    this.config,
+  });
 
   /// Initializes the parts that need the container to exist: the holding chunk
   /// map and the force-loaded sub-levels.
@@ -80,6 +92,23 @@ final class ServerSubLevelContainer extends SubLevelContainer {
   void tick() {
     super.tick();
     _holdingChunkMap?.processChanges();
+  }
+
+  /// Whether [subLevel]'s mass tracker became invalid, which is when its blocks
+  /// are gone (`SubLevelContainer.java:146-153`).
+  @override
+  bool isInvalid(SubLevel subLevel) {
+    if (subLevel is! ServerSubLevel) return false;
+    final tracker = subLevel.massTracker;
+    return tracker != null && tracker.isInvalid();
+  }
+
+  /// Destroys the blocks of [subLevel] before it is removed
+  /// (`SubLevelContainer.java:150`).
+  @override
+  void destroyAllBlocks(SubLevel subLevel) {
+    final plot = subLevel.getPlot();
+    if (plot is ServerLevelPlot) plot.destroyAllBlocks();
   }
 
   /// Sets the physics system.
@@ -136,6 +165,7 @@ final class ServerSubLevelContainer extends SubLevelContainer {
       globalPlotZ,
       pose,
       runtimeId: nextRuntimeId(),
+      config: config,
     );
     subLevel.setUniqueId(uuid);
 
@@ -209,10 +239,19 @@ final class ServerSubLevelContainer extends SubLevelContainer {
 
   /// Collects all force-loaded sub-levels, including their dependency chains.
   ///
-  /// DEPENDS ON W3: `SubLevelHelper.getLoadingDependencyChain` lives with the
-  /// physics/assembly code. Without it, the directly ticketed sub-levels are
-  /// returned.
-  Set<ServerSubLevel> collectForceLoadedSubLevels() => activeTickets.keys.toSet();
+  /// `ServerSubLevelContainer.collectForceLoadedSubLevels`
+  /// (`ServerSubLevelContainer.java:238-257`): every ticketed sub-level pulls in
+  /// the sub-levels it intersects and the ones its actors declare as loading
+  /// dependencies.
+  Set<ServerSubLevel> collectForceLoadedSubLevels() {
+    if (activeTickets.isEmpty) return {};
+    final result = <ServerSubLevel>{};
+    for (final subLevel in activeTickets.keys) {
+      if (result.contains(subLevel)) continue;
+      result.addAll(SubLevelHelper.getLoadingDependencyChain(subLevel));
+    }
+    return result;
+  }
 
   /// The active tickets, unmodifiable.
   Map<ServerSubLevel, Set<SubLevelLoadingTicket<Object?>>> collectForceLoadTickets() =>
@@ -239,6 +278,12 @@ final class ServerSubLevelContainer extends SubLevelContainer {
     for (final subLevel in serverSubLevels()) {
       removeSubLevelAt(subLevel, SubLevelRemovalReason.unloaded);
     }
+
+    // `ServerSubLevelContainer.java:325-331`: the pipeline is disposed before
+    // the holding map is closed.
+    final physicsSystem = physics;
+    if (physicsSystem is SubLevelPhysicsSystem) physicsSystem.pipeline.dispose();
+
     _holdingChunkMap?.close();
   }
 

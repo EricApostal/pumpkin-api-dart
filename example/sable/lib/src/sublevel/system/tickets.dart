@@ -31,6 +31,12 @@ final class PhysicsChunkTicket {
   @override
   bool operator ==(Object other) => other is PhysicsChunkTicket && other.pos == pos;
 
+  /// TODO(parity): `PhysicsChunkTicket.java:57-63` hashes `pos` *and*
+  /// `lastInhabitedTick` while `equals` compares only `pos`, so a ticket whose
+  /// tick changed is equal to its old self but has a different hash. Kept as-is
+  /// because the manager looks tickets up by equality and never puts them in a
+  /// hashed collection; fixing it here would diverge from the Java behaviour
+  /// the rest of the port mirrors.
   @override
   int get hashCode => Object.hash(pos, lastInhabitedTick);
 

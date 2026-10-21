@@ -20,6 +20,10 @@ final class AeroPhysics {
   double smartPropellerThrust = 1.0;
   double smartPropellerAirflow = 0.1;
 
+  /// `recoil_magnitude`: the recoil one mounted potato cannon shot applies
+  /// (0.2).
+  double mountedPotatoCannonMagnitude = 0.2;
+
   /// Kilopixel-grams lifted per cubic metre of hot air (1.5).
   double hotAirStrength = 1.5;
 
@@ -36,6 +40,7 @@ final class AeroPhysics {
     ..andesitePropellerAirflow = andesitePropellerAirflow
     ..smartPropellerThrust = smartPropellerThrust
     ..smartPropellerAirflow = smartPropellerAirflow
+    ..mountedPotatoCannonMagnitude = mountedPotatoCannonMagnitude
     ..hotAirStrength = hotAirStrength
     ..steamStrength = steamStrength;
 
@@ -48,6 +53,7 @@ final class AeroPhysics {
     andesitePropellerAirflow = other.andesitePropellerAirflow;
     smartPropellerThrust = other.smartPropellerThrust;
     smartPropellerAirflow = other.smartPropellerAirflow;
+    mountedPotatoCannonMagnitude = other.mountedPotatoCannonMagnitude;
     hotAirStrength = other.hotAirStrength;
     steamStrength = other.steamStrength;
   }

@@ -45,6 +45,7 @@ import 'pipe_shapes.dart';
 import 'pipe_state_logic.dart';
 import 'pump_logic.dart';
 import 'spout.dart';
+import 'tank_placement.dart';
 import 'virtual_fluid.dart';
 
 /// `Pos` of a host position.
@@ -412,6 +413,11 @@ Future<BlockUseResult> _tankUse(
 ) async {
   if (!e.withItem) return BlockUseResult.tryEmptyHand;
   final player = e.player;
+  // The use event is the only one that carries the hand, and the placement event that follows it
+  // has no hand at all (`FluidTankItem` reads `ctx.getItemInHand()`, the hand of the click), so
+  // the hand of this click is remembered for `_tryTankMultiPlace`.
+  final id = player.getId();
+  _tankUseHand[(id.high, id.low)] = e.hand;
   if (!player.isCreative && !creative) return BlockUseResult.tryEmptyHand;
 
   final runtime = FluidsRuntime.instance;
@@ -534,7 +540,60 @@ Future<BlockUseResult> _tankUse(
 
 /// `FluidTankItem.tryMultiPlace`: placing a tank on the top or bottom of a wider
 /// tank places the rest of that row.
-bool _placingTankRow = false;
+///
+/// The writes below go through the host, which fires `placed` again for each of them; those must
+/// not start a layer of their own. Java needs no such guard because every `super.place` of the
+/// loop returns before the next one, so this is a set of the positions being written rather than
+/// a global flag: another player placing a tank in the same tick still gets their own layer.
+final Set<Pos> _tankLayerWrites = {};
+
+/// The hand of the last item-use on a tank block, by player (see `_tankUse`).
+final Map<(int, int), Hand> _tankUseHand = {};
+
+/// Takes [count] items of [itemKey] out of the hand [playerId] placed with, one tick after the
+/// placement.
+///
+/// The count cannot be written while the placement runs: `handle_use_item_on` syncs the hand from
+/// the stack it snapshotted before the placement
+/// (`crates/pumpkin-core/src/net/java/play/use_item_on.rs` `set_stack_in_hand(hand, after)`), which
+/// throws the write away. The symmetry wand's mirrored placement defers its work the same way.
+Future<void> _consumeHeld(
+  Server server,
+  Uuid playerId,
+  Hand hand,
+  String itemKey,
+  int count,
+) async {
+  final player = server.getPlayerByUuid(id: playerId);
+  if (player == null) return;
+  final held = player.getItemInHand(hand: hand);
+  if (held == null || await held.getRegistryKey() != itemKey) return;
+  final current = await held.getCount();
+  if (current <= 0) return;
+  // The hand may have changed under us (a drop or a slot swap in that one tick): never take more
+  // than is there.
+  final take = current < count ? current : count;
+  if (current - take <= 0) {
+    await player.setItemInHand(hand: hand, stack: null);
+  } else {
+    await held.setCount(count: current - take);
+    await player.setItemInHand(hand: hand, stack: held);
+  }
+}
+
+/// `SymmetryWandItem.presentInHotbar`: a wand mirrors the placement itself, so the tank must not
+/// expand a layer as well (`FluidTankItem.java:72`).
+Future<bool> _hasSymmetryWand(Player player) async {
+  final items = player.getInventory().asInventory();
+  for (var slot = 0; slot < 9; slot++) {
+    final stack = items.getItem(slot: slot);
+    if (stack != null &&
+        await stack.getRegistryKey() == 'create:wand_of_symmetry') {
+      return true;
+    }
+  }
+  return false;
+}
 
 Future<void> _tryTankMultiPlace(
   Server server,
@@ -542,71 +601,65 @@ Future<void> _tryTankMultiPlace(
   CreateBlock block,
   String typeKey,
 ) async {
-  if (_placingTankRow) return;
+  final pos = posOf(e.pos);
+  if (_tankLayerWrites.contains(pos)) return;
   final playerId = e.player;
   if (playerId == null) return;
   final player = server.getPlayerByUuid(id: playerId);
   if (player == null || player.asEntity().isSneaking()) return;
+  if (await _hasSymmetryWand(player)) return;
 
   final runtime = FluidsRuntime.instance;
   final world = e.targetWorld;
   final worldId = runtime.worlds.touch(world);
-  final pos = posOf(e.pos);
 
-  // The tank the new block was placed against, if it is part of a wide tank.
-  FluidTankBlockEntity? controller;
-  var onTop = false;
-  for (final candidate in [pos.below, pos.above]) {
+  // `ConnectivityHandler.partAt(type, level, pos).getControllerBE()`: the multiblock a tank
+  // belongs to, when it is one of the item's own tank type (a regular tank does not extend a
+  // creative one).
+  TankExtent? extentAt(Pos p) {
     final be = runtime.store.at(
       worldId,
-      BlockPos(x: candidate.$1, y: candidate.$2, z: candidate.$3),
+      BlockPos(x: p.$1, y: p.$2, z: p.$3),
     );
-    if (be is! FluidTankBlockEntity) continue;
-    final c = be.controllerBe;
-    if (c == null || c.width <= 1) continue;
-    if (c.partPos.aboveBy(c.height) == pos) {
-      controller = c;
-      onTop = true;
-      break;
-    }
-    if (c.partPos.below == pos) {
-      controller = c;
-      onTop = false;
-      break;
-    }
+    if (be is! FluidTankBlockEntity || be.typeKey != typeKey) return null;
+    final controller = be.controllerBe;
+    if (controller == null) return null;
+    return (
+      controller: controller.partPos,
+      width: controller.width,
+      height: controller.height,
+    );
   }
-  if (controller == null) return;
 
-  final width = controller.width;
-  final start = onTop
-      ? controller.partPos.aboveBy(controller.height)
-      : controller.partPos.below;
-  final targets = <Pos>[];
   final level = fluidWorldOf(world);
-  for (var x = 0; x < width; x++) {
-    for (var z = 0; z < width; z++) {
-      final p = start.offset(x, 0, z);
-      if (PipeBlocks.isTank(level.stateAt(p))) continue;
-      if (!level.canBeReplaced(p)) return;
-      targets.add(p);
-    }
-  }
-  if (targets.isEmpty) return;
+  final targets = tankLayerTargets(
+    pos: pos,
+    below: extentAt(pos.below),
+    above: extentAt(pos.above),
+    isTank: (p) => PipeBlocks.isTank(level.stateAt(p)),
+    canBeReplaced: level.canBeReplaced,
+  );
+  if (targets == null || targets.isEmpty) return;
 
-  final inventory = player.getInventory();
-  final items = inventory.asInventory();
-  final slot = inventory.getSelectedSlot();
-  final stack = items.getItem(slot: slot);
+  // Java reads the stack it was placed with (`ctx.getItemInHand()`, the hand of the click); the
+  // placement event carries no hand, so the one the use event recorded stands in.
+  final hand = _tankUseHand.remove((playerId.high, playerId.low)) ?? Hand.right;
+  final held = player.getItemInHand(hand: hand);
+  final itemKey = held == null ? null : await held.getRegistryKey();
   if (!player.isCreative) {
-    final count = stack == null ? 0 : await stack.getCount();
-    if (count < targets.length) return;
+    // `if (!player.isCreative() && stack.getCount() < tanksToPlace) return;`
+    // (`FluidTankItem.java:121`): Java reads the stack *after* its own `super.place` spent the
+    // tank of the clicked block, so one item is already gone.
+    final count = held == null ? 0 : await held.getCount();
+    if (count - 1 < targets.length) return;
   }
 
-  _placingTankRow = true;
+  final state = BState(block.key, block.definition.defaultState);
+  final stateId = BlockRegistry.resolveState(state.key, state.props);
+  if (stateId == null) return;
+
+  _tankLayerWrites.addAll(targets);
   try {
-    final state = BState(block.key, block.definition.defaultState);
-    final stateId = BlockRegistry.resolveState(state.key, state.props);
-    if (stateId == null) return;
     for (final p in targets) {
       final bp = BlockPos(x: p.$1, y: p.$2, z: p.$3);
       await world.setBlockState(
@@ -616,21 +669,22 @@ Future<void> _tryTankMultiPlace(
       );
       runtime.store.createAt(world, bp, typeKey);
     }
-    if (!player.isCreative && stack != null) {
-      final count = await stack.getCount();
-      if (count - targets.length <= 0) {
-        await items.setItem(slot: slot, item: null);
-      } else {
-        await stack.setCount(count: count - targets.length);
-        await items.setItem(slot: slot, item: stack);
-      }
-    }
     for (final p in targets) {
       final be = runtime.store.at(worldId, BlockPos(x: p.$1, y: p.$2, z: p.$3));
       if (be is FluidTankBlockEntity) be.updateConnectivityNow();
     }
   } finally {
-    _placingTankRow = false;
+    _tankLayerWrites.removeAll(targets);
+  }
+
+  // One tank per placed block (`FluidTankItem.java:114-122` spends one `super.place` and one item
+  // on each, after the clicked block's own placement and item). The host has spent the clicked
+  // block's tank by the time this tick ends, so the rest are taken next tick.
+  if (!player.isCreative && itemKey != null) {
+    server.runLater(
+      1,
+      (s) => _consumeHeld(s, playerId, hand, itemKey, targets.length),
+    );
   }
 }
 

@@ -21,6 +21,31 @@ void main() {
     expect(Direction.north.toYRot, 180);
   });
 
+  test('Direction.nearest is getApproximateNearest, starting at Float.MIN_VALUE', () {
+    // `Direction.getApproximateNearest` (`Direction.java:315-328`) starts from `NORTH` with
+    // `highestDot = Float.MIN_VALUE` -- the smallest *positive* float -- and only replaces it on a
+    // strictly greater dot product. So a vector that scores zero or less everywhere (a track shape
+    // with no axis normalizes to the zero vector) keeps `north`, where a negative starting bound
+    // would return the first constant, `down`, a vertical direction no carriage can have.
+    expect(Direction.nearest(0, 0, 0), Direction.north);
+    expect(Direction.nearest(-1, 0, 0), Direction.west);
+    expect(Direction.nearest(0, 0, -1), Direction.north);
+    expect(Direction.nearest(0, 1, 0), Direction.up);
+    expect(Direction.nearest(0, -1, 0), Direction.down);
+    expect(Direction.nearest(0.7, 0.1, 0.1), Direction.east);
+    expect(Direction.nearest(0.1, 0.1, 0.7), Direction.south);
+    // Equal dot products keep the earlier constant of `VALUES` (`down, up, north, south, west,
+    // east`), as `>` does in Java: south is scanned before east.
+    expect(Direction.nearest(0.7, 0, 0.7), Direction.south);
+    // A horizontal axis is never vertical, whatever its sign: what the station's
+    // `getAssemblyDirection` hands the carriage.
+    for (final axis in [Axis.x, Axis.z]) {
+      for (final direction in axis.directions) {
+        expect(Direction.nearest(direction.stepX * 1.0, 0, direction.stepZ * 1.0).axis, axis);
+      }
+    }
+  });
+
   test('rotation and mirror', () {
     expect(BlockRotation.clockwise90.getRotated(BlockRotation.clockwise90), BlockRotation.clockwise180);
     expect(BlockRotation.clockwise90.rotate(Direction.north), Direction.east);

@@ -28,11 +28,11 @@ abstract final class FilterComponents {
   /// Gap: Java persists the selection in the `attribute_filter_matched_attributes` component
   /// (`AttributeFilterMenu.saveData`, Java `AttributeFilterMenu.java:135-142`), whose stream codec
   /// is a *registry dispatch* on `create:item_attribute_type` (a VarInt type id, then a per-type
-  /// payload, Java `ItemAttribute.java:29`). The plugin does not register that registry with the
-  /// host, so it has neither the numeric type ids nor a host codec that could delimit the
-  /// per-type payloads; the component is declared `approximate` for the same reason
-  /// (`content/components.dart:96-105`). Until the host offers a `dispatch` codec op and the
-  /// registry ids, the selection rides in this private key instead of the real component.
+  /// payload, Java `ItemAttribute.java:29`). The plugin reads it back (`attributeFilterCopier` in
+  /// `content/components.dart`, using the synced registry ids), but the codec it gives the *host*
+  /// is still an approximation: the host has no `dispatch` op, so it cannot check a value the
+  /// plugin writes. Until it does, the selection rides in this private key instead of the real
+  /// component.
   static const String privateAttributes = 'CreateLogisticsFilter';
 }
 

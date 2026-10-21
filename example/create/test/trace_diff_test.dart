@@ -181,6 +181,17 @@ String spinningPayload({
   return [for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0')].join();
 }
 
+/// The nine bytes of `neoforge:auxiliary_light_data` for the chunk at `(chunkX, chunkZ)`: the packed
+/// `ChunkPos` (x in the low 32 bits, z in the high ones, big-endian) and an empty entry map.
+String auxiliaryLightHex(int chunkX, int chunkZ) {
+  final packed = (chunkX & 0xffffffff) | ((chunkZ & 0xffffffff) << 32);
+  final bytes = <int>[
+    for (var shift = 56; shift >= 0; shift -= 8) (packed >> shift) & 0xff,
+    0,
+  ];
+  return [for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0')].join();
+}
+
 NormalisedTrace normalise(
   String trace, {
   String label = 'trace',
@@ -234,6 +245,34 @@ void main() {
       expect(reference.timeline, isNotEmpty);
     });
 
+    test('agree when an id inside a payload is numbered by the payload, not the trace', () {
+      // A contraption's block list points into its own palette, so the ids in it are the payload's
+      // numbering. Two runs reach the leaf with different event histories behind them (the
+      // reference numbered another id first), and a trace-wide counter would number the same value
+      // differently and invent a difference.
+      final nbt = NbtValue.compound({
+        'Contraption': NbtValue.compound({
+          'Blocks': NbtValue.compound({
+            'BlockList': NbtValue.list([
+              NbtValue.compound({
+                'Pos': NbtValue.intArray([0, 0, 0]),
+                'State': NbtValue.int32(0),
+              }),
+            ]),
+          }),
+        }),
+      });
+      final bytes = NetworkNbt.encode(nbt);
+      final useBase = CanonicalIds()..token('id', 1234);
+      final reference = PayloadDigest.of(bytes, useBase, origin: origin);
+      final candidate = PayloadDigest.of(bytes, CanonicalIds(), origin: origin);
+      expect(
+        reference.firstDifference(candidate),
+        isNull,
+        reason: reference.describeLeaves(),
+      );
+    });
+
     test('agree when the payload is not even NBT, as long as the bytes match', () {
       final bytes = '0a0003016102';
       final differential = Differential.compare(
@@ -275,6 +314,60 @@ void main() {
       expect(
         differential.reference.events.map((e) => e.kind),
         contains('add_entity'),
+      );
+    });
+  });
+
+  group('a world-dependent payload', () {
+    // A NeoForge client is sent `neoforge:auxiliary_light_data` with every chunk, and the payload
+    // names the chunk. The two arms build the rig where their own client stands and generate their
+    // own world, so those bytes differ between two servers that behaved identically. The event must
+    // still be compared (a server that never sends it is the rendering bug), only not its content.
+    String lightTrace(TracePos world) => '${[
+      line({
+        'kind': 'chunk',
+        'chunk': [world.x >> 4, world.z >> 4],
+      }),
+      line({
+        'kind': 'custom_payload',
+        'channel': 'neoforge:auxiliary_light_data',
+        'data': auxiliaryLightHex(world.x >> 4, world.z >> 4),
+      }),
+      line({
+        'kind': 'block_update',
+        'pos': [world.x, world.y, world.z],
+        'state': 1,
+      }),
+    ].join('\n')}\n';
+
+    test('agrees although each arm names its own chunk', () {
+      final elsewhere = TracePos(origin.x - 37, origin.y + 12, origin.z + 91);
+      final differential = Differential.compare(
+        normalise(lightTrace(origin)),
+        normalise(lightTrace(elsewhere), at: elsewhere),
+      );
+      expect(differential.agrees, isTrue, reason: differential.report(all: true));
+      // …and the event is compared, not dropped: the channel is in the comparable events.
+      expect(
+        differential.reference.events.map((event) => event.key),
+        contains('neoforge:auxiliary_light_data'),
+      );
+    });
+
+    test('is still a difference when one server never sent it', () {
+      final without = lightTrace(
+        origin,
+      ).split('\n').where((line) => !line.contains('auxiliary_light_data')).join('\n');
+      final differential = Differential.compare(
+        normalise(lightTrace(origin)),
+        normalise(without),
+      );
+      expect(
+        differential.agrees,
+        isFalse,
+        reason:
+            'a server that never tells a NeoForge client the chunk light is a difference:\n'
+            '${differential.report(all: true)}',
       );
     });
   });
@@ -492,7 +585,43 @@ void main() {
       expect(differential.agrees, isFalse);
       final first = differential.first!;
       expect(first.subject, contains('add_entity'));
-      expect(first.reference, contains('Contents.Value: 1 vs 2'));
+      // A number's NBT type is part of the comparison, so the difference names both the path and
+      // the width (`1 (int) vs 2 (int)`) — the mod writes a `float` where a plugin writes a
+      // `double` and the report has to say which leaf it was.
+      expect(first.reference, contains('Contents.Value: 1 (int) vs 2 (int)'));
+    });
+
+    test('a number of another NBT width is a difference, though it renders the same', () {
+      // The mod's client data writes `Boiler.Supply` as a `float`; a port that writes a `double`
+      // sends the same *number* in a wider leaf, and a comparison that only looked at the rendered
+      // value would call the two payloads equal.
+      String supply({required bool wide}) {
+        final nbt = NbtValue.compound({
+          'Supply': wide ? NbtValue.double64(0.0) : NbtValue.float(0.0),
+        });
+        final bytes = NetworkNbt.encode(nbt);
+        return [
+          for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0'),
+        ].join();
+      }
+
+      final differential = Differential.compare(
+        normalise(
+          contraptionTrace(
+            states: const [1, 2, 3],
+            payload: supply(wide: false),
+          ),
+        ),
+        normalise(
+          contraptionTrace(states: const [1, 2, 3], payload: supply(wide: true)),
+        ),
+      );
+      expect(differential.agrees, isFalse);
+      expect(
+        differential.first!.reference,
+        contains('Supply: 0.0 (float) vs 0.0 (double)'),
+        reason: differential.report(all: true),
+      );
     });
 
     test('a block list of a different shape is a difference', () {

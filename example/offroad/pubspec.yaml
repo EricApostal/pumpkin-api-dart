@@ -1,0 +1,17 @@
+name: offroad
+description: "Server side of Offroad for Pumpkin, written in Dart (dart2wasm component)."
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0-0
+
+dependencies:
+  create:
+  sable:
+  simulated:
+  pumpkin_api:
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.25.6

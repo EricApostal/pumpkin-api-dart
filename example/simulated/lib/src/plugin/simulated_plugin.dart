@@ -13,15 +13,19 @@ import 'package:create/src/core/block_entity.dart';
 import 'package:create/src/core/registry.dart';
 import 'package:create/src/core/registry_apply.dart';
 import 'package:create/src/core/worlds.dart';
+import 'package:create/src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../config/sim_config.dart';
 import '../config/sim_config_service.dart';
 import '../host/pumpkin_host.dart';
 import '../host/simulated_host.dart';
+import '../index/sim_channels.dart';
+import '../network/sim_handled.dart';
 import '../index/sim_lift_providers.dart';
 import '../index/sim_registry.dart';
 import '../service/sim_services.dart';
+import 'sim_payload_handlers.dart';
 
 /// The plugin of Simulated.
 final class SimulatedPlugin extends Plugin {
@@ -44,6 +48,7 @@ final class SimulatedPlugin extends Plugin {
       Permissions.registryBlockEntities,
       Permissions.registryEntities,
       Permissions.registryExtra,
+      Permissions.neoforge,
     ],
   );
 
@@ -65,13 +70,42 @@ final class SimulatedPlugin extends Plugin {
     );
 
     // Phase 2: apply.
+    for (final entry in SimRegistry.reports(_registry).entries) {
+      final report = entry.value;
+      if (report.isClean) continue;
+      // Not an error: the port registers a subset of the Java content, and the
+      // ids of what it does register are pinned to the Java order. The count is
+      // what a client with the Java mods would number differently.
+      log.info(
+        '${entry.key.name}: ${report.missing.length} keys of the Java order are not ported yet'
+        '${report.extra.isEmpty ? '' : ', ${report.extra.length} registered that the Java order does not list'}',
+      );
+    }
     await applyRegistry(_registry, context, blockEntities, log);
     _worlds.install(context);
     blockEntities.install(context);
 
-    registerSimLiftProviders();
-
     SimulatedHost.instance = PumpkinSimulatedHost(_worlds, blockEntities, log);
+
+    // Phase 3: answer the serverbound payloads whose content is ported (the
+    // assembler, the wheel, the lever, the spring, honey glue). They go through
+    // Create's payload registry, which is also what the declaration is built
+    // from, so a channel cannot be declared and handled twice.
+    SimPayloadHandlers(blockEntities: blockEntities, log: log).install(_registry, context);
+
+    // Phase 4: declare the mod and its 37 payload channels, so a client that has
+    // Simulated installed completes the NeoForge negotiation. This goes through
+    // Create's generic addon hook: Create itself never names Simulated. The six
+    // channels registered above are already in the registry, so the addon
+    // declares only the other 31.
+    context.declareNeoForge(
+      createAddonNeoForgeDeclaration(
+        SimulatedAddon(handled: SimHandledPayloads.idSet),
+        registry: _registry,
+      ),
+    );
+
+    registerSimLiftProviders();
 
     log.info(
       'Simulated loaded: ${_registry.blocks.entries.length} blocks, '

@@ -10,8 +10,10 @@
 //
 // This file is the adapter only, and it imports nothing that needs the host, so
 // a VM test can load it. The other half of the compat, the driver that finds
-// the block entities around a computer and attaches their peripherals, is
-// `simulated_driver.dart`.
+// the block entities around a computer and attaches their peripherals, is split
+// the same way: `simulated_attach.dart` (which side sees which neighbour, and
+// the attach/detach rules, driven by the tests) and `simulated_driver.dart`
+// (the same over `SimulatedHost`, which imports the host and is not).
 //
 // Java: dev.simulated_team.simulated.compat.computercraft.AttachedComputerHandler
 //       and NeoForgeSimPeripheralService (the capability registration).

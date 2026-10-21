@@ -40,9 +40,14 @@ final class HostTrackLevel extends TrackLevel {
 
   late final HostBlockGetter _blocks = HostBlockGetter(world);
 
+  /// `level.dimension()`: the dimension key (`minecraft:overworld`), not the world's folder
+  /// name. The graph keys its nodes, edges and edge points by it, and it is what goes on the
+  /// wire in `create:sync_rail_graph`'s dimension palette; a client resolving a node's dimension
+  /// to `minecraft:overworld` cannot match a node stored as `world`.
   @override
-  String get dimension => world.getId();
+  String get dimension => world.getDimension();
 
+  /// The key of the block entity store, which is keyed by `World.getId()` (the folder name).
   String get _worldId => world.getId();
 
   @override

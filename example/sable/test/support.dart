@@ -22,8 +22,11 @@ final class FakeLevel implements SableLevel {
   @override
   int get sectionsCount => (maxY - minY) >> 4;
 
+  /// The biome every position reports, or `null` for none.
+  String? biome;
+
   @override
-  String? biomeAt(int x, int y, int z) => null;
+  String? biomeAt(int x, int y, int z) => biome;
 
   FakeLevel([this.dimensionId = 'minecraft:overworld']);
 }

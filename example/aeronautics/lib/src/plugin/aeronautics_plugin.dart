@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:create/src/core/block_entity.dart';
+import 'package:create/src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 import 'package:create/src/core/config.dart';
 import 'package:create/src/core/module.dart';
 import 'package:create/src/core/registry_apply.dart';
@@ -18,6 +19,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../aeronautics_module.dart';
 import '../config/aero_config.dart';
+import 'aeronautics_addon.dart';
 
 /// The plugin of Aeronautics.
 final class AeronauticsPlugin extends Plugin {
@@ -38,8 +40,11 @@ final class AeronauticsPlugin extends Plugin {
       Permissions.registryItems,
       Permissions.registryBlocks,
       Permissions.registryBlockEntities,
+      Permissions.registryComponents,
       Permissions.registryEntities,
+      Permissions.registryFluids,
       Permissions.registryExtra,
+      Permissions.neoforge,
     ],
   );
 
@@ -62,6 +67,11 @@ final class AeronauticsPlugin extends Plugin {
     core.worlds.install(context);
     blockEntities.install(context);
     core.savedData.install(context, saveIntervalTicks: 20);
+
+    // Phase 3: declare the mod and its payload channels, so a client that has
+    // Aeronautics installed completes the NeoForge negotiation. This goes
+    // through Create's generic addon hook: Create never names Aeronautics.
+    context.declareNeoForge(createAddonNeoForgeDeclaration(const AeronauticsAddon(), registry: core.registry));
 
     module.onLoad(CreateContext(core, () => this.context, module.name));
 

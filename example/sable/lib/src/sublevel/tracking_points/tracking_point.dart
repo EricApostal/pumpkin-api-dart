@@ -63,6 +63,9 @@ final class TakenLoginPoint {
 final class TrackingPointStore {
   final Map<String, TrackingPoint> _points = {};
 
+  /// Whether the store changed since it was last saved (Java `setDirty(true)`).
+  bool dirty = false;
+
   /// All points, by UUID.
   Iterable<MapEntry<String, TrackingPoint>> getAllTrackingPoints() => _points.entries.toList();
 
@@ -70,10 +73,16 @@ final class TrackingPointStore {
   TrackingPoint? getTrackingPoint(String uuid) => _points[uuid];
 
   /// Sets the point of [uuid].
-  void setTrackingPoint(String uuid, TrackingPoint point) => _points[uuid] = point;
+  void setTrackingPoint(String uuid, TrackingPoint point) {
+    _points[uuid] = point;
+    dirty = true;
+  }
 
   /// Removes the point of [uuid].
-  void removeTrackingPoint(String uuid) => _points.remove(uuid);
+  void removeTrackingPoint(String uuid) {
+    _points.remove(uuid);
+    dirty = true;
+  }
 
   /// The points whose local position is inside [bounds].
   Iterable<MapEntry<String, TrackingPoint>> pointsIn(BoundingBox3ic bounds) =>
@@ -150,6 +159,7 @@ final class TrackingPointStore {
     );
     final key = uuid ?? player.uuid;
     _points[key] = point;
+    dirty = true;
     return key;
   }
 
@@ -171,6 +181,7 @@ final class TrackingPointStore {
     );
     final key = uuid ?? randomKey();
     _points[key] = point;
+    dirty = true;
     return key;
   }
 
@@ -187,6 +198,7 @@ final class TrackingPointStore {
     SubLevelData? Function(GlobalSavedSubLevelPointer pointer)? loadSaved,
   }) {
     final point = remove ? _points.remove(uuid) : _points[uuid];
+    if (remove) dirty = true;
     if (point == null) return null;
 
     if (!point.inSubLevel) {

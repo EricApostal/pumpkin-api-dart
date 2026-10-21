@@ -201,10 +201,30 @@ final class CreateRegistry {
     String path,
     PayloadCodec<T> codec,
     FutureOr<void> Function(Player player, T value) handler, {
+    String version = '1',
     bool optional = false,
-  }) => payloads.serverbound<T>(path, codec, handler, optional: optional);
+  }) => payloads.serverbound<T>(path, codec, handler, version: version, optional: optional);
 
   /// A server-to-client channel `create:<path>`; call `.send(player, value)`.
-  ClientboundChannel<T, Player> clientbound<T>(String path, PayloadCodec<T> codec, {bool optional = false}) =>
-      payloads.clientbound<T>(path, codec, optional: optional);
+  ClientboundChannel<T, Player> clientbound<T>(
+    String path,
+    PayloadCodec<T> codec, {
+    String version = '1',
+    bool optional = false,
+  }) => payloads.clientbound<T>(path, codec, version: version, optional: optional);
+
+  /// Declares a channel the declaration carries without a codec or a handler
+  /// here: another package owns the payload (`mymod:assemble`).
+  ///
+  /// [id] is a full resource location; the play phase is the only one Create
+  /// declares.
+  void declareChannel(
+    String id, {
+    String version = '1',
+    required bool serverbound,
+    bool optional = false,
+  }) => payloads.declare(DeclaredPayload(id, version, serverbound: serverbound, optional: optional));
+
+  /// [declareChannel] for a channel table of another package (`CreateAddon`).
+  void declareChannels(Iterable<DeclaredPayload> channels) => payloads.declareAll(channels);
 }

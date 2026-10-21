@@ -83,6 +83,11 @@ final class HostCarriageContraption extends Contraption {
   Future<bool> assemble(ContraptionLevel level, Pos pos) async =>
       assembleSync(level, pos);
 
+  /// `CarriageContraption.isAnchoringBlockAt`: the anchor of a carriage is its own bogey, which is
+  /// part of the structure. The base class would skip it and capture nothing.
+  @override
+  bool isAnchoringBlockAt(Pos pos) => train.isAnchoringBlockAt(pos);
+
   /// `CarriageContraption.capture`: counts bogeys, conductors and controls before the block is
   /// captured by the base class.
   @override
@@ -693,8 +698,11 @@ final class HostCarriagePassenger
   Vec3 get position =>
       _with((e) => e.getPosition()) ?? _lastPosition;
 
+  /// `entity.level().dimension()`: compared with `CarriageContraptionEntity.dimension`
+  /// (`TrainLevel.dimension`) when a player is carried through a portal, so it is the dimension
+  /// key, not the world's folder name.
   @override
-  String get dimension => world.getId();
+  String get dimension => world.getDimension();
 
   /// `passenger.saveAsPassenger(output)`. The host has no entity serialiser: players never save
   /// themselves (Java returns `null` for them too) and a mob cannot be written out, so it is left

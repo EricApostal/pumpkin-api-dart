@@ -38,6 +38,10 @@ abstract final class AeronauticsHooks {
   /// Called when a world's unloaded balloons changed and must be saved.
   static void Function(String worldId)? onBalloonsDirty;
 
+  /// The block entity store, for the block callbacks that need a neighbour's
+  /// entity (`BlockBehavior` has no store of its own). Set by the module.
+  static BlockEntityStore? store;
+
   /// The runtime of [world], created on first use.
   static AeroWorldRuntime of(World world) => _runtimes.putIfAbsent(world.getId(), () {
     final runtime = AeroWorldRuntime(balloonWorldOf(world));

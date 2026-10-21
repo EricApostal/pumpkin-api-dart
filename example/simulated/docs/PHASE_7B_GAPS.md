@@ -1,11 +1,14 @@
-// What this package does not have yet: the second half of Simulated's server
-// content, and the host features the first half needs.
+// What this package does not have yet: the rest of Simulated's server content,
+// and the host features the port needs.
 //
-// The phase-7a slice is in place (see the barrel `lib/simulated.dart`); this
-// file is the checklist for phase 7b, so the gaps are written down where the
-// next workstream will look.
+// The phase-7a slice and the payload layer are in place (see the barrel
+// `lib/simulated.dart`); this file is the checklist for what follows, so the
+// gaps are written down where the next workstream will look.
+//
+// Every gap below that has a place in the code is also marked there with
+// `TODO(parity)`.
 
-# Simulated: what phase 7a covers, and what is missing
+# Simulated: what is ported, and what is missing
 
 ## In place
 
@@ -17,29 +20,109 @@
 | `SteeringWheelBlockEntity` | `content/blocks/steering_wheel/` — angle machine, generated speed, comparator output |
 | `ThrottleLeverBlock(Entity)` | `content/blocks/throttle_lever/` — lever state, redstone output |
 | `SymmetricSailBlock` | `content/blocks/symmetric_sail/` — lift provider + dye |
-| `HoneyGlueEntity`, `HoneyGlueMaxSizing` | `content/entities/honey_glue/` |
-| `SpringBlockEntity`, `SpringItemHandler` (length) | `content/blocks/spring/` |
+| `HoneyGlueEntity`, `HoneyGlueMaxSizing` | `content/entities/honey_glue/` — volume model, tracker, size rules, and the decision of all three honey glue payloads (`honey_glue_packet_logic.dart`) |
+| `SpringBlockEntity`, `SpringItemHandler` (length) | `content/blocks/spring/` — length state machine and the placement rules of `PlaceSpringPacket` (`spring_placement.dart`) |
 | `TorsionSpringBlockEntity` | `content/blocks/torsion_spring/` |
 | `SwivelBearingBlockEntity`, `SwivelBearingPlateBlockEntity` | `content/blocks/swivel_bearing/` |
+| `PlaceMergingGluePacket` (rules) | `content/blocks/merging_glue/merging_glue_placement.dart` |
+| `LinkedTypewriterEntries`, `KeyboardEntry` | `content/blocks/redstone/linked_typewriter/linked_typewriter_entries.dart` — key table, pending activation/deactivation sets, wire codec |
+| `LinkedTypewriterBlockEntity` (state) | `.../linked_typewriter_logic.dart` — current user, typed text, press/release/bind, disconnect, save packet |
+| `ServerRopeStrand` (pure part) | `content/blocks/rope/rope_strand.dart` — points, attachments, sync threshold, extension, first-segment lerp |
+| `DiagramConfig`, `NoteConfigs` | `content/entities/diagram/diagram_config.dart` — both the stream codec and `makeDefault` |
+| `DiagramEntity` (server part) | `content/entities/diagram/diagram_logic.dart` — frame building (`makeDiagramDataPacket`) and the recording queue |
+| `EndSeaPhysics` | `content/end_sea/end_sea_physics.dart` — the record, its NBT (`fromCodec`) form and the clientbound payload |
+| `PhysicsStaffAction` | `content/physics_staff/physics_staff_action.dart` |
+| `network/packets/**` (37) | `network/` — every payload's `StreamCodec`, `sim_payloads.dart` table, `sim_wire.dart` primitives |
+| `network/packets/*#handle` (the 6 with a ported target) | `plugin/sim_payload_handlers.dart` — lookup, reach check, apply; the other 31 are declared-only |
+| `util/hold_interaction/HoldInteractionRange` | `util/hold_interaction.dart` — the reach check, projected out of sub-levels |
+| `SimPacketManager` (the channel table) | `index/sim_channels.dart` (`SimulatedAddon`) — declared through Create's generic `CreateAddon` hook, the handled six through `CreateRegistry.serverbound` |
 | `api/` (10) | `api/` — `BearingSlowdownController`, `SimpleResourceManager`, sounds, `IDirectionalAnalogOutput`, `CustomStressImpactTooltipProvider`, `AnalogSignalSource` |
 | `config/` (10) | `config/sim_config.dart` — all five server sections, `SimStress` |
 | `service/` (14) | `service/sim_services.dart` — `canStickTo`, dye colours, host seam; the loader-only ones are gone |
-| `index/`, `registrate/` | `index/sim_blocks.dart`, `sim_items.dart`, `sim_registry.dart`, `sim_lift_providers.dart` |
+| `index/`, `registrate/` | `index/sim_blocks.dart`, `sim_items.dart`, `sim_registry.dart`, `sim_lift_providers.dart`, `sim_channels.dart` |
 
-## Missing from phase 7b
+## The payload layer
 
-Not started, in the order of the ticket:
+All 37 channels of `SimPacketManager` are ported and tested:
 
-- **redstone (33 files)** — `linked_typewriter`, `redstone_accumulator`, `redstone_inductor`, `directional_receiver`, `modulating_receiver`, `analog_transmission`, `directional_gearshift`.
-- **rope (19)** — `rope_winch`, `rope_connector`, the rope physics object wiring (`api/physics_rope.dart` exists in sable).
-- **lasers (12)** — `laser_pointer`, `laser_sensor`, `optical_sensor` (needs `SimBlockConfig.laserPointerRange` / `opticalSensorRange`, both already in the config).
+- `test/payload_codec_test.dart` pins every payload's bytes against an
+  independently written big-endian buffer, so a field out of order, a missing
+  `ByteBufCodecs.list` count prefix or a raw-double helper where a list codec is
+  used fails the test rather than the client.
+- `test/sim_subsystems_test.dart` covers the pure state machines above.
+
+The six channels with a handler (`SimHandledPayloads`) are registered on Create's
+payload registry in `SimulatedPlugin.onLoad`
+(`registry.serverbound(id, codec, handler, version: '0.1')`), and `CreateNetwork`
+dispatches them; the other 31 are declared through
+`createAddonNeoForgeDeclaration(SimulatedAddon(handled: SimHandledPayloads.idSet),
+registry: _registry)`. Both paths end up in the same registry, so the
+declaration carries all 37 exactly once — `test/payload_codec_test.dart`
+("addon hook") pins that, because a channel registered twice throws
+`DuplicateChannelException` and one in neither would vanish from the answer.
+This needs `Permissions.neoforge`. Create names nothing of Simulated: the addon
+hook (`CreateAddon`) is generic, and the host merges the declarations of both
+plugins.
+
+What the declaration does **not** do: handle every payload. `SimPayloadHandlers`
+(`lib/src/plugin/sim_payload_handlers.dart`) subscribes to
+`Events.playerCustomPayload`, decodes with `SimPayloads.byId` and dispatches the
+six serverbound payloads whose content exists:
+
+| payload | target | Java |
+|---|---|---|
+| `simulated:assemble` | `PhysicsAssemblerBlockEntity.assembleOrDisassemble` | `AssemblePacket.handle` |
+| `simulated:throttle_lever_signal` | `ThrottleLeverBlockEntity.setSignal`, reach-checked | `ThrottleLeverSignalPacket.handle` |
+| `simulated:steering_wheel_update` | `logic.targetAngleToUpdate` + `setHeld` | `SteeringWheelPacket.handle` |
+| `simulated:place_spring` | `SpringPlacement` rules, two spring blocks, item shrink | `PlaceSpringPacket.handle` |
+| `simulated:honey_glue_spawn` | `HoneyGluePacketLogic.onSpawn`, plugin entity, tracker | `HoneyGlueSpawnPacket.handle` |
+| `simulated:honey_glue_change_bounds` | `HoneyGluePacketLogic.onChangeBounds`, resize or kill | `HoneyGlueChangeBoundsPacket.handle` |
+
+The remaining serverbound payloads decode but are ignored, because their block
+entity, entity or item is not ported yet: `be_observed` (no `Observable`
+interface), `configure_altitude_sensor`, `configure_modulating_linked_reciever`,
+`nameplate_change_name`, the five typewriter payloads, `place_merging_glue` (no
+merging glue block), `update_player_handle`, `ride_rope`, `break_rope`, the two
+physics staff payloads, `request_diagram_data` and `save_diagram`. Each is one
+case in `SimPayloadHandlers.dispatch` once its target lands.
+
+The reach check is `HoldInteractionRange.within` (`lib/src/util/hold_interaction.dart`):
+the block interaction range attribute plus a buffer, measured from the eye, with
+the target projected out of its sub-level (`Sable.HELPER.projectOutOfSubLevel`).
+
+## Missing
+
+- **Handlers for the remaining payloads** — see the table above. The pure
+  decision each one needs is already there (`HoneyGluePacketLogic`,
+  `TypewriterSaveLogic`, `SpringPlacement`, `MergingGluePlacement`,
+  `DiagramForces`); what is missing is the block entity or entity they act on.
+- **redstone (33 files)** — `redstone_accumulator`, `redstone_inductor`,
+  `directional_receiver`, `modulating_receiver`, `analog_transmission`,
+  `directional_gearshift`, and the typewriter *block/entity/item/menu* (the key
+  table and its state machine are ported, the block is not).
+- **rope (19)** — `rope_winch`, `rope_connector`, `RopeStrandHolderBehavior`, the
+  `ServerLevelRopeManager`/`ServerRopeTrackingSystem` send paths, and the
+  constraint half of `ServerRopeStrand` (`reattachConstraints`: a free
+  constraint with motors on every axis, `TODO(parity)` in `rope_strand.dart`).
+- **lasers (12)** — `laser_pointer`, `laser_sensor`, `optical_sensor` (needs
+  `SimBlockConfig.laserPointerRange` / `opticalSensorRange`, both already in the
+  config).
 - **auger (10)** — `auger_shaft`, `auger_cog`, encasing.
-- **docking (9)** — `docking_connector`, `paired_docking_connector`; needs `SimInventoryService` equivalents (battery/tank/inventory) that the host does not expose.
-- **nav table (7)** — `nav_table`, `navigation_target` datapack registry, `SimNavigationTargets`.
-- **sensors** — `altitude_sensor`, `gimbal_sensor`, `velocity_sensor`.
-- **diagrams** — `contraption_diagram` item and its GUI (the item key is registered, the behaviour is not).
-- **end sea** — the end dimension overrides.
-- **misc content** — `handle`, `nameplate`, `portable_engine`, `merging_glue`, `physics_staff`, `plunger_launcher`, `absorbed` blocks.
+- **docking (9)** — `docking_connector`, `paired_docking_connector`; needs
+  `SimInventoryService` equivalents (battery/tank/inventory) that the host does
+  not expose.
+- **nav table (7)** — `nav_table`, `navigation_target` datapack registry,
+  `SimNavigationTargets`.
+- **sensors** — `altitude_sensor`, `gimbal_sensor`, `velocity_sensor`,
+  `nameplate`, `lodestone_compass` behaviour (the payloads are ported).
+- **diagrams** — the `contraption_diagram` entity, item and screen. The config
+  codec, the frame builder and the recording queue are ported; the entity is
+  not.
+- **end sea** — the dimension overrides (`EndSeaPhysics.physicsTick`, which needs
+  Sable's queued force groups and mass tracker). The record and the payload are
+  ported.
+- **misc content** — `handle`, `portable_engine`, `physics_staff` (item and
+  server handler), `plunger_launcher`, `absorbed` blocks.
 - **`compat/` (25)** — mostly out of scope (other mods), except the CC: Tweaked
   peripherals, which are ported under `lib/src/compat/computercraft/`: the twelve
   peripherals of `simulated/common/.../compat/computercraft`, their registry and
@@ -55,6 +138,31 @@ Not started, in the order of the ticket:
   connector's wired element is the noop one, because the Dart CC plugin has no
   wired network.
 - **`ponder/` (48)** — client only, out of scope.
+
+## Registry surface
+
+The package registers 7 of the 95 blocks, 3 of the 86 items and 7 of the 30
+block entity types, and it **names no registry** in its NeoForge declaration
+(`createNeoForgeDeclaration` sets no `NeoForgeRegistryAddition`). That is the
+safe state for a partial port, confirmed against the host's sync rules:
+
+* a snapshot is never additive — ids are positions, so a partial list replaces
+  what the client has and removes the rest;
+* a registry is only sent when the declaration *names* it, and a named
+  host-numbered registry (`minecraft:block`, `item`, `block_entity_type`,
+  `entity_type`, `menu`, `sound_event`, …) is then filled from the **host's**
+  dynamic-registry list, not from the declaration's list;
+* naming nothing therefore sends nothing for `simulated`: a client with the mod
+  keeps its own ids and the connection is fine.
+
+Expanding to the full surface is what turns a named registry on, and it needs the
+complete, name-exact list for the mod — `docs/aero-port-inventory.md` §3.3 and
+Appendix B for the order — plus the properties of each block, because the state
+ids are derived from them. Until then, do not name `minecraft:block` (or any
+other) for this mod.
+
+`TODO(parity)` on the expansion, tracked with `RegistrySyncConnect` (their
+answer: expand first, name the registries after the names are verified).
 
 ## Host gaps that block the slice from being playable
 
@@ -84,3 +192,10 @@ Each is marked in the code where it happens.
    summon a vanilla entity type. Honey glue volumes are re-created in the
    plugin's tracker instead.
 7. **Chunk serialization for plots** — sable's `PlotChunkHost` gaps (documented in sable) still apply, so a sub-level's plot chunks cannot be saved or loaded by the host.
+8. **Statistics and advancements** — the Java handlers award stats
+   (`SimStats.INTERACT_WITH_ASSEMBLER`, `TYPEWRITER_KEY_PRESSES`,
+   `INTERACT_WITH_STEERING_WHEEL`) and advancements (`UNPOWERED_STEERING`,
+   `NOT_GONNA_SUGARCOAT_IT`). The package has no table for either, so the ported
+   handlers mark them `TODO(parity)` where Java awards them.
+9. **Item durability** — `honeyGlueItem.hurtAndBreak(1, …)` has no host
+   equivalent; a stack of one is consumed, a larger stack loses a count.

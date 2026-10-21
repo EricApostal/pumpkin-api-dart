@@ -72,10 +72,15 @@ final class FloatingBlockData {
 
   /// `computePressureScale(subLevel)`: samples the air pressure at the
   /// cluster's centre.
+  ///
+  /// `FloatingBlockData.java:48-53`: the centre is
+  /// `pose.position + R·weightedPosition / totalScale`. The Java
+  /// `position().fma(1 / totalScale, positionTemp, positionTemp)` writes into
+  /// its temporary, never into the pose; this does the same.
   void computePressureScale(SubLevel subLevel, double Function(Vector3d worldPosition) pressureAt) {
     final position = Vector3d();
     subLevel.logicalPose.orientation().transform(weightedPosition, position);
-    subLevel.logicalPose.position().fma(1 / totalScale, position);
+    position.fma(1 / totalScale, subLevel.logicalPose.position());
     latestPressureScale = pressureAt(position);
   }
 

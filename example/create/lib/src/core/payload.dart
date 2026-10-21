@@ -70,6 +70,10 @@ final class ServerboundChannel<T, C> {
 final class PayloadRegistry<C> {
   final Map<String, ServerboundChannel<Object?, C>> _serverbound = {};
   final Map<String, ClientboundChannel<Object?, C>> _clientbound = {};
+
+  /// Channels declared without a codec or a handler here (another package owns
+  /// the payload); they only appear in the NeoForge declaration.
+  final Map<String, DeclaredPayload> _declaredOnly = {};
   final List<String> _order = [];
 
   /// Declares a client-to-server channel.
@@ -107,8 +111,26 @@ final class PayloadRegistry<C> {
     return channel;
   }
 
+  /// Declares a channel this plugin announces but does not handle: the payload
+  /// codec belongs to the package that owns the channel, or is not ported yet.
+  /// The channel still goes into the NeoForge declaration, in registration
+  /// order, exactly like a handled one.
+  void declare(DeclaredPayload channel) {
+    _claim(channel.id);
+    _declaredOnly[channel.id] = channel;
+  }
+
+  /// [declare] for every channel of [channels] (a package's channel table).
+  void declareAll(Iterable<DeclaredPayload> channels) {
+    for (final channel in channels) {
+      declare(channel);
+    }
+  }
+
   void _claim(String id) {
-    if (_serverbound.containsKey(id) || _clientbound.containsKey(id)) throw DuplicateChannelException(id);
+    if (_serverbound.containsKey(id) || _clientbound.containsKey(id) || _declaredOnly.containsKey(id)) {
+      throw DuplicateChannelException(id);
+    }
     _order.add(id);
   }
 
@@ -130,7 +152,9 @@ final class PayloadRegistry<C> {
       if (_serverbound[id] case final s?)
         DeclaredPayload(id, s.version, serverbound: true, optional: s.optional)
       else if (_clientbound[id] case final c?)
-        DeclaredPayload(id, c.version, serverbound: false, optional: c.optional),
+        DeclaredPayload(id, c.version, serverbound: false, optional: c.optional)
+      else
+        _declaredOnly[id]!,
   ];
 }
 

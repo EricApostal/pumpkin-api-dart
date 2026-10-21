@@ -31,7 +31,10 @@
 //    (`EntityID`, `id`) is renamed through the same numbering as the entity ids in the stream, and
 //    an integer array (a contraption's block list) compares by length and equality pattern — for
 //    the same reason ids do. Both keep the raw numbers alongside the comparison, and the report
-//    prints them (`as the servers sent it`), so nothing is hidden behind the normalisation.
+//    prints them (`as the servers sent it`), so nothing is hidden behind the normalisation. The
+//    exception is a channel whose content *is* world state (`worldDependentPayloadChannels`): the
+//    event is still compared — a server that never sent the channel is a difference — but its bytes
+//    are not, because the two arms build their own world around their own client.
 //
 // What is *not* compared, and why: packets the client trace does not model (`other`, e.g.
 // keep-alives and time updates) — they differ between a plugin server and the vanilla one by
@@ -83,14 +86,33 @@ final class RigBox {
       pos.z >= zMin &&
       pos.z <= zMax;
 
-  /// The chunk columns of the rig: the anchor's own and its neighbours within one chunk margin.
-  bool containsChunk(int chunkX, int chunkZ) =>
-      chunkX >= -1 && chunkX <= 1 && chunkZ >= -1 && chunkZ <= 1;
+  /// Whether the chunk column at the anchor-relative `(chunkX, chunkZ)` is compared.
+  ///
+  /// Only the anchor's own column is. A server tells a joining client about every chunk within its
+  /// *view distance*, and that distance is a server setting, not something Create decides: the two
+  /// arms are configured separately (`pumpkin.toml` against `server.properties`), so comparing the
+  /// neighbours would report a configuration difference as if it were a mod difference. The
+  /// anchor's own chunk is the one both servers must send — the rig is built in it — so it is the
+  /// one whose presence says "this client tracks the rig".
+  bool containsChunk(int chunkX, int chunkZ) => chunkX == 0 && chunkZ == 0;
 
   @override
   String toString() =>
       'x $xMin..$xMax, y $yMin..$yMax, z $zMin..$zMax (anchor-relative)';
 }
+
+/// Payload channels whose *content* is world state rather than the plugin's answer, so two servers
+/// that generate their own worlds legitimately send different bytes.
+///
+/// `neoforge:auxiliary_light_data` is one payload per chunk, naming the chunk's coordinates and the
+/// light its blocks emit on top of their state. The two arms build the rig where their own client
+/// stands (different chunks) and each world is generated independently, so the bytes cannot be
+/// equal even when the two servers behave identically. The *event* is still compared — a server
+/// that never sent the channel is a difference, and that is the regression the contraption's
+/// rendering bug was — but its content is not, and neither is the order of the chunks it names.
+const Set<String> worldDependentPayloadChannels = {
+  'neoforge:auxiliary_light_data',
+};
 
 /// The renamer that turns each server's own ids into comparable ordinals.
 ///
@@ -178,9 +200,23 @@ final class PayloadDigest {
     this.rawHash,
   );
 
-  /// `nbt`, `raw` or `empty`.
+  /// `nbt`, `raw`, `empty` or `world`.
   final String form;
   final int length;
+
+  /// A payload whose content is not compared because it is world state
+  /// ([worldDependentPayloadChannels]).
+  ///
+  /// The event itself is still compared, so a server that never sent the channel is a difference;
+  /// only the bytes (and the chunk they name) are left out, because the two arms generate their
+  /// own world around their own client.
+  const PayloadDigest.worldDependent()
+    : form = 'world',
+      length = 0,
+      compares = const {},
+      display = const {},
+      raw = null,
+      rawHash = null;
 
   /// Path -> comparable value, for `nbt`. This is what two servers are compared on.
   final Map<String, String> compares;
@@ -196,7 +232,6 @@ final class PayloadDigest {
   final String? rawHash;
 
   /// Decodes [bytes] with the same NBT reader the client uses, falling back to raw bytes.
-  ///
   /// [ids] renames id-shaped values through the *trace's* numbering, so an entity id or a block
   /// state id inside the payload compares as a reference rather than as a number, and [origin] is
   /// the anchor the rig was built at, which is what makes a value that *is* the rig's position
@@ -241,7 +276,7 @@ final class PayloadDigest {
       compares['@entity'] = ids.token('entity', frame);
       display['@entity'] = '$frame (framed payload)';
     }
-    _flatten(decoded, '', compares, display, ids, origin);
+    _flatten(decoded, '', compares, display, CanonicalIds(), origin);
     return PayloadDigest._('nbt', bytes.length, compares, display, hex, hash);
   }
 
@@ -266,7 +301,7 @@ final class PayloadDigest {
         candidateDisplay: other.raw ?? '',
       );
     }
-    if (form == 'empty') return null;
+    if (form == 'empty' || form == 'world') return null;
     for (final key in compares.keys) {
       if (other.compares.containsKey(key)) continue;
       return PayloadDifference(
@@ -306,6 +341,7 @@ final class PayloadDigest {
 
   String get summary => switch (form) {
     'empty' => 'empty payload',
+    'world' => 'world-dependent content (not compared)',
     'raw' => 'raw $length B ($rawHash)',
     _ => 'nbt $length B, ${compares.length} leaves',
   };
@@ -434,6 +470,24 @@ String _renderLeaf(NbtValue value) => switch (value.kind) {
   NbtKind.end => 'end',
 };
 
+/// The *comparable* form of a leaf: the rendered value, with a number's NBT type.
+///
+/// A number's width is part of what the client receives (`create:fluid_tank`'s client data writes
+/// `Boiler.Supply` as a `float` in the mod and as a `double` in the plugin), and two numbers of
+/// different widths render the same, so without the type the comparison would call them equal and
+/// only the payload's byte length would differ — which is a difference, but an unnamed one. The
+/// type is written after the value rather than instead of it, so the report still reads
+/// (`0.0 (float) vs 0.0 (double)`).
+String _renderComparable(NbtValue value, String rendered) => switch (value.kind) {
+  NbtKind.byte => '$rendered (byte)',
+  NbtKind.short => '$rendered (short)',
+  NbtKind.int => '$rendered (int)',
+  NbtKind.long => '$rendered (long)',
+  NbtKind.float => '$rendered (float)',
+  NbtKind.double => '$rendered (double)',
+  _ => rendered,
+};
+
 /// Arrays are compared by length and equality pattern, and *printed* as their content.
 ///
 /// A contraption's block list is an array of block state ids; those ids are per-server, so the
@@ -512,7 +566,7 @@ void _flatten(
       compares[path] = rigRelative ?? _renderArray(array);
       display[path] = _displayArray(array);
     default:
-      final rendered = _renderLeaf(value);
+      final rendered = _renderComparable(value, _renderLeaf(value));
       display[path] = rendered;
       if (_isInteger(value.kind) && _isIdKey(leaf)) {
         // A leaf whose *name* is an id names something the server numbered itself (`EntityID`,
@@ -664,6 +718,40 @@ final class NormalisedTrace {
     final normaliser = _Normaliser(label: label, origin: origin, box: box);
     return normaliser.run(scoped);
   }
+
+  /// The same trace with the events [remove] matches taken out — the *negative control* of a parity
+  /// test.
+  ///
+  /// A parity test that only ever runs against two working servers has never been shown to fail, so
+  /// `test/parity/negative_control_test.dart` takes a real run and deletes one event from one arm:
+  /// "the server never pushed this block entity's payload" is the regression class this suite
+  /// exists for, and the comparison has to report it. The timeline keeps its order minus the
+  /// removed events, so the result is a trace a server could plausibly have produced.
+  NormalisedTrace without(bool Function(TraceEvent event) remove) {
+    final kept = [
+      for (final event in events)
+        if (!remove(event)) event,
+    ];
+    final keptLabels = {for (final event in kept) '${event.kind}(#${event.key})'};
+    return NormalisedTrace(
+      label: '$label (one event removed)',
+      origin: origin,
+      box: box,
+      events: kept,
+      timeline: [
+        for (final label in timeline)
+          if (keptLabels.contains(label)) label,
+      ],
+      sourceLines: sourceLines,
+      kinds: {
+        for (final event in kept)
+          event.kind: (kinds[event.kind] ?? 0),
+      },
+      ignored: ignored,
+      drops: drops,
+      blockEntityPushes: blockEntityPushes,
+    );
+  }
 }
 
 class _Normaliser {
@@ -738,8 +826,10 @@ class _Normaliser {
             _skip(ignored, '$kind (bundled with an entity)');
             continue;
           }
-          final digest = PayloadDigest.of(packet.data, ids, origin: origin);
           final channel = packet.channel ?? '?';
+          final digest = worldDependentPayloadChannels.contains(channel)
+              ? const PayloadDigest.worldDependent()
+              : PayloadDigest.of(packet.data, ids, origin: origin);
           final last = _lastPayload[channel];
           if (last != null && last.firstDifference(digest) == null) {
             // The same bytes on the same channel again is not new information: a server that

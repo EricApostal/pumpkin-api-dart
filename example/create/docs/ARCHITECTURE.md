@@ -14,7 +14,8 @@ lib/create.dart                the public API of the foundation (what modules im
 lib/src/modules.dart           THE list of modules: one line per module, in load order
 lib/src/plugin/
   create_plugin.dart           CreatePlugin: phases, config, unload
-  create_neoforge.dart         builds the NeoForgeDeclaration from the registry
+  create_neoforge.dart         builds the NeoForgeDeclaration from a registry and a mod
+  create_addon.dart            createAddonNeoForgeDeclaration: an addon's own declaration
 lib/src/core/                  the foundation: no Create-specific game logic
   module.dart                  CreateModule, CreateContext, CreateRuntime, CreateServices
   registry.dart                CreateRegistry: everything a module registers (declarative)
@@ -24,6 +25,7 @@ lib/src/core/                  the foundation: no Create-specific game logic
   blocks.dart                  CreateBlock, CreateProps (axis, facing, ...)
   network.dart                 payload channels over the host (send / receive)
   payload.dart                 payload descriptors, FriendlyByteBuf helpers (pure)
+  addon.dart                   CreateAddon: the generic hook an addon package implements
   config.dart / config_models.dart  JSON config sections (dart_mappable)
   nbt.dart / byte_buf.dart     network NBT model and FriendlyByteBuf helpers (pure)
   world_state.dart             per-world saved data (mappable models in world custom data)
@@ -249,6 +251,16 @@ over `PacketWriter`/`PacketReader`, which are Minecraft's FriendlyByteBuf primit
 channel; payloads that fail to decode are logged and dropped. The channels end up
 in the NeoForge declaration (`create_neoforge.dart`), so a real Create client accepts
 the server. Handlers get a `Player` valid until the handler first yields.
+
+A package that extends Create declares its own mod: implement `CreateAddon`
+(`core/addon.dart`; `modId`, `version`, and a `channels` table or a `contribute`
+override) and call
+`context.declareNeoForge(createAddonNeoForgeDeclaration(const MyAddon()))` from its
+own plugin, with `Permissions.neoforge`. `registry.declareChannel(id, version:,
+serverbound:)` adds a channel the declaration carries without a codec or a handler
+here. The host merges every plugin's declaration into the one `neoforge:register`
+answer and refuses only a duplicate channel or mod id, so Create names no addon
+and adding one needs no change here.
 
 ## Config
 

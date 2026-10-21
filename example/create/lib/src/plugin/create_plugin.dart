@@ -191,7 +191,7 @@ final class CreatePlugin extends Plugin {
           context.declareNeoForge(
             createNeoForgeDeclaration(
               core.registry,
-              modVersion: config.core.modVersion,
+              mod: NeoForgeMod(id: createModId, version: config.core.modVersion, displayName: 'Create'),
             ),
           );
         } on HostException catch (e) {

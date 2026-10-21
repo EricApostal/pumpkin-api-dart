@@ -12,7 +12,12 @@ dependencies:
   wasm_components:
 
 dev_dependencies:
+  aeronautics:
   build_runner: ^2.16.1
   dart_mappable_builder: ^4.10.0
   lints: ^6.1.0
+  offroad:
+  pumpkin_neoforge:
+  sable:
+  simulated:
   test: ^1.25.6

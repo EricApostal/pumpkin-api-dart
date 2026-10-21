@@ -281,7 +281,9 @@ bool _attachedFallback(BState state, ContraptionLevel level, Pos pos, Direction 
         !BlockMovementChecks.isNotSupportive(level.stateAt(pos.relative(direction)), opposite, level);
   }
   if (_isBogey(state)) {
-    final axis = state.axisOf('horizontal_axis') ?? Axis.x;
+    // `AbstractBogeyBlock.getStickySurfaces`: the property is `axis` (Java's
+    // `BlockStateProperties.HORIZONTAL_AXIS`, whose name is `axis`), never `horizontal_axis`.
+    final axis = state.axisOf('axis') ?? Axis.x;
     final sticky = axis == Axis.x ? const [Direction.east, Direction.west] : const [Direction.south, Direction.north];
     return sticky.contains(direction);
   }

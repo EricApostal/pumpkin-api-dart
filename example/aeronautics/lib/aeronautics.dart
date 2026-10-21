@@ -6,7 +6,11 @@
 /// are in `aeronautics_plugin.dart`.
 library;
 
+export 'aeronautics_channels.dart';
 export 'src/config/aero_config.dart';
+export 'src/content/components/converter.dart';
+export 'src/content/components/levitating.dart';
+export 'src/levitite/levitite_crystallization.dart';
 export 'src/content/envelope_dye.dart';
 export 'src/hot_air/balloon.dart';
 export 'src/hot_air/balloon_builder.dart';

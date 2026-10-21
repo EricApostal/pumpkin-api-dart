@@ -10,7 +10,9 @@ import 'dart:math' as math;
 
 import '../math/vector.dart';
 
-/// The 24 axis-aligned quaternions, in the Java order.
+/// The 11 base axis-aligned quaternions (`SableMathUtils.ALL_QUATS`,
+/// `SableMathUtils.java:15-27`). The opposite of each is the same rotation
+/// with every component negated, which is why the groups below only need these.
 final List<Quaterniond> _allQuats = [
   Quaterniond(0, 0, 0, 1),
   Quaterniond(1, 0, 0, 0),
@@ -24,6 +26,56 @@ final List<Quaterniond> _allQuats = [
   Quaterniond(1, 1, 0, 0)..normalize(),
   Quaterniond(1, 1, 1, 1)..normalize(),
 ];
+
+/// `SableMathUtils.GridQuats`: a subset of [_allQuats] selected by a bit
+/// pattern, plus the orientations the pattern leaves out ([opposite]).
+///
+/// The Java enum's bit patterns (`SableMathUtils.java:197-211`), from least
+/// significant bit (index 0 of `ALL_QUATS`) upwards:
+///
+/// | group | pattern | indices |
+/// |---|---|---|
+/// | `ALL` | `0b11111111111` | every one |
+/// | `X_AXIS` | `0b10011` | 0, 1, 4 |
+/// | `Y_AXIS` | `0b100101` | 0, 2, 5 |
+/// | `Z_AXIS` | `0b1001001` | 0, 3, 6 |
+/// | `REAL` | `0b10001110001` | 0, 4, 5, 6, 10 |
+final class GridQuats {
+  /// The orientations the bit pattern selects.
+  final List<Quaterniond> quaternions;
+
+  /// The orientations the bit pattern leaves out (`opposite()` in Java).
+  final List<Quaterniond> oppositeQuaternions;
+
+  GridQuats._(int bitPattern) : quaternions = [], oppositeQuaternions = [] {
+    for (var i = 0; i < _allQuats.length; i++) {
+      ((bitPattern & 1) > 0 ? quaternions : oppositeQuaternions).add(_allQuats[i]);
+      bitPattern >>= 1;
+    }
+  }
+
+  /// `GridQuats.ALL`: all 11 base orientations.
+  static final GridQuats all = GridQuats._(0x7FF);
+
+  /// `GridQuats.X_AXIS`.
+  static final GridQuats xAxis = GridQuats._(0x13) /* 0b10011 */;
+
+  /// `GridQuats.Y_AXIS`.
+  static final GridQuats yAxis = GridQuats._(0x25) /* 0b100101 */;
+
+  /// `GridQuats.Z_AXIS`.
+  static final GridQuats zAxis = GridQuats._(0x49) /* 0b1001001 */;
+
+  /// `GridQuats.REAL`: identity, the three quarter turns and the 120° corner
+  /// rotation — the orientations `getHitBoxYaw` snaps to.
+  static final GridQuats real = GridQuats._(0x471) /* 0b10001110001 */;
+
+  /// `opposite()`: the orientations this group leaves out.
+  Iterable<Quaterniond> get opposite => oppositeQuaternions;
+
+  @override
+  String toString() => 'GridQuats[${quaternions.length} + ${oppositeQuaternions.length} opposite]';
+}
 
 /// The pure math helpers of Sable.
 abstract final class SableMathUtils {
@@ -95,6 +147,6 @@ abstract final class SableMathUtils {
     return work;
   }
 
-  /// The 24 grid quaternions (`GridQuats.ALL`).
-  static Iterable<Quaterniond> get allGridQuaternions => _allQuats;
+  /// All grid quaternions (`GridQuats.ALL`).
+  static Iterable<Quaterniond> get allGridQuaternions => GridQuats.all.quaternions;
 }

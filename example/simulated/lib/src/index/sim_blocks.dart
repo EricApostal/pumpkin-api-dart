@@ -23,6 +23,7 @@ import '../content/blocks/symmetric_sail/symmetric_sail_lift_provider.dart';
 import '../content/blocks/throttle_lever/throttle_lever_block_entity.dart';
 import '../content/blocks/torsion_spring/torsion_spring_block_entity.dart';
 import '../service/sim_services.dart';
+import 'sim_java_order.dart';
 
 /// The state properties Simulated adds to the vanilla ones.
 abstract final class SimProps {
@@ -48,24 +49,7 @@ abstract final class SimBlockKeys {
   static const String swivelBearingPlate = 'simulated:swivel_bearing_link_block';
 
   /// The sail colours, in dye order.
-  static const List<String> sailColours = [
-    'white',
-    'orange',
-    'magenta',
-    'light_blue',
-    'yellow',
-    'lime',
-    'pink',
-    'gray',
-    'light_gray',
-    'cyan',
-    'purple',
-    'blue',
-    'brown',
-    'green',
-    'red',
-    'black',
-  ];
+  static const List<String> sailColours = simDyeColors;
 
   static String sail(String colour) => 'simulated:${colour}_symmetric_sail';
 }
@@ -123,26 +107,32 @@ typedef SimBlockLookup = E? Function<E>(String worldId, (int, int, int) pos);
 
 /// Builds the blocks of the mod, in registration order.
 ///
+/// The order is the Java `SimBlocks` field order (`SimJavaOrder.blocks`), which
+/// is what `SimRegistry` pins with `useOrder`; the ids follow that list either
+/// way, but the file reads like the Java one.
+///
 /// [lookup] resolves a block entity by world and position; it is how the block
 /// callbacks reach the entity the host ticked.
 List<CreateBlock> simBlocks({required SimBlockLookup lookup}) {
-  final blocks = <CreateBlock>[
+  return [
     _physicsAssembler(lookup),
+    _swivelBearing(lookup),
+    _swivelBearingPlate(lookup),
+    _torsionSpring(lookup),
     _steeringWheel(lookup),
     _throttleLever(lookup),
     for (final colour in SimBlockKeys.sailColours) _sail(colour),
     _spring(lookup),
-    _torsionSpring(lookup),
-    _swivelBearing(lookup),
-    _swivelBearingPlate(lookup),
   ];
-  return blocks;
 }
 
 CreateBlock _physicsAssembler(SimBlockLookup lookup) => CreateBlock(
   key: SimBlockKeys.physicsAssembler,
-  properties: [CreateProps.horizontalFacing, SimProps.face, CreateProps.waterlogged],
-  defaultState: {'facing': 'north', 'face': 'wall', 'waterlogged': 'false'},
+  // `PhysicsAssemblerBlock extends FaceAttachedHorizontalDirectionalBlock` and
+  // adds `FACING, FACE` only (`PhysicsAssemblerBlock.java:30,110-112`); it is
+  // not waterlogged, so `waterlogged` was two states this block does not have.
+  properties: [CreateProps.horizontalFacing, SimProps.face],
+  defaultState: {'facing': 'north', 'face': 'wall'},
   hardness: 2,
   blastResistance: 6,
   requiresCorrectTool: true,
@@ -227,6 +217,16 @@ CreateBlock _sail(String colour) {
         ShapeRule(when: {'axis': axis}, collisionShape: SimShapes.sail(axis), selectionShape: SimShapes.sail(axis)),
     ],
     tags: ['simulated:symmetric_sails'],
+    // Only the white sail has an item: `WHITE_SYMMETRIC_SAIL` registers one
+    // (`SimBlocks.java:775-776`) and `DYED_SYMMETRIC_SAILS` registers none
+    // (`:779-800`), with a loot table that drops the white sail. Fifteen items
+    // the Java does not have shifted the id of every item after them.
+    //
+    // The Java drop of `simulated:white_symmetric_sail` needs a loot table this
+    // port does not ship (`docs/block-registry.md:122-125`), so a dyed sail drops
+    // nothing.
+    hasItem: colour == 'white',
+    drops: colour == 'white' ? BlockDrops.selfItem : BlockDrops.nothing,
     behavior: BlockBehavior(
       onUseWithItem: (server, event) async {
         final itemKey = await event.item.getRegistryKey();
@@ -263,6 +263,18 @@ CreateBlock _spring(SimBlockLookup lookup) => CreateBlock(
   selectionShape: SimShapes.spring,
   tags: ['minecraft:mineable/pickaxe'],
   blockEntityType: SpringBlockEntity.type,
+  // `SimBlocks.SPRING` registers no block item (`SimBlocks.java:843-855`): the
+  // item is the standalone `simulated:spring` of `SimItems.SPRING`, a
+  // `SpringItem` and not a `BlockItem` (`SimItems.java:41-54`), and the player
+  // places the block through `simulated:place_spring`. A block item here
+  // registered `simulated:spring` a second time and the whole registry threw.
+  //
+  // The Java loot table drops one `simulated:spring` (`SimBlocks.java:853-855`),
+  // but the host's `self-item` drop is the item linked by `set-block-item`
+  // (`docs/block-registry.md:122-125`) and this block has none, so the drop is
+  // not expressible yet and the block drops nothing.
+  hasItem: false,
+  drops: BlockDrops.nothing,
   behavior: BlockBehavior(
     onUseWithoutItem: (server, event) {
       final be = lookup<SpringBlockEntity>(event.targetWorld.getId(), event.pos.toPos());

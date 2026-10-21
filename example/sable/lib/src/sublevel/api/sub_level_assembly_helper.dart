@@ -235,11 +235,21 @@ abstract final class SubLevelAssemblyHelper {
       containingPose.transformPosition(subLevel.logicalPose.position()),
     );
 
-    final localPos = subLevel.logicalPose.position().sub(containingPose.position());
+    // `SubLevelAssemblyHelper.java:172`: Java computes the offset into a fresh
+    // `Vector3d` (`sub(other, new Vector3d())`); the Dart `sub` mutates its
+    // receiver, which here is the sub-level's own position vector.
+    final localPos = subLevel.logicalPose.position().subInto(containingPose.position(), Vector3d());
     if (!subLevel.isRemoved()) {
+      // `SubLevelAssemblyHelper.java:174`: the linear velocity is
+      // `ω × r + v`, and the angular velocity stays `ω`. Java writes the cross
+      // product into `localPos`, leaving `containingAngularVelocity` untouched;
+      // the Dart `cross`/`add` mutate their receiver, so the sum goes into a
+      // temp and `containingAngularVelocity` is passed unchanged.
+      final velocity = containingAngularVelocity.crossInto(localPos, Vector3d())
+        ..add(containingLinearVelocity);
       physicsSystem.getPipeline().addLinearAndAngularVelocity(
         physicsSystem.getPhysicsHandle(subLevel),
-        containingAngularVelocity.cross(localPos).add(containingLinearVelocity),
+        velocity,
         containingAngularVelocity,
       );
     }

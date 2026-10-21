@@ -217,8 +217,15 @@ final class MctraceProxy {
         'mctrace decode failed (${result.exitCode}): ${result.stderr}',
       );
     }
+    // `mctrace decode` ends with its own summary, one `#`-prefixed line per direction. It is a
+    // note for a human reading the tool's output, not a frame, so it is dropped here — otherwise
+    // the whole second reading of the wire would be lost to a parse error on the last line.
+    final lines = const LineSplitter()
+        .convert(result.stdout as String)
+        .where((line) => !line.trimLeft().startsWith('#'))
+        .join('\n');
     return PumpkinTrace.parse(
-      result.stdout as String,
+      lines,
       source: '${capture.path} ($direction)',
     );
   }

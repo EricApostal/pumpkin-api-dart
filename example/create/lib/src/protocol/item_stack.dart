@@ -99,6 +99,105 @@ abstract final class ItemComponents {
   }
 }
 
+/// Builds the [ComponentCopier] of a component whose value is described by
+/// [codec] (the same description the host receives at registration): it reads
+/// exactly one value of the codec from the reader and writes the same value to
+/// the writer, so the raw bytes of the value are kept without decoding them
+/// into a model.
+///
+/// Every [CodecOpKind] is supported; `stack` and `component-patch` recurse
+/// through [ItemStackData] and [ItemComponentPatch], so a nested stack's own
+/// `create:*` components are read with their registered copiers too.
+///
+/// Throws [ArgumentError] for an empty description and [StateError] for one
+/// that is not a single well-formed root, which would leave bytes behind (a
+/// wrong length would corrupt every later field of the payload).
+ComponentCopier copierForCodec(ComponentCodec codec) {
+  final ops = codec.ops;
+  if (ops.isEmpty) throw ArgumentError.value(codec, 'codec', 'has no ops');
+  return (r, w) {
+    final end = _copyNode(ops, 0, r, w);
+    if (end != ops.length) {
+      throw StateError('Malformed component codec: ${ops.length} ops, the root ends at $end');
+    }
+  };
+}
+
+/// Copies the value of the node at [index]; returns the index after the node
+/// (and its children).
+int _copyNode(List<ComponentCodecOp> ops, int index, PacketReader r, PacketWriter w) {
+  final op = ops[index];
+  switch (op.kind) {
+    case CodecOpKind.varInt:
+      w.writeVarInt(r.readVarInt());
+    case CodecOpKind.varLong:
+      w.writeVarLong(r.readVarLong());
+    case CodecOpKind.flag || CodecOpKind.byte:
+      w.writeByte(r.readUnsignedByte());
+    case CodecOpKind.short:
+      w.writeShort(r.readShort());
+    case CodecOpKind.int32:
+      w.writeInt(r.readInt());
+    case CodecOpKind.long:
+      w.writeLong(r.readLong());
+    case CodecOpKind.float32:
+      w.writeFloat(r.readFloat());
+    case CodecOpKind.float64:
+      w.writeDouble(r.readDouble());
+    case CodecOpKind.text || CodecOpKind.byteArray:
+      // Copy the bytes rather than re-encoding a string: the length is the same
+      // and invalid UTF-8 in a value must not make the whole payload undecodable.
+      w.writeByteArray(r.readByteArray());
+    case CodecOpKind.uuid:
+      w.writeUuid(r.readUuid());
+    case CodecOpKind.fixedBytes:
+      w.writeBytes(r.readBytes(op.argument));
+    case CodecOpKind.nbt:
+      w.writeNbt(r.readNbt());
+    case CodecOpKind.stack:
+      ItemStackData.read(r).write(w);
+    case CodecOpKind.componentPatch:
+      ItemComponentPatch.read(r).write(w);
+    case CodecOpKind.optional:
+      final present = r.readBool();
+      w.writeBool(present);
+      if (present) return _copyNode(ops, index + 1, r, w);
+      return _nodeEnd(ops, index + 1);
+    case CodecOpKind.repeated:
+      final count = r.readVarInt();
+      if (count < 0) throw PacketException('Negative count $count');
+      w.writeVarInt(count);
+      for (var i = 0; i < count; i++) {
+        _copyNode(ops, index + 1, r, w);
+      }
+      return _nodeEnd(ops, index + 1);
+    case CodecOpKind.sequence:
+      var next = index + 1;
+      for (var i = 0; i < op.argument; i++) {
+        next = _copyNode(ops, next, r, w);
+      }
+      return next;
+  }
+  return index + 1;
+}
+
+/// The index after the node at [index], without reading anything.
+int _nodeEnd(List<ComponentCodecOp> ops, int index) {
+  final op = ops[index];
+  switch (op.kind) {
+    case CodecOpKind.optional || CodecOpKind.repeated:
+      return _nodeEnd(ops, index + 1);
+    case CodecOpKind.sequence:
+      var next = index + 1;
+      for (var i = 0; i < op.argument; i++) {
+        next = _nodeEnd(ops, next);
+      }
+      return next;
+    default:
+      return index + 1;
+  }
+}
+
 /// Thrown when a data component cannot be delimited because nobody registered its codec.
 final class UnsupportedComponentException extends PacketException {
   final int typeId;

@@ -201,6 +201,7 @@ final class DifferentialReport {
     required this.notes,
     required this.failure,
     required this.environment,
+    this.traceCompared = true,
   });
 
   final Scenario scenario;
@@ -220,11 +221,15 @@ final class DifferentialReport {
 
   final DifferentialEnvironment environment;
 
+  /// Whether the two traces were compared at all. A handshake probe boots both arms and reads the
+  /// wire instead, so "no differential" is its normal outcome rather than a failed run.
+  final bool traceCompared;
+
   /// 0 when the two servers agree, 1 when they differ, 2 when the run never got to compare.
   int get exitCode {
     if (failure != null) return 2;
     final comparison = differential;
-    if (comparison == null) return 2;
+    if (comparison == null) return traceCompared ? 2 : 0;
     return comparison.agrees ? 0 : 1;
   }
 
@@ -263,6 +268,10 @@ final class DifferentialReport {
       lines
         ..add('')
         ..add('THE RUN DID NOT GET TO COMPARE: $failure');
+    } else if (!traceCompared) {
+      lines
+        ..add('')
+        ..add('the traces are not compared: this run reads the handshake instead');
     } else if (differential != null) {
       lines
         ..add('')
@@ -334,6 +343,8 @@ final class DifferentialRunner {
     this.settleAfter = const Duration(seconds: 4),
     this.joinTimeout = const Duration(seconds: 120),
     this.artifacts,
+    this.clientQuery,
+    this.compareTraces = true,
     this.log,
   });
 
@@ -343,6 +354,18 @@ final class DifferentialRunner {
   final ArmKind candidate;
   final String botName;
   final bool keep;
+
+  /// The channel set the client answers the `NeoForge` handshake with (`--query`), when the run is
+  /// about what the *server* declares rather than about a rig.
+  ///
+  /// It replaces the mirrored handshake on every arm, so both servers are asked the same question:
+  /// the channels they negotiate are the ones they and this client both have, which is how a
+  /// declaration is read from outside.
+  final File? clientQuery;
+
+  /// Whether the two clients' traces are compared. A handshake probe has no rig to compare and
+  /// reads the wire instead, so it turns this off and does its own comparison.
+  final bool compareTraces;
 
   /// How long to let the servers tick after the scenario, so a tick-driven assembly has happened
   /// and its packets have been flushed before the client is disconnected.
@@ -386,16 +409,23 @@ final class DifferentialRunner {
       failure = 'the harness failed: $error\n$stack';
     } finally {
       for (final arm in started.reversed) {
+        // An arm that joined but whose sibling failed never reached `_collect`, and its wire
+        // capture is still the evidence for what *it* did (a handshake probe reads it). Read it
+        // while the scratch directory exists, then stop.
+        await _readProxyTrace(arm);
         await _stopArm(arm);
       }
     }
 
     final referenceField = referenceArm ?? _missing('reference', reference);
     final candidateField = candidateArm ?? _missing('candidate', candidate);
-    failure ??= _precondition(referenceField);
+    if (compareTraces) failure ??= _precondition(referenceField);
     Differential? comparison;
     Differential? proxyCheck;
-    if (failure == null) {
+    if (failure == null && !compareTraces) {
+      // Nothing to compare in the traces: the caller reads the arms' proxy views itself. Both arms
+      // still have to have joined, which is what `failure` already says.
+    } else if (failure == null) {
       final referenceTrace = referenceField.normalised(scenario);
       final candidateTrace = candidateField.normalised(scenario);
       if (referenceTrace == null || candidateTrace == null) {
@@ -445,6 +475,7 @@ final class DifferentialRunner {
       notes: notes,
       failure: failure,
       environment: environment,
+      traceCompared: compareTraces,
     );
   }
 
@@ -563,10 +594,15 @@ final class DifferentialRunner {
         botName,
         '--trace',
         traceFile.absolute.path,
-        // The Java arm needs the mirrored NeoForge handshake: a modded server refuses a client whose
-        // channel answer does not match its own declaration, and a standalone client has no
-        // declaration to answer with.
-        if (kind == ArmKind.java) '--mirror',
+        // A channel-set probe answers the handshake with a set it was given (`--query`), which is
+        // what makes the *server's* declaration comparable: the negotiated channels are the ones
+        // both sides have. Without one, the Java arm needs the mirrored handshake, because a modded
+        // server refuses a client whose channel answer does not match its own declaration and a
+        // standalone client has no declaration to answer with.
+        if (clientQuery != null)
+          ...['--query', clientQuery!.absolute.path]
+        else if (kind == ArmKind.java)
+          '--mirror',
       ],
     );
     final arm = DifferentialArm(
@@ -588,10 +624,34 @@ final class DifferentialRunner {
     final joined = await _awaitJoin(arm);
     if (joined != null) {
       arm.failure = joined;
+      // An arm that never joined still has evidence: the refusal was a payload on the wire, and a
+      // probe that asks *why* a server refused needs it. Read the proxy before the scratch
+      // directory goes, exactly as a successful run does.
+      await _readProxyTrace(arm);
       await copyArtifacts(arm);
       await _stopArm(arm);
     }
     return arm;
+  }
+
+  /// Reads the proxy's decoded view of an arm, when there is a proxy to read.
+  ///
+  /// The frames are decoded while the scratch directory still exists. A decode failure is a note,
+  /// never a failed run: the client's own trace is the comparison, and this is the second reading.
+  Future<void> _readProxyTrace(DifferentialArm arm) async {
+    final proxy = arm.proxy;
+    if (proxy == null) return;
+    // Read once: the second call would find the scratch directory gone and turn a decoded trace
+    // into a note about a missing file.
+    if (arm.proxyTrace != null) return;
+    arm.proxySummary ??= proxy.summary;
+    arm.capturePath ??= proxy.capture.path;
+    try {
+      arm.proxyTrace = await proxy.decoded();
+    } on Object catch (error) {
+      arm.proxyNote = '$error';
+      notes.add("the ${arm.role} arm's proxy frames could not be decoded: $error");
+    }
   }
 
   /// Waits until the client is in the world, or explains why it never got there.
@@ -669,20 +729,8 @@ final class DifferentialRunner {
     if (arm.traceFile.existsSync()) {
       arm.clientTrace = PumpkinTrace.read(arm.traceFile);
     }
-    final proxy = arm.proxy;
-    if (proxy != null) {
-      // Read while the scratch directory still exists: both of these read files it holds.
-      arm.proxySummary = proxy.summary;
-      arm.capturePath = proxy.capture.path;
-      try {
-        arm.proxyTrace = await proxy.decoded();
-      } on Object catch (error) {
-        arm.proxyNote = '$error';
-        notes.add(
-          "the ${arm.role} arm's proxy frames could not be decoded: $error",
-        );
-      }
-    }
+    // Read while the scratch directory still exists: both of these read files it holds.
+    await _readProxyTrace(arm);
     await copyArtifacts(arm);
     await _stopArm(arm);
   }

@@ -884,8 +884,11 @@ void main() {
 
       final tag = CTag();
       contraption.writeNBT(tag);
-      // Java writes `Direction.name()`, lower case.
-      expect(tag.getString('AssemblyDirection'), 'north');
+      // Java writes `Direction.name()` (`CarriageContraption.java:193`), the *constant* name, and
+      // the Java side reads it back with `readEnum` (`CarriageContraption.java:379-386`), which
+      // matches a constant name exactly and otherwise falls back to `getEnumConstants()[0]`
+      // (`down`) -- the direction a Java client cannot call `getClockWise()` on.
+      expect(tag.getString('AssemblyDirection'), 'NORTH');
       expect(tag.getBoolean('FrontControls'), isTrue);
       expect(tag.getBoolean('BackControls'), isFalse);
       expect(tag.getBoolean('FrontBlazeConductor'), isTrue);
@@ -909,6 +912,55 @@ void main() {
       expect(back.conductorSeats[(1, 2, 3)]!.getFirst(), isTrue);
       expect(back.soundQueue.sources[2], [(4, 5, 6)]);
     });
+
+    test(
+      'AssemblyDirection is the Java constant name, which readEnum resolves horizontally',
+      () {
+        // `CarriageContraption.readEnum` (`CarriageContraption.java:379-386`), exactly: the
+        // constant whose `name()` equals the string, else `getEnumConstants()[0]` = `down`. A
+        // `down` assembly direction is what makes a Java client throw
+        // `IllegalStateException: Unable to get Y-rotated facing of down` in
+        // `CarriageContraptionEntity.updateRenderedPortalCutoff`, so the name the port writes has
+        // to survive this reader as a horizontal direction.
+        Direction javaReadEnum(String name) => Direction.values.firstWhere(
+          (d) => d.name.toUpperCase() == name,
+          orElse: () => Direction.values.first,
+        );
+
+        for (final direction in Direction.values) {
+          final tag = CTag();
+          CarriageContraption(direction).writeNBT(tag);
+          final written = tag.getString('AssemblyDirection');
+          expect(
+            written,
+            direction.name.toUpperCase(),
+            reason: 'Java writes `Direction.name()`: ${direction.name}',
+          );
+          expect(javaReadEnum(written), direction);
+          if (direction.isHorizontal) {
+            // The client dereferences `getAssemblyDirection().getClockWise()`: it exists only for
+            // horizontal directions.
+            expect(javaReadEnum(written).clockWise.axis, isNot(Axis.y));
+          }
+        }
+
+        // A lower case name -- what the pre-fix build wrote, and so what a carriage in an existing
+        // world carries -- still reads as the direction it names (`enumDartName` compares case
+        // insensitively). Java would fall back to `down` for it, which is exactly the crash.
+        final legacy = CarriageContraption(Direction.north)
+          ..readNBT(CTag()..putString('AssemblyDirection', 'north'));
+        expect(legacy.assemblyDirection, Direction.north);
+
+        // A name that names no constant, and a missing key, read as the first constant, `down`, on
+        // both sides (`getEnumConstants()[0]` / `getStringOr(key, "")`).
+        final unknown = CarriageContraption(Direction.north)
+          ..readNBT(CTag()..putString('AssemblyDirection', 'sideways'));
+        expect(unknown.assemblyDirection, Direction.down);
+        final missing = CarriageContraption(Direction.north)..readNBT(CTag());
+        expect(missing.assemblyDirection, Direction.down);
+      },
+    );
+
   });
 
   group('track block entity', () {

@@ -19,6 +19,8 @@ workspace:
   - example/sable_jolt
   - example/simulated
   - example/aeronautics
+  - example/offroad
+  - example/cc_tweaked
   - tool/runtime_check
 
 dev_dependencies:

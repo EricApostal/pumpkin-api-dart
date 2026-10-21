@@ -24,19 +24,24 @@ import '../../../hot_air/lifting_gas_provider.dart';
 import '../../../hot_air/server_balloon.dart';
 
 /// The block key.
-const String hotAirBurnerKey = 'aeronautics:hot_air_burner';
+const String hotAirBurnerKey = 'aeronautics:adjustable_burner';
 
 /// The two variants of the burner.
+///
+/// `HotAirBurnerBlock.Variant` (`HotAirBurnerBlock.java:168-171`): `FIRE` is
+/// spelled `fire`, `SOUL_FIRE` is spelled `soulful`. The serialized names are
+/// enum values of the `variant` state property, so they are part of the state
+/// ids a client numbers.
 enum HotAirBurnerVariant {
-  normal('normal'),
-  soulFire('soul_fire');
+  fire('fire'),
+  soulFire('soulful');
 
   const HotAirBurnerVariant(this.serializedName);
 
   final String serializedName;
 
   static HotAirBurnerVariant byName(String? name) =>
-      name == soulFire.serializedName ? soulFire : normal;
+      name == soulFire.serializedName ? soulFire : fire;
 }
 
 /// `HotAirBurnerBlockEntity`.
@@ -208,20 +213,35 @@ final class HotAirBurnerBlockEntity extends CreateBlockEntity with BlockEntityLi
 /// `HotAirBurnerBlock`.
 CreateBlock buildHotAirBurnerBlock() => CreateBlock(
   key: hotAirBurnerKey,
+  // `HotAirBurnerBlock extends Block` and adds `POWERED, VARIANT` only
+  // (`HotAirBurnerBlock.java:51-52,103-105`): four states, 2 x 2. The port had
+  // `facing` and `lit` as well -- sixteen states -- and every state id after the
+  // block, from `aeronautics:steam_vent` on, was twelve ids off. `lit` was the
+  // Java's `POWERED`, and there is no facing: the block faces nowhere.
+  //
+  // The variants are `FIRE("fire")` and `SOUL_FIRE("soulful")`
+  // (`HotAirBurnerBlock.java:168-171`), not `normal`/`soul_fire`.
   properties: [
-    CreateProps.horizontalFacing,
+    CreateProps.powered,
     BlockProperty.enumeration('variant', [
-      HotAirBurnerVariant.normal.serializedName,
+      HotAirBurnerVariant.fire.serializedName,
       HotAirBurnerVariant.soulFire.serializedName,
     ]),
-    CreateProps.lit,
   ],
-  defaultState: {'facing': 'north'},
-  hardness: 3,
+  // `registerDefaultState` of a plain `Block`: `POWERED = false`, and the first
+  // value of `VARIANT` (`fire`).
+  defaultState: {'powered': 'false', 'variant': 'fire'},
+  // `SharedProperties::stone` with `sound(SoundType.NETHERITE_BLOCK)`
+  // (`AeroBlocks.java:188-190`), which is 1.5 / 6, not 3, and netherite.
+  hardness: 1.5,
   blastResistance: 6,
   requiresCorrectTool: true,
-  soundType: 'copper',
+  soundType: 'netherite_block',
   canOcclude: false,
-  luminance: 7,
+  // `getLightPower` is `POWERED ? 15 : 0` (`HotAirBurnerBlock.java:58-60`) and
+  // the host has one light level for the whole block, so the registered level is
+  // the default state's, like the blaze burner of Create. The Java's own client
+  // lights a powered burner from its copy of the class.
+  luminance: 0,
   blockEntityType: hotAirBurnerKey,
 );

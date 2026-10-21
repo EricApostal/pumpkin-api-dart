@@ -165,10 +165,14 @@ final class HostTrainEffects implements TrainEffects {
   @override
   void gameEvent(String dimension, String eventId, Vec3 position) {}
 
+  /// The block entity store is keyed by `World.getId()`, the argument here is a dimension
+  /// (`Level.dimension()`), so it is resolved through the world table first.
   @override
   void setBogeyData(String dimension, Pos pos, CTag bogeyData) {
+    final world = ctx.worlds.byId(dimension);
+    if (world == null) return;
     ctx.blockEntities
-        .typed<AbstractBogeyBlockEntity>(dimension, pos.toBlockPos())
+        .typed<AbstractBogeyBlockEntity>(world.getId(), pos.toBlockPos())
         ?.setBogeyData(bogeyData);
   }
 
@@ -179,8 +183,10 @@ final class HostTrainEffects implements TrainEffects {
     Txt trainName,
     int mapColorIndex,
   ) {
+    final world = ctx.worlds.byId(dimension);
+    if (world == null) return;
     ctx.blockEntities
-        .typed<StationBlockEntity>(dimension, pos.toBlockPos())
+        .typed<StationBlockEntity>(world.getId(), pos.toBlockPos())
         ?.noteDisassembledTrain(trainName, mapColorIndex);
   }
 
@@ -260,8 +266,12 @@ final class HostTrainLevel implements TrainLevel {
   late final HostBlockGetter _blocks = HostBlockGetter(world);
   final HostScheduleProbe _probe = HostScheduleProbe();
 
+  /// `level.dimension()`: the dimension key (`minecraft:overworld`), which is what the graph
+  /// stores on its nodes (`TrackNodeLocation.dimension`) and what the carriage's dimensional
+  /// entities are keyed by (`Carriage.manageEntities`), so this must not be the world's folder
+  /// name (`World.getId()`).
   @override
-  String get dimension => world.getId();
+  String get dimension => world.getDimension();
 
   @override
   int get gameTime => world.getWorldAge();

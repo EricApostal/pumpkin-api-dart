@@ -75,20 +75,22 @@ final class Worlds {
   }
 
   /// Asks the host for a fresh handle of the world [id] and keeps it.
+  ///
+  /// [id] is either a world id (`World.getId()`, the folder name) or a dimension key
+  /// (`World.getDimension()`, e.g. `minecraft:overworld`). The host resolves both
+  /// (`Server.getWorldByName`), and the trains module keys everything by the dimension
+  /// (`Level.dimension()`, the graph's node dimensions), so `byId('minecraft:overworld')` and
+  /// `byId('world')` reach the same world.
   World? _resolve(String id) {
     final host = _host;
     if (host == null) return null;
-    // A kept handle that went invalid costs a host round trip here (the list of
-    // worlds plus their ids): visible per tick when it happens every tick.
+    // A kept handle that went invalid costs a host round trip here: visible per tick when it
+    // happens every tick.
     final watch = Perf.enabled ? (Stopwatch()..start()) : null;
     final server = host.getServer();
     try {
-      for (final world in server.getAllWorlds()) {
-        if (world.getId() == id) {
-          return _worlds[id] = world.keep();
-        }
-        world.dispose();
-      }
+      final world = server.getWorldByName(name: id);
+      if (world != null) return _worlds[id] = world.keep();
     } finally {
       server.dispose();
       if (watch != null) {

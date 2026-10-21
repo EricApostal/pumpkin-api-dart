@@ -15,6 +15,18 @@ import '../math/matrix3.dart';
 import '../math/pose.dart';
 import '../math/vector.dart';
 
+/// A source of the current partial physics tick
+/// (`SubLevelPhysicsSystem.getPartialPhysicsTick`).
+///
+/// `ServerSubLevel.prePhysicsTick` needs the fraction between the last and the
+/// next physics step for interpolated poses. The physics system is a separate
+/// workstream, so the model asks for this narrow contract instead of importing
+/// the system (Java passes the system itself, `ServerSubLevel.java:339`).
+abstract interface class PartialPhysicsTickSource {
+  /// `(currentSubstep + 1) / substepsPerTick`.
+  double get partialPhysicsTick;
+}
+
 /// `dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle`: the physics body of
 /// one sub-level.
 abstract interface class RigidBodyHandle {

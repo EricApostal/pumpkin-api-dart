@@ -201,13 +201,27 @@ enum Direction {
     Axis.z => d == AxisDirection.positive ? Direction.south : Direction.north,
   };
 
-  /// `Direction.getNearest(x, y, z)`: the direction whose normal best matches the vector
-  /// (ties resolve like vanilla: the first in `down, up, north, south, west, east`).
-  static Direction nearest(double x, double y, double z, [Direction fallback = Direction.north]) {
-    var best = fallback;
-    var bestDot = -double.maxFinite;
+  /// `Direction.getApproximateNearest`: the constant whose normal has the highest dot product
+  /// with `(x, y, z)`, `north` when nothing scores above the starting best -- the first in
+  /// `down, up, north, south, west, east` that ties resolves like vanilla, i.e. only a strictly
+  /// higher dot product wins.
+  ///
+  /// The double arguments are narrowed to `float` and the products are accumulated in `float`, as
+  /// Java does, and the starting best is `Float.MIN_VALUE` -- the smallest *positive* float, not a
+  /// negative bound -- so a vector whose dots are all zero or negative (a zero vector from a track
+  /// shape with no axis, say) keeps `north`. A negative starting bound would hand such a vector to
+  /// the first constant, `down`, which is a vertical direction no train can be assembled along.
+  static Direction nearest(double x, double y, double z) {
+    final dx = toFloat(x);
+    final dy = toFloat(y);
+    final dz = toFloat(z);
+    var best = Direction.north;
+    var bestDot = _floatMinValue;
     for (final d in values) {
-      final dot = x * d.stepX + y * d.stepY + z * d.stepZ;
+      final dot = toFloat(
+        toFloat(toFloat(dx * d.stepX) + toFloat(dy * d.stepY)) +
+            toFloat(dz * d.stepZ),
+      );
       if (dot > bestDot) {
         bestDot = dot;
         best = d;
@@ -383,6 +397,10 @@ T clampNum<T extends num>(T v, T lo, T hi) => v < lo ? lo : (v > hi ? hi : v);
 bool mthEqual(double a, double b) => (b - a).abs() < 1.0e-5;
 
 final Float32List _f32 = Float32List(1);
+
+/// `Float.MIN_VALUE`: the smallest positive float, the starting best of
+/// `Direction.getApproximateNearest` (it is not a negative bound).
+const double _floatMinValue = 1.401298464324817e-45;
 
 /// Rounds to float32, to reproduce Java `float` arithmetic where it matters.
 double toFloat(double v) {

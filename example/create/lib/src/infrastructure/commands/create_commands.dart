@@ -15,6 +15,9 @@ import '../../core/registry.dart';
 import '../../core/services.dart';
 import '../../core/worlds.dart';
 import '../config/config_service.dart';
+import '../../trains/manager/create.dart';
+import '../../trains/station/station_block_entity.dart';
+import '../../trains/support/runtime.dart';
 import 'command_parsing.dart';
 import 'railway_report.dart';
 
@@ -82,6 +85,38 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
     description: 'Summary of track networks and trains near you',
     permission: _op('create:command.trains', 'Use /create trains'),
     runs: (ctx) => _trains(ctx, st),
+  );
+  // TEMPORARY PROBE - NOT PART OF THE PORT. Remove before finishing.
+  c.sub(
+    'assembleprobe',
+    description: 'TEMP: run StationBlockEntity.assemble at a position',
+    permission: _op('create:command.assembleprobe', 'probe'),
+    build: (s) => s.arg(
+      'pos',
+      ArgumentTypes.blockPos,
+      runs: (ctx) async {
+        final world = _worldOf(ctx);
+        final pos = ctx.blockPos('pos');
+        final be = Tr.i.store.typed<StationBlockEntity>(world.getId(), pos);
+        if (be == null) {
+          ctx.reply('PROBE no station block entity at $pos');
+          return;
+        }
+        be.refreshAssemblyInfo();
+        ctx.reply(
+          'PROBE bogeys=${be.assembly.bogeyCount} '
+          'locations=${be.assembly.bogeyLocations} '
+          'direction=${be.getAssemblyDirection()} '
+          'length=${be.assembly.assemblyLength}',
+        );
+        be.enterAssemblyMode(null);
+        await be.assemble('00000000-0000-0000-0000-000000000000');
+        ctx.reply(
+          'PROBE exception=${be.lastException} '
+          'trains=${Create.RAILWAYS.trains.length}',
+        );
+      },
+    ),
   );
   c.sub(
     'debuginfo',

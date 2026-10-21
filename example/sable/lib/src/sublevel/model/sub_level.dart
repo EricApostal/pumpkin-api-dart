@@ -82,6 +82,13 @@ abstract class SubLevel implements SubLevelAccess {
     // `BoundingBox3i.empty` is inverted (min at INT_MAX, max at INT_MIN); a plot
     // with no solid blocks has no global bounds, so the box collapses onto the
     // pose position instead of becoming a 268-million-chunk span.
+    //
+    // TODO(parity): `SubLevel.java:123-131` has no empty-box branch — it feeds
+    // the inverted box straight into `BoundingBox3d.set`, which swaps the halves
+    // and produces a full-range box. The swap is almost certainly not what the
+    // Java intends (an empty plot would then swallow every intersection query),
+    // so this port does not reproduce it. Confirm against a live sub-level whose
+    // last block is broken before changing this.
     if (plotBounds.maxX < plotBounds.minX ||
         plotBounds.maxY < plotBounds.minY ||
         plotBounds.maxZ < plotBounds.minZ) {

@@ -1,0 +1,1195 @@
+{
+ "_readme": "Derived statically from the sable / Simulated-Project / Veil trees listed in tree. Paths are relative to ~/Documents/development/languages/java/. channels[] is the exact NeoForge channel set a client with these mods announces; registries.<mod> lists the ids in the order the source registers them where order is known (blocks: alphabetical here; see docs/aero-port-inventory.md Appendix B for registration order).",
+ "tree": {
+  "sable": "227077f (port/26.3)",
+  "simulated-project": "2aa5963 (port/26.3)",
+  "create": "b59ea26d0 (port/26.3)"
+ },
+ "channels": [
+  {
+   "id": "aeronautics:levitite_blend_crystallize",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC",
+    "CatnipStreamCodecs.HAND"
+   ],
+   "source": "Simulated-Project/aeronautics/common/src/main/java/dev/eriksonn/aeronautics/network/packets/LevititeCatalystCrystallizationPacket.java"
+  },
+  {
+   "id": "offroad:borehead_sync_blocks",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "Simulated-Project/offroad/common/src/main/java/dev/ryanhcode/offroad/network/borehead_bearing/ClientboundMultiMiningSync.java"
+  },
+  {
+   "id": "sable:change_bounds_sublevel",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundChangeBoundsSubLevelPacket.java"
+  },
+  {
+   "id": "sable:change_sub_level_name",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "UUIDUtil.STREAM_CODEC",
+    "ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8)"
+   ],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundChangeSubLevelNamePacket.java"
+  },
+  {
+   "id": "sable:dimension_physics",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "ByteBufCodecs.collection( ArrayList::new, DimensionPhysics.S"
+   ],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundDimensionPhysicsPacket.java"
+  },
+  {
+   "id": "sable:enter_gizmo_mode",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundEnterGizmoPacket.java"
+  },
+  {
+   "id": "sable:finalize_sub_level",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundFinalizeSubLevelPacket.java"
+  },
+  {
+   "id": "sable:floating_material",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "Identifier.STREAM_CODEC",
+    "FloatingBlockMaterial.STREAM_CODEC"
+   ],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundFloatingBlockMaterialPacket.java"
+  },
+  {
+   "id": "sable:freeze_player",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundFreezePlayerPacket.java"
+  },
+  {
+   "id": "sable:physics_property",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "PhysicsBlockPropertiesDefinition.STREAM_CODEC"
+   ],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundPhysicsPropertyPacket.java"
+  },
+  {
+   "id": "sable:recently_split_sub_level",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "UUIDUtil.STREAM_CODEC",
+    "UUIDUtil.STREAM_CODEC",
+    "SableBufferUtils.POSE3D_STREAM_CODEC"
+   ],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundRecentlySplitSubLevelPacket.java"
+  },
+  {
+   "id": "sable:snapshot_info_packet",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/ClientboundSableSnapshotInfoDualPacket.java"
+  },
+  {
+   "id": "sable:snapshot_packet",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/ClientboundSableSnapshotDualPacket.java"
+  },
+  {
+   "id": "sable:start_tracking_sub_level",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundStartTrackingSubLevelPacket.java"
+  },
+  {
+   "id": "sable:stop_moving_sub_level",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundStopMovingSubLevelPacket.java"
+  },
+  {
+   "id": "sable:stop_tracking_sub_level",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundStopTrackingSubLevelPacket.java"
+  },
+  {
+   "id": "sable:udp_activation",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ClientboundSableUDPActivationPacket.java"
+  },
+  {
+   "id": "sable:gizmo_move_sub_level",
+   "version": "1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ServerboundGizmoMoveSubLevelPacket.java"
+  },
+  {
+   "id": "sable:punch_sub_level",
+   "version": "1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "sable/common/src/main/java/dev/ryanhcode/sable/network/packets/tcp/ServerboundPunchSubLevelPacket.java"
+  },
+  {
+   "id": "simulated:assembler_failed",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/physics_assembler/PhysicsAssemblerFailedPacket.java"
+  },
+  {
+   "id": "simulated:diagram_data",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "ByteBufCodecs.map(Object2ObjectOpenHashMap::new, SimCodecUti",
+    "ByteBufCodecs.DOUBLE"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/contraption_diagram/DiagramDataPacket.java"
+  },
+  {
+   "id": "simulated:end_sea",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/end_sea/ClientboundEndSeaPacket.java"
+  },
+  {
+   "id": "simulated:flick_assembler_lever",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC",
+    "ByteBufCodecs.BOOL"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/physics_assembler/PhysicsAssemblerFlickAndHoldLeverPacket.java"
+  },
+  {
+   "id": "simulated:honey_glue_sync",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/honey_glue/HoneyGlueSyncBoundsPacket.java"
+  },
+  {
+   "id": "simulated:open_diagram",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "ByteBufCodecs.INT",
+    "DiagramConfig.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/contraption_diagram/DiagramOpenPacket.java"
+  },
+  {
+   "id": "simulated:physics_staff_beam",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "UUIDUtil.STREAM_CODEC",
+    "SimCodecUtil.STREAM_VECTOR3D",
+    "SimCodecUtil.STREAM_VECTOR3D"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/physics_staff/PhysicsStaffBeamPacket.java"
+  },
+  {
+   "id": "simulated:physics_staff_drag_sessions",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "ResourceKey.streamCodec(Registries.DIMENSION)",
+    "CatnipStreamCodecBuilders.list(Pair.streamCodec(UUIDUtil.STR"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/physics_staff/PhysicsStaffDragSessionsPacket.java"
+  },
+  {
+   "id": "simulated:physics_staff_locks",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "ResourceKey.streamCodec(Registries.DIMENSION)",
+    "CatnipStreamCodecBuilders.list(UUIDUtil.STREAM_CODEC)"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/physics_staff/PhysicsStaffLocksPacket.java"
+  },
+  {
+   "id": "simulated:players_holding_handles",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "ByteBufCodecs.collection(HashSet::new, UUIDUtil.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/handle/ClientboundPlayersHoldingHandlePacket.java"
+  },
+  {
+   "id": "simulated:plunger_launcher_shoot",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "CatnipStreamCodecs.HAND"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/PlungerLauncherShootPacket.java"
+  },
+  {
+   "id": "simulated:rope_data",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/rope/ClientboundRopeDataPacket.java"
+  },
+  {
+   "id": "simulated:rope_stopped",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "map",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/rope/ClientboundRopeStoppedPacket.java"
+  },
+  {
+   "id": "simulated:update_client_lodestone",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "UUIDUtil.STREAM_CODEC",
+    "StreamCodec.of((byteBuf, p) -> { byteBuf.writeDouble(p.x); b"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/lodestone_compass/UpdateClientLodestonePositionPacket.java"
+  },
+  {
+   "id": "simulated:assemble",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/AssemblePacket.java"
+  },
+  {
+   "id": "simulated:be_observed",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "map",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/BlockEntityObservedPacket.java"
+  },
+  {
+   "id": "simulated:break_rope",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "UUIDUtil.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/RopeBreakPacket.java"
+  },
+  {
+   "id": "simulated:configure_altitude_sensor",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC",
+    "ByteBufCodecs.FLOAT",
+    "ByteBufCodecs.FLOAT"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/ConfigureAltitudeSensorPacket.java"
+  },
+  {
+   "id": "simulated:configure_modulating_linked_reciever",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC",
+    "ByteBufCodecs.INT",
+    "ByteBufCodecs.INT"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/ConfigureModulatingLinkedRecieverPacket.java"
+  },
+  {
+   "id": "simulated:entry_modify",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "ItemStack.OPTIONAL_STREAM_CODEC",
+    "ItemStack.OPTIONAL_STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/linked_typewriter/TypewriterMenuModifySlots.java"
+  },
+  {
+   "id": "simulated:honey_glue_change_bounds",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/honey_glue/HoneyGlueChangeBoundsPacket.java"
+  },
+  {
+   "id": "simulated:honey_glue_spawn",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/honey_glue/HoneyGlueSpawnPacket.java"
+  },
+  {
+   "id": "simulated:key_interaction",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(4)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC",
+    "ByteBufCodecs.INT",
+    "ByteBufCodecs.INT",
+    "ByteBufCodecs.INT"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/linked_typewriter/TypewriterKeyInteractionPacket.java"
+  },
+  {
+   "id": "simulated:linked_typewriter_bind_item",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "ByteBufCodecs.INT",
+    "LinkedTypewriterEntries.KeyboardEntry.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/linked_typewriter/TypewriterSaveKeyToItemPacket.java"
+  },
+  {
+   "id": "simulated:linked_typewriter_save",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "ByteBufCodecs.map(HashMap::new, ByteBufCodecs.INT, LinkedTyp",
+    "BlockPos.STREAM_CODEC",
+    "ByteBufCodecs.BOOL"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/linked_typewriter/TypewriterKeySavePacket.java"
+  },
+  {
+   "id": "simulated:nameplate_change_name",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC",
+    "ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8)"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/name_plate/NameplateChangeNamePacket.java"
+  },
+  {
+   "id": "simulated:physics_staff_action",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "PhysicsStaffAction.STREAM_CODEC",
+    "UUIDUtil.STREAM_CODEC",
+    "SimCodecUtil.STREAM_VECTOR3D"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/physics_staff/PhysicsStaffActionPacket.java"
+  },
+  {
+   "id": "simulated:physics_staff_drag",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "of(read/write)",
+   "codec_fields": [],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/physics_staff/PhysicsStaffDragPacket.java"
+  },
+  {
+   "id": "simulated:place_merging_glue",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(5)",
+   "codec_fields": [
+    "ByteBufCodecs.INT",
+    "BlockPos.STREAM_CODEC",
+    "BlockPos.STREAM_CODEC",
+    "Direction.STREAM_CODEC",
+    "Direction.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/PlaceMergingGluePacket.java"
+  },
+  {
+   "id": "simulated:place_spring",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(5)",
+   "codec_fields": [
+    "ByteBufCodecs.INT",
+    "BlockPos.STREAM_CODEC",
+    "BlockPos.STREAM_CODEC",
+    "Direction.STREAM_CODEC",
+    "Direction.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/PlaceSpringPacket.java"
+  },
+  {
+   "id": "simulated:request_diagram_data",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "UUIDUtil.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/contraption_diagram/RequestDiagramDataPacket.java"
+  },
+  {
+   "id": "simulated:ride_rope",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "UUIDUtil.STREAM_CODEC",
+    "ByteBufCodecs.BOOL"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/RopeRidingPacket.java"
+  },
+  {
+   "id": "simulated:save_diagram",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "ByteBufCodecs.INT",
+    "DiagramConfig.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/contraption_diagram/DiagramSaveConfigPacket.java"
+  },
+  {
+   "id": "simulated:steering_wheel_update",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "ByteBufCodecs.BOOL",
+    "ByteBufCodecs.FLOAT",
+    "BlockPos.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/SteeringWheelPacket.java"
+  },
+  {
+   "id": "simulated:throttle_lever_signal",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(2)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC",
+    "ByteBufCodecs.INT"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/ThrottleLeverSignalPacket.java"
+  },
+  {
+   "id": "simulated:typewriter_disconnect_user",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(1)",
+   "codec_fields": [
+    "BlockPos.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/linked_typewriter/TypewriterDisconnectUser.java"
+  },
+  {
+   "id": "simulated:update_player_handle",
+   "version": "0.1",
+   "phase": "play",
+   "flow": "serverbound",
+   "optional": false,
+   "codec": "composite(3)",
+   "codec_fields": [
+    "ByteBufCodecs.FLOAT",
+    "ByteBufCodecs.BOOL",
+    "BlockPos.STREAM_CODEC"
+   ],
+   "source": "Simulated-Project/simulated/common/src/main/java/dev/simulated_team/simulated/network/packets/UpdatePlayerUsingHandlePacket.java"
+  }
+ ],
+ "optional_channels_other_mods": [
+  {
+   "id": "veil:add_post_processing",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": true,
+   "source": "Veil/common/src/main/java/foundry/veil/impl/network/VeilPacketSender.java:16"
+  },
+  {
+   "id": "veil:clear_post_processing",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": true,
+   "source": "Veil/common/src/main/java/foundry/veil/impl/network/VeilPacketSender.java:17"
+  },
+  {
+   "id": "veil:remove_post_processing",
+   "version": "1",
+   "phase": "play",
+   "flow": "clientbound",
+   "optional": true,
+   "source": "Veil/common/src/main/java/foundry/veil/impl/network/VeilPacketSender.java:18"
+  }
+ ],
+ "registries": {
+  "sable": {
+   "blocks": [],
+   "block_entities": [],
+   "entity_types": [],
+   "menus": [],
+   "data_components": [],
+   "custom_registries": {
+    "force_groups": [
+     "gravity",
+     "drag",
+     "levitation",
+     "balloon_lift",
+     "propulsion",
+     "lift",
+     "magnetic_force"
+    ],
+    "physics_block_properties": [
+     "mass",
+     "inertia",
+     "volume",
+     "restitution",
+     "friction",
+     "fragile",
+     "floating_material",
+     "floating_scale"
+    ]
+   },
+   "attributes": [
+    "player.sub_level_punch_strength",
+    "player.sub_level_punch_cooldown"
+   ]
+  },
+  "simulated": {
+   "blocks": [
+    "altitude_sensor",
+    "analog_transmission",
+    "auger_cog",
+    "auger_shaft",
+    "black_handle",
+    "black_nameplate",
+    "black_portable_engine",
+    "black_symmetric_sail",
+    "blue_handle",
+    "blue_nameplate",
+    "blue_portable_engine",
+    "blue_symmetric_sail",
+    "brown_handle",
+    "brown_nameplate",
+    "brown_portable_engine",
+    "brown_symmetric_sail",
+    "copper_handle",
+    "cyan_handle",
+    "cyan_nameplate",
+    "cyan_portable_engine",
+    "cyan_symmetric_sail",
+    "directional_gearshift",
+    "directional_linked_receiver",
+    "docking_connector",
+    "gimbal_sensor",
+    "gray_handle",
+    "gray_nameplate",
+    "gray_portable_engine",
+    "gray_symmetric_sail",
+    "green_handle",
+    "green_nameplate",
+    "green_portable_engine",
+    "green_symmetric_sail",
+    "iron_handle",
+    "laser_pointer",
+    "laser_sensor",
+    "light_blue_handle",
+    "light_blue_nameplate",
+    "light_blue_portable_engine",
+    "light_blue_symmetric_sail",
+    "light_gray_handle",
+    "light_gray_nameplate",
+    "light_gray_portable_engine",
+    "light_gray_symmetric_sail",
+    "lime_handle",
+    "lime_nameplate",
+    "lime_portable_engine",
+    "lime_symmetric_sail",
+    "linked_typewriter",
+    "magenta_handle",
+    "magenta_nameplate",
+    "magenta_portable_engine",
+    "magenta_symmetric_sail",
+    "merging_glue",
+    "modulating_linked_receiver",
+    "navigation_table",
+    "optical_sensor",
+    "orange_handle",
+    "orange_nameplate",
+    "orange_portable_engine",
+    "orange_symmetric_sail",
+    "paired_docking_connector",
+    "physics_assembler",
+    "pink_handle",
+    "pink_nameplate",
+    "pink_portable_engine",
+    "pink_symmetric_sail",
+    "purple_handle",
+    "purple_nameplate",
+    "purple_portable_engine",
+    "purple_symmetric_sail",
+    "red_handle",
+    "red_nameplate",
+    "red_portable_engine",
+    "red_symmetric_sail",
+    "redstone_accumulator",
+    "redstone_inductor",
+    "redstone_magnet",
+    "rope_connector",
+    "rope_winch",
+    "spring",
+    "steering_wheel",
+    "swivel_bearing",
+    "swivel_bearing_link_block",
+    "throttle_lever",
+    "torsion_spring",
+    "velocity_sensor",
+    "white_handle",
+    "white_nameplate",
+    "white_portable_engine",
+    "white_symmetric_sail",
+    "yellow_handle",
+    "yellow_nameplate",
+    "yellow_portable_engine",
+    "yellow_symmetric_sail"
+   ],
+   "block_entities": [
+    "simple",
+    "torsion_spring",
+    "physics_assembler",
+    "rope_winch",
+    "rope_connector",
+    "docking_connector",
+    "altitude_sensor",
+    "gimbal_sensor",
+    "handle",
+    "portable_engine",
+    "swivel_bearing",
+    "steering_wheel",
+    "spring",
+    "swivel_bearing_link_block",
+    "linked_typewriter",
+    "optical_sensor",
+    "laser_pointer",
+    "ir_sensor",
+    "velocity_sensor",
+    "directional_linked_receiver",
+    "nameplate",
+    "modulating_linked_receiver",
+    "redstone_accumulator",
+    "navigation_table",
+    "redstone_inductor",
+    "redstone_magnet",
+    "throttle_lever",
+    "auger_shaft",
+    "merging_glue",
+    "directional_gearshift"
+   ],
+   "entity_types": [
+    "honey_glue",
+    "launched_plunger",
+    "contraption_diagram"
+   ],
+   "menus": [
+    "linked_typewriter"
+   ],
+   "data_components": [
+    "rope_first_connection",
+    "lodestone_compass_tracker",
+    "compass_placer",
+    "last_player_death_location",
+    "target",
+    "bounciness"
+   ],
+   "recipe_types": [
+    "portable_engine_dyeing"
+   ],
+   "custom_registries": {
+    "navigation_target": [
+     "compass",
+     "recovery_compass",
+     "map",
+     "magnet"
+    ],
+    "property_tooltip": [
+     "mass",
+     "friction",
+     "restitution",
+     "fragile",
+     "airtight",
+     "floating"
+    ]
+   },
+   "items": [
+    "altitude_sensor",
+    "analog_transmission",
+    "auger_cog",
+    "auger_shaft",
+    "black_handle",
+    "black_nameplate",
+    "black_portable_engine",
+    "blue_handle",
+    "blue_nameplate",
+    "blue_portable_engine",
+    "brown_handle",
+    "brown_nameplate",
+    "brown_portable_engine",
+    "contraption_diagram",
+    "copper_handle",
+    "creative_physics_staff",
+    "cyan_handle",
+    "cyan_nameplate",
+    "cyan_portable_engine",
+    "directional_gearshift",
+    "directional_linked_receiver",
+    "docking_connector",
+    "engine_assembly",
+    "gimbal_sensor",
+    "gray_handle",
+    "gray_nameplate",
+    "gray_portable_engine",
+    "green_handle",
+    "green_nameplate",
+    "green_portable_engine",
+    "gyroscopic_mechanism",
+    "honey_glue",
+    "incomplete_engine_assembly",
+    "incomplete_gyroscopic_mechanism",
+    "iron_handle",
+    "laser_pointer",
+    "laser_sensor",
+    "light_blue_handle",
+    "light_blue_nameplate",
+    "light_blue_portable_engine",
+    "light_gray_handle",
+    "light_gray_nameplate",
+    "light_gray_portable_engine",
+    "lime_handle",
+    "lime_nameplate",
+    "lime_portable_engine",
+    "linked_typewriter",
+    "magenta_handle",
+    "magenta_nameplate",
+    "magenta_portable_engine",
+    "modulating_linked_receiver",
+    "navigation_table",
+    "optical_sensor",
+    "orange_handle",
+    "orange_nameplate",
+    "orange_portable_engine",
+    "physics_assembler",
+    "pink_handle",
+    "pink_nameplate",
+    "pink_portable_engine",
+    "plunger_launcher",
+    "purple_handle",
+    "purple_nameplate",
+    "purple_portable_engine",
+    "red_handle",
+    "red_nameplate",
+    "red_portable_engine",
+    "redstone_accumulator",
+    "redstone_inductor",
+    "redstone_magnet",
+    "rope_connector",
+    "rope_coupling",
+    "rope_winch",
+    "spring",
+    "steering_wheel",
+    "swivel_bearing",
+    "throttle_lever",
+    "torsion_spring",
+    "velocity_sensor",
+    "white_handle",
+    "white_nameplate",
+    "white_portable_engine",
+    "white_symmetric_sail",
+    "yellow_handle",
+    "yellow_nameplate",
+    "yellow_portable_engine"
+   ]
+  },
+  "aeronautics": {
+   "blocks": [
+    "adjustable_burner",
+    "andesite_propeller",
+    "black_envelope",
+    "black_envelope_encased_shaft",
+    "blue_envelope",
+    "blue_envelope_encased_shaft",
+    "brown_envelope",
+    "brown_envelope_encased_shaft",
+    "cyan_envelope",
+    "cyan_envelope_encased_shaft",
+    "gray_envelope",
+    "gray_envelope_encased_shaft",
+    "green_envelope",
+    "green_envelope_encased_shaft",
+    "gyroscopic_propeller_bearing",
+    "levitite",
+    "levitite_blend",
+    "light_blue_envelope",
+    "light_blue_envelope_encased_shaft",
+    "light_gray_envelope",
+    "light_gray_envelope_encased_shaft",
+    "lime_envelope",
+    "lime_envelope_encased_shaft",
+    "magenta_envelope",
+    "magenta_envelope_encased_shaft",
+    "mounted_potato_cannon",
+    "orange_envelope",
+    "orange_envelope_encased_shaft",
+    "pearlescent_levitite",
+    "pink_envelope",
+    "pink_envelope_encased_shaft",
+    "propeller_bearing",
+    "purple_envelope",
+    "purple_envelope_encased_shaft",
+    "red_envelope",
+    "red_envelope_encased_shaft",
+    "smart_propeller",
+    "steam_vent",
+    "white_envelope",
+    "white_envelope_encased_shaft",
+    "wooden_propeller",
+    "yellow_envelope",
+    "yellow_envelope_encased_shaft"
+   ],
+   "block_entities": [
+    "steam_vent",
+    "adjustable_burner",
+    "propeller_bearing",
+    "gyroscopic_propeller_bearing",
+    "envelope_encased_shaft",
+    "andesite_propeller",
+    "wooden_propeller",
+    "smart_propeller",
+    "mounted_potato_cannon"
+   ],
+   "entity_types": [
+    "propeller_bearing_contraption",
+    "gust"
+   ],
+   "menus": [],
+   "data_components": [
+    "levitating",
+    "converter"
+   ],
+   "fluids": [
+    "levitite_blend"
+   ],
+   "custom_registries": {
+    "lifting_gas_type": [
+     "default",
+     "steam"
+    ],
+    "levitite_crystal_propagation_context": [
+     "standard",
+     "soul"
+    ]
+   },
+   "items": [
+    "adjustable_burner",
+    "andesite_propeller",
+    "aviators_goggles",
+    "black_envelope",
+    "black_envelope_encased_shaft",
+    "blue_envelope",
+    "blue_envelope_encased_shaft",
+    "brown_envelope",
+    "brown_envelope_encased_shaft",
+    "cyan_envelope",
+    "cyan_envelope_encased_shaft",
+    "end_stone_powder",
+    "gray_envelope",
+    "gray_envelope_encased_shaft",
+    "green_envelope",
+    "green_envelope_encased_shaft",
+    "gyroscopic_propeller_bearing",
+    "levitite",
+    "levitite_blend_bucket",
+    "light_blue_envelope",
+    "light_blue_envelope_encased_shaft",
+    "light_gray_envelope",
+    "light_gray_envelope_encased_shaft",
+    "lime_envelope",
+    "lime_envelope_encased_shaft",
+    "magenta_envelope",
+    "magenta_envelope_encased_shaft",
+    "mounted_potato_cannon",
+    "music_disc_cloud_skipper",
+    "orange_envelope",
+    "orange_envelope_encased_shaft",
+    "pearlescent_levitite",
+    "pink_envelope",
+    "pink_envelope_encased_shaft",
+    "propeller_bearing",
+    "purple_envelope",
+    "purple_envelope_encased_shaft",
+    "red_envelope",
+    "red_envelope_encased_shaft",
+    "smart_propeller",
+    "steam_vent",
+    "white_envelope",
+    "white_envelope_encased_shaft",
+    "wooden_propeller",
+    "yellow_envelope",
+    "yellow_envelope_encased_shaft"
+   ]
+  },
+  "offroad": {
+   "blocks": [
+    "borehead_bearing",
+    "rockcutting_wheel",
+    "wheel_mount"
+   ],
+   "block_entities": [
+    "wheel_mount",
+    "borehead_bearing",
+    "rockcutting_wheel"
+   ],
+   "entity_types": [
+    "borehead_contraption_entity"
+   ],
+   "menus": [],
+   "data_components": [
+    "tire"
+   ],
+   "custom_registries": {
+    "contraption_type": [
+     "borehead_contraption_type"
+    ]
+   },
+   "items": [
+    "borehead_bearing",
+    "large_tire",
+    "monstrous_tire",
+    "rockcutting_wheel",
+    "small_tire",
+    "tire",
+    "wheel_mount"
+   ]
+  }
+ },
+ "counts": {
+  "channels_total": 56,
+  "blocks": {
+   "sable": 0,
+   "simulated": 95,
+   "aeronautics": 43,
+   "offroad": 3
+  },
+  "block_entities": {
+   "sable": 0,
+   "simulated": 30,
+   "aeronautics": 9,
+   "offroad": 3
+  },
+  "entity_types": {
+   "sable": 0,
+   "simulated": 3,
+   "aeronautics": 2,
+   "offroad": 1
+  },
+  "menus": {
+   "sable": 0,
+   "simulated": 1,
+   "aeronautics": 0,
+   "offroad": 0
+  },
+  "data_components": {
+   "sable": 0,
+   "simulated": 6,
+   "aeronautics": 2,
+   "offroad": 1
+  },
+  "items_derived": {
+   "simulated": 86,
+   "aeronautics": 46,
+   "offroad": 7
+  }
+ }
+}

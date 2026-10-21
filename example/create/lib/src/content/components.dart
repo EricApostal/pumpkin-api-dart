@@ -12,7 +12,15 @@
 //  * `ItemContainerContents` (26.3): list of optional `ItemStackTemplate`
 //    (VarInt item id, VarInt count, data component patch)
 //  * `StreamCodec.unit`: no bytes
+//
+// The same descriptions also build the wire readers (`ItemComponents`): a payload
+// that carries an item stack can only be decoded when the length of every
+// component value in the stack's patch is known, so [registerComponentReaders]
+// registers one copier per component once the host assigned its id.
 import 'package:pumpkin_api/pumpkin_api_core.dart';
+
+import '../api/registry/create_registries.dart';
+import '../protocol/item_stack.dart';
 
 /// Registration data of one component.
 final class CreateComponent {
@@ -152,3 +160,130 @@ final List<CreateComponent> createComponents = [
   CreateComponent('clipboard_copied_values', _nbt),
   CreateComponent('clipboard_previously_opened_page', _int),
 ];
+
+// ---- wire readers ----------------------------------------------------------------------------
+
+/// `create:attribute_filter_matched_attributes`: the one component whose codec
+/// description in [createComponents] is an approximation.
+const String _attributeFilterComponent = 'create:attribute_filter_matched_attributes';
+
+/// Registers the wire reader (`ItemComponents`) of every component in
+/// [createComponents] by the id [idOf] answers for its key; components the host
+/// did not register are skipped.
+///
+/// [attributeTypeId] resolves the host ids of the `create:item_attribute_type`
+/// entries, which the one dispatch component needs. [warn] receives a message
+/// when a component cannot be delimited exactly: its payloads are then dropped
+/// (as before), never misread.
+void registerComponentReaders(
+  int? Function(String key) idOf, {
+  int? Function(String key)? attributeTypeId,
+  void Function(String message)? warn,
+}) {
+  for (final c in createComponents) {
+    final id = idOf(c.key);
+    if (id == null) continue;
+    if (c.approximate) {
+      if (c.key == _attributeFilterComponent) {
+        ItemComponents.register(id, attributeFilterCopier(attributeTypeId: attributeTypeId));
+        continue;
+      }
+      warn?.call(
+        'No exact wire reader for ${c.key}: the codec description is an approximation, so a '
+        'payload carrying that component is dropped instead of risking a wrong length',
+      );
+      continue;
+    }
+    ItemComponents.register(id, copierForCodec(c.codec));
+  }
+}
+
+/// The `ItemAttribute` types with no payload (`SingletonItemAttribute.Type`,
+/// `AllItemAttributeTypes.java:60-77`).
+const List<String> _payloadFreeAttributeTypes = [
+  'placeable',
+  'consumable',
+  'fluid_container',
+  'enchanted',
+  'max_enchanted',
+  'renamed',
+  'damaged',
+  'badly_damaged',
+  'not_stackable',
+  'equipable',
+  'furnace_fuel',
+  'washable',
+  'hauntable',
+  'crushable',
+  'smeltable',
+  'smokable',
+  'blastable',
+  'compostable',
+];
+
+/// `ByteBufCodecs.STRING_UTF8` / `Identifier.STREAM_CODEC`: a VarInt length and
+/// that many UTF-8 bytes.
+void _copyText(PacketReader r, PacketWriter w) => w.writeByteArray(r.readByteArray());
+
+/// `ByteBufCodecs.INT`: four bytes.
+void _copyInt(PacketReader r, PacketWriter w) => w.writeInt(r.readInt());
+
+/// `ByteBufCodecs.registry(...)` / `idMapper` / `ofEnum`: a VarInt id.
+void _copyVarInt(PacketReader r, PacketWriter w) => w.writeVarInt(r.readVarInt());
+
+/// `CatnipStreamCodecBuilders.nullable(Identifier.STREAM_CODEC)`.
+void _copyNullableText(PacketReader r, PacketWriter w) {
+  final present = r.readBool();
+  w.writeBool(present);
+  if (present) _copyText(r, w);
+}
+
+/// `CatnipStreamCodecBuilders.nullable(CatnipStreamCodecs.FLUID)`.
+void _copyNullableVarInt(PacketReader r, PacketWriter w) {
+  final present = r.readBool();
+  w.writeBool(present);
+  if (present) _copyVarInt(r, w);
+}
+
+/// The value codec of one `create:item_attribute_type` entry, or null when the
+/// type is not known.
+ComponentCopier? attributePayloadCopier(String type) => switch (type) {
+  // InTagAttribute (tag id), AddedByAttribute, ItemNameAttribute, BookAuthorAttribute.
+  'in_tag' || 'added_by' || 'has_name' || 'book_author' => _copyText,
+  // InItemGroupAttribute (nullable creative tab id).
+  'in_item_group' => _copyNullableText,
+  // EnchantAttribute (enchantment holder id), ShulkerFillLevelAttribute (enum
+  // ordinal), ColorAttribute (DyeColor id).
+  'has_enchant' || 'shulker_fill_level' || 'has_color' => _copyVarInt,
+  // FluidContentsAttribute (nullable fluid id).
+  'has_fluid' => _copyNullableVarInt,
+  // BookCopyAttribute (generation).
+  'book_copy' => _copyInt,
+  _ => _payloadFreeAttributeTypes.contains(type) ? ItemComponents.copyNothing : null,
+};
+
+/// The reader of `create:attribute_filter_matched_attributes`:
+/// `ItemAttribute.STREAM_CODEC` (`ItemAttribute.java:29`) is a registry dispatch
+/// on `create:item_attribute_type`, a VarInt type id and then that type's own
+/// stream codec (`AllItemAttributeTypes.java:60-79`).
+///
+/// [attributeTypeId] maps an entry key (`create:in_tag`) to the host id; without
+/// it the ids are the manifest registration order (the order the plugin declares
+/// the synced registry in), which is what the host assigns.
+ComponentCopier attributeFilterCopier({int? Function(String key)? attributeTypeId}) {
+  final byId = <int, ComponentCopier>{};
+  final entries = CreateBuiltInRegistries.entries[CreateRegistries.itemAttributeType] ?? const <String>[];
+  for (var index = 0; index < entries.length; index++) {
+    final key = entries[index];
+    final payload = attributePayloadCopier(key.substring(key.indexOf(':') + 1));
+    if (payload == null) continue;
+    byId[attributeTypeId?.call(key) ?? index] = payload;
+  }
+  return (r, w) {
+    final id = r.readVarInt();
+    w.writeVarInt(id);
+    final payload = byId[id];
+    if (payload == null) throw PacketException('Item attribute type $id has no wire reader');
+    payload(r, w);
+  };
+}

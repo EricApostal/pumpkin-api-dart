@@ -54,6 +54,29 @@ counter). The plugin declares the mod to the host's NeoForge handshake by defaul
 which a real Create client needs to join at all; `"core": {"neoforge": false}`
 turns the declaration off for vanilla-only servers.
 
+The declaration names Create and nothing else. An addon (Sable, Simulated,
+Aeronautics, Offroad, or a mod of your own) declares *its own* mod through
+Create's generic hook: implement `CreateAddon` from `package:create/create.dart`
+(`modId`, `version`, and either a `channels` table or a `contribute` override) and
+call `context.declareNeoForge(createAddonNeoForgeDeclaration(const MyAddon()))`.
+The host merges every plugin's declaration into the one `neoforge:register`
+answer, so a client with the addons negotiates instead of being refused, and
+adding another addon needs no change to Create. Each addon's channel table lives
+in its own package (`example/sable/lib/sable_channels.dart`,
+`example/simulated/lib/src/index/sim_channels.dart`, ...) and is checked against the port
+inventory (`docs/aero-port-manifest.json`) by
+`test/compat_negotiation_test.dart`.
+
+That is **compatibility, not an implementation**: declaring a channel makes a
+client that has the mod negotiate instead of being refused, and nothing in Create
+decodes or handles another mod's payloads. The versions have to stay the ones the
+client sends (`1` for Sable, `0.1` for the other three) or the negotiation fails
+on the version check instead.
+
+`tool/dump_client_channels.dart` writes the channel set such a client answers with,
+in the format `pumpkin-tester client --query <file>` takes, so the negotiation can
+be checked against a real server without launching the game.
+
 ## End-to-end tests against a real server
 
 `puro dart test` runs the pure-Dart tests and covers the pure parts of the port. The
@@ -160,9 +183,12 @@ How it is wired, and why each piece is needed:
   traces, and says so.
 - **A `pumpkin-tester client` joins each arm** through the proxy. It is the semantic record
   (`test/support/pumpkin_trace.dart` reads it) and the thing that makes a server send
-  anything at all. On the Java arm it joins with `--mirror`, because a modded server refuses
-  a client whose NeoForge channel answer does not match its own declaration.
-- **The rig** is the contraption scenario in `tool/diff_servers.dart`: a bearing that
+  anything at all. Both arms get the *same* client: it answers the `NeoForge` handshake with
+  the channels the plugin declares (`--query`, the set `test/support/differential/channel_manifest.dart`
+  builds). A vanilla client on one arm and a `NeoForge` one on the other would differ by
+  construction — the host sends `neoforge:auxiliary_light_data` only to a `NeoForge` client —
+  and the comparison would report the harness's choice as if it were the plugin's.
+- **The rig** comes from `test/support/differential/scenarios.dart`: a bearing that
   assembles one stone, driven by a creative motor, built in the air above the client (the
   only position that means the same thing on two servers that generate their own worlds).
 
@@ -171,8 +197,9 @@ events keyed by position, entity and channel; positions translated into rig coor
 (the two servers put the rig at different absolute coordinates); block state ids, entity
 ids, entity type ids and id-shaped payload leaves renamed through **each server's own**
 numbering, so only the equality pattern has to match; payloads decoded as NBT and compared
-leaf by leaf, so a difference is named as a path (`Contents.Value: 1 vs 2`) instead of as
-two blobs. Packets the trace does not model (keep-alives, time updates) are skipped, and
+leaf by leaf (with a number's NBT width, so `0.0 (float)` and `0.0 (double)` are not the
+same leaf), so a difference is named as a path (`Contents.Value: 1 (int) vs 2 (int)`)
+instead of as two blobs. Packets the trace does not model (keep-alives, time updates) are skipped, and
 the skip is counted in the report rather than hidden.
 
 Exit codes are the automation contract: **0** the two arms agree (a real finding — it would
@@ -193,6 +220,45 @@ puro dart run tool/diff_servers.dart --reference pumpkin --candidate pumpkin
 |---|---|
 | `MCTRACE_JAVA_DIR` | the NeoForge install to mirror (default `~/Documents/mctesting`) |
 | `MCTRACE_BIN` | the `mctrace` binary; defaults to `mctrace` next to `PUMPKIN_TESTER_BIN` |
+
+## Parity tests
+
+`test/parity/` turns the differential into assertions: one file per subsystem, each running the
+same rig on both servers and asserting that the two clients were told the same *semantic* events.
+They are `@Tags(['e2e'])` and skip with the reason when `PUMPKIN_E2E` is unset, and they need a
+Java install for the reference arm (`MCTRACE_JAVA_DIR`):
+
+```sh
+export PATH="$PATH:$HOME/.puro/bin"
+PUMPKIN_E2E=1 \
+PUMPKIN_BIN=/path/to/Pumpkin/target/fast/pumpkin \
+PUMPKIN_TESTER_BIN=/path/to/Pumpkin/target/fast/pumpkin-tester \
+MCTRACE_BIN=/path/to/Pumpkin/target/fast/mctrace \
+PUMPKIN_PLUGIN_WASM=build/create.wasm \
+  puro dart test test/parity
+```
+
+| Test | Level |
+|---|---|
+| `contraption_parity_test.dart` | a bearing assembles one stone: block updates, block entity payloads, the contraption entity and its spawn bundle |
+| `fluid_tank_parity_test.dart` | two stacked tanks merge: a static block entity payload, compared leaf by leaf |
+| `channel_negotiation_parity_test.dart` | the registry/channel level: a client with only Create's channels joins both servers, and both negotiate the same `channel -> version` map (read from the wire by `mctrace`, so it skips without it) |
+| `negative_control_test.dart` | the suite's own proof that it can fail: a real run, then one event deleted from one arm, which the comparison must report |
+
+**To add a parity test**, write the rig as a `Scenario` in
+`test/support/differential/scenarios.dart` (the console commands both arms are driven with, the
+box that is compared around the client, the probes that pin what a trace cannot, and the
+precondition the reference arm must satisfy) and register it in `parityScenarios`, then add a
+`test/parity/<subsystem>_parity_test.dart` whose body is `expectParity(await runParity(<scenario>()))`;
+a test that needs a different client channel set or the handshake instead of a trace passes
+`clientQuery:`/`compareTraces: false` to `runParity`, and `test/support/differential/parity.dart`
+documents the three outcomes (agreement, difference, and "never got to compare" — which fails, never
+skips). The same rig is then runnable by hand with
+`puro dart run tool/diff_servers.dart --scenario <name>`. Prove the new test can fail before
+trusting it: `negative_control_test.dart` runs a real rig, deletes one event from one arm and
+requires the comparison (and `expectParity`) to name it — do the same for the new subsystem's
+regression class, because a parity test that has only ever seen two agreeing servers has not been
+shown to catch anything.
 
 ## Known host limitations
 

@@ -21,6 +21,7 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../compat/simulated_driver.dart';
+import '../compat/simulated_peripherals.dart' show CcSimulatedPeripherals;
 import '../machine/computer.dart';
 import '../protocol/components.dart';
 import 'block_states.dart';
@@ -120,6 +121,41 @@ final class CcWorldComputers {
     context.intercept(Events.blockDropItem, _onDropItem);
     context.listen(Events.blockEntityLoad, _onEntityLoad);
     context.listen(Events.blockEntityUnload, _onEntityUnload);
+    _installNeighbourRefresh(context);
+  }
+
+  /// Asks the host to tell the computer blocks when a neighbour changes
+  /// (`AbstractComputerBlock` recomputing its peripherals), which is what puts
+  /// a peripheral of another mod on a computer's side when the block of that
+  /// mod is placed next to a computer that already runs; the other triggers
+  /// (the computer's own place, load and use) are in `_refreshSimulated`.
+  ///
+  /// The host may refuse the callback (a host without `block-callbacks`): the
+  /// compat then only follows the computer's own events, so this warns instead
+  /// of stopping the plugin.
+  void _installNeighbourRefresh(Context context) {
+    final behavior = BlockBehavior(
+      onNeighborUpdate: (server, event) => _onNeighbourUpdate(server, event),
+    );
+    for (final key in _computerBlocks.keys) {
+      try {
+        context.registerBlockBehavior(key, behavior);
+      } on HostException catch (e) {
+        logger.warn('Could not listen for the neighbours of $key: $e');
+      }
+    }
+  }
+
+  /// A block next to the computer at `event.pos` changed: a block of another
+  /// mod may have appeared or gone, so the peripherals of that side are
+  /// recomputed (`BlockEntityPeripheral` on the Java side is a capability, so
+  /// CC looks the neighbour up when it needs it).
+  void _onNeighbourUpdate(Server server, CustomBlockNeighborUpdateEventData event) {
+    final worldId = event.targetWorld.getId();
+    final placed = _placed[_key(_location(worldId, event.pos))];
+    final id = placed?.computerId;
+    if (id == null) return;
+    CcSimulatedDriver.refresh(_service, worldId, (event.pos.x, event.pos.y, event.pos.z), id);
   }
 
   // -- The right click on a computer ------------------------------------------------
@@ -208,6 +244,53 @@ final class CcWorldComputers {
   void _refreshSimulated(_Placed placed, int computerId) {
     final location = placed.location;
     CcSimulatedDriver.refresh(_service, location.world, (location.x, location.y, location.z), computerId);
+  }
+
+  /// The Simulated blocks that came back with their chunk, to hand to the
+  /// computers around them on the next tick (see [_onEntityLoad]).
+  final Set<(String, int, int, int)> _pendingSimulated = {};
+
+  /// Attaches the peripheral of the Simulated block at [block] to the computers
+  /// next to it: the block entity appeared while the computer already ran.
+  void _refreshSimulatedAround((String, int, int, int) block) {
+    final worldId = block.$1;
+    for (final placed in _placed.values) {
+      final id = placed.computerId;
+      final location = placed.location;
+      if (id == null || location.world != worldId) continue;
+      final pos = (location.x, location.y, location.z);
+      if (CcSimulatedDriver.sideTowards(pos, (block.$2, block.$3, block.$4)) == null) continue;
+      CcSimulatedDriver.refresh(_service, worldId, pos, id);
+    }
+  }
+
+  /// Takes the peripheral of the Simulated block at [block] off the computers
+  /// next to it: the block entity is gone.
+  void _detachSimulatedAt((String, int, int, int) block) {
+    final worldId = block.$1;
+    for (final placed in _placed.values) {
+      final id = placed.computerId;
+      final location = placed.location;
+      if (id == null || location.world != worldId) continue;
+      CcSimulatedDriver.detachAt(
+        _service,
+        id,
+        (location.x, location.y, location.z),
+        (block.$2, block.$3, block.$4),
+      );
+    }
+  }
+
+  /// Hands the blocks that came back with their chunk to the computers around
+  /// them (a tick after their load event, so the store of the other plugin is
+  /// filled).
+  void _flushPendingSimulated() {
+    if (_pendingSimulated.isEmpty) return;
+    final blocks = _pendingSimulated.toList();
+    _pendingSimulated.clear();
+    for (final block in blocks) {
+      _refreshSimulatedAround(block);
+    }
   }
 
   // -- Pocket computers (`PocketComputerItem.use`) ----------------------------------
@@ -361,10 +444,23 @@ final class CcWorldComputers {
 
   /// `BlockEntity.loadAdditional`: the chunk brought a computer; start its
   /// machine again (it was on when the chunk unloaded, `startOn`).
+  ///
+  /// A block entity of another mod that has a peripheral of ours (Simulated's
+  /// sensors) is handled here too: the computers around it pick its peripheral
+  /// up on the next tick, because the store behind `SimulatedHost` is filled by
+  /// the other plugin's own listener of this event, in an order this plugin does
+  /// not decide.
   void _onEntityLoad(Server server, BlockEntityLoadEventData event) {
-    if (!_computerBlocks.containsKey(event.typeKey)) return;
-    final world = event.targetWorld;
-    final location = _location(world.getId(), event.pos);
+    if (!_computerBlocks.containsKey(event.typeKey)) {
+      // Every block entity of the world comes through here, so the type is
+      // asked first: only a type the compat registered is worth a host call.
+      if (CcSimulatedPeripherals.registry.hasPeripheral(event.typeKey)) {
+        final worldId = event.targetWorld.getId();
+        _pendingSimulated.add((worldId, event.pos.x, event.pos.y, event.pos.z));
+      }
+      return;
+    }
+    final location = _location(event.targetWorld.getId(), event.pos);
     final NbtCompound data;
     try {
       data = event.save;
@@ -382,8 +478,19 @@ final class CcWorldComputers {
 
   /// The chunk unloads (the computer stops, its disk stays) or the block was
   /// broken (`removed`).
+  ///
+  /// A peripheral block entity of another mod that unloads or breaks is taken
+  /// off the sides of the computers around it here, by position: the block is
+  /// gone, so the peripheral cannot stay (`IPeripheral.detach` on the Java side,
+  /// where removing the block entity invalidates the capability).
   void _onEntityUnload(Server server, BlockEntityUnloadEventData event) {
-    if (!_computerBlocks.containsKey(event.typeKey)) return;
+    if (!_computerBlocks.containsKey(event.typeKey)) {
+      if (CcSimulatedPeripherals.registry.hasPeripheral(event.typeKey)) {
+        final worldId = event.targetWorld.getId();
+        _detachSimulatedAt((worldId, event.pos.x, event.pos.y, event.pos.z));
+      }
+      return;
+    }
     final location = _location(event.targetWorld.getId(), event.pos);
     final placed = _placed.remove(_key(location));
     final id = placed?.computerId ?? _tryReadId(event);
@@ -465,6 +572,7 @@ final class CcWorldComputers {
       if (_pending.isNotEmpty && _tick % 40 == 0) {
         _pending.removeWhere((_, p) => _tick - p.tick > 40);
       }
+      _flushPendingSimulated();
       for (final placed in _placed.values.toList()) {
         final id = placed.computerId;
         if (id == null) continue;

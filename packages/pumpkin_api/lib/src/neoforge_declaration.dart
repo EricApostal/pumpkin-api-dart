@@ -66,16 +66,39 @@ final class NeoForgeChannel {
 /// Entries the plugin adds to a synced registry, after the entries the host
 /// knows (vanilla and the ones registered through the registry interfaces).
 ///
-/// The client **rebuilds** the registry from what the server sends, so:
+/// **Naming a registry is the vouch that its content may be sent.** The client
+/// rebuilds a registry from the server's snapshot and *disconnects* on a key it
+/// does not have ("The server sent registries with unknown keys: …"), so the host
+/// sends a plugin's entries in a registry only once a declaration names that
+/// registry. Declaring the mod alone — which is how a port announces its payload
+/// channels — vouches for no content at all. That is what makes an incremental
+/// port safe: a plugin that registers content without naming the registry keeps
+/// it on the server, and a block whose name has not been confirmed against the
+/// client's mod cannot brick a connection that way (`aeronautics:hot_air_burner`,
+/// which Java registers as `aeronautics:adjustable_burner`, did exactly that).
 ///
-/// * the key must be a registry the client actually has. Its ids are
-///   `minecraft:` (built-in) or `<modid>:` for a registry that mod creates; a
-///   key no mod registers makes the client refuse the whole sync
-///   ("Tried to applied snapshot with registry name … but was not found"),
-/// * for a registry the host does not number, [entries] must be *every* entry
-///   in the client's registration order — the ones left out are dropped from
-///   the client's registry. When in doubt, don't declare it: a registry the
-///   client's own mod fills needs nothing from the server.
+/// * Naming a registry the host numbers — `minecraft:block`, `minecraft:item`,
+///   `minecraft:block_entity_type`, `minecraft:menu`, `minecraft:data_component_type`,
+///   `minecraft:fluid`, `minecraft:entity_type`, `minecraft:sound_event`,
+///   `minecraft:particle_type`, `minecraft:mob_effect`, `minecraft:map_decoration_type`,
+///   `minecraft:recipe_type`, `minecraft:recipe_serializer`,
+///   `neoforge:entity_data_serializers` — sends the mod's registered entries in
+///   it, in the host's registration order. [entries] is ignored for those (the
+///   host's dynamic registry is the list); leave it empty.
+/// * The key must be a registry the client has. Its ids are `minecraft:` (built-in)
+///   or `<modid>:` for a registry that mod creates; a key no mod registers makes
+///   the client refuse the whole sync ("Tried to applied snapshot with registry
+///   name … but was not found").
+/// * Naming a registry a mod owns (`mymod:thing`) sends the registry the host
+///   numbers for it whole; [entries] adds the ones the host does not know. Its
+///   ids are positions, so the result must be *every* entry in the client's
+///   registration order — the ones left out are dropped from the client's
+///   registry.
+///
+/// Do not name a registry while the plugin registers entries in it that it has
+/// not ported or whose names it has not confirmed: if entries of a mod that named
+/// nothing come before ones that did, the registry is left out entirely, because
+/// the ids after a gap would differ on the client.
 ///
 /// Datapack registries (`minecraft:worldgen/structure_processor`, ...) are not
 /// synced this way at all; they travel with known packs.
@@ -83,7 +106,10 @@ final class NeoForgeRegistryAddition {
   /// Registry key, `minecraft:block` or `mymod:thing`.
   final String key;
 
-  /// Entry keys in registration order.
+  /// Entry keys in registration order, all in the namespace of the mod's id.
+  ///
+  /// Only used for a registry the host does not number (a mod's own); ignored for
+  /// one the host numbers, where the host's dynamic registry is the list.
   final List<String> entries;
 
   const NeoForgeRegistryAddition(this.key, this.entries);
@@ -133,7 +159,7 @@ final class NeoForgeDataMap {
 ///   NeoForgeDeclaration(
 ///     mod: NeoForgeMod(id: 'mymod', version: '1.0.0'),
 ///     channels: [NeoForgeChannel.clientbound('mymod:sync', '1')],
-///     registries: [NeoForgeRegistryAddition('minecraft:item', ['mymod:gem'])],
+///     registries: [NeoForgeRegistryAddition('minecraft:item', const [])],
 ///     policy: NonNeoForgeClientPolicy.allow,
 ///   ),
 /// );
@@ -197,6 +223,12 @@ extension NeoForgeHandshakeApi on Context {
   /// Sets the declaration of this plugin (a later call replaces it). Throws a
   /// [HostException] for an invalid identifier or channel, duplicate entries, a
   /// missing permission or when players can connect already.
+  ///
+  /// Declaring the mod does not vouch for the content the plugin registered: a
+  /// port in progress declares its channels and keeps its blocks and items on the
+  /// server. Content is a separate claim — name the registry in [registries]
+  /// ([NeoForgeRegistryAddition]) once every entry the plugin registered in it is
+  /// verified against the client's release of the mod.
   void declareNeoForge(NeoForgeDeclaration declaration) =>
       unwrapHost(generated.neoforge.declare(declaration: declaration.toWire()), 'Declaring ${declaration.mod.id} to NeoForge');
 

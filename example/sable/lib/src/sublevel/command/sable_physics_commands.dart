@@ -312,9 +312,13 @@ int _addTranslation(
   for (final subLevel in subLevels) {
     final translation = Vector3d(x, y, z);
     final applied = global ? translation : subLevel.logicalPose.transformNormal(translation);
+    // `SablePhysicsCommands.java:257`: JOML's `add(other)` returns a new vector;
+    // the Dart `add` mutates, so the sum goes into a temp and the pose is left
+    // for `teleport` to write.
+    final destination = Vector3d.copy(subLevel.logicalPose.position())..add(applied);
     physics.getPipeline().teleport(
       physics.getPhysicsHandle(subLevel),
-      subLevel.logicalPose.position().add(applied),
+      destination,
       subLevel.logicalPose.orientation(),
     );
   }

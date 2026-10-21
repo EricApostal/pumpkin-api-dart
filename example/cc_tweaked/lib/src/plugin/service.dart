@@ -17,11 +17,12 @@ import '../machine/side.dart';
 import '../machine/zip.dart';
 import '../turtle/brain.dart';
 import '../lua/lua.dart' show ProtoCache;
+import '../compat/simulated_attach.dart' show ExternalPeripheralTarget;
 import 'config.dart';
 import 'records.dart';
 import 'storage.dart';
 
-final class CcService implements ComputerServices {
+final class CcService implements ComputerServices, ExternalPeripheralTarget {
   final DataFolder _folder;
   final PluginConfig pluginConfig;
   final ProtoCache _cache = ProtoCache();
@@ -350,7 +351,12 @@ final class CcService implements ComputerServices {
   }
 
   /// The peripheral attached to [side] of computer [id], if any.
+  @override
   Peripheral? peripheral(int id, ComputerSide side) => _peripherals['$id/${side.luaName}'];
+
+  /// Whether computer [id] has a machine here (it is not in an unloaded chunk).
+  @override
+  bool hasComputer(int id) => manager[id] != null;
 
   /// Attaches a peripheral that belongs to a block entity rather than to the
   /// computer's own record: the compat of another mod (Simulated's sensors, for
@@ -358,6 +364,7 @@ final class CcService implements ComputerServices {
   ///
   /// It is not written to the record, because the block entity is what makes it
   /// again after a reload; the caller detaches it with [detachExternal].
+  @override
   void attachExternal(int id, ComputerSide side, Peripheral peripheral) {
     final computer = manager[id];
     if (computer == null) return;
@@ -367,6 +374,7 @@ final class CcService implements ComputerServices {
 
   /// Removes the peripheral of [side] of computer [id] that [attachExternal]
   /// put there.
+  @override
   void detachExternal(int id, ComputerSide side) {
     _peripherals.remove('$id/${side.luaName}');
     manager[id]?.setPeripheral(side, null);

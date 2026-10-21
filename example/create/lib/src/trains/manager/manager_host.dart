@@ -70,20 +70,33 @@ final class HostTrainLevels {
 
   HostTrainLevels(this.store);
 
-  HostTrainLevel? of(String worldId) {
-    final world = store.worlds.byId(worldId);
+  /// The level of the world named by [id], which is either a world id (`World.getId()`, the
+  /// folder name) or a dimension key (`minecraft:overworld`, what `TrainLevel.dimension` and the
+  /// graph use). Both name the same world, so both get the same level - otherwise a world would
+  /// end up with two levels and two redstone probes.
+  HostTrainLevel? of(String id) {
+    final cached = _byId[id];
+    if (cached != null && cached.world.isValid) return cached;
+    final world = store.worlds.byId(id);
     if (world == null) {
-      _byId.remove(worldId);
+      _byId.remove(id);
       return null;
     }
-    final cached = _byId[worldId];
-    if (cached != null) return cached;
+    final worldId = world.getId();
+    final existing = _byId[worldId];
+    if (existing != null && existing.world.isValid) {
+      _byId[id] = existing;
+      return existing;
+    }
     final level = HostTrainLevel(world, levelOfDimension: of);
     _byId[worldId] = level;
+    _byId[id] = level;
     return level;
   }
 
-  void forget(String worldId) => _byId.remove(worldId);
+  void forget(String worldId) => _byId.removeWhere(
+    (key, level) => key == worldId || level.world.getId() == worldId,
+  );
 
   void clear() => _byId.clear();
 }

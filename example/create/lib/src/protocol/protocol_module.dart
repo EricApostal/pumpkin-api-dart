@@ -3,6 +3,8 @@
 // first in `modules.dart`. See `lib/src/api/payloads.dart` for the public API.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../api/registry/create_registries.dart';
+import '../content/components.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
 import 'codec_compiler.dart';
@@ -44,6 +46,21 @@ final class ProtocolModule extends CreateModule {
   @override
   void onLoad(CreateContext ctx) {
     _log = ctx.log;
+    // The host ids are assigned now; teach the wire layer every Create component
+    // before any payload can carry one.
+    registerComponentReaders(
+      (key) => ctx.ids.of(RegistryKind.dataComponents, key),
+      attributeTypeId: (key) {
+        try {
+          return ExtraRegistries.syncedEntryId(CreateRegistries.itemAttributeType, key);
+        } on Object {
+          // Fall back to the manifest order, which is what the host numbers the
+          // entries by; a failed lookup must not cost the other components their reader.
+          return null;
+        }
+      },
+      warn: ctx.log.warn,
+    );
     ctx.services.provide<PayloadBus>(PayloadBus(_hub, _roster));
     ctx.services.provide<ItemIdResolver>(HostItemStacks.resolverFor(() => ctx.ids));
     ctx.listen(Events.playerJoin, (server, e) {

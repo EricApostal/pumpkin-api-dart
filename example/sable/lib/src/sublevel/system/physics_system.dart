@@ -42,7 +42,7 @@ import 'physics_chunk_ticket_manager.dart';
 import 'sable_server_config.dart';
 
 /// Runs a physics pipeline on sub-levels.
-final class SubLevelPhysicsSystem with SubLevelObserver {
+final class SubLevelPhysicsSystem with SubLevelObserver implements PartialPhysicsTickSource {
   /// `DEFAULT_RESIDENT_CAPACITY`: the resident list capacity per section.
   static const int defaultResidentCapacity = 8;
 
@@ -568,6 +568,9 @@ final class SubLevelPhysicsSystem with SubLevelObserver {
   /// The fraction between the last physics tick and the next one.
   double getPartialPhysicsTick() =>
       (currentSubstep + 1).toDouble() / physicsConfig.substepsPerTick;
+
+  @override
+  double get partialPhysicsTick => getPartialPhysicsTick();
 
   /// `getNextRuntimeID()`.
   int getNextRuntimeId() => pipeline.getNextRuntimeId();

@@ -45,6 +45,7 @@ import '../network/packets/snapshot_packets.dart';
 import '../network/packets/tracking_packets.dart';
 import '../network/sable_packets.dart';
 import '../network/udp/udp_packets.dart';
+import '../network/wire.dart' show SableBufferUtils;
 import '../storage/sub_level_removal_reason.dart';
 
 /// Sends an encoded Sable payload to one player.
@@ -135,7 +136,7 @@ final class SubLevelTrackingSystem with SubLevelObserver {
   /// relative to the plot yard origin.
   int plotCoordinateOf(ServerSubLevel subLevel) {
     final plotPos = subLevel.getPlot().plotPos;
-    return _packChunk(plotPos.$1 - container.originX, plotPos.$2 - container.originZ);
+    return SableBufferUtils.packChunk(plotPos.$1 - container.originX, plotPos.$2 - container.originZ);
   }
 
   /// Whether [player] is close enough to see a sub-level at [entityPosition].
@@ -264,6 +265,12 @@ final class SubLevelTrackingSystem with SubLevelObserver {
 
     // The plot's chunks. Java bundles them with the payloads; a plugin cannot,
     // so the host sends them here, before the finalize payload.
+    //
+    // HOST GAP: Java also sends each chunk's POI data after the bundle
+    // (`SubLevelTrackingSystem.java:150-152`,
+    // `SubLevelPlayerChunkSender.sendChunkPoiData`). `chunk-streaming.send-chunk-at`
+    // already carries the block entities the client needs for this plot, and the
+    // Pumpkin API exposes no separate POI packet, so nothing is sent here.
     final chunkView = this.chunkView;
     if (chunkView != null) {
       for (final holder in plot.getLoadedChunks()) {
@@ -275,12 +282,14 @@ final class SubLevelTrackingSystem with SubLevelObserver {
   }
 
   void _sendRemoval(ServerSubLevel subLevel) {
+    // Java's `sendRemoval` only sends; it leaves the tracking set alone
+    // (`SubLevelTrackingSystem.java:117-125`). The sub-level is already out of
+    // the container, so nothing ticks it again.
     final plotCoordinate = plotCoordinateOf(subLevel);
     final packet = ClientboundStopTrackingSubLevelPacket(plotCoordinate);
     for (final playerId in subLevel.trackingPlayers) {
       _sendPayload(playerId, packet);
     }
-    subLevel.trackingPlayers.clear();
   }
 
   void _sendRemovalTo(SablePlayer player, ServerSubLevel subLevel) {
@@ -297,7 +306,10 @@ final class SubLevelTrackingSystem with SubLevelObserver {
       final lastNetworked = subLevel.lastNetworkedBoundingBox;
       if (plotBounds == lastNetworked) continue;
 
-      lastNetworked.setFrom(plotBounds);
+      // Java's `BoundingBox3i.set` is a raw copy; `setFrom` normalises, which
+      // would turn the inverted empty box into a full-range one and resend the
+      // bounds every tick.
+      lastNetworked.setUncheckedFrom(plotBounds);
       final packet = ClientboundChangeBoundsSubLevelPacket(plotCoordinateOf(subLevel), plotBounds);
       for (final playerId in subLevel.trackingPlayers) {
         _sendPayload(playerId, packet);
@@ -420,6 +432,10 @@ final class SubLevelTrackingSystem with SubLevelObserver {
   void _sendSnapshots(String playerId, int msSinceLastSend, List<SnapshotEntry> entries) {
     const maxBatchSize = 16;
 
+    // `SubLevelTrackingSystem.java:383-404`: a player whose updates were all
+    // `stop_moving` has no snapshot entries and gets no snapshot info at all.
+    if (entries.isEmpty) return;
+
     final info = ClientboundSableSnapshotInfoDualPacket(
       msSinceLast: msSinceLastSend,
       gameTick: _interpolationTick,
@@ -428,6 +444,7 @@ final class SubLevelTrackingSystem with SubLevelObserver {
 
     final udpSender = udp;
     if (udpSender != null && udpSender.isConnected(playerId)) {
+      // UDP: one info datagram, then the batches (`…:370-382`).
       SablePackets.registerUdpCodecs();
       udpSender.sendDatagram(playerId, SableUdpPackets.encode(info));
       for (var i = 0; i < entries.length; i += maxBatchSize) {
@@ -440,9 +457,11 @@ final class SubLevelTrackingSystem with SubLevelObserver {
       return;
     }
 
-    _sendPayload(playerId, info);
+    // TCP fallback: Java wraps *each* batch with its own info payload in one
+    // bundle (`…:383-404`).
     for (var i = 0; i < entries.length; i += maxBatchSize) {
       final batch = entries.sublist(i, (i + maxBatchSize).clamp(0, entries.length));
+      _sendPayload(playerId, info);
       _sendPayload(playerId, ClientboundSableSnapshotDualPacket(_interpolationTick, batch));
     }
   }
@@ -478,8 +497,6 @@ final class SubLevelTrackingSystem with SubLevelObserver {
   /// The player if they are still online in this level; the host's player list
   /// is the only view of "online" the model has.
   SablePlayer? _onlinePlayer(String playerId) => container.hostOrNull?.playerById(playerId);
-
-  static int _packChunk(int x, int z) => (x & 0xFFFFFFFF) | (z & 0xFFFFFFFF) << 32;
 
   /// Forgets all per-player state (a player left the server).
   void forgetPlayer(String playerId) {

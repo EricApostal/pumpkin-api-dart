@@ -1,6 +1,7 @@
 // Runs one scenario against both servers, records both, and reports the first semantic difference.
 //
 //   puro dart run tool/diff_servers.dart                       # Java reference vs Pumpkin
+//   puro dart run tool/diff_servers.dart --scenario fluid_tank
 //   puro dart run tool/diff_servers.dart --candidate pumpkin --reference pumpkin
 //   puro dart run tool/diff_servers.dart --out /tmp/differential --json /tmp/differential.json
 //
@@ -14,23 +15,23 @@
 // first difference), 2 the run never got to compare (an arm failed to start or to join) — and 2 is
 // never a difference, so a broken environment cannot masquerade as a finding.
 //
-// The scenario below is Create's: it is the contraption rig the user's own replay uses. The
-// machinery underneath (`test/support/differential/`) knows nothing about Create, so the same tool
-// compares any two servers for any plugin.
+// The rigs are Create's, and they live in `test/support/differential/scenarios.dart` so that the
+// `test/parity/` suite runs exactly the same ones. The machinery underneath
+// (`test/support/differential/`) knows nothing about Create, so the same tool compares any two
+// servers for any plugin.
 
 import 'dart:convert';
 import 'dart:io';
 
+import '../test/support/differential/channel_manifest.dart';
 import '../test/support/differential/differential_run.dart';
-import '../test/support/differential/game_server.dart';
 import '../test/support/differential/scenario.dart';
-import '../test/support/differential/trace_diff.dart';
-import '../test/support/pumpkin_trace.dart';
+import '../test/support/differential/scenarios.dart';
 
 const String usage = '''
 usage: dart run tool/diff_servers.dart [options]
 
-  --scenario NAME     the rig to run (default: contraption)
+  --scenario NAME     the rig to run (contraption, fluid_tank; default contraption)
   --reference KIND    the server that is presumed right (java, pumpkin; default java)
   --candidate KIND    the server under test (default pumpkin)
   --bot NAME          the name the simulated client joins with (default Watcher)
@@ -38,6 +39,8 @@ usage: dart run tool/diff_servers.dart [options]
                       ~/Documents/mctesting)
   --out DIR           copy each arm's client trace, wire capture and console log there
   --json FILE         write the machine-readable result (divergences, exit reason) there
+  --query FILE        the channels both clients answer the `NeoForge` handshake with (default: the
+                      channels this plugin declares, so both arms get the same Create client)
   --keep              keep each arm's scratch directory (world, plugin configs, logs)
   --all               print every difference, not just the first
   --settle MS         how long to let the servers tick after the scenario (default 4000)
@@ -46,106 +49,33 @@ usage: dart run tool/diff_servers.dart [options]
 environment: PUMPKIN_BIN, PUMPKIN_TESTER_BIN, PUMPKIN_PLUGIN_WASM, MCTRACE_BIN, MCTRACE_JAVA_DIR
 ''';
 
-/// The rig: a bearing driven by a creative motor, carrying one stone.
-///
-/// This is the shape of the user's replay, and it is built out of the console alone (no player has
-/// to place anything):
-///
-///  * a `create:creative_motor` is the rotation source; it drives the block in front of it, so the
-///    layout along z is structure (the contraption's content), bearing, motor;
-///  * a bearing assembles the block in front of it on a later tick than the one that starts it
-///    turning, which is why the motor is placed last and the run then settles;
-///  * the rig is built in the air directly above the client, because a server only tells a client
-///    about what it tracks: a rig anywhere else produces no packets at all, and the two servers put
-///    the world spawn at different heights, so the only position that means the same thing on both
-///    is "where this server says the client is".
-///
-/// The one stone is deliberate: the bearing's search starts at the block in front of it and captures
-/// that block without glue, so a plain stone floor (which the two worldgen implementations disagree
-/// about) is never captured and the payload stays one block — a difference in the payload is then
-/// about the plugin, not about the world.
-Scenario contraptionScenario() => Scenario(
-  name: 'contraption',
-  description:
-      'a mechanical bearing driven by a creative motor assembles one stone into a contraption',
-  box: const RigBox(
-    xMin: -1,
-    xMax: 1,
-    yMin: -2,
-    yMax: 2,
-    zMin: -2,
-    zMax: 4,
-  ),
-  anchorOf: (player) => TracePos(player.x, player.y + 5, player.z),
-  build: (anchor) {
-    final bearing = TracePos(anchor.x, anchor.y, anchor.z + 1);
-    final motor = TracePos(anchor.x, anchor.y, anchor.z + 2);
-    return [
-      // The contraption's content first, so the bearing has something to capture.
-      ScenarioStep('setblock ${anchor.x} ${anchor.y} ${anchor.z} minecraft:stone'),
-      ScenarioStep(
-        'setblock ${bearing.x} ${bearing.y} ${bearing.z} '
-        'create:mechanical_bearing[facing=north]',
-      ),
-      // Then the power: the bearing queues an assembly when its speed changes, and performs it on a
-      // following tick.
-      ScenarioStep(
-        'setblock ${motor.x} ${motor.y} ${motor.z} '
-        'create:creative_motor[facing=north]',
-      ),
-    ];
-  },
-  probes: (anchor) {
-    final bearing = TracePos(anchor.x, anchor.y, anchor.z + 1);
-    final motor = TracePos(anchor.x, anchor.y, anchor.z + 2);
-    // A `setblock` in a far corner of the same column is the marker: the command runs only if the
-    // block *is* the one the rig asked for, and the write is what lands in the console log (a
-    // `say` would not). Each probe gets its own marker position, so "matched" cannot be another
-    // probe's write.
-    ScenarioProbe marker(TracePos at, String block, int index) => ScenarioProbe(
-      'execute if block ${at.x} ${at.y} ${at.z} $block run '
-      'setblock ${anchor.x} ${anchor.y + 30 + index} ${anchor.z} minecraft:redstone_block',
-      expected: ConsoleSession.changedBlock,
-    );
-    return [
-      marker(anchor, 'minecraft:stone', 0),
-      marker(bearing, 'create:mechanical_bearing', 1),
-      marker(motor, 'create:creative_motor', 2),
-      // …and what each server says those block entities *are*, which is where a plugin's own
-      // additions to a block entity's data show up next to the mod's.
-      ScenarioProbe(
-        'data get block ${bearing.x} ${bearing.y} ${bearing.z}',
-        expected: RegExp('create:mechanical_bearing'),
-      ),
-      ScenarioProbe(
-        'data get block ${motor.x} ${motor.y} ${motor.z}',
-        expected: RegExp('create:creative_motor|create:motor'),
-      ),
-    ];
-  },
-  expected: ScenarioPrecondition.contraptionSpawned(),
-);
-
-final Map<String, Scenario Function()> scenarios = {
-  'contraption': contraptionScenario,
-};
-
 Future<int> main(List<String> arguments) async {
   final options = _Options.parse(arguments);
   if (options == null) {
     stderr.writeln(usage);
     return 2;
   }
-  final scenarioFactory = scenarios[options.scenario];
+  final scenarioFactory = parityScenarios[options.scenario];
   if (scenarioFactory == null) {
-    stderr.writeln('no scenario `${options.scenario}`; known: ${scenarios.keys.join(', ')}');
+    stderr.writeln(
+      'no scenario `${options.scenario}`; known: ${parityScenarios.keys.join(', ')}',
+    );
     stderr.writeln(usage);
     return 2;
   }
-  final scenario = scenarioFactory();
+  final Scenario scenario = scenarioFactory();
   final environment = DifferentialEnvironment.resolve(
     javaInstall: options.javaDir,
   );
+  // Both clients answer the handshake with the same set, which is what makes the two arms
+  // comparable: a vanilla client on one arm is told less than a `NeoForge` one by construction
+  // (the host sends `neoforge:auxiliary_light_data` only to a `NeoForge` client), and the
+  // comparison would report the harness's choice as if it were the plugin's.
+  final clientQuery =
+      options.query ??
+      createChannelQuery(
+        Directory.systemTemp.createTempSync('differential-query-'),
+      );
   final runner = DifferentialRunner(
     environment: environment,
     scenario: scenario,
@@ -156,6 +86,7 @@ Future<int> main(List<String> arguments) async {
     settleAfter: options.settle,
     joinTimeout: options.joinTimeout,
     artifacts: options.out,
+    clientQuery: clientQuery,
     log: (message) => stdout.writeln('  $message'),
   );
   stdout.writeln(
@@ -192,6 +123,7 @@ final class _Options {
     required this.javaDir,
     required this.out,
     required this.json,
+    required this.query,
     required this.keep,
     required this.all,
     required this.settle,
@@ -205,6 +137,7 @@ final class _Options {
   final String? javaDir;
   final Directory? out;
   final File? json;
+  final File? query;
   final bool keep;
   final bool all;
   final Duration settle;
@@ -218,6 +151,7 @@ final class _Options {
     String? javaDir;
     Directory? out;
     File? json;
+    File? query;
     var keep = false;
     var all = false;
     var settle = const Duration(seconds: 4);
@@ -259,6 +193,10 @@ final class _Options {
           final next = value();
           if (next == null) return null;
           json = File(next);
+        case '--query':
+          final next = value();
+          if (next == null) return null;
+          query = File(next);
         case '--keep':
           keep = true;
         case '--all':
@@ -295,6 +233,7 @@ final class _Options {
       javaDir: javaDir,
       out: out,
       json: json,
+      query: query,
       keep: keep,
       all: all,
       settle: settle,
@@ -302,4 +241,3 @@ final class _Options {
     );
   }
 }
-

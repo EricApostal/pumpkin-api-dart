@@ -4,4 +4,5 @@
 /// the other way round.
 library;
 
+export 'sable_channels.dart';
 export 'src/sublevel/sublevel.dart';

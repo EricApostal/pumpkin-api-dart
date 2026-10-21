@@ -952,10 +952,17 @@ class Contraption {
     return state['type'] == 'left' ? facing.clockWise : facing.counterClockWise;
   }
 
+  /// `AbstractBogeyBlock.getStickySurfaces(world, pos, state)`: east and west for an `x` bogey,
+  /// south and north for a `z` bogey.
+  ///
+  /// The property is `axis` (`BlockStateProperties.HORIZONTAL_AXIS` is named `axis`, and the bogey
+  /// registers it as such: `AbstractBogeyBlock.axisProperty`). Reading `horizontal_axis` found
+  /// nothing on any block, so every bogey fell back to `x` and a `z` bogey never dragged the
+  /// carriage body beside it into the contraption.
   static List<Direction> _bogeyStickySurfaces(BState state) {
     if (state.key != 'create:small_bogey' && state.key != 'create:large_bogey')
       return const [];
-    final axis = state.axisOf('horizontal_axis') ?? Axis.x;
+    final axis = state.axisOf('axis') ?? Axis.x;
     return axis == Axis.x
         ? const [Direction.east, Direction.west]
         : const [Direction.south, Direction.north];

@@ -3,6 +3,10 @@
 //
 // Java: `content/blocks/hot_air/envelope/{EnvelopeBlock,EnvelopeEncasedShaftBlock}`.
 //
+// Registration order is Java's (`index/AeroBlocks.java:73-160`): `white_envelope`
+// is built on its own and the dyed list returns it for white, so the order is
+// white, the fifteen other colours, then all sixteen encased shafts.
+//
 // A dye on an envelope recolours the clicked block, its neighbours, or the whole
 // connected envelope; the flood fill is in `content/envelope_dye.dart`.
 // ignore_for_file: implementation_imports
@@ -14,6 +18,7 @@ import 'package:create/src/api/blocks.dart' show HostBlockGetter;
 import 'package:create/src/common/host_bridge.dart' show PosToHost;
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:create/src/kinetics/geometry.dart' show KState;
+import 'package:create/src/kinetics/kinetic_block_entity.dart';
 import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
@@ -78,39 +83,68 @@ String? dyeColorOf(String itemKey) {
   return envelopeColors.contains(color) ? color : null;
 }
 
-/// `EnvelopeBlock` and `EnvelopeEncasedShaftBlock` as one definition builder.
-List<CreateBlock> buildEnvelopeBlocks() {
-  final blocks = <CreateBlock>[];
-  for (final color in envelopeColors) {
-    blocks.add(
-      CreateBlock(
-        key: envelopeKey(color),
-        hardness: 1,
-        blastResistance: 1,
-        soundType: 'wool',
-        canOcclude: false,
-        luminance: 0,
-        tags: const ['aeronautics:airtight'],
-        behavior: envelopeBehavior,
-      ),
-    );
-    blocks.add(
-      CreateBlock(
-        key: encasedEnvelopeKey(color),
-        properties: [CreateProps.axis],
-        hardness: 1,
-        blastResistance: 1,
-        soundType: 'wool',
-        canOcclude: false,
-        tags: const ['aeronautics:airtight'],
-        behavior: envelopeBehavior,
-      ),
-    );
-  }
-  return blocks;
-}
+/// `EnvelopeBlock` and `EnvelopeEncasedShaftBlock` as one definition builder, in
+/// the Java registration order.
+///
+/// Both are `SpecialBlockItemRequirement` in Java (the item is the white
+/// envelope), and the encased shaft is a `KineticBlockEntity`.
+List<CreateBlock> buildEnvelopeBlocks() => [
+  // `WHITE_ENVELOPE_BLOCK`, then the dyed list's other fifteen colours.
+  for (final color in envelopeColors) _envelopeBlock(color),
+  // `ENVELOPE_ENCASED_SHAFTS`, all sixteen.
+  for (final color in envelopeColors) _encasedEnvelopeBlock(color),
+];
 
-/// `EnvelopeBlock.useItemOn`: a dye recolours the envelope.
+CreateBlock _envelopeBlock(String color) => CreateBlock(
+  key: envelopeKey(color),
+  // `EnvelopeBlock extends CasingBlock`: no state of its own.
+  hardness: 1,
+  blastResistance: 1,
+  soundType: 'wool',
+  canOcclude: true,
+  mapColor: _mapColor(color),
+  tags: const ['aeronautics:airtight'],
+  behavior: envelopeBehavior,
+);
+
+CreateBlock _encasedEnvelopeBlock(String color) => CreateBlock(
+  key: encasedEnvelopeKey(color),
+  properties: [CreateProps.axis],
+  // `RotatedPillarKineticBlock`'s default axis is `y`.
+  defaultState: const {'axis': 'y'},
+  hardness: 1,
+  blastResistance: 1,
+  soundType: 'scaffolding',
+  canOcclude: false,
+  mapColor: _mapColor(color),
+  tags: const ['aeronautics:airtight', 'create:shafts'],
+  blockEntityType: 'aeronautics:envelope_encased_shaft',
+  behavior: envelopeBehavior,
+);
+
+/// `DyeColor`'s map colour per dye, as the host's palette index. The host takes
+/// an int; the values are vanilla's `MapColor` ids, in `DyeColor` order.
+int _mapColor(String color) => const {
+  'white': 8,
+  'orange': 15,
+  'magenta': 16,
+  'light_blue': 14,
+  'yellow': 12,
+  'lime': 10,
+  'pink': 17,
+  'gray': 22,
+  'light_gray': 23,
+  'cyan': 13,
+  'purple': 19,
+  'blue': 18,
+  'brown': 21,
+  'green': 11,
+  'red': 20,
+  'black': 24,
+}[color] ?? 8;
+
+/// `EnvelopeBlock.useItemOn` / `EnvelopeEncasedShaftBlock.useItemOn`: a dye
+/// recolours the envelope.
 final BlockBehavior envelopeBehavior = BlockBehavior(
   onUseWithItem: (server, e) async {
     final key = await e.item.getRegistryKey();
@@ -123,6 +157,11 @@ final BlockBehavior envelopeBehavior = BlockBehavior(
     return BlockUseResult.success;
   },
 );
+
+/// `EnvelopeEncasedShaftBlock`: a plain kinetic block entity.
+final class EncasedShaftBlockEntity extends KineticBlockEntity {
+  EncasedShaftBlockEntity(super.worldId, super.pos);
+}
 
 /// The envelope dye model over a host world.
 final class _HostEnvelopeWorld implements EnvelopeDyeWorld {

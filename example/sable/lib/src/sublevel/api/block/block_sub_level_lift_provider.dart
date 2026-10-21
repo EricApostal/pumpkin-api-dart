@@ -23,6 +23,32 @@ abstract interface class BlockSubLevelLiftProvider {
   /// `Direction.values()`, in the Java order.
   static const List<Direction> directions = Direction.values;
 
+  /// Resolves the implementation of a lift provider from its block state.
+  ///
+  /// Java dispatches through the block object itself
+  /// (`ServerSubLevel.java:308`: `((BlockSubLevelLiftProvider) context.state().getBlock())`).
+  /// Dart block states are data, so there is no object to cast; the content
+  /// layer (Create's sails, Simulated's balloons) installs the mapping here.
+  /// `null` means "no provider for this state", and the block contributes
+  /// nothing rather than a made-up force.
+  static BlockSubLevelLiftProvider? Function(BState state)? lookup;
+
+  /// Parses a block state string (`create:white_sail[facing=north]`) into a
+  /// [BState]. A missing or malformed property list is treated as no
+  /// properties, so an unknown state still resolves to its block key.
+  static BState parseState(String state) {
+    final open = state.indexOf('[');
+    if (open < 0 || !state.endsWith(']')) return BState(state);
+
+    final props = <String, String>{};
+    for (final pair in state.substring(open + 1, state.length - 1).split(',')) {
+      final equals = pair.indexOf('=');
+      if (equals <= 0) continue;
+      props[pair.substring(0, equals)] = pair.substring(equals + 1);
+    }
+    return BState(state.substring(0, open), props);
+  }
+
   // Memory optimization: the Java interface keeps these as static scratch
   // vectors shared by every provider on the physics thread.
   static final Vector3d liftForce = Vector3d();
@@ -152,7 +178,10 @@ abstract interface class BlockSubLevelLiftProvider {
 
     // TEMP = transformed position relative to the sub-level origin
     pose.transformPosition(Vector3d.copy(liftPos), temp).sub(pose.position());
-    liftVelo.setFrom(linearVelocity).add(angularVelocity.cross(temp));
+    // `BlockSubLevelLiftProvider.java:133` takes both velocities as read-only
+    // `Vector3dc`; the Dart `cross` mutates its receiver, which here is the
+    // caller's velocity — one provider would corrupt it for the next.
+    liftVelo.setFrom(linearVelocity).add(angularVelocity.crossInto(temp, Vector3d()));
     pose.transformNormalInverse(liftVelo);
 
     liftForce.zero();

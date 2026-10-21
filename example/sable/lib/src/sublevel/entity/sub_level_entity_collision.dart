@@ -185,11 +185,15 @@ abstract final class SubLevelEntityCollision {
 
   /// `getHitBoxYaw(subLevelPose)`: the yaw that aligns the entity's hitbox with
   /// the sub-level's nearest grid orientation.
+  ///
+  /// `SubLevelEntityCollision.java:505-513` snaps to `GridQuats.REAL`, not to
+  /// every grid quaternion: only the identity, the three quarter turns and the
+  /// corner rotation keep an entity's hitbox upright.
   static double getHitBoxYaw(Pose3dc subLevelPose) {
     final orientation = subLevelPose.orientation();
     final snapped = SableMathUtils.clampQuaternionToGrid(
       orientation,
-      SableMathUtils.allGridQuaternions,
+      GridQuats.real.quaternions,
       Quaterniond(),
     );
     final relative = Quaterniond.copy(orientation).div(snapped, Quaterniond());

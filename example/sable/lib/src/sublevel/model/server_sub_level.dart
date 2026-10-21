@@ -15,21 +15,43 @@
 // its public barrel yet, so they are imported from `src/` deliberately.
 // ignore_for_file: implementation_imports
 import 'package:create/src/common/pos.dart' show Pos;
+import '../api/block/block_sub_level_lift_provider.dart' as lift;
 import '../api/physics.dart';
 import '../config/sable_config.dart';
 import '../math/bounding_box.dart';
 import '../math/pose.dart';
 import '../math/vector.dart';
+import '../network/packets/tracking_packets.dart';
+import '../physics/dimension_physics.dart';
+import '../physics/floating_block_controller.dart';
+import '../physics/physics_block_properties.dart';
+import '../physics/reaction_wheel_manager.dart';
+import '../plot/heat/sub_level_heat_map_manager.dart';
 import '../storage/holding/saved_pointer.dart';
 import 'level_plot.dart';
 import 'mass_tracker.dart';
-import 'server_level_plot.dart';
+import 'server_level_plot.dart' show ServerLevelPlot, LiftProviderContext;
 import 'sub_level.dart';
 import 'sub_level_container.dart';
+
+/// Sends one payload to every player tracking a sub-level
+/// (`ServerSubLevel.playerSink`, `ServerSubLevel.java:157-166`).
+///
+/// The plugin installs this over the host's payload channel; the model has no
+/// connection handles of its own.
+typedef SubLevelPacketSink = void Function(ServerSubLevel subLevel, Object payload);
 
 /// A sub-level in a server level.
 final class ServerSubLevel extends SubLevel
     implements ServerSubLevelLike, QueuedForceTarget {
+  /// Where payloads to this sub-level's tracking players go.
+  ///
+  /// Java's `playerSink()` sends to every tracking player's connection. The
+  /// plugin installs the equivalent here (see `SubLevelTrackingSystem`'s
+  /// `SablePayloadSink`). When no sink is installed the packets are dropped,
+  /// which is what a server without a network layer needs.
+  static SubLevelPacketSink? packetSink;
+
   /// The latest linear velocity of this sub-level.
   final Vector3d latestLinearVelocity = Vector3d();
 
@@ -81,6 +103,24 @@ final class ServerSubLevel extends SubLevel
   /// The splitting heat map of this sub-level; `null` when splitting is off.
   SubLevelHeatMap? heatMapManager;
 
+  /// The block-property table the floating-block and reaction-wheel models read.
+  ///
+  /// Java reads the global property registry
+  /// (`PhysicsBlockPropertyHelper`); the Dart table is owned by the physics
+  /// workstream and installed here by the plugin.
+  PhysicsBlockPropertiesTable? blockProperties;
+
+  /// The floating-block controller of this sub-level
+  /// (`ServerSubLevel.java:92`, `new FloatingBlockController(this)`).
+  ///
+  /// Created on first use from [blockProperties]; `null` until then.
+  FloatingBlockController? floatingBlockController;
+
+  /// The reaction-wheel manager of this sub-level
+  /// (`ServerSubLevel.java:93`, `new ReactionWheelManager(this)`).
+  ReactionWheelManager? reactionWheelManager;
+
+
   /// Creates a new sub-level with the given parent level and pose.
   ///
   /// [plotX] and [plotZ] are the global plot coordinates.
@@ -103,15 +143,10 @@ final class ServerSubLevel extends SubLevel
 
   /// A packet sink to every player tracking this sub-level.
   ///
-  /// HOST GAP: sending a payload to a player needs the host's connection
-  /// handle; the plugin's payload bus (`create`'s `CreateNetwork`) is the
-  /// implementation point.
-  void sendToTracking(Object payload) {
-    throw UnimplementedError(
-      'HOST GAP: ServerSubLevel.playerSink needs a per-player payload send; '
-      'the Pumpkin API only exposes payload channels, not arbitrary packets.',
-    );
-  }
+  /// Java's `playerSink()` (`ServerSubLevel.java:157-166`) sends to every
+  /// tracking player's connection. The host connection handles live in the
+  /// plugin, which installs [packetSink]; without one the payload is dropped.
+  void sendToTracking(Object payload) => packetSink?.call(this, payload);
 
   /// The last pose sent out to players.
   Pose3d lastNetworkedPoseValue() => lastNetworkedPose;
@@ -146,7 +181,17 @@ final class ServerSubLevel extends SubLevel
     }
 
     if (limits?.subLevelSplitting ?? false) {
-      heatMapManager?.tick();
+      // Java constructs the manager with the sub-level
+      // (`ServerSubLevel.java:90-91`). The Dart manager needs the concrete
+      // config for `sub_level_splitting_heatmap_steps`, so it is created on
+      // the first tick that needs it.
+      var heatMap = heatMapManager;
+      final cfg = config;
+      if (heatMap == null && cfg is SableConfig) {
+        heatMap = SubLevelHeatMapManager(this, config: cfg);
+        heatMapManager = heatMap;
+      }
+      heatMap?.tick();
     }
   }
 
@@ -195,13 +240,201 @@ final class ServerSubLevel extends SubLevel
 
   /// Called once per **physics** tick; there may be multiple per game tick.
   ///
-  /// DEPENDS ON W3: lift providers, floating blocks and reaction wheels are all
-  /// physics systems. The part that belongs to the world model (iterating the
-  /// plot's actors) is implemented; the force contribution is not.
+  /// Direct port of `ServerSubLevel.prePhysicsTick`
+  /// (`ServerSubLevel.java:303-398`): block-entity actors, then lift/drag from
+  /// the plot and its kinematic contraptions, the gravity velocity term, the
+  /// floating-block controller, the reaction wheels, and finally one impulse
+  /// pair on the body.
+  ///
+  /// Two boundaries are explicit rather than invented:
+  ///
+  /// * the lift-provider implementation is resolved through
+  ///   [lift.BlockSubLevelLiftProvider.lookup], because Dart block states are
+  ///   data and cannot implement the interface themselves;
+  /// * a sub-level with no [blockProperties] has no floating-block controller
+  ///   (Java reads the global property registry), so floating blocks contribute
+  ///   nothing until the plugin installs the table.
   void prePhysicsTick(Object physicsSystem, RigidBodyHandle handle, double timeStep) {
     final plot = getPlot();
     for (final actor in plot.getBlockEntityActors()) {
       actor.sable$physicsTick(this, handle, timeStep);
+    }
+
+    final liftProviders = plot.getLiftProviders().toList(growable: false);
+    final contraptions = plot.getContraptions().toList(growable: false);
+    final floating = getOrCreateFloatingBlockController();
+    final wheels = getOrCreateReactionWheelManager();
+
+    if (liftProviders.isEmpty &&
+        contraptions.isEmpty &&
+        !(floating?.needsTicking() ?? false) &&
+        !wheels.needsTicking()) {
+      return;
+    }
+
+    // TODO(parity): `ServerSubLevel.java:339` takes the system itself and calls
+    // `physicsSystem.getPartialPhysicsTick()`. The Dart model asks for the
+    // narrow [PartialPhysicsTickSource] so it does not import the physics
+    // workstream; a caller that passes anything else gets 1.0, which Java never
+    // does. Fix when `prePhysicsTick` can take a `SubLevelPhysicsSystem`.
+    final partialPhysicsTick =
+        physicsSystem is PartialPhysicsTickSource ? physicsSystem.partialPhysicsTick : 1.0;
+    final trackForces = isTrackingIndividualQueuedForces();
+
+    final linearVelocity = handle.getLinearVelocity(Vector3d());
+    final angularVelocity = handle.getAngularVelocity(Vector3d());
+    final linearImpulse = Vector3d();
+    final angularImpulse = Vector3d();
+
+    final contexts = [for (final context in liftProviders) _liftContext(context)];
+    final groups = trackForces
+        ? lift.BlockSubLevelLiftProvider.groupLiftProviders(contexts)
+        : const <lift.LiftProviderGroup>[];
+
+    for (final context in contexts) {
+      final provider = lift.BlockSubLevelLiftProvider.lookup?.call(context.state);
+      if (provider == null) continue;
+
+      provider.sable$contributeLiftAndDrag(
+        context,
+        this,
+        null,
+        timeStep,
+        linearVelocity,
+        angularVelocity,
+        linearImpulse,
+        angularImpulse,
+        _groupOf(groups, context.pos),
+      );
+    }
+    _recordLiftGroups(groups);
+
+    if (contraptions.isNotEmpty) {
+      final localContraptionPose = Pose3d();
+      for (final contraption in contraptions) {
+        final contraptionContexts = [
+          for (final value in contraption.sable$liftProviders().values)
+            if (value is LiftProviderContext) _liftContext(value),
+        ];
+        contraption.sable$getLocalPose(localContraptionPose, partialPhysicsTick);
+
+        final contraptionGroups = trackForces
+            ? lift.BlockSubLevelLiftProvider.groupLiftProviders(contraptionContexts)
+            : const <lift.LiftProviderGroup>[];
+
+        for (final context in contraptionContexts) {
+          final provider = lift.BlockSubLevelLiftProvider.lookup?.call(context.state);
+          if (provider == null) continue;
+
+          provider.sable$contributeLiftAndDrag(
+            context,
+            this,
+            localContraptionPose,
+            timeStep,
+            linearVelocity,
+            angularVelocity,
+            linearImpulse,
+            angularImpulse,
+            _groupOf(contraptionGroups, context.pos),
+          );
+        }
+        _recordLiftGroups(contraptionGroups);
+      }
+    }
+
+    // `ServerSubLevel.java:390`: `linearVelocity.fma(-1 / 2.1 * timeStep, gravity)`.
+    final gravity = DimensionPhysicsData.getGravity(level);
+    linearVelocity.fma(-1.0 / 2.1 * timeStep, gravity);
+
+    // TODO(parity): `ServerSubLevel.java:392` lets the controller collect the
+    // floating clusters of every contraption itself
+    // (`contraption.sable$getFloatingClusterContainer()`). `KinematicContraption`
+    // has no such member here, so a contraption's own floating blocks are not
+    // merged into this sub-level's clusters; the sub-level's own blocks are.
+    floating?.physicsTick(
+      partialPhysicsTick,
+      timeStep,
+      linearVelocity,
+      angularVelocity,
+      linearImpulse,
+      angularImpulse,
+      gravity: gravity,
+    );
+    wheels.physicsTick(handle);
+
+    handle.applyLinearAndAngularImpulse(linearImpulse, angularImpulse, false);
+  }
+
+  /// The floating-block controller of this sub-level, created on first use.
+  ///
+  /// Java constructs it eagerly (`ServerSubLevel.java:92`). The Dart model
+  /// needs the block-property table, which the physics workstream owns; without
+  /// one the controller is absent and floating blocks contribute nothing
+  /// instead of a made-up material.
+  ///
+  /// TODO(parity): `ServerSubLevel.java:92` always constructs the controller
+  /// (`new FloatingBlockController(this)`); a sub-level with no
+  /// [blockProperties] here silently has none. The plugin installs the table
+  /// for every server level, so this only differs for a sub-level built without
+  /// one.
+  FloatingBlockController? getOrCreateFloatingBlockController() {
+    final existing = floatingBlockController;
+    if (existing != null) return existing;
+
+    final properties = blockProperties;
+    if (properties == null) return null;
+
+    return floatingBlockController = FloatingBlockController(
+      SubLevelFloatingBlockBody(
+        subLevel: this,
+        properties: properties,
+        pressure: (worldPosition) => DimensionPhysicsData.getAirPressure(level, worldPosition),
+        inverseInertia: () => getMassTracker().getInverseInertiaTensor(),
+        bodyMass: () => getMassTracker().getMass(),
+      ),
+      subLevel: this,
+    );
+  }
+
+  /// The reaction-wheel manager of this sub-level, created on first use
+  /// (`ServerSubLevel.java:93`).
+  ///
+  /// TODO(parity): Java reads the global `PhysicsBlockPropertyHelper` registry;
+  /// the fallback table below is the all-defaults table, which matches Java only
+  /// when no physics-property definition is loaded.
+  ReactionWheelManager getOrCreateReactionWheelManager() =>
+      reactionWheelManager ??= ReactionWheelManager(
+        this,
+        blockProperties ?? PhysicsBlockPropertiesTable(),
+      );
+
+  /// Converts a plot lift-provider context into the physics one.
+  lift.LiftProviderContext _liftContext(LiftProviderContext context) => lift.LiftProviderContext(
+    context.pos,
+    lift.BlockSubLevelLiftProvider.parseState(context.state),
+    Vector3d(context.dir.$1, context.dir.$2, context.dir.$3),
+  );
+
+  /// The group containing [pos], or `null` when forces are not tracked.
+  static lift.LiftProviderGroup? _groupOf(List<lift.LiftProviderGroup> groups, Pos pos) {
+    for (final group in groups) {
+      if (group.positions.contains(pos)) return group;
+    }
+    return null;
+  }
+
+  /// Records the summed lift and drag of each group in the display force
+  /// groups (`ServerSubLevel.java:355-362`).
+  void _recordLiftGroups(Iterable<lift.LiftProviderGroup> groups) {
+    for (final group in groups) {
+      if (group.totalLift.lengthSquared >= 0.001 * 0.001) {
+        getOrCreateQueuedForceGroup(ForceGroup.lift)
+            .recordPointForce(group.liftCenter.div(group.totalLiftStrength), group.totalLift);
+      }
+      if (group.totalDrag.lengthSquared >= 0.001 * 0.001) {
+        getOrCreateQueuedForceGroup(ForceGroup.drag)
+            .recordPointForce(group.dragCenter.div(group.totalDragStrength), group.totalDrag);
+      }
     }
   }
 
@@ -217,10 +450,11 @@ final class ServerSubLevel extends SubLevel
   @override
   void setName(String? name) {
     if (name != this.name) {
-      // The Java version sends a `ClientboundChangeSubLevelNamePacket` to the
-      // tracking players here.
-      // HOST GAP: no payload channel for sub-level names has been declared, so
-      // the clients keep the old name until one exists.
+      final id = uniqueIdOrNull;
+      // `ServerSubLevel.java:420-425`: the change goes to the tracking players
+      // before the local name is replaced. A sub-level without an id has never
+      // been sent to a client, so there is nobody to tell.
+      if (id != null) sendToTracking(ClientboundChangeSubLevelNamePacket(id, name));
     }
     super.setName(name);
   }

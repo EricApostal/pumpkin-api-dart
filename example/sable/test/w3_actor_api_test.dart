@@ -250,6 +250,29 @@ void main() {
       expect(BlockSubLevelLiftProvider.liftPos.length, 0);
     });
 
+    test('the contribution never mutates the velocity arguments', () {
+      // `BlockSubLevelLiftProvider.java:133` takes both as read-only
+      // `Vector3dc`; one provider corrupting the caller's angular velocity used
+      // to feed a wrong value to every later provider in the same tick.
+      final provider = FixedLiftProvider();
+      final linearVelocity = Vector3d(1, 2, 3);
+      final angularVelocity = Vector3d(0, 1, 0);
+
+      provider.sable$contributeLiftAndDrag(
+        LiftProviderContext((0, 0, 0), const BState('a'), Vector3d(0, 1, 0)),
+        subLevel,
+        null,
+        0.05,
+        linearVelocity,
+        angularVelocity,
+        Vector3d(),
+        Vector3d(),
+      );
+
+      expect(linearVelocity, Vector3d(1, 2, 3));
+      expect(angularVelocity, Vector3d(0, 1, 0));
+    });
+
     test('the group accumulates the drag', () {
       final provider = FixedLiftProvider();
       final group = LiftProviderGroup({(0, 0, 0)});

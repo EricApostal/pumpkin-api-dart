@@ -12,6 +12,7 @@ import '../../common/data.dart';
 import '../../common/direction.dart';
 import '../../common/pos.dart';
 import '../../common/vec_helper.dart';
+import '../../conveyance/nbt_names.dart' show directionFromNbtName, directionNbtName;
 import '../bogey/abstract_bogey_block.dart';
 import '../util/ctag.dart';
 import 'arrival_sound_queue.dart';
@@ -105,6 +106,16 @@ class CarriageContraption {
     }
   }
 
+  /// `CarriageContraption.isAnchoringBlockAt(pos)`: false, for every position.
+  ///
+  /// The anchor the station hands to the assembly (`StationBlockEntity.assemble`: the bogey block
+  /// itself, `trackPosition + bogeyOffset + assemblyDirection * (location + 1)`) is the first block
+  /// of the carriage, not a controller that stays in the world - unlike a bearing, whose anchor is
+  /// the bearing block. The base `Contraption` skips `anchor` in `moveBlock`, which for a carriage
+  /// would leave the structure empty: `checkAssembly` then answers `false` ("no structure attached
+  /// to Bogey 1") however well the carriage is glued to its bogey.
+  bool isAnchoringBlockAt(Pos pos) => false;
+
   /// The rest of `assemble(world, pos)` after the structure search: returns `false` when the
   /// structure cannot be a carriage (one block or no bogey), throws a [TrainAssemblyException]
   /// for too many bogeys and sideways controls.
@@ -163,8 +174,13 @@ class CarriageContraption {
 
   /// The train part of `writeNBT(registries, spawnPacket)`.
   void writeNBT(CTag tag) {
-    // `Direction.name()`, lower case: `readEnum` matches the constant name.
-    tag.putString('AssemblyDirection', assemblyDirection.name);
+    // `Direction.name()`: the constant name, upper case (`directionNbtName`). Java's
+    // `CarriageContraption.readNBT` reads it with `readEnum` (`CarriageContraption.java:379-386`),
+    // which matches a constant name exactly and otherwise falls back to `getEnumConstants()[0]`,
+    // i.e. `down`. The name is also what travels to the client in the contraption's spawn payload,
+    // where a `down` assembly direction throws in `CarriageContraptionEntity
+    // .updateRenderedPortalCutoff` (`Direction.getClockWise` has no vertical case).
+    tag.putString('AssemblyDirection', directionNbtName(assemblyDirection));
     tag.putBoolean('FrontControls', forwardControls);
     tag.putBoolean('BackControls', backwardControls);
     tag.putBoolean('FrontBlazeConductor', blockConductors.getFirst());
@@ -181,7 +197,10 @@ class CarriageContraption {
 
   /// The train part of `readNBT(world, nbt, spawnData)`.
   void readNBT(CTag nbt) {
-    assemblyDirection = _readDirection(nbt, 'AssemblyDirection');
+    // `readEnum`: the constant named in the tag, or the first constant (`down`) -- Java's
+    // `getEnumConstants()[0]`. The name comparison is case insensitive (`enumDartName`), so a
+    // contraption saved by a build that wrote the lower case `Direction.getName()` still reads.
+    assemblyDirection = directionFromNbtName(nbt.getString('AssemblyDirection'));
     forwardControls = nbt.getBoolean('FrontControls');
     backwardControls = nbt.getBoolean('BackControls');
     blockConductors = Couple.create(nbt.getBoolean('FrontBlazeConductor'), nbt.getBoolean('BackBlazeConductor'));
@@ -191,14 +210,6 @@ class CarriageContraption {
     }
     soundQueue = ArrivalSoundQueue();
     soundQueue.deserialize(nbt);
-  }
-
-  static Direction _readDirection(CTag tag, String key) {
-    final name = tag.getString(key).toLowerCase();
-    for (final d in Direction.values) {
-      if (d.name == name) return d;
-    }
-    return Direction.values[0];
   }
 
   bool canBeStabilized(Direction facing, Pos localPos) => false;

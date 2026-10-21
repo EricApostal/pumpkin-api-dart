@@ -225,6 +225,8 @@ void main() {
       tracking.tick(container);
 
       expect(sink.trackingPayloadsFor('p1'), ['sable:stop_tracking_sub_level']);
+      // Walking out of range drops the player from the tracking set
+      // (`SubLevelTrackingSystem.java:212-215`).
       expect(subLevel.trackingPlayers, isEmpty);
 
       // And nothing more once they are gone.
@@ -314,7 +316,9 @@ void main() {
       container.removeSubLevelAt(subLevel, SubLevelRemovalReason.removed);
 
       expect(sink.trackingPayloadsFor('p1'), ['sable:stop_tracking_sub_level']);
-      expect(subLevel.trackingPlayers, isEmpty);
+      // Java leaves the set untouched on removal; the sub-level is out of the
+      // container, so nothing consults it again.
+      expect(subLevel.trackingPlayers, {'p1'});
     });
   });
 }

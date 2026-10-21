@@ -48,18 +48,21 @@ met.
 | P1.2 | block entities with save data and update tag | `plugin-block-entity.get/set/sync/remove-block-entity-data`, `block-entity-load-event`, `block-entity-unload-event` | computers: save data `ComputerId`/`Label`/`On`, no client data; entity created a tick after `block-place-event`, machine resumed on load, suspended on unload | no. Monitors, turtles (client data `{XIndex, YIndex, Width, Height}`, `Label`, `Fuel`, ...) are **not** done |
 | P1.3 | custom menus, `advanced_open_screen`, close event | `menus.open-menu` (extra data -> `neoforge:advanced_open_screen`), `set-menu-data`, `menu-closed-event`, `menu-click-event` | `computercraft:computer` and `pocket_computer_no_term` opened with zero slots and `ComputerContainerData` as extra data; `isOn` in data slot 0; session ends on `menu-closed-event`. Turtle, disk drive and printer menus are **not** done (no menu behaviour in the host) | no |
 | P1.4 | custom data components with codecs | `custom-components` (prefix notation codec, `set/get/remove-custom-component`) | 14 types with the exact StreamCodec shapes (`protocol/components.dart`, each cites its Java codec); `computer_id` read from items and written to the dropped/held stack | no |
+| P1.7 | the peripherals of another mod's blocks on a computer's sides | `block-callbacks.neighbor-update` (through `Context.registerBlockBehavior`), `block-entity-load-event`, `block-entity-unload-event` | the Simulated compat: the algorithm of `compat/simulated_attach.dart` (which block is on which side, attach/detach) and the adapter of `compat/simulated_peripherals.dart`; the triggers are in `plugin/world_computers.dart` (a computer's place, load and use; a neighbour of a computer changing; a peripheral's block entity loading or unloading) and the world lookups in `compat/simulated_driver.dart` | the algorithm and the adapter: yes, VM tests (`test/simulated_attach_test.dart`, `test/simulated_peripherals_test.dart`); the triggers: no |
 | P2 | interaction events with hit position, face, hand | `player-use-block-event` (with cursor), `player-use-item-event` | computer GUI on right click without sneaking; pocket computers on use; place tracking. The cursor is **not** used yet (monitor touch is not done) | no |
 | P1.6 | redstone | none | none: computers do not read or drive redstone in the world | - |
 | P1.5 | `turtle_upgrade` / `pocket_upgrade` datapack registries | none | **declared by the plugin** as `datapack-entries` of its NeoForge declaration (`plugin/cc_neoforge.dart`, `protocol/datapack_registries.dart`); the host puts them into the registry data of NeoForge clients (was: sent by the plugin in the finish hold): the entries come from the mod jar's data pack, converted to network NBT by `protocol/json_nbt.dart`. A host feature to contribute entries to its own `registry_data` would make this cleaner (below), but nothing is required | no |
 | P2 | turtles | no fake player, no item entities, no block drops query, no cursor control in plugin menus, no entity queries (the list is [Turtles](#turtles)) | block entity, item components, GUI, `turtle` API, movement, commands over a `TurtleWorld` adapter with the approximations listed there (`lib/src/turtle`, `plugin/world_turtles.dart`) | no |
 
-What is still missing on the host side for the rest of the mod: neighbour
-changed callbacks (peripheral discovery, redstone, monitors expanding), block
+What is still missing on the host side for the rest of the mod: a redstone
+signal API, neighbour changed callbacks where the `block-callbacks`
+`neighbor-update` hook of a block does not reach (turtles and monitors want one
+for redstone and for expanding; peripheral discovery has one, see P1.7), block
 entity ticking (the plugin polls from its own tick), an API to drop an item
 entity with a custom stack (a broken computer's id goes straight into the
 player's inventory instead), `getCloneItemStack` (pick block), menu behaviour
-with real slots (disk drive, printer, turtle), a redstone signal API, the
-datapack registries, recipes, and fake players for turtles.
+with real slots (disk drive, printer, turtle), the datapack registries,
+recipes, and fake players for turtles.
 
 ## Turtles
 

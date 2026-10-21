@@ -118,10 +118,12 @@ final class LatchLogic {
   /// `DiodeBlock.shouldTurnOn`.
   Future<bool> shouldTurnOn(Pos pos, DiodeState state) async => await inputSignal(pos, state) > 0;
 
-  /// `DiodeBlock.shouldPrioritize`: a diode behind this one that faces another way.
+  /// `DiodeBlock.shouldPrioritize`: the diode in front (on the output side) faces somewhere other
+  /// than straight back at this one.
   bool shouldPrioritize(Pos pos, DiodeState state) {
-    final facing = env.diodeFacingAt(pos.relative(state.facing.opposite));
-    return facing != null && facing != state.facing;
+    final direction = state.facing.opposite;
+    final facing = env.diodeFacingAt(pos.relative(direction));
+    return facing != null && facing != direction;
   }
 
   /// `PoweredLatchBlock.isPoweredOnSides`.
@@ -227,12 +229,12 @@ final class LatchLogic {
   /// [side] is the vanilla `side` (direction from the reader to the block).
   static int signal(DiodeState state, Direction side) => state.facing == side ? outputSignal(state) : 0;
 
-  /// `DiodeBlock.getDirectSignal`, which the latches inherit:
-  /// `POWERED && FACING == side ? getOutputSignal(...) : 0`. Strong power therefore needs the
-  /// input to be on as well, unlike [signal]: a latch holding its output with `POWERED == false`
-  /// answers 0, so a solid block in front of it does not pass the hold through.
-  static int directSignal(DiodeState state, Direction side) =>
-      state.powered && state.facing == side ? outputSignal(state) : 0;
+  /// `DiodeBlock.getDirectSignal`, which the latches inherit: `state.getSignal(level, pos, side)`
+  /// — the *virtual* `getSignal`, which `ToggleLatchBlock` overrides without any `POWERED` gate
+  /// (`getSignal` of the base class is the gated `ownSignal`, but the latch never uses it). Strong
+  /// power therefore equals [signal]: a latch holding its output with `POWERED == false` still
+  /// passes 15 to a solid block in front.
+  static int directSignal(DiodeState state, Direction side) => signal(state, side);
 
   /// `activated` of the toggle latch (and the powered latch when [PoweredLatchBlock] allows it):
   /// whether a click flips `powering`.
@@ -348,15 +350,14 @@ final class BrassDiodeMachine {
     required Direction side,
   }) => facing == side ? outputSignal(powering: powering, inverted: inverted) : 0;
 
-  /// `DiodeBlock.getDirectSignal`, which the brass diodes inherit:
-  /// `POWERED && FACING == side ? getOutputSignal(...) : 0`.
+  /// `DiodeBlock.getDirectSignal`, which the brass diodes inherit: the virtual `getSignal`, which
+  /// `BrassDiodeBlock` overrides without any `POWERED` gate — so the strong signal equals [signal].
   static int directSignal({
-    required bool powered,
     required bool powering,
     required bool inverted,
     required Direction facing,
     required Direction side,
-  }) => powered && facing == side ? outputSignal(powering: powering, inverted: inverted) : 0;
+  }) => signal(powering: powering, inverted: inverted, facing: facing, side: side);
 
   /// `BrassDiodeBlockEntity.format`: the interval as `Nt`, `Ns` or `Nm`.
   static String format(int value) {

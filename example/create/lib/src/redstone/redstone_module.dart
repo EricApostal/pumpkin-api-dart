@@ -207,6 +207,8 @@ final class RedstoneModule extends CreateModule {
     if (wrench == null) return;
 
     // IWrenchable defaults: rotate on click, dismantle on sneak click.
+    // `analog_lever` is deliberately absent: Java's `AnalogLeverBlock` does not implement
+    // `IWrenchable`, so a wrench click on it does nothing.
     wrench.registerDefault([
       'create:display_link',
       'create:desk_bell',
@@ -215,7 +217,6 @@ final class RedstoneModule extends CreateModule {
       'create:pulse_repeater',
       'create:pulse_extender',
       'create:pulse_timer',
-      'create:analog_lever',
       ...nixieBlockKeys,
     ]);
 

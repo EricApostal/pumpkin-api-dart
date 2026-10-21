@@ -3,9 +3,16 @@
 abstract final class CopperStages {
   static const _mc = 'minecraft:';
 
+  /// A vanilla block key with its namespace: `World.getBlockState().blockName` is the bare
+  /// name for vanilla blocks (`waxed_copper_block`), while the data maps below are keyed
+  /// `minecraft:...` (the same form `blockStateToInfo`/`BlockStates.blockKey` give).
+  static String _namespaced(String blockKey) =>
+      blockKey.contains(':') ? blockKey : '$_mc$blockKey';
+
   /// The previous oxidation stage of [blockKey] (`minecraft:weathered_cut_copper` ->
   /// `minecraft:exposed_cut_copper`), or `null` when it is not a weathered copper block.
   static String? previousOxidizedStage(String blockKey) {
+    blockKey = _namespaced(blockKey);
     if (!blockKey.startsWith(_mc)) return null;
     final name = blockKey.substring(_mc.length);
     String? previous;
@@ -22,6 +29,7 @@ abstract final class CopperStages {
 
   /// The block without wax (`minecraft:waxed_exposed_copper` -> `minecraft:exposed_copper`).
   static String? unwaxed(String blockKey) {
+    blockKey = _namespaced(blockKey);
     if (!blockKey.startsWith(_mc)) return null;
     final name = blockKey.substring(_mc.length);
     if (!name.startsWith('waxed_')) return null;

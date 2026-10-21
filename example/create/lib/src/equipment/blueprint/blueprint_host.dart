@@ -7,6 +7,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 // ignore: implementation_imports
 import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 
+import '../../common/ghost_menu_layout.dart';
+import '../../common/menu_mirror.dart';
 import '../../contraptions/core/entity_type_keys.dart' show reportedEntityTypeKey;
 import '../../core/module.dart';
 import '../../core/nbt.dart';
@@ -23,6 +25,13 @@ import 'blueprint_geometry.dart';
 
 const String blueprintEntityKey = 'create:crafting_blueprint';
 const String blueprintMenuType = 'create:crafting_blueprint';
+
+/// `BlueprintMenu.addSlots`: the 36 player slots first, then the nine grid slots, the result and
+/// the icon (`GhostMenu.blueprint`).
+const GhostMenu blueprintLayout = GhostMenu.blueprint;
+
+/// The menu slot of the ghost slot [i] (`36 + i`).
+int blueprintGhostSlot(int i) => blueprintLayout.ghostSlot(i);
 
 /// One recipe section of a blueprint: nine ingredient filters, the result and a secondary icon.
 final class BlueprintSection {
@@ -219,7 +228,8 @@ final class BlueprintHost {
     return e.copyWith(useResult: ItemUseFirstResult.success);
   }
 
-  static bool _isDiode(String key) => key == 'minecraft:repeater' || key == 'minecraft:comparator';
+  static bool _isDiode(String key) =>
+      namespacedBlockKey(key) == 'minecraft:repeater' || namespacedBlockKey(key) == 'minecraft:comparator';
 
   /// `survives()`: free space, supported by solid blocks, no other hanging entity in the way.
   Future<bool> survives(World world, BlueprintState st, P3 pos, Entity? self) async {
@@ -503,9 +513,16 @@ final class BlueprintHost {
   // Menu
   // ---------------------------------------------------------------------------------------
 
+  /// `BlueprintMenu.allowRepeats()`: the same item may go into several grid slots.
   MenuClickRules get _rules => MenuClickRules(
     slotRules: [
-      for (var i = 0; i < 11; i++) MenuSlotRule(slot: i, kind: const MenuSlotKindGhost(), maxStackSize: null),
+      // `GhostItemMenu.clicked`: a ghost slot takes one item off the cursor.
+      for (var i = 0; i < blueprintLayout.ghostSlots; i++)
+        MenuSlotRule(
+          slot: blueprintGhostSlot(i),
+          kind: const MenuSlotKindGhost(),
+          maxStackSize: 1,
+        ),
     ],
     quickMoveTargets: const [],
   );
@@ -520,20 +537,27 @@ final class BlueprintHost {
       menuTypeKey: blueprintMenuType,
       title: TextComponent.translate(key: 'item.create.crafting_blueprint', with_: const []),
       extraData: extra,
-      slotCount: 11,
-      options: MenuOptions(applyVanillaClicks: true, playerInventory: true, rules: _rules),
+      slotCount: blueprintLayout.menuSlots,
+      options: MenuOptions(
+        applyVanillaClicks: true,
+        // The client's menu adds the player inventory first (`BlueprintMenu.addSlots`), so the
+        // server tracks a mirror of it instead of the host's player-inventory layout.
+        playerInventory: false,
+        rules: _rules,
+      ),
     );
     if (result is ErrorResult) {
       env.log.warn('Could not open the blueprint menu: ${(result as ErrorResult).value}');
       return;
     }
     _openMenus[player.getId().asString] = (entity.getId(), section);
+    await fillPlayerMirror(player);
     final sec = st.section(section);
-    for (var i = 0; i < 11; i++) {
+    for (var i = 0; i < blueprintLayout.ghostSlots; i++) {
       final host = await StackCodec.write(sec.items[i]);
       if (host == null) continue;
       if (i == 9 && st.inferredIcon) StackCodecFlags.markInferred(host);
-      player.setPluginMenuSlot(i, host);
+      await setMenuSlot(player, blueprintGhostSlot(i), host);
     }
   }
 
@@ -549,15 +573,21 @@ final class BlueprintHost {
     if (st == null) return;
     final sec = st.section(open.$2);
     var gridChanged = false;
+    var modelChanged = false;
     for (final c in e.changes) {
-      if (c.slot < 0 || c.slot > 10) continue;
-      sec.items[c.slot] = await StackCodec.read(c.stack);
-      if (c.slot == 9 && !sec.items[9].isEmpty) {
+      // The player inventory mirror of the menu is written back to the real inventory.
+      if (await applyPlayerMirrorChange(player, c)) continue;
+      final slot = blueprintLayout.ghostIndexAt(c.slot);
+      if (slot == null) continue;
+      sec.items[slot] = await StackCodec.read(c.stack);
+      modelChanged = true;
+      if (slot == 9 && !sec.items[9].isEmpty) {
         st.inferredIcon = false;
       }
-      if (c.slot < 9) gridChanged = true;
+      if (slot < 9) gridChanged = true;
     }
     if (gridChanged) await _inferResult(player, st, sec);
+    if (!modelChanged) return;
     _save(entity, st);
     _syncToTrackers(entity, st);
   }
@@ -575,22 +605,14 @@ final class BlueprintHost {
       if (sec.items[9].isEmpty || !st.inferredIcon) return;
       sec.items[9] = TStack.empty;
       st.inferredIcon = false;
-      try {
-        player.clearPluginMenuSlot(9);
-      } on Object {
-        // closed
-      }
+      await setMenuSlot(player, blueprintGhostSlot(9), null);
       return;
     }
     final out = ItemStack.create(registryKey: result.output.item, count: result.output.count);
     sec.items[9] = await StackCodec.read(out);
     st.inferredIcon = true;
     StackCodecFlags.markInferred(out);
-    try {
-      player.setPluginMenuSlot(9, out);
-    } on Object {
-      // closed
-    }
+    await setMenuSlot(player, blueprintGhostSlot(9), out);
   }
 
   void _onMenuClosed(Server server, MenuClosedEventData e) {
@@ -657,17 +679,9 @@ final class BlueprintHost {
     st.inferredIcon = false;
     _save(entity, st);
     _syncToTrackers(entity, st);
-    for (var i = 0; i < 11; i++) {
+    for (var i = 0; i < blueprintLayout.ghostSlots; i++) {
       final host = await StackCodec.write(sec.items[i]);
-      try {
-        if (host == null) {
-          player.clearPluginMenuSlot(i);
-        } else {
-          player.setPluginMenuSlot(i, host);
-        }
-      } on Object {
-        // closed
-      }
+      await setMenuSlot(player, blueprintGhostSlot(i), host);
     }
   }
 }

@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart' show HostBlockGetter;
 import '../../api/redstone.dart' show ClipboardApi;
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
@@ -136,6 +137,13 @@ final class NixieTubeBlockEntity extends CreateBlockEntity {
   }
 }
 
+/// `level.getFluidState(pos).getType() == Fluids.WATER`: a *source* of water (Java's `getType()` is
+/// the state's own fluid, so flowing water does not count).
+bool isWaterAt(World world, BlockPos pos) {
+  final fluid = world.getFluidState(pos: pos);
+  return fluid != null && fluid.fluid == 'minecraft:water' && fluid.isSource;
+}
+
 /// The text and strength of a tube, to survive a recolouring (a block replaced by another block).
 final class _NixieSnapshot {
   final int strength;
@@ -184,6 +192,14 @@ final class NixieTubeBlocks {
             Lvl(world).scheduleTick(e.pos.toPos(), 1);
           },
           onScheduledTick: (server, e) async => _updateDisplayed(Lvl(e.targetWorld), e.pos, e.targetWorld, force: false),
+          // `updateShape`: a waterlogged tube keeps its water ticking.
+          onUpdateShape: (server, e) {
+            final state = HostBlockGetter(e.targetWorld).stateAt((e.pos.x, e.pos.y, e.pos.z));
+            if (isNixieKey(state.key) && state.flag('waterlogged')) {
+              e.targetWorld.scheduleFluidTick(pos: e.pos, delay: 5);
+            }
+            return null;
+          },
           onUse: _onUse,
           canConnectRedstone: (server, e) => e.direction != null,
           isPathfindable: (server, e) => false,
@@ -250,7 +266,11 @@ final class NixieTubeBlocks {
     final ctx = placeContextOf(server, e);
     if (ctx != null) {
       final placed = nixiePlacement(ctx);
-      if (placed['double_face'] != props['double_face'] || placed['facing'] != props['facing']) {
+      // `NixieTubeBlock.getStateForPlacement`: the tube keeps the water it is placed into.
+      placed['waterlogged'] = '${isWaterAt(e.targetWorld, e.pos)}';
+      if (placed['double_face'] != props['double_face'] ||
+          placed['facing'] != props['facing'] ||
+          placed['waterlogged'] != props['waterlogged']) {
         await lvl.setProps(pos, placed);
         props = {...props, ...placed};
       }

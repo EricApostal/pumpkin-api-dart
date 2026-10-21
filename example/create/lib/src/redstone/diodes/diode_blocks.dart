@@ -125,8 +125,8 @@ final class LatchBlock {
   int _signal(int stateIndex, BlockDirection face) =>
       LatchLogic.signal(diodeStateOf(block.stateOf(stateIndex)), face.toDirection().opposite);
 
-  /// `DiodeBlock.getDirectSignal`: strong power only while the input is on (`POWERED`), so a
-  /// latched output does not pass through a solid block in front of it.
+  /// `DiodeBlock.getDirectSignal`: `state.getSignal(...)`, i.e. the latch's override, which has no
+  /// `POWERED` gate — a latched output passes through a solid block in front too.
   int _strongSignal(int stateIndex, BlockDirection face) =>
       LatchLogic.directSignal(diodeStateOf(block.stateOf(stateIndex)), face.toDirection().opposite);
 
@@ -326,12 +326,11 @@ final class BrassDiodeBlock {
     );
   }
 
-  /// `DiodeBlock.getDirectSignal`: strong power only while the input is on (`POWERED`), so an
-  /// inverted diode holding its output does not pass through a solid block in front of it.
+  /// `DiodeBlock.getDirectSignal`: `state.getSignal(...)`, i.e. the brass diode's override, which has
+  /// no `POWERED` gate — an inverted diode holding its output passes through a solid block in front.
   int _strongSignal(int stateIndex, BlockDirection face) {
     final s = diodeStateOf(block.stateOf(stateIndex));
     return BrassDiodeMachine.directSignal(
-      powered: s.powered,
       powering: s.powering,
       inverted: s.inverted,
       facing: s.facing,

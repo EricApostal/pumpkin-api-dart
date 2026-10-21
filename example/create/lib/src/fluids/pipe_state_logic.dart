@@ -128,13 +128,15 @@ abstract final class PipeStateLogic {
   }
 
   /// `DirectionalAxisKineticBlock.getStateForPlacement` as `FluidValveBlock` uses it: the
-  /// `axis_along_first` of the placed valve. Both branches only look at neighbouring shafts
-  /// (`prefersConnectionTo` with `shaftAxis: false` always answers `false`), so the pipe next to
-  /// the valve does not decide.
+  /// `axis_along_first` of the placed valve. `prefersConnectionTo(side, shaftAxis: true)` asks for
+  /// a shaft on `side`; `FluidValveBlock.prefersConnectionTo(side, shaftAxis: false)` is overridden
+  /// there to ask whether the block on `side` is one a fluid pipe can connect to
+  /// (`FluidPipeBlock.canConnectTo`), so the pipe a valve is placed on decides the axis it gates.
   static bool valveAxisAlignmentForPlacement(
     Direction facing,
     Direction horizontalLook, {
     bool Function(Direction side)? shaftTowards,
+    bool Function(Direction side)? pipeTowards,
   }) {
     var alongFirst = false;
     final faceAxis = facing.axis;
@@ -143,16 +145,27 @@ abstract final class PipeStateLogic {
     bool prefersShaft(Direction side) =>
         shaftTowards != null && shaftTowards(side);
 
+    // `FluidValveBlock.prefersConnectionTo(reader, pos, side, shaftAxis: false)`.
+    bool prefersPipe(Direction side) =>
+        pipeTowards != null && pipeTowards(side);
+
     if (faceAxis.isHorizontal) {
       alongFirst = faceAxis == Axis.z;
+      final positivePerpendicular = faceAxis == Axis.x
+          ? Direction.south
+          : Direction.east;
       final shaftAbove = prefersShaft(Direction.up);
       final shaftBelow = prefersShaft(Direction.down);
-      if (shaftAbove || shaftBelow) alongFirst = faceAxis == Axis.x;
+      final preferLeft = prefersPipe(positivePerpendicular);
+      final preferRight = prefersPipe(positivePerpendicular.opposite);
+      if (shaftAbove || shaftBelow || preferLeft || preferRight) {
+        alongFirst = faceAxis == Axis.x;
+      }
     } else {
       alongFirst = horizontalLook.axis == Axis.x;
       Direction? preferredSide;
       for (final side in Direction.horizontals) {
-        if (!prefersShaft(side)) continue;
+        if (!prefersShaft(side) && !prefersPipe(side.clockWise)) continue;
         if (preferredSide != null && preferredSide.axis != side.axis) {
           preferredSide = null;
           break;

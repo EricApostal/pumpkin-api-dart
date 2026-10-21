@@ -323,7 +323,7 @@ final class PotatoHost {
         if (!world.getBlockState(pos: place).replaceable) return false;
         // `SpecialPlantable.canPlacePlantAtPosition`: crops need farmland below.
         final below = world.getBlockState(pos: place.p3.down1.blockPos);
-        if (below.blockName == 'minecraft:farmland') {
+        if (namespacedBlockKey(below.blockName) == 'minecraft:farmland') {
           final id = BlockStates.defaultOf(cropBlock);
           if (id != null) await world.setBlockState(pos: place, state: id, updateFlags: BlockUpdateFlags.normal);
         }

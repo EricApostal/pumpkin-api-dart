@@ -2,7 +2,7 @@
 export 'async_runtime.dart' show runCallback, runTask, taskHandlers;
 export 'bindings.g.dart';
 export 'commands.dart' show commandErrorFor, CommandException, commandHandlers, suggestionHandlers;
-export 'events.dart' show eventHandlers;
+export 'events.dart' show eventGroups, eventHandlers, eventHandlerLabels, eventTimingSink;
 export 'logger.dart' show logger;
 export 'permissions.dart' show Permissions;
 export 'ai.dart' show aiGoals, AiGoal;

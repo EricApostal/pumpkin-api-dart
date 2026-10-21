@@ -29,17 +29,68 @@ const TracePos origin = TracePos(100, 70, 200);
 String payloadHex({
   int entityId = 42,
   int? anchorX,
+  List<int>? anchor,
   int contents = 1,
   List<int> blockList = const [7, 7, 9],
 }) {
   final nbt = NbtValue.compound({
     'EntityID': NbtValue.int32(entityId),
-    'Anchor': NbtValue.intArray([anchorX ?? origin.x, origin.y, origin.z]),
+    'Anchor': NbtValue.intArray(
+      anchor ?? [anchorX ?? origin.x, origin.y, origin.z],
+    ),
     'Contents': NbtValue.compound({'Value': NbtValue.int32(contents)}),
     'BlockList': NbtValue.longArray(blockList),
   });
   final bytes = NetworkNbt.encode(nbt);
   return [for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0')].join();
+}
+
+/// The payload the plugin (and NeoForge) actually sends for a contraption: the entity id as a
+/// VarInt, the NBT's length as a VarInt, then the NBT — the layout that makes a client able to
+/// spawn an entity and its data from one payload.
+String framedPayloadHex({
+  required int entityId,
+  List<int>? anchor,
+  List<int> blockList = const [7, 7, 9],
+  bool withLength = true,
+}) {
+  final nbt = NbtValue.compound({
+    'Contraption': NbtValue.compound({
+      'Type': NbtValue.string('create:bearing'),
+      'Blocks': NbtValue.compound({
+        'Palette': NbtValue.list([
+          NbtValue.compound({'Name': NbtValue.string('minecraft:stone')}),
+        ]),
+        'BlockList': NbtValue.list([
+          for (var i = 0; i < blockList.length; i++)
+            NbtValue.compound({
+              'Pos': NbtValue.intArray([i, 0, 0]),
+              'State': NbtValue.int32(blockList[i]),
+            }),
+        ]),
+      }),
+      'Anchor': NbtValue.intArray(anchor ?? [100, 70, 200]),
+    }),
+  });
+  final body = NetworkNbt.encode(nbt);
+  final bytes = [
+    ..._varInt(entityId),
+    ..._varInt(withLength ? body.length : body.length + 1),
+    ...body,
+  ];
+  return [for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0')].join();
+}
+
+List<int> _varInt(int value) {
+  final bytes = <int>[];
+  var rest = value;
+  do {
+    var byte = rest & 0x7F;
+    rest >>= 7;
+    if (rest != 0) byte |= 0x80;
+    bytes.add(byte);
+  } while (rest != 0);
+  return bytes;
 }
 
 /// One JSONL line, as both the client and the proxy write them.
@@ -61,9 +112,10 @@ String contraptionTrace({
   String? payload,
   List<(List<int> pos, int state)> extraUpdates = const [],
   List<Map<String, Object?>> noise = const [],
+  TracePos world = origin,
 }) {
   final lines = <String>[
-    line({'kind': 'chunk', 'chunk': [origin.x >> 4, origin.z >> 4]}),
+    line({'kind': 'chunk', 'chunk': [world.x >> 4, world.z >> 4]}),
   ];
   for (final extra in extraUpdates) {
     lines.add(line({
@@ -74,9 +126,9 @@ String contraptionTrace({
   }
   lines.addAll(noise.map(line));
   final rig = [
-    [origin.x, origin.y, origin.z],
-    [origin.x, origin.y, origin.z + 1],
-    [origin.x, origin.y, origin.z + 2],
+    [world.x, world.y, world.z],
+    [world.x, world.y, world.z + 1],
+    [world.x, world.y, world.z + 2],
   ];
   for (var i = 0; i < states.length && i < rig.length; i++) {
     lines.add(line({'kind': 'block_update', 'pos': rig[i], 'state': states[i]}));
@@ -87,13 +139,13 @@ String contraptionTrace({
       'kind': 'add_entity',
       'entity': entity,
       'type': type,
-      'pos': [origin.x, origin.y, origin.z],
+      'pos': [world.x, world.y, world.z],
       if (bundle) 'bundle': true,
     }));
     lines.add(line({
       'kind': 'custom_payload',
       'channel': 'neoforge:advanced_add_entity',
-      'data': payload ?? payloadHex(),
+      'data': payload ?? payloadHex(anchorX: world.x),
       if (bundle) 'bundle': true,
     }));
     if (bundle) lines.add(line({'kind': 'bundle_end'}));
@@ -129,12 +181,15 @@ String spinningPayload({
   return [for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0')].join();
 }
 
-NormalisedTrace normalise(String trace, {String label = 'trace'}) =>
-    NormalisedTrace.of(
-      PumpkinTrace.parse(trace, source: label),
-      label: label,
-      origin: origin,
-    );
+NormalisedTrace normalise(
+  String trace, {
+  String label = 'trace',
+  TracePos at = origin,
+}) => NormalisedTrace.of(
+  PumpkinTrace.parse(trace, source: label),
+  label: label,
+  origin: at,
+);
 
 void main() {
   group('two servers that said the same thing', () {
@@ -152,14 +207,22 @@ void main() {
       );
       // The candidate: a different state numbering, a different entity id and type, a different
       // absolute anchor *inside* the payload, and more ticks in between.
+      // The other server generated its own world and put the same rig in it: every absolute
+      // coordinate differs, and the trace is read against *its* anchor.
+      final elsewhere = TracePos(origin.x - 37, origin.y + 12, origin.z + 91);
       final candidate = normalise(
         contraptionTrace(
           states: const [9001, 9002, 9003],
           entity: 7,
           type: 55,
-          payload: payloadHex(entityId: 7, anchorX: origin.x + 1),
+          payload: payloadHex(
+            entityId: 7,
+            anchor: [elsewhere.x, elsewhere.y, elsewhere.z],
+          ),
+          world: elsewhere,
         ),
         label: 'pumpkin',
+        at: elsewhere,
       );
 
       final differential = Differential.compare(reference, candidate);
@@ -216,6 +279,82 @@ void main() {
     });
   });
 
+  group('a framed payload', () {
+    test('is decoded, so two servers agree on the contraption they assembled', () {
+      final elsewhere = TracePos(origin.x - 23, origin.y + 17, origin.z + 36);
+      final differential = Differential.compare(
+        normalise(
+          contraptionTrace(
+            states: const [1, 2, 3],
+            payload: framedPayloadHex(
+              entityId: 408,
+              anchor: [origin.x, origin.y, origin.z],
+            ),
+          ),
+        ),
+        normalise(
+          contraptionTrace(
+            states: const [9001, 9002, 9003],
+            payload: framedPayloadHex(
+              entityId: 7,
+              anchor: [elsewhere.x, elsewhere.y, elsewhere.z],
+            ),
+            world: elsewhere,
+          ),
+          at: elsewhere,
+        ),
+      );
+      // The entity id differs, the anchor's absolute coordinates differ (the rig is built where
+      // each server put its client), and the block state ids differ — and none of that is a
+      // difference in the contraption.
+      expect(differential.agrees, isTrue, reason: differential.report(all: true));
+    });
+
+    test('a length that does not match the frame is compared as bytes, not decoded', () {
+      final differential = Differential.compare(
+        normalise(
+          contraptionTrace(
+            states: const [1, 2, 3],
+            payload: framedPayloadHex(entityId: 1, withLength: false),
+          ),
+        ),
+        normalise(
+          contraptionTrace(
+            states: const [1, 2, 3],
+            payload: framedPayloadHex(entityId: 1, withLength: true),
+          ),
+        ),
+      );
+      // A frame whose length lies is not the frame this decoder knows, so it stays raw — which is
+      // the safe direction: raw bytes that differ are reported, never silently interpreted.
+      expect(differential.agrees, isFalse);
+      expect(differential.first!.reference, contains('raw vs nbt'));
+    });
+
+    test('a block list of a different kind is still a difference inside the frame', () {
+      final differential = Differential.compare(
+        normalise(
+          contraptionTrace(
+            states: const [1, 2, 3],
+            payload: framedPayloadHex(entityId: 1),
+          ),
+        ),
+        normalise(
+          contraptionTrace(
+            states: const [1, 2, 3],
+            payload: framedPayloadHex(entityId: 1, blockList: const [7, 7]),
+          ),
+        ),
+      );
+      expect(differential.agrees, isFalse);
+      expect(
+        differential.first!.describe(),
+        contains('BlockList'),
+        reason: differential.report(all: true),
+      );
+    });
+  });
+
   group('what a running machine churns', () {
     // A machine pushes its block entity's state every tick, and those pushes carry a turn angle and
     // a session counter: comparing them would drown the one difference that matters, so the first
@@ -247,26 +386,51 @@ void main() {
       expect(differential.reference.blockEntityPushes.values.first, 20);
     });
 
+    test('the first push is compared and the later ones are only counted', () {
+      String pushes(int count, {required bool pluginClientData}) {
+        final lines = <String>[];
+        for (var i = 0; i < count; i++) {
+          lines.add(
+            line({
+              'kind': 'block_entity_data',
+              'pos': [origin.x, origin.y, origin.z + 1],
+              'nbt': spinningPayload(
+                // A transient flag in a *later* push only: exactly the kind of thing a change
+                // counter would see and a comparison must not.
+                angle: i * 3.1,
+                networkId: i,
+                pluginClientData: pluginClientData || i > 0,
+              ),
+            }),
+          );
+        }
+        return '${contraptionTrace(states: const [1, 2, 3])}${lines.join('\n')}\n';
+      }
+
+      final differential = Differential.compare(
+        normalise(pushes(1, pluginClientData: false), label: 'java'),
+        normalise(pushes(4, pluginClientData: false), label: 'pumpkin'),
+      );
+      expect(differential.agrees, isTrue, reason: differential.report(all: true));
+      expect(differential.candidate.blockEntityPushes.values.first, 4);
+      expect(
+        differential.candidate.ignored.keys.join(' '),
+        contains('later pushes'),
+      );
+    });
+
     test('…but a key the other server never sends is', () {
       final differential = Differential.compare(
         normalise(pushes(2)),
         normalise(pushes(2, pluginClientData: true)),
       );
       expect(differential.agrees, isFalse);
-      // The first push is compared key by key, so the extra key is named there — and the shape
-      // event says the same thing about *every* push, which is what catches a key that only ever
-      // appears in a later one.
+      // The payload the client is first told is compared key by key, so a key one server sends and
+      // the other does not is named as the leaf it is.
       expect(differential.first!.subject, contains('block_entity_data'));
       expect(
         differential.first!.candidate,
         contains('PluginClientData'),
-        reason: differential.report(all: true),
-      );
-      expect(
-        differential.divergences.any(
-          (d) => d.subject.contains('block_entity_data_paths'),
-        ),
-        isTrue,
         reason: differential.report(all: true),
       );
     });

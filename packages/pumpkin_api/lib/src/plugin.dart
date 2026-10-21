@@ -176,17 +176,60 @@ final class _Exports implements PluginExports {
 
   @override
   Future<Event> handleEvent(int eventId, Server server, Event event) async {
-    final handler = eventHandlers[eventId];
+    final group = eventGroups[eventId];
+    if (group != null) {
+      // One host handler for the whole group: run every member that wants the event, in
+      // registration order, each exactly as the separate host handler it replaces would have run
+      // it - its own callback scope, its own fallback, its own error handling. The list is walked
+      // by index and never shrinks (a cancel only marks a member inactive), so the dispatch
+      // copies nothing and a member a handler cancels mid-event is silenced like the registry
+      // lookup that used to be its own dispatch.
+      final count = group.length;
+      var current = event;
+      for (var i = 0; i < count; i++) {
+        final member = group[i];
+        if (!member.active || !member.wants(current)) continue;
+        current = await _invokeEventHandler(eventId, member.handler, server, current);
+      }
+      return current;
+    }
+    return _invokeEventHandler(eventId, eventHandlers[eventId], server, event);
+  }
+
+  /// Runs one handler of [eventId] with the guest-side bookkeeping a host dispatch used to get:
+  /// its own callback scope, a null-checked timing sink, and a failure that is logged without
+  /// ending the dispatch.
+  Future<Event> _invokeEventHandler(
+    int eventId,
+    FutureOr<Event> Function(Server server, Event event)? handler,
+    Server server,
+    Event event,
+  ) async {
     if (handler == null) return event;
+    Future<Event> invoke() async {
+      try {
+        return await runCallback<Event>(
+          'event handler',
+          () => handler(server, event),
+          fallback: () => event,
+        );
+      } catch (e, s) {
+        _logFailure('event handler', e, s);
+        return event;
+      }
+    }
+
+    // A plugin that wants to attribute its per-tick cost installs `eventTimingSink` (Create's
+    // `Perf` does, when its `perf` file is present): the host knows how long it waited for this
+    // callback, only the guest knows how much of that was the handler. Without a sink this is one
+    // null check per dispatch.
+    final sink = eventTimingSink;
+    if (sink == null) return invoke();
+    final watch = Stopwatch()..start();
     try {
-      return await runCallback<Event>(
-        'event handler',
-        () => handler(server, event),
-        fallback: () => event,
-      );
-    } catch (e, s) {
-      _logFailure('event handler', e, s);
-      return event;
+      return await invoke();
+    } finally {
+      sink(eventHandlerLabels[eventId] ?? 'unknown', watch.elapsedMicroseconds);
     }
   }
 

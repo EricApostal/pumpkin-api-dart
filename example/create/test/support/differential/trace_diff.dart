@@ -198,33 +198,50 @@ final class PayloadDigest {
   /// Decodes [bytes] with the same NBT reader the client uses, falling back to raw bytes.
   ///
   /// [ids] renames id-shaped values through the *trace's* numbering, so an entity id or a block
-  /// state id inside the payload compares as a reference rather than as a number.
-  factory PayloadDigest.of(Uint8List? bytes, CanonicalIds ids) {
+  /// state id inside the payload compares as a reference rather than as a number, and [origin] is
+  /// the anchor the rig was built at, which is what makes a value that *is* the rig's position
+  /// comparable across two worlds.
+  factory PayloadDigest.of(
+    Uint8List? bytes,
+    CanonicalIds ids, {
+    required TracePos origin,
+  }) {
     if (bytes == null || bytes.isEmpty) {
       return PayloadDigest._('empty', 0, const {}, const {}, null, null);
     }
     final hash = _fnv1a(bytes);
     final hex = _hex(bytes, limit: 512);
-    NbtValue? decoded;
-    try {
-      decoded = NetworkNbt.decode(bytes);
-    } on Object {
-      decoded = null;
-    }
+    // Plain NBT first: a block entity's payload *is* the NBT, and nothing is guessed for it.
+    var decoded = _decodeNbt(bytes);
+    var frame = 0;
+    Frame? framed;
     if (decoded == null) {
-      // The plain binary form (a root tag with a name), as a `.nbt` file uses.
-      try {
-        decoded = BinaryNbt.read(bytes)?.root;
-      } on Object {
-        decoded = null;
+      // Then the framed form. The NeoForge entity payload this differential exists for
+      // (`neoforge:advanced_add_entity`, the contraption's spawn data) is a `FriendlyByteBuf`: the
+      // entity id as a VarInt, the NBT's length as a VarInt, then the NBT. The length therefore has
+      // to match the bytes that follow *exactly*, which is what makes the rule a check rather than
+      // a guess — a payload that is not framed this way falls through to raw bytes below.
+      framed = _readFramed(bytes);
+      if (framed != null) {
+        decoded = _decodeNbt(framed.nbt);
+        if (decoded != null) frame = framed.entityId;
       }
     }
-    if (decoded == null || decoded.kind != NbtKind.compound) {
+    // The plain binary form (a root tag with a name), as a `.nbt` file uses.
+    decoded ??= _readFileNbt(bytes);
+    if (decoded == null) {
       return PayloadDigest._('raw', bytes.length, const {}, const {}, hex, hash);
     }
     final compares = <String, String>{};
     final display = <String, String>{};
-    _flatten(decoded, '', compares, display, ids);
+    if (frame != 0 || framed != null) {
+      // The reference to the entity, renamed through the trace's own numbering — the same numbering
+      // the `add_entity` for it uses, so "the payload is about the entity that was spawned" is a
+      // comparison and not a coincidence of two servers agreeing on an id.
+      compares['@entity'] = ids.token('entity', frame);
+      display['@entity'] = '$frame (framed payload)';
+    }
+    _flatten(decoded, '', compares, display, ids, origin);
     return PayloadDigest._('nbt', bytes.length, compares, display, hex, hash);
   }
 
@@ -347,6 +364,57 @@ final class PayloadDifference {
       : '$path: $referenceDisplay vs $candidateDisplay';
 }
 
+/// A payload with a `FriendlyByteBuf` frame: the entity it is about, and the NBT inside.
+final class Frame {
+  const Frame(this.entityId, this.nbt);
+
+  final int entityId;
+  final Uint8List nbt;
+}
+
+NbtValue? _decodeNbt(Uint8List bytes) {
+  try {
+    final value = NetworkNbt.decode(bytes);
+    if (value != null && value.kind == NbtKind.compound) return value;
+  } on Object {
+    return null;
+  }
+  return null;
+}
+
+NbtValue? _readFileNbt(Uint8List bytes) {
+  try {
+    final root = BinaryNbt.read(bytes)?.root;
+    if (root != null && root.kind == NbtKind.compound) return root;
+  } on Object {
+    return null;
+  }
+  return null;
+}
+
+/// Reads `VarInt entity id, VarInt length, length bytes of NBT`, or null when that is not exactly
+/// what the bytes are.
+Frame? _readFramed(Uint8List bytes) {
+  final id = _readVarInt(bytes, 0);
+  if (id == null || id.value < 0) return null;
+  final length = _readVarInt(bytes, id.length);
+  if (length == null) return null;
+  final start = id.length + length.length;
+  if (length.value <= 0 || start + length.value != bytes.length) return null;
+  return Frame(id.value, Uint8List.sublistView(bytes, start));
+}
+
+({int value, int length})? _readVarInt(Uint8List bytes, int at) {
+  var value = 0;
+  for (var i = 0; i < 5; i++) {
+    if (at + i >= bytes.length) return null;
+    final byte = bytes[at + i];
+    value |= (byte & 0x7F) << (7 * i);
+    if ((byte & 0x80) == 0) return (value: value, length: i + 1);
+  }
+  return null;
+}
+
 /// The value a payload leaf is compared as.
 ///
 /// A number is a number, unless it is an id — in which case the *trace's* numbering renames it, so
@@ -405,6 +473,7 @@ void _flatten(
   Map<String, String> compares,
   Map<String, String> display,
   CanonicalIds ids,
+  TracePos origin,
 ) {
   final leaf = path.contains('.')
       ? path.substring(path.lastIndexOf('.') + 1)
@@ -424,6 +493,7 @@ void _flatten(
           compares,
           display,
           ids,
+          origin,
         );
       }
     case NbtKind.list:
@@ -431,24 +501,72 @@ void _flatten(
       compares['$path<<list>>'] = '${list.length} items';
       display['$path<<list>>'] = '${list.length} items';
       for (var i = 0; i < list.length && i < 256; i++) {
-        _flatten(list[i], '$path[$i]', compares, display, ids);
+        _flatten(list[i], '$path[$i]', compares, display, ids, origin);
       }
     case NbtKind.end:
       compares[path] = 'end';
       display[path] = 'end';
     case NbtKind.byteArray || NbtKind.intArray || NbtKind.longArray:
-      compares[path] = _renderArray(value.value as List<int>);
-      display[path] = _displayArray(value.value as List<int>);
+      final array = value.value as List<int>;
+      final rigRelative = rigRelativeArray(array, origin);
+      compares[path] = rigRelative ?? _renderArray(array);
+      display[path] = _displayArray(array);
     default:
-      // A leaf whose *name* is an id names something the server numbered itself (`EntityID`,
-      // `ContraptionID`, `id`): the reference is what matters, not the number, so it is renamed
-      // through this trace's numbering and two servers' different entity ids compare equal.
       final rendered = _renderLeaf(value);
       display[path] = rendered;
-      compares[path] = _isInteger(value.kind) && _isIdKey(leaf)
-          ? ids.token('id', value.value as int)
-          : rendered;
+      if (_isInteger(value.kind) && _isIdKey(leaf)) {
+        // A leaf whose *name* is an id names something the server numbered itself (`EntityID`,
+        // `ContraptionID`, `id`): the reference is what matters, not the number, so it is renamed
+        // through this trace's numbering and two servers' different entity ids compare equal.
+        compares[path] = ids.token('id', value.value as int);
+      } else {
+        compares[path] = _rigRelativeScalar(leaf, value, origin) ?? rendered;
+      }
   }
+}
+
+/// An array that is the rig's own position, rendered relative to the anchor.
+///
+/// An absolute position is the one value in a contraption's payload that *cannot* match across two
+/// servers: the two worlds put the rig in different places, and the mod sends the contraption's
+/// anchor as plain coordinates. [origin] is each server's own anchor, so a value that is the anchor
+/// (or an offset from it along one axis) says the same thing on both sides once it is written
+/// relative to it.
+///
+/// The gate is "at least two of the three components are exactly the anchor's": an array that
+/// merely contains a 0 somewhere is not a position, and a *relative* position (a contraption's
+/// `Blocks.BlockList[i].Pos`, which is small and 0-based) is compared as itself, because a
+/// coincidence of one component is not enough to translate it. A miss here can only leave a
+/// legitimate difference reported, never hide a real one.
+String? rigRelativeArray(List<int> values, TracePos origin) {
+  if (values.length != 3) return null;
+  final axis = [origin.x, origin.y, origin.z];
+  var matches = 0;
+  for (var i = 0; i < 3; i++) {
+    if (values[i] == axis[i]) matches++;
+  }
+  if (matches < 2) return null;
+  final rendered = [
+    for (var i = 0; i < 3; i++) values[i] == axis[i] ? '0' : '${values[i]}',
+  ];
+  return '[@3 rel anchor: ${rendered.join(' ')}]';
+}
+
+/// A scalar named `x`, `y` or `z` that is exactly the anchor's component, rendered as `0`.
+///
+/// The same reasoning as [rigRelativeArray], for the payloads that spell a position out as three
+/// scalars (a block entity's own coordinates) instead of as an array.
+String? _rigRelativeScalar(String leaf, NbtValue value, TracePos origin) {
+  if (!_isInteger(value.kind)) return null;
+  final number = value.value as int;
+  final axis = switch (leaf) {
+    'x' || 'X' => origin.x,
+    'y' || 'Y' => origin.y,
+    'z' || 'Z' => origin.z,
+    _ => null,
+  };
+  if (axis == null || number != axis) return null;
+  return '0 (rel anchor)';
 }
 
 /// Whether an NBT key names an id rather than a value.
@@ -464,28 +582,13 @@ bool _isInteger(NbtKind kind) =>
 
 bool _isIdKey(String key) {
   if (key == 'id' || key == 'ID' || key == 'Id') return true;
+  // `State` is a contraption's pointer into its own palette: the *palette* carries the block's
+  // name (`minecraft:stone`), which is what is compared, so the id behind it only has to agree on
+  // being the same id.
+  if (key == 'State' || key == 'state') return true;
   return key.endsWith('Id') || key.endsWith('ID') || key.endsWith('_id');
 }
  
-/// One block entity's first payload, and what every later push of it added in shape.
-final class _BlockEntityPush {
-  _BlockEntityPush({
-    required this.first,
-    required this.order,
-    required this.line,
-  });
-
-  /// The payload of the first push: the state the client was told when the block entity appeared.
-  final PayloadDigest first;
-  final int order;
-  final int line;
-
-  /// Every key path any later push carried.
-  final Set<String> paths = {};
-  final Set<String> forms = {};
-  int pushes = 1;
-}
-
 /// Everything one trace said, in comparable form.
 final class NormalisedTrace {
   NormalisedTrace({
@@ -610,7 +713,7 @@ class _Normaliser {
           final bundled = spawn?.bundledPayloads ?? const <TracedPacket>[];
           final channels = [for (final packet in bundled) packet.channel ?? '?'];
           final bundledDigests = [
-            for (final packet in bundled) PayloadDigest.of(packet.data, ids),
+            for (final packet in bundled) PayloadDigest.of(packet.data, ids, origin: origin),
           ];
           final entity = packet.entity == null
               ? '?'
@@ -635,7 +738,7 @@ class _Normaliser {
             _skip(ignored, '$kind (bundled with an entity)');
             continue;
           }
-          final digest = PayloadDigest.of(packet.data, ids);
+          final digest = PayloadDigest.of(packet.data, ids, origin: origin);
           final channel = packet.channel ?? '?';
           final last = _lastPayload[channel];
           if (last != null && last.firstDifference(digest) == null) {
@@ -664,7 +767,7 @@ class _Normaliser {
             _skip(ignored, kind);
             continue;
           }
-          final carried = PayloadDigest.of(packet.nbtBytes, ids);
+          final carried = PayloadDigest.of(packet.nbtBytes, ids, origin: origin);
           events.add(
             TraceEvent(
               kind: kind,
@@ -684,25 +787,21 @@ class _Normaliser {
             _skip(ignored, kind);
             continue;
           }
-          final digest = PayloadDigest.of(packet.nbtBytes, ids);
+          final digest = PayloadDigest.of(packet.nbtBytes, ids, origin: origin);
           final key = '#$rel';
-          final seen = _blockEntities[key];
-          if (seen != null) {
+          final pushes = _blockEntities[key];
+          if (pushes != null) {
             // A block entity's payload is re-pushed whenever its state changes, and a *running*
-            // machine's state changes every tick (an angle, a counter): the later pushes are the
-            // same payload with timing-dependent numbers. They are counted, and the shape they add
-            // is compared, but their values are not — see [blockEntityPushes].
-            seen.pushes++;
-            seen.paths.addAll(digest.compares.keys);
-            seen.forms.add(digest.form);
+            // machine's state changes every tick (an angle, a session counter, a transient flag):
+            // the later pushes carry timing-dependent values, and how many of them there are
+            // depends on how long the client stayed connected. Only the *first* push can be
+            // compared between two runs — and it is, below, leaf by leaf. The rest are counted so
+            // the report can say they were seen and not compared.
+            _blockEntities[key] = pushes + 1;
             _skip(ignored, '$kind (later pushes of the same block entity)');
             continue;
           }
-          _blockEntities[key] = _BlockEntityPush(
-            first: digest,
-            order: events.length,
-            line: packet.line,
-          );
+          _blockEntities[key] = 1;
           events.add(
             TraceEvent(
               kind: TraceKind.blockEntityData.wire,
@@ -727,10 +826,16 @@ class _Normaliser {
           // the server re-sends unchanged (a block whose state did not change, re-announced) is
           // counted, not compared, and what is compared is the sequence of states the client was
           // actually told (`state#0 → state#1`), however many times each was repeated.
+          //
+          // The names are minted *per position*, not per trace: a block state id means nothing
+          // across servers, so `state#0` has to mean "the first state this position was ever told",
+          // and a trace-wide numbering would make two servers disagree whenever their packets
+          // happened to arrive in a different order (a placement update that landed after a spawn
+          // instead of before it would renumber every state after it).
           final key = '#$rel';
           final token = packet.state == null
               ? '?'
-              : ids.token('state', packet.state!);
+              : _stateToken(key, packet.state!);
           if (_lastState[key] == token) {
             _skip(ignored, '${TraceKind.blockUpdate.wire} (repeat of the same state)');
             continue;
@@ -786,30 +891,6 @@ class _Normaliser {
       }
     }
 
-    // The shape of every block entity's payload: which keys the server ever told the client about
-    // for that position, values excluded. A payload that carries a key the other server never sends
-    // (`PluginClientData` is a plugin's own addition) is a structural difference, and it survives
-    // the volatile values that made the pushes themselves incomparable.
-    for (final entry in _blockEntities.entries) {
-      final state = entry.value;
-      final paths = state.paths.toList()..sort();
-      if (paths.isEmpty) paths.addAll(state.forms);
-      events.add(
-        TraceEvent(
-          kind: 'block_entity_data_paths',
-          key: entry.key,
-          value: paths.join(', '),
-          order: state.order,
-          line: state.line,
-          raw: '${state.pushes} push(es) of ${state.first.form}',
-        ),
-      );
-      _count(kinds, 'block_entity_data_paths');
-    }
-    for (final entry in _blockEntities.entries) {
-      blockEntityPushes[entry.key] = entry.value.pushes;
-    }
-
     if (drops > 0) {
       events.add(
         TraceEvent(
@@ -832,17 +913,21 @@ class _Normaliser {
       kinds: kinds,
       ignored: ignored,
       drops: drops,
-      blockEntityPushes: blockEntityPushes,
+      blockEntityPushes: _blockEntities,
     );
   }
 
   final Map<String, String> _lastState = {};
-  final Map<String, PayloadDigest> _lastPayload = {};
-  final Map<String, _BlockEntityPush> _blockEntities = {};
+  final Map<String, Map<int, String>> _stateNames = {};
+  final Map<String, int> _blockEntities = {};
 
-  /// How many times each block entity's payload was pushed, for the report (a running machine
-  /// pushes one per tick; the comparison deliberately does not care).
-  final Map<String, int> blockEntityPushes = {};
+  /// The name for a state id at one position: `state#0` is the first state that *this position* was
+  /// told, whatever the server's own numbering is.
+  String _stateToken(String key, int state) {
+    final names = _stateNames.putIfAbsent(key, () => <int, String>{});
+    return names.putIfAbsent(state, () => 'state#${names.length}');
+  }
+  final Map<String, PayloadDigest> _lastPayload = {};
 
   static void _count(Map<String, int> map, String key) =>
       map[key] = (map[key] ?? 0) + 1;

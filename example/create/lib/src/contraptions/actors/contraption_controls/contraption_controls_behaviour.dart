@@ -74,7 +74,9 @@ final class ContraptionControlsMovingInteraction
     Contraption contraption,
   ) {
     final actor = _actorAt(contraption, localPos);
-    if (actor == null) return true;
+    // `ContraptionControlsMovingInteraction`: no actor at the clicked position means the click is
+    // not handled (`return false`), so the interaction falls through.
+    if (actor == null) return false;
 
     // `elevatorInteraction`: the elevator selects its floor through `ElevatorTargetFloorPacket`;
     // the server click only plays the feedback sounds.

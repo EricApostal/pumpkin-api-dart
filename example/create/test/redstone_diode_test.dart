@@ -164,21 +164,19 @@ void main() {
       );
       expect(
         BrassDiodeMachine.directSignal(
-          powered: false,
           powering: false,
           inverted: true,
           facing: Direction.north,
           side: Direction.north,
         ),
-        0,
-        reason: 'DiodeBlock.getDirectSignal needs POWERED',
+        15,
+        reason: 'DiodeBlock.getDirectSignal is the ungated BrassDiodeBlock.getSignal',
       );
-      // With the input on, the strong signal is the output.
+      // Either way the strong signal is the output.
       expect(
         BrassDiodeMachine.directSignal(
-          powered: true,
-          powering: false,
-          inverted: true,
+          powering: true,
+          inverted: false,
           facing: Direction.north,
           side: Direction.north,
         ),
@@ -186,9 +184,8 @@ void main() {
       );
       expect(
         BrassDiodeMachine.directSignal(
-          powered: true,
-          powering: false,
-          inverted: true,
+          powering: true,
+          inverted: false,
           facing: Direction.north,
           side: Direction.south,
         ),
@@ -337,9 +334,9 @@ void main() {
 
       // `ToggleLatchBlock.getSignal`: the held output still powers the block in front.
       expect(LatchLogic.signal(state, Direction.north), 15);
-      // `DiodeBlock.getDirectSignal`, inherited: `POWERED && FACING == side`, so a solid block in
-      // front passes nothing on to a lamp or dust behind it.
-      expect(LatchLogic.directSignal(state, Direction.north), 0);
+      // `DiodeBlock.getDirectSignal` == `state.getSignal(...)` == the latch's ungated override,
+      // so the held output also passes through a solid block in front (as in Java).
+      expect(LatchLogic.directSignal(state, Direction.north), 15);
       expect(LatchLogic.directSignal(state, Direction.south), 0, reason: 'never towards the back');
 
       // While the input is on and the output is on, the strong signal follows the output

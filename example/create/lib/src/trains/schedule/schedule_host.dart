@@ -13,6 +13,8 @@ import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 import '../../api/payloads.dart';
 import '../../api/sounds.dart' show CreateSounds;
 import '../../api/util.dart' hide pos;
+import '../../common/ghost_menu_layout.dart';
+import '../../common/menu_mirror.dart';
 import '../../core/module.dart';
 import '../../core/nbt.dart' show NetworkNbt;
 import '../../core/registry.dart' show RegistryKind;
@@ -27,6 +29,13 @@ import 'train_edit_packet.dart';
 
 /// The conductor advancement (`AllAdvancements.CONDUCTOR`).
 const String _conductorAdvancement = 'conductor';
+
+/// `ScheduleMenu.addSlots`: the 36 player slots first, then the two ghost slots of the item and
+/// fluid pickers (`GhostMenu.schedule`).
+const GhostMenu scheduleLayout = GhostMenu.schedule;
+
+/// The menu slot of the schedule ghost slot [i] (`36 + i`).
+int scheduleGhostSlot(int i) => scheduleLayout.ghostSlot(i);
 
 /// The host side of the world questions in [ScheduleLevel] (`overworldClockTime`, loaded chunks,
 /// redstone at a station). The redstone read of the host is asynchronous: [hasNeighborSignal]
@@ -96,6 +105,10 @@ final class ScheduleHost {
     ctx.listen(Events.menuClosed, (Server server, MenuClosedEventData e) {
       if (e.menuType == scheduleMenuType) openMenus.remove(e.player.getId().asString);
     });
+    ctx.listen(Events.menuSlotChanged, (Server server, MenuSlotChangedEventData e) {
+      if (e.menuType != scheduleMenuType) return;
+      unawaited(_onMenuSlotChanged(e.player, e));
+    });
     ctx.listen(Events.playerLeave, (Server server, PlayerLeaveEventData e) {
       openMenus.remove(e.player.getId().asString);
     });
@@ -132,7 +145,11 @@ final class ScheduleHost {
   static final MenuClickRules _rules = MenuClickRules(
     slotRules: [
       for (var i = 0; i < ScheduleMenu.slots; i++)
-        MenuSlotRule(slot: i, kind: const MenuSlotKindGhost(), maxStackSize: null),
+        MenuSlotRule(
+          slot: scheduleGhostSlot(i),
+          kind: const MenuSlotKindGhost(),
+          maxStackSize: null,
+        ),
     ],
     quickMoveTargets: const [],
   );
@@ -155,14 +172,21 @@ final class ScheduleHost {
       menuTypeKey: scheduleMenuType,
       title: TextComponent.translate(key: 'item.create.schedule', with_: const []),
       extraData: extra,
-      slotCount: ScheduleMenu.slots,
-      options: MenuOptions(applyVanillaClicks: true, playerInventory: true, rules: _rules),
+      slotCount: scheduleLayout.menuSlots,
+      options: MenuOptions(
+        applyVanillaClicks: true,
+        // The client's menu adds the player inventory first (`ScheduleMenu.addSlots`), so the
+        // server tracks a mirror of it instead of the host's player-inventory layout.
+        playerInventory: false,
+        rules: _rules,
+      ),
     );
     if (result is ErrorResult) {
       ctx.log.warn('Could not open the schedule menu: ${(result as ErrorResult).value}');
       return;
     }
     openMenus[player.getId().asString] = ScheduleMenu(player.getId().asString);
+    await fillPlayerMirror(player);
   }
 
   // -- Entity interaction: `ScheduleItemEntityInteraction` ---------------------------------
@@ -288,6 +312,23 @@ final class ScheduleHost {
     bus.sendClientboundAll('create:s_configure_train', bus.roster.players, reply.toFields());
   }
 
+  /// `Events.menuSlotChanged` of the schedule screen: the player inventory mirror is written back
+  /// to the real inventory, and a click on a ghost slot becomes the menu's ghost inventory
+  /// (`GhostItemMenu.clicked`).
+  Future<void> _onMenuSlotChanged(
+    Player player,
+    MenuSlotChangedEventData e,
+  ) async {
+    final menu = openMenus[player.getId().asString];
+    if (menu == null) return;
+    for (final change in e.changes) {
+      if (await applyPlayerMirrorChange(player, change)) continue;
+      final slot = scheduleLayout.ghostIndexAt(change.slot);
+      if (slot == null) continue;
+      menu.setGhost(slot, await HostItemStacks.fromHost(change.stack, _ids));
+    }
+  }
+
   /// `GhostItemSubmitPacket.handle(player)` for the schedule menu.
   void _onSubmitGhostItem(Player player, Map<String, Object?> fields) {
     final menu = openMenus[player.getId().asString];
@@ -295,16 +336,8 @@ final class ScheduleHost {
     final item = fields['item'] as ItemStackData? ?? ItemStackData.empty;
     final slot = fields['slot'] as int;
     if (!menu.setGhost(slot, item)) return;
-    try {
-      final stack = HostItemStacks.toHost(item, _ids);
-      if (stack == null) {
-        player.clearPluginMenuSlot(slot);
-      } else {
-        player.setPluginMenuSlot(slot, stack);
-      }
-    } on Object {
-      // the menu was closed meanwhile
-    }
+    final stack = HostItemStacks.toHost(item, _ids);
+    unawaited(setMenuSlot(player, scheduleGhostSlot(slot), stack));
   }
 
   // -- Feedback ---------------------------------------------------------------------------------

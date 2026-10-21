@@ -88,7 +88,7 @@ export 'src/commands.dart' hide commandErrorFor, commandHandlers, suggestionHand
 export 'src/command_builder.dart' hide commandNamespace;
 export 'src/command_context.dart';
 export 'src/command_help.dart';
-export 'src/events.dart' hide eventHandlers;
+export 'src/events.dart' hide eventGroups, eventHandlers, eventHandlerLabels;
 export 'src/messages.dart';
 export 'src/feedback.dart';
 export 'src/bossbars.dart';

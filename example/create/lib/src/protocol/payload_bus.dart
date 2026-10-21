@@ -9,58 +9,81 @@ import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import 'payload_hub.dart';
 
-/// Players that are online, kept as resources so `sendToTracking` can look at
-/// them outside of an event callback (docs/lifetimes.md of pumpkin_api).
+/// What a single send to one player did (see [PayloadBus._sendAll]).
+enum _Delivery { delivered, unsupported, failed }
+
+/// Players that are online, held as handles the plugin owns.
+///
+/// A `Player` an event carries dies with the callback that received it: when the plugin hands the
+/// event back, the host takes ownership of that handle, so the Dart wrapper is invalidated
+/// (`ownership was transferred to the host` on the next use) and `keep()` cannot save it — the
+/// entry is gone from the host's table whether or not it was kept (`docs/lifetimes.md` of
+/// `pumpkin_api`, and `cleanup_event` in the host). A `Player` stored from an event is therefore a
+/// *dead* handle whose every call (`getName()`, `getWorld()`, `asJava()`) fails; while those
+/// failures were swallowed, a roster of event handles made every broadcast and every
+/// `sendToTracking` reach nobody, silently.
+///
+/// The roster keeps the uuid of each online player and a handle looked up again through
+/// `Server.getPlayerByUuid`, which the plugin owns and disposes when the player leaves.
 final class PlayerRoster {
   final Map<String, Player> _players = {};
 
   Iterable<Player> get players => _players.values;
   int get length => _players.length;
 
-  /// Keeps [player] (replacing and releasing an earlier handle of the same uuid).
-  void add(Player player) {
-    final uuid = player.getId().asString;
-    final old = _players[uuid];
-    if (old != null) {
-      try {
-        old.dispose();
-      } on Object {
-        // already invalid
-      }
-    }
-    _players[uuid] = player.keep();
-  }
+  /// Adds the player [eventPlayer] carries, replacing an earlier handle of the same uuid. Only
+  /// the uuid is taken from the event. Returns false when the server no longer knows the player.
+  bool add(Server server, Player eventPlayer) => _put(server, eventPlayer.getId());
 
-  void remove(Player player) {
-    final old = _players.remove(player.getId().asString);
-    if (old == null) return;
-    try {
-      old.dispose();
-    } on Object {
-      // already invalid
-    }
-  }
+  /// Forgets [player] (an event's player, used for its uuid only).
+  void remove(Player player) => _drop(player.getId().asString);
 
+  /// Adds every player the server has online, and forgets the ones that are gone.
   void refresh(Server server) {
-    for (final p in server.getAllPlayers()) {
-      final uuid = p.getId().asString;
-      if (_players.containsKey(uuid)) {
-        p.dispose();
-      } else {
-        _players[uuid] = p.keep();
-      }
+    final online = <String>{};
+    for (final player in server.getAllPlayers()) {
+      final id = player.getId();
+      online.add(id.asString);
+      _put(server, id, fresh: player);
+    }
+    for (final key in _players.keys.toList()) {
+      if (!online.contains(key)) _drop(key);
     }
   }
 
   void clear() {
-    for (final p in _players.values) {
+    for (final player in _players.values) {
       try {
-        p.dispose();
+        player.dispose();
       } on Object {
-        // ignore
+        // already invalid
       }
     }
     _players.clear();
+  }
+
+  /// Keeps a handle of the player with [id]: [fresh] when the caller already looked it up,
+  /// otherwise one from `Server.getPlayerByUuid`.
+  bool _put(Server server, Uuid id, {Player? fresh}) {
+    final key = id.asString;
+    final previous = _players.remove(key);
+    final player = fresh ?? server.getPlayerByUuid(id: id);
+    if (player == null) {
+      previous?.dispose();
+      return false;
+    }
+    _players[key] = player.keep();
+    previous?.dispose();
+    return true;
+  }
+
+  void _drop(String key) {
+    final player = _players.remove(key);
+    try {
+      player?.dispose();
+    } on Object {
+      // already invalid
+    }
   }
 }
 
@@ -95,13 +118,13 @@ final class PayloadBus {
     if (bytes != null) unawaited(_send(id, player, bytes));
   }
 
-  /// Sends [id] to every player of [players] (encoded once).
+  /// Sends [id] to every player of [players] (encoded once). A broadcast that reaches fewer
+  /// players than it was addressed to is logged; a broadcast that reaches *none* of them is an
+  /// error, because that is what a list of handles the host no longer knows looks like.
   void sendClientboundAll(String id, Iterable<Player> players, Map<String, Object?> fields) {
     final bytes = _hub.encodeClientbound(id, fields);
     if (bytes == null) return;
-    for (final p in players) {
-      unawaited(_send(id, p, bytes));
-    }
+    unawaited(_sendAll(id, players.toList(), bytes));
   }
 
   /// Sends [id] to the players that have the chunk of [pos] in view: same world and within
@@ -114,10 +137,14 @@ final class PayloadBus {
     final bytes = _hub.encodeClientbound(id, fields);
     if (bytes == null) return;
     final cx = pos.$1 >> 4, cz = pos.$3 >> 4;
-    for (final p in roster.players) {
-      if (!_tracks(p, worldId, cx, cz)) continue;
-      unawaited(_send(id, p, bytes));
-    }
+    final tracking = [
+      for (final p in roster.players)
+        if (_tracks(p, worldId, cx, cz)) p,
+    ];
+    // Nobody tracking that chunk is normal; a player the roster cannot even ask about is not, and
+    // `_tracks` says so.
+    if (tracking.isEmpty) return;
+    unawaited(_sendAll(id, tracking, bytes));
   }
 
   /// The players of [roster] that track the chunk of [pos] (for modules that send other things).
@@ -148,22 +175,92 @@ final class PayloadBus {
         }
       }
       return ((x.floor() >> 4) - cx).abs() <= radius && ((z.floor() >> 4) - cz).abs() <= radius;
-    } on Object {
-      return false; // disconnected or invalid handle
+    } on Object catch (e) {
+      // A player the roster holds but the host cannot answer about is a broken handle, and the
+      // answer used to be a silent "not tracking": every tracking send then reached nobody.
+      _hub.log.error(
+        'track:$worldId',
+        'Could not tell whether ${_who(p)} tracks the chunk ($cx, $cz) of $worldId, '
+        'treating it as out of range: $e',
+      );
+      return false;
     }
   }
 
-  Future<void> _send(String id, Player player, Uint8List bytes) async {
+  /// Whether one send reached one player, so a broadcast can report what it achieved: [delivered]
+  /// reached the client, [unsupported] is a Bedrock player (Create's payloads are Java only) and
+  /// [failed] is a handle the host would not answer for or a send that threw.
+  Future<_Delivery> _send(String id, Player player, Uint8List bytes) async {
+    JavaPlayer? java;
     try {
-      final java = player.asJava();
-      if (java == null) return; // Bedrock players have no custom payloads
-      try {
-        await java.sendCustomPayload(channel: id, data: bytes);
-      } finally {
-        java.dispose();
-      }
+      java = player.asJava();
     } on Object catch (e) {
-      _hub.log.debug('sendfail:$id', 'Could not send $id (player gone?): $e');
+      _hub.log.error(
+        'sendfail:$id',
+        'Could not resolve the Java player for $id (${_who(player)}), nothing was sent: $e',
+      );
+      return _Delivery.failed;
+    }
+    if (java == null) {
+      // Bedrock players have no custom payloads: not a failure, but not a delivery either.
+      _hub.log.debug('send:$id', 'Not sending $id to the Bedrock player ${_who(player)}');
+      return _Delivery.unsupported;
+    }
+    try {
+      await java.sendCustomPayload(channel: id, data: bytes);
+      return _Delivery.delivered;
+    } on Object catch (e) {
+      _hub.log.warn('sendfail:$id', 'Could not send $id to ${_who(player)} (player gone?): $e');
+      return _Delivery.failed;
+    } finally {
+      java.dispose();
+    }
+  }
+
+  /// Sends the encoded [bytes] of payload [id] to [recipients], and says in the log when the
+  /// broadcast reached nobody: that must never be a debug-level whisper (see the class comment of
+  /// [PlayerRoster]).
+  Future<void> _sendAll(String id, List<Player> recipients, Uint8List bytes) async {
+    final List<_Delivery> results;
+    try {
+      results = await Future.wait([for (final p in recipients) _send(id, p, bytes)]);
+    } on Object catch (e) {
+      // `_send` contains its own failures, so this is a bug on the way to the host. Say it: the
+      // future is not awaited by the callers, so an escaping error would vanish.
+      _hub.log.error('broadcast:$id', 'Sending $id to ${recipients.length} players failed: $e');
+      return;
+    }
+    final delivered = results.where((r) => r == _Delivery.delivered).length;
+    if (delivered == recipients.length) return;
+    final failed = results.where((r) => r == _Delivery.failed).length;
+    if (failed == 0) {
+      // Every recipient is a Bedrock player, which can never receive a Create payload: not an
+      // error, and saying it every tick would drown the log.
+      _hub.log.debug(
+        'broadcast:$id',
+        'Sent $id to no one: all ${recipients.length} recipients are Bedrock players',
+      );
+    } else if (delivered == 0) {
+      _hub.log.error(
+        'broadcast:$id',
+        'Sent $id to none of the ${recipients.length} players it was addressed to: $failed of them '
+        'could not be resolved (see the sendfail lines above)',
+      );
+    } else {
+      _hub.log.warn(
+        'broadcast:$id',
+        'Sent $id to $delivered of ${recipients.length} players, $failed did not get it',
+      );
+    }
+  }
+
+  /// The name of [player] for a log line, without letting a broken handle turn reporting into
+  /// another failure.
+  String _who(Player player) {
+    try {
+      return _hub.describePlayer(player);
+    } on Object {
+      return '<unknown player>';
     }
   }
 

@@ -90,15 +90,23 @@ class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
   /// `false` for every fluid). `false` means there is no filter at all, which accepts anything.
   bool filterMatchesNothing = false;
 
+  /// The item of a "matches no fluid" filter. `FilteringBehaviour.write` persists the filter
+  /// *item* and `FilterItemStack.test(FluidStack)` re-derives "no fluid" from it, so the item is
+  /// what carries this filter across a reload; the port derives the fluid from the item, so the
+  /// item has to be kept as well (see [write]).
+  String? filterItem;
+
   /// `FilteringBehaviour.setFilter` with a fluid.
   void setFilterFluid(String? fluid, [List<int>? data]) {
     filterFluid = fluid;
     filterData = data;
+    filterItem = null;
     filterMatchesNothing = false;
   }
 
   /// `FilteringBehaviour.setFilter` with an item that holds no fluid.
-  void setFilterMatchesNothing() {
+  void setFilterMatchesNothing(String item) {
+    filterItem = item;
     filterFluid = null;
     filterData = null;
     filterMatchesNothing = true;
@@ -116,12 +124,14 @@ class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
     // (a plugin-private key) to survive the round trip.
     filterFluid = tag.getString('FilterFluid');
     filterData = tag.getIntArray('FilterFluidData');
+    filterItem = null;
     filterMatchesNothing = false;
     if (filterFluid == null) {
       final stack = StackNbt.read(tag.getCompound('Filter'));
       if (stack.isNotEmpty) {
         final fluid = FluidRegistries.fromBucket(stack.key);
         if (fluid == null) {
+          filterItem = stack.key;
           filterMatchesNothing = true;
         } else {
           filterFluid = fluid.fluid;
@@ -136,10 +146,12 @@ class SmartFluidPipeBlockEntity extends StraightPipeBlockEntity {
     super.write(tag, clientPacket: clientPacket);
     final fluid = filterFluid;
     final bucket = fluid == null ? null : FluidRegistries.bucketFor(fluid);
-    // `FilteringBehaviour.write`: an empty compound when there is no filter item.
+    // `FilteringBehaviour.write` writes the filter item itself; a fluid-less item *is* the filter
+    // ("matches no fluid"), so it has to go out again or the next read sees no filter at all.
+    final item = bucket ?? filterItem;
     tag.putCompound(
       'Filter',
-      bucket == null ? NbtCompound() : StackNbt.write(PStack(bucket, 1)),
+      item == null ? NbtCompound() : StackNbt.write(PStack(item, 1)),
     );
     if (fluid != null && bucket == null) tag.putString('FilterFluid', fluid);
     final data = filterData;

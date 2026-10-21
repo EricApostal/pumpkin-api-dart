@@ -234,8 +234,8 @@ final class DifferentialReport {
       'differential: ${reference.kind.description} (reference) vs '
           '${candidate.kind.description} (candidate) — scenario `${scenario.name}`',
       '  ${scenario.description}',
-      '  rig on the reference at ${reference.anchor} (client player), '
-          'on the candidate at ${candidate.anchor}',
+      '  rig on the reference at ${reference.anchor ?? 'unknown'} (client player), '
+          'on the candidate at ${candidate.anchor ?? 'unknown'}',
       '  comparing ${scenario.box} around each anchor',
     ];
     for (final arm in [reference, candidate]) {
@@ -243,7 +243,10 @@ final class DifferentialReport {
         '  ${arm.kind.description} arm: port ${arm.server?.port}, '
         'scratch ${arm.server?.scratch.path}',
       );
-      if (arm.proxy != null) lines.add('  ${arm.proxy!.summary}');
+      // Read before the scratch directory goes: after that the capture file is gone (a copy
+      // survives under `--out`), and "no frames" would be a lie about a capture that happened.
+      final proxySummary = arm.proxySummary ?? arm.proxy?.summary;
+      if (proxySummary != null) lines.add('  $proxySummary');
     }
     if (reference.probes.isNotEmpty || candidate.probes.isNotEmpty) {
       lines
@@ -397,6 +400,13 @@ final class DifferentialRunner {
       final candidateTrace = candidateField.normalised(scenario);
       if (referenceTrace == null || candidateTrace == null) {
         failure = 'an arm produced no trace to compare';
+      } else if (referenceTrace.isEmpty && candidateTrace.isEmpty) {
+        // Neither client was told anything about the rig. That is not agreement — it means the
+        // scenario never reached the clients, and reporting "the two servers agree" would be the
+        // most misleading result this tool could produce.
+        failure =
+            'neither client was told anything inside the rig (${scenario.box}), so there was '
+            'nothing to compare: the scenario did not reach a watching client on either server';
       } else {
         comparison = Differential.compare(referenceTrace, candidateTrace);
       }
@@ -679,12 +689,22 @@ final class DifferentialRunner {
 
   /// Keeps this arm's evidence under `--out`, before the scratch directory goes.
   Future<void> copyArtifacts(DifferentialArm arm) async {
+    // The summary and the capture path are read here, while the scratch directory still exists —
+    // this is also the path an arm that never joined takes, and its frames are the evidence of what
+    // the server said before refusing it.
+    final proxy = arm.proxy;
+    if (proxy != null) {
+      arm.proxySummary ??= proxy.summary;
+      arm.capturePath ??= proxy.capture.path;
+    }
     final into = artifacts;
     if (into == null) return;
     into.createSync(recursive: true);
+    var copied = 0;
     void copy(File file, String name) {
       if (!file.existsSync()) return;
       file.copySync(joinPath(into.path, name));
+      copied++;
     }
 
     copy(arm.traceFile, 'client-${arm.role}-${arm.kind.id}.jsonl');
@@ -697,6 +717,10 @@ final class DifferentialRunner {
       File(
         joinPath(into.path, 'console-${arm.role}-${arm.kind.id}.log'),
       ).writeAsStringSync(server.logText());
+      copied++;
+    }
+    if (copied > 0) {
+      notes.add('${arm.role}: evidence copied to ${into.path}');
     }
   }
 
@@ -727,9 +751,25 @@ final class DifferentialRunner {
     _say('${arm.role}: stopping the server');
     final server = arm.server;
     if (server is PumpkinArm) {
-      await server.dispose();
+      if (!keep) {
+        await server.dispose();
+        return;
+      }
+      // `--keep` is the caller asking for the world and the logs; `PumpkinServer.dispose` deletes
+      // the scratch directory unless *its own* environment variable asks otherwise, so the console
+      // output is written here and the directory left alone.
+      await server.stop();
+      try {
+        File(
+          joinPath(server.scratch.path, 'server.log'),
+        ).writeAsStringSync(server.logText());
+      } on FileSystemException {
+        // Nothing to write into.
+      }
+      _say('${arm.role}: kept ${server.scratch.path}');
     } else if (server is JavaNeoForgeServer) {
       await server.dispose(keep: keep);
+      if (keep) _say('${arm.role}: kept ${server.scratch.path}');
     } else {
       await server?.stop();
     }

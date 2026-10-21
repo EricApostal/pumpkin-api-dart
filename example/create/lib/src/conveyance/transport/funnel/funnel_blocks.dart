@@ -25,12 +25,30 @@ import '../transport_support.dart';
 import 'funnel_block_entity.dart';
 import 'funnel_placement.dart';
 
+/// The shape a funnel *registers*, from the manifest's default state.
+///
+/// `FunnelBlock.getShape`/`getCollisionShape` are `AllShapes.FUNNEL_FLOOR`, `FUNNEL_WALL` and
+/// `FUNNEL_CEILING` (or the belt funnel's retracted/extended/perpendicular shapes) — never a full
+/// cube, so vanilla's `getLightDampening` is `propagatesSkylightDown ? 0 : 1`, i.e. 0. The host
+/// derives a state's flags and light opacity from the shape a block registers, and the manifest
+/// default is a full cube, which made a funnel occlude light like stone: its own cell and the
+/// column below it went dark. The real shape is per state (the `onShape` hook, which answers both
+/// kinds); this is the fallback those flags are read from.
+BlockShape _registeredFunnelShape(String key) => BlockShape.boxes(
+  _funnelShape(BState(
+    'create:$key',
+    manifestBlocksByKey[key]?.defaultState ?? const {'facing': 'north'},
+  )),
+);
+
 /// Phase 1: the four funnel blocks and their shared block entity type.
 void registerFunnels(CreateRegistry registry) {
   final blocks = <CreateBlock>[
     manifestBlock(
       'andesite_funnel',
       blockEntityType: 'create:funnel',
+      collisionShape: _registeredFunnelShape('andesite_funnel'),
+      selectionShape: _registeredFunnelShape('andesite_funnel'),
       behavior: _funnelBehavior(),
       placement: const [
         PlacementRule.lookingDirection('facing', opposite: true),
@@ -41,6 +59,8 @@ void registerFunnels(CreateRegistry registry) {
     manifestBlock(
       'brass_funnel',
       blockEntityType: 'create:funnel',
+      collisionShape: _registeredFunnelShape('brass_funnel'),
+      selectionShape: _registeredFunnelShape('brass_funnel'),
       behavior: _funnelBehavior(),
       placement: const [
         PlacementRule.lookingDirection('facing', opposite: true),
@@ -51,12 +71,16 @@ void registerFunnels(CreateRegistry registry) {
     manifestBlock(
       'andesite_belt_funnel',
       blockEntityType: 'create:funnel',
+      collisionShape: _registeredFunnelShape('andesite_belt_funnel'),
+      selectionShape: _registeredFunnelShape('andesite_belt_funnel'),
       behavior: _beltFunnelBehavior(),
       placement: beltFunnelPlacementRules,
     ),
     manifestBlock(
       'brass_belt_funnel',
       blockEntityType: 'create:funnel',
+      collisionShape: _registeredFunnelShape('brass_belt_funnel'),
+      selectionShape: _registeredFunnelShape('brass_belt_funnel'),
       behavior: _beltFunnelBehavior(),
       placement: beltFunnelPlacementRules,
     ),

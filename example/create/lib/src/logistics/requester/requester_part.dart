@@ -14,6 +14,7 @@ import '../logistics_part.dart';
 import '../model/orders.dart';
 import '../model/stack.dart';
 import 'redstone_requester_block_entity.dart';
+import 'redstone_requester_menu.dart';
 
 /// `axis` of the redstone requester (manifest value order).
 final BlockProperty requesterAxis = BlockProperty.enumeration('axis', [
@@ -121,9 +122,20 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   );
   if (be == null) return BlockUseResult.pass;
   if (e.sneaking) return BlockUseResult.pass;
-  if (!be.behaviour.mayInteract(e.player.getId().asString))
+  if (!be.behaviour.mayInteract(e.player.getId().asString)) {
+    // `LogisticallyLinkedBehaviour.mayInteractMessage`.
+    e.player.sendSystemMessage(
+      text: TextComponent.translate(
+        key: 'create.logistically_linked.protected',
+        with_: const [],
+      ),
+      overlay: true,
+    );
     return BlockUseResult.success;
-  // The configuration screen is client side; nothing else happens on use.
+  }
+  // `RedstoneRequesterBlockEntity.use`: the configuration screen
+  // (`RedstoneRequesterMenu`, opened with the block position as extra data).
+  await RedstoneRequesterMenus.open(e.player, be, e.targetWorld.getId());
   return BlockUseResult.success;
 }
 
@@ -178,5 +190,8 @@ final class RequesterPart extends LogisticsPart {
       be.allowPartialRequests = fields['allowPartial'] == true;
       be.sendData();
     });
+
+    // The screen itself (`RedstoneRequesterMenu`).
+    RedstoneRequesterMenus.install(ctx, rt);
   }
 }

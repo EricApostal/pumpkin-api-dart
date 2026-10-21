@@ -51,7 +51,12 @@ final class StationBlockEntity extends CreateBlockEntity {
   final StationAssembly assembly = StationAssembly();
 
   int failedCarriageIndex = -1;
-  TrainAssemblyException? lastException;
+
+  /// The last assembly failure, as `AssemblyException` stores it: the JSON of the rendered
+  /// component (`AssemblyException.write`'s `Component`, `AssemblyException.java:22-47`). The
+  /// rendering happens once, when the failure happens ([_exception]); the tag carries that JSON,
+  /// not the key behind it, so a save/load round trip has nothing left to re-render.
+  String? lastException;
 
   // Display / sync state (`imminentTrain`, `trainPresent`, ...).
   String? imminentTrain;
@@ -100,16 +105,7 @@ final class StationBlockEntity extends CreateBlockEntity {
 
     final exception = lastException;
     if (exception != null) {
-      final e = NbtCompound();
-      e.putString(
-        'Component',
-        jsonEncode(
-          Txt.literal(
-            trainsLang('create.${exception.translationKey}', exception.args),
-          ).toJson(),
-        ),
-      );
-      tag.putCompound('LastException', e);
+      tag.putCompound('LastException', NbtCompound()..putString('Component', exception));
     }
 
     if (!clientPacket) return;
@@ -140,8 +136,7 @@ final class StationBlockEntity extends CreateBlockEntity {
 
     final exception = tag.getCompound('LastException');
     if (exception != null) {
-      final json = exception.getString('Component');
-      lastException = json == null ? null : TrainAssemblyException(json);
+      lastException = exception.getString('Component');
     }
 
     if (!clientPacket) return;
@@ -793,7 +788,16 @@ final class StationBlockEntity extends CreateBlockEntity {
 
   void _exception(TrainAssemblyException? exception, [int carriage = -1]) {
     failedCarriageIndex = carriage;
-    lastException = exception;
+    // `new AssemblyException(langKey, args)`: the component is rendered here, once -
+    // `CreateLang.translateDirect("gui.assembly.exception." + langKey, objects)` - and the tag only
+    // ever carries that component (`AssemblyException.java:57-60`).
+    lastException = exception == null
+        ? null
+        : jsonEncode(
+            Txt.literal(
+              trainsLang('create.${exception.translationKey}', exception.args),
+            ).toJson(),
+          );
     sendData();
   }
 

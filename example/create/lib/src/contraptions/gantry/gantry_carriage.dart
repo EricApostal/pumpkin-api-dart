@@ -25,6 +25,7 @@ export 'gantry_logic.dart'
     show
         gantryCarriageKey,
         gantryShaftKey,
+        gantryPinionKey,
         toDirection2,
         getValidGantryShaftAxis,
         getGantryPinionModifier;
@@ -37,7 +38,7 @@ List<CreateBlock> buildGantryBlocks() {
     // `GantryCarriageBlock.getFacingForPlacement` on `DirectionalAxisKineticBlock`: the clicked
     // face; the `axis_along_first` cycling follows in `onPlaced`.
     placement: gantryCarriagePlacementRules,
-    blockEntityType: gantryCarriageKey,
+    blockEntityType: gantryPinionKey,
     behavior: BlockBehavior(
       onUseWithoutItem: (server, e) async {
         if (e.sneaking) return BlockUseResult.pass;

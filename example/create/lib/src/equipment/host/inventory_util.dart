@@ -56,6 +56,7 @@ Future<void> shrinkSlot(Inventory inv, int slot, int amount) async {
     await inv.setItem(slot: slot, item: null);
   } else {
     await stack.setCount(count: count - amount);
+    await inv.setItem(slot: slot, item: stack);
   }
 }
 
@@ -69,6 +70,7 @@ Future<void> shrinkHeld(Player player, Hand hand, int amount) async {
     await inv.setItemInHand(hand: hand, item: null);
   } else {
     await stack.setCount(count: count - amount);
+    await inv.setItemInHand(hand: hand, item: stack);
   }
 }
 
@@ -80,6 +82,8 @@ Future<void> hurtHeld(Player player, Hand hand, int amount) async {
   if (stack == null) return;
   if (await damageStack(stack, amount)) {
     await inv.setItemInHand(hand: hand, item: null);
+  } else {
+    await inv.setItemInHand(hand: hand, item: stack);
   }
 }
 

@@ -10,7 +10,10 @@ and the `WorldRedstone` extension (`block_callbacks.dart`).
   callbacks for a block that already has some fail with a `HostException`.
 * A block only costs the host something for the hooks it opted into. All blocks
   share the event stream, so the wrapper compares the event's `block` key with
-  yours and your handler only sees its own block.
+  yours and your handler only sees its own block. The comparison happens in the
+  guest: the wrapper registers one host handler per hook and runs the blocks'
+  handlers itself, so an event of a hook costs the plugin one host→guest round
+  trip (and one per block behaviour would cost one *each*).
 
 ```dart
 context.registerBlockBehavior(

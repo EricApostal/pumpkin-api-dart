@@ -11,12 +11,14 @@ final class SignDisplayTarget extends DisplayTarget {
   @override
   String get id => 'create:sign';
 
-  /// `SignBlockEntity.getMaxTextLineWidth()`.
-  static const int maxLineWidth = 90;
+  /// `SignBlockEntity.getMaxTextLineWidth()`: a sign takes 90 characters per line, a hanging sign
+  /// only 60 (`HangingSignBlockEntity:22-24`).
+  static int maxLineWidthOf(String key) => key.endsWith('_hanging_sign') ? 60 : 90;
 
   @override
   Future<void> acceptText(int line, List<Txt> text, DisplayLinkContext context) async {
     if (!isSignBlock(context.targetState.key)) return;
+    final maxLineWidth = maxLineWidthOf(context.targetState.key);
     final lines = <int, String>{};
     for (var i = 0; i < text.length && i + line < 4; i++) {
       if (i == 0) reserve(i + line, context.targetPos, context);

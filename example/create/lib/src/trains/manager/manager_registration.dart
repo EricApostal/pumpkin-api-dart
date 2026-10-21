@@ -5,7 +5,6 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/config.dart' show ConfigValue, CreateConfigs;
 import '../../api/infra.dart';
-import '../../api/infra_data.dart';
 import '../../common/vec_helper.dart' show Vec3;
 import '../../core/module.dart';
 import '../../core/registry.dart';
@@ -13,6 +12,7 @@ import '../../core/world_state.dart';
 import '../entity/train.dart';
 import '../entity/train_level.dart' show TrainSettings;
 import '../graph/dimension_palette.dart' show overworldId;
+import '../graph/edge_point_type.dart' show EdgePointType;
 import '../manager/create.dart';
 import '../manager/global_railway_manager.dart';
 import '../manager/manager_host.dart';
@@ -117,10 +117,42 @@ final class _RailwayHooks implements RailwayCommandHooks {
   @override
   RailwaySummary summarize(String worldId, Vec3 location) {
     final manager = Create.RAILWAYS;
+
+    // `fillReport`: the five graphs and five trains nearest to the command source, by
+    // `TrackGraph.distanceToLocationSqr` / `Train.distanceToLocationSqr`. The counts alone left
+    // `/create trains` listing neither a node count, nor a station, nor a train - the report
+    // rendered `Nearest Graphs: ` with nothing under it (DumpRailwaysCommand.java:66-137).
+    final graphs = manager.trackNetworks.values.toList()
+      ..sort(
+        (a, b) => a
+            .distanceToLocationSqr(worldId, location)
+            .compareTo(b.distanceToLocationSqr(worldId, location)),
+      );
+
+    final level = RailwayHooks.trainLevelById?.call(worldId);
+    final trains = level == null
+        ? <Train>[]
+        : (manager.trains.values.toList()
+            ..sort(
+              (a, b) => a
+                  .distanceToLocationSqr(level, location)
+                  .compareTo(b.distanceToLocationSqr(level, location)),
+            ));
+
     return RailwaySummary(
       graphCount: manager.trackNetworks.length,
       signalGroupCount: manager.signalEdgeGroups.length,
       trainCount: manager.trains.length,
+      nearestGraphs: [
+        for (final graph in graphs.take(5))
+          TrackGraphSummary(
+            graph.id,
+            graph.nodes.length,
+            signalCount: graph.getPoints(EdgePointType.SIGNAL).length,
+            stationCount: graph.getPoints(EdgePointType.STATION).length,
+          ),
+      ],
+      nearestTrains: [for (final train in trains.take(5)) _summary(train)],
     );
   }
 

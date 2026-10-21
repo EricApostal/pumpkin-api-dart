@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/trains.dart'
     show CarriageContraptionAssembly, ConductorSeatLookup;
+import '../api/infra.dart' show GlueCommandHooks;
 import '../common/common.dart' show Direction;
 import '../core/module.dart';
 import '../core/registry.dart';
@@ -35,6 +36,7 @@ import 'pulley/pulley_observable_probe.dart';
 import 'entity/contraption_handler.dart';
 import 'entity/contraption_packets.dart';
 import 'entity/translating_contraption.dart';
+import 'glue/glue_command_hooks.dart';
 import 'entity/host_contraption_entities.dart';
 import 'storage/host_mounted_storage.dart';
 import 'storage/mounted_storage.dart';
@@ -123,6 +125,11 @@ final class ContraptionsModule extends CreateModule {
     ActuatorHosts.entityFactory = HostContraptionEntityFactory(host);
     ActuatorHosts.levelFactory = host.levelOf;
     ActuatorHosts.glue = HostGlueEntityHost(host);
+    // `/create glue` and `/create clone` reach the glue through the infrastructure commands, which
+    // ask for this service; without a provider both silently lose their glue handling.
+    ctx.services.provide<GlueCommandHooks>(
+      HostGlueCommandHooks(ActuatorHosts.glue!),
+    );
     ActuatorHosts.payloadBus = bus;
 
     ContraptionCollision.collideBlocks = ContraptionCollider.collideBlocks;

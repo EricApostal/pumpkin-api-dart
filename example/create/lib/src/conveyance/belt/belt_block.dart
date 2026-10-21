@@ -323,6 +323,10 @@ Future<void> _stateReplaced(
     }
   }
 
+  // The writes are queued, not made here: this callback runs inside the host's own block write,
+  // and writing from inside it re-enters the plugin's wasm store through that write and stops the
+  // store driver (`World.setBlockState` is at the top of the trap's backtrace). Writes that arrive
+  // before the next tick start are applied there, outside the host's block write.
   for (final at in chain) {
     final currentState = _stateAt(rt, worldId, at);
     final belt = _segment(rt, worldId, at);
@@ -330,7 +334,7 @@ Future<void> _stateReplaced(
     if (belt != null) {
       if (belt.isController) {
         final inv = belt.getInventory();
-        if (inv != null) unawaited(inv.ejectAll());
+        if (inv != null) rt.deferWrite(inv.ejectAll);
       }
       hasPulley = belt.hasPulley;
     }
@@ -338,7 +342,7 @@ Future<void> _stateReplaced(
     final replacement = hasPulley
         ? BState('create:shaft', {'axis': axis.serializedName})
         : BState.air;
-    await setBlockState(world, at, replacement);
+    rt.deferWrite(() => rt.setState(worldId, at, replacement));
   }
 }
 

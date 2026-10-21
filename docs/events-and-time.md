@@ -21,6 +21,31 @@ registered but is ignored.
 
 `context.once(kind, handler, where: ...)` runs for the first matching event only.
 
+### Many handlers for one event
+
+Every `listen`/`intercept` call registers a handler of its own with the host, and
+the host crosses into the plugin once per registered handler for **every** event
+of that kind. A plugin with a handler per block, item or position therefore pays
+one round trip per registered handler and per event, which is far more than the
+handler's own work.
+
+`listenGroup` and `interceptGroup` register **one** handler with the host and run
+the plugin's handlers itself, in the order they were added:
+
+```dart
+final placed = context.listenGroup(Events.customBlockPlaced);
+for (final block in blocks) {
+  placed.add(handlerOf(block), where: (e) => e.block == block);
+}
+```
+
+A member sees a `where`-accepted event exactly as a `listen` of its own would
+have: it runs in its own callback scope, one member's failure does not stop the
+others, and a member that waits for a timer does not hold the server. Cancelling
+a member's subscription takes that member out and leaves the group's other
+members listening. `registerBlockBehavior` uses a group for every hook, so a
+block behavior costs one host handler per hook and not one per block.
+
 ## Waiting for an event
 
 ```dart

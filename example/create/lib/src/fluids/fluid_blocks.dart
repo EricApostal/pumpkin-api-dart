@@ -295,7 +295,7 @@ BlockBehavior _pipeBehavior(
                   ? null
                   : await handler.drain(maxAmount: 1000, simulate: true);
               if (drained == null || drained.amount <= 0) {
-                pipe.setFilterMatchesNothing();
+                pipe.setFilterMatchesNothing(key);
               } else {
                 final filtered = fromHostFluid(drained);
                 pipe.setFilterFluid(filtered.fluid, filtered.data);
@@ -1015,6 +1015,18 @@ CreateBlock valveBlock() {
               return fluidWorldOf(
                 c.world,
               ).hasShaftTowards(neighbour, side.opposite);
+            },
+            // `FluidValveBlock.prefersConnectionTo(..., shaftAxis: false)`: does the block on that
+            // side accept a fluid pipe connection, i.e. is the valve being placed on a pipe run?
+            pipeTowards: (side) {
+              final world = fluidWorldOf(c.world);
+              final neighbour = kposOf(c).relative(side);
+              return PipeStateLogic.canConnectTo(
+                world,
+                neighbour,
+                world.stateAt(neighbour),
+                side,
+              );
             },
           );
           if (state.flag('axis_along_first') != alongFirst) {

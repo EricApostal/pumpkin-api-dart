@@ -15,21 +15,27 @@ import 'chassis_placement.dart';
 const String superGlueItemKey = 'create:super_glue';
 const String slimeBallItem = 'minecraft:slime_ball';
 
+/// `AllBlockEntityTypes.CHASSIS`: the one block entity type of the three chassis blocks
+/// (`REGISTRATE.blockEntity("chassis", ...).validBlocks(RADIAL, LINEAR, SECONDARY_LINEAR)`).
+/// A block must name the *registered* type; naming the block's own key would leave the block
+/// without a block entity (no range, no included positions, no saved data).
+const String chassisBlockEntityType = 'create:chassis';
+
 /// The chassis and sticker block definitions.
 List<CreateBlock> buildChassisBlocks() => [
   _chassisBlock(
     'linear_chassis',
-    blockEntityType: 'create:linear_chassis',
+    blockEntityType: chassisBlockEntityType,
     placement: linearChassisPlacementRules,
   ),
   _chassisBlock(
     'secondary_linear_chassis',
-    blockEntityType: 'create:secondary_linear_chassis',
+    blockEntityType: chassisBlockEntityType,
     placement: linearChassisPlacementRules,
   ),
   _chassisBlock(
     'radial_chassis',
-    blockEntityType: 'create:radial_chassis',
+    blockEntityType: chassisBlockEntityType,
     placement: radialChassisPlacementRules,
   ),
   manifestBlock(

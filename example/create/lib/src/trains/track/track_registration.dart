@@ -8,8 +8,6 @@ import '../../core/block_entity.dart';
 import '../../core/module.dart';
 import '../../core/perf.dart';
 import '../../core/registry.dart';
-// TEMPORARY (DeferredEventDrainLatency): the write-cost rig.
-import '../../infrastructure/commands/temp_write_bench.dart' show wbRecord;
 import '../station/host_ops.dart' show sendOverlay;
 import '../station/station_block_entity.dart';
 import '../support/runtime.dart';
@@ -77,7 +75,6 @@ void registerTrack(CreateRegistry registry) {
 /// The `TrackBlock` callbacks of the host block.
 BlockBehavior _trackBehavior(TrackBlock track) => BlockBehavior(
   onPlaced: (server, e) async {
-    wbRecord(e); // TEMPORARY (DeferredEventDrainLatency): the write-cost rig.
     if (!Perf.enabled) return _onTrackPlaced(track, e);
     final watch = Stopwatch()..start();
     try {

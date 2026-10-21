@@ -1,15 +1,24 @@
 // The linked controller on the server: the item's component helpers, the lectern
-// controller block and entity, the three serverbound payloads and the right clicks of the
-// item. The client side (key handling, the bind mode, the screen) is not ours.
+// controller block and entity, the three serverbound payloads, the right clicks of the
+// item and the frequency screen (`LinkedControllerMenu`) a sneak-use opens. The client
+// side (key handling, the bind mode, the screen drawing) is not ours.
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
+// The `menus` interface (options, rules) is not part of the public wrappers yet.
+// ignore: implementation_imports
+import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 
-import '../../api/payloads.dart' show ItemIdResolver;
+import '../../api/payloads.dart' show ItemIdResolver, ItemComponentPatch, ItemStackData;
 import '../../api/util.dart' hide pos;
+import '../../common/ghost_menu_layout.dart';
+import '../../common/menu_mirror.dart';
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
+import '../../core/registry.dart' show RegistryKind;
+import '../../core/registry_apply.dart' show AppliedIds;
 import '../power_face.dart';
 import '../support/level.dart';
 import '../support/manifest_block.dart';
@@ -46,7 +55,21 @@ Future<bool> isLinkedController(ItemStack? stack) async =>
 
 // -- NBT form of the contents (`ItemContainerContents.CODEC`) --------------------------------
 
-/// The list tag the lectern controller stores as `ControllerData`.
+/// The `ControllerData` compound the lectern controller stores: `ItemContainerContents.CODEC`,
+  /// i.e. `{items: [{slot, item}]}`. Java's `CatnipCodecUtils.encode(ItemContainerContents.CODEC, …)`
+  /// writes the codec's own compound, not a bare list.
+  NbtCompound controllerDataToNbt(ControllerItems items, ItemIdResolver ids) =>
+      NbtCompound()..putList('items', controllerItemsToNbt(items, ids));
+
+  /// The contents of a `ControllerData` tag: the `items` list of the compound, or a bare list
+  /// (the shape an older save of this port wrote).
+  ControllerItems controllerDataFromNbt(NbtCompound tag, ItemIdResolver ids) {
+    final compound = tag.getCompound('ControllerData');
+    final list = compound?.getList('items') ?? tag.getList('ControllerData');
+    return controllerItemsFromNbt(list, ids);
+  }
+
+  /// The list tag of the `items` field.
 List<Object> controllerItemsToNbt(ControllerItems items, ItemIdResolver ids) {
   final list = <Object>[];
   for (var i = 0; i < items.slots.length; i++) {
@@ -246,7 +269,7 @@ final class LecternControllerBlockEntity extends CreateBlockEntity {
   @override
   void write(NbtCompound tag, {required bool clientPacket}) {
     super.write(tag, clientPacket: clientPacket);
-    tag.putList('ControllerData', controllerItemsToNbt(controllerData, controllerIds()));
+    tag.putCompound('ControllerData', controllerDataToNbt(controllerData, controllerIds()));
     final u = user;
     if (u != null) tag.putIntArray('User', _uuidToInts(u));
   }
@@ -254,7 +277,7 @@ final class LecternControllerBlockEntity extends CreateBlockEntity {
   @override
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
-    controllerData = controllerItemsFromNbt(tag.getList('ControllerData'), controllerIds());
+    controllerData = controllerDataFromNbt(tag, controllerIds());
     final arr = tag.getIntArray('User');
     user = arr != null && arr.length == 4 ? _uuidFromInts(arr) : null;
   }
@@ -342,6 +365,8 @@ final class LecternControllerBlock {
 /// Hooks of `LinkedControllerItem` and the three `LinkedControllerPacketBase` payloads.
 abstract final class LinkedControllerHooks {
   static void install(CreateContext ctx, RsRuntime rs, LinkedControllerServerHandler handler) {
+    LinkedControllerMenus.install(ctx);
+    ctx.host.intercept(Events.playerUseItem, _onUseItem);
     // onItemUseFirst: lectern swap, lectern replace, link click.
     ctx.host.intercept(Events.itemUseFirst, (server, e) async {
       if (e.useResult != ItemUseFirstResult.pass) return e;
@@ -444,6 +469,23 @@ abstract final class LinkedControllerHooks {
     });
   }
 
+  /// `LinkedControllerItem.use`: a sneak-use with the controller in the main hand opens the
+  /// frequency screen (`player.openMenu(this, ...)`). A lectern controller swap is handled by
+  /// [install] before this and never reaches here.
+  static Future<PlayerUseItemEventData> _onUseItem(
+    Server server,
+    PlayerUseItemEventData e,
+  ) async {
+    if (e.hand != Hand.right) return e;
+    if (!await isLinkedController(e.item)) return e;
+    final player = e.player;
+    if (!player.asEntity().isSneaking()) return e;
+    // `player.mayBuild()`: a spectator cannot use the screen.
+    if (player.getGamemode() == GameMode.spectator) return e;
+    await LinkedControllerMenus.open(player, e.item);
+    return e.cancel();
+  }
+
   /// `LinkedControllerPacketBase.handle`: the controller in the main hand, else the offhand.
   static Future<ItemStack?> _heldController(Player player) async {
     final main = player.getItemInHand(hand: Hand.right);
@@ -484,5 +526,202 @@ abstract final class LinkedControllerHooks {
       be.dropController(state);
     }
     be.setController(newController);
+  }
+}
+
+/// `AllMenuTypes.LINKED_CONTROLLER`.
+const String linkedControllerMenuType = 'create:linked_controller';
+
+/// `LinkedControllerMenu.addSlots`: the 36 player slots first, then the 12 frequency slots (two
+/// per button).
+const GhostMenu controllerLayout = GhostMenu.linkedController;
+
+/// The menu slot of the controller frequency slot [i] (`36 + i`).
+int controllerGhostSlot(int i) => controllerLayout.ghostSlot(i);
+
+/// The screen of `LinkedControllerMenu`: the 12 frequency slots the client edits, backed by the
+/// held controller's `create:linked_controller_items` component.
+final class LinkedControllerSession {
+  final int containerId;
+  final String playerUuid;
+
+  /// `ghostInventory`, from the held item's component when the menu opened.
+  ControllerItems items;
+
+  /// Whether a ghost slot changed: `LinkedControllerMenu.saveData` writes the component when the
+  /// screen closes, so a menu that was only opened leaves the item alone.
+  bool dirty = false;
+
+  LinkedControllerSession(this.containerId, this.playerUuid, this.items);
+}
+
+abstract final class LinkedControllerMenus {
+  static final Map<String, LinkedControllerSession> _byPlayer = {};
+
+  /// The host ids, for the numeric item and data component ids of the component's format.
+  static AppliedIds? _ids;
+  static Map<int, String>? _componentNames;
+
+  /// The click rules of the screen: a ghost slot takes one item off the cursor
+  /// (`GhostItemMenu.clicked`; `LinkedControllerMenu.allowRepeats()`).
+  static final MenuClickRules _rules = MenuClickRules(
+    slotRules: [
+      for (var i = 0; i < controllerLayout.ghostSlots; i++)
+        MenuSlotRule(
+          slot: controllerGhostSlot(i),
+          kind: const MenuSlotKindGhost(),
+          maxStackSize: 1,
+        ),
+    ],
+    quickMoveTargets: const [],
+  );
+
+  static void install(CreateContext ctx) {
+    _ids = ctx.ids;
+    ctx.listen(Events.menuSlotChanged, (server, e) async {
+      if (e.menuType != linkedControllerMenuType) return;
+      final session = _byPlayer[e.player.getId().asString];
+      if (session == null || session.containerId != e.containerId) return;
+      for (final change in e.changes) {
+        // The player inventory mirror the client's menu shows first.
+        if (await applyPlayerMirrorChange(e.player, change)) continue;
+        final slot = controllerLayout.ghostIndexAt(change.slot);
+        if (slot == null) continue;
+        session.items = session.items.withSlot(slot, await _template(change.stack));
+        session.dirty = true;
+      }
+    });
+    ctx.listen(Events.menuClosed, (server, e) {
+      if (e.menuType != linkedControllerMenuType) return;
+      unawaited(_save(e.player, e.containerId));
+    });
+    ctx.listen(Events.playerLeave, (server, e) {
+      unawaited(_save(e.player, null));
+    });
+  }
+
+  /// `ServerPlayer.openMenu(this, buf -> ItemStack.STREAM_CODEC.encode(buf, heldItem))`: the extra
+  /// data is the controller, so the client's menu reads its frequencies
+  /// (`LinkedControllerMenu.createOnClient`).
+  static Future<void> open(Player player, ItemStack held) async {
+    final itemId = controllerIds().idOf(linkedControllerItem);
+    if (itemId == null) return;
+    final count = await held.getCount();
+    final component = held.customComponent(controllerItemsKey);
+    final componentId = _componentId(controllerItemsKey);
+    final patch = component != null && componentId != null
+        ? ItemComponentPatch(added: [(componentId, Uint8List.fromList(component))])
+        : ItemComponentPatch.empty;
+    final extra = PacketBuffer.encode(
+      (w) => ItemStackData(itemId, count, patch).write(w, allowEmpty: false),
+    );
+    final result = raw.menus.openMenuWithOptions(
+      player: player,
+      menuTypeKey: linkedControllerMenuType,
+      // `MenuProvider.getDisplayName()` is an empty component.
+      title: TextComponent.text(plain: ''),
+      extraData: extra,
+      slotCount: controllerLayout.menuSlots,
+      options: MenuOptions(
+        applyVanillaClicks: true,
+        // The client's menu adds the player inventory first (`LinkedControllerMenu.addSlots`), so
+        // the server tracks a mirror of it instead of the host's player-inventory layout.
+        playerInventory: false,
+        rules: _rules,
+      ),
+    );
+    if (result is! OkResult<int, String>) {
+      Rs.i.log.warn(
+        'Could not open $linkedControllerMenuType: '
+        '${(result as ErrorResult<int, String>).value}',
+      );
+      return;
+    }
+    final session = LinkedControllerSession(
+      result.value,
+      player.getId().asString,
+      // `LinkedControllerItem.getFrequencyItems(contentHolder)`.
+      readControllerItems(held),
+    );
+    _byPlayer[player.getId().asString] = session;
+    await fillPlayerMirror(player);
+    await _sendGhosts(player, session.items);
+  }
+
+  /// Sends the frequency slots to the client: the server's menu starts them empty, so the screen
+  /// would show empty pickers otherwise.
+  static Future<void> _sendGhosts(Player player, ControllerItems items) async {
+    for (var i = 0; i < controllerLayout.ghostSlots; i++) {
+      final template = items.slot(i);
+      await setMenuSlot(
+        player,
+        controllerGhostSlot(i),
+        template == null ? null : await _hostStack(template),
+      );
+    }
+  }
+
+  /// `LinkedControllerMenu.saveData` / `MenuBase.removed`: writes the frequency slots back into the
+  /// component of the held item.
+  static Future<void> _save(Player player, int? containerId) async {
+    final session = _byPlayer.remove(player.getId().asString);
+    if (session == null) return;
+    if (containerId != null && session.containerId != containerId) return;
+    if (!session.dirty) return;
+    // `HeldItemGhostItemMenu`: the menu edits the item of the main hand.
+    final held = player.getItemInHand(hand: Hand.right);
+    if (!await isLinkedController(held)) return;
+    writeControllerItems(
+      held!,
+      ControllerItems([
+        for (var i = 0; i < controllerLayout.ghostSlots; i++) session.items.slot(i),
+      ]),
+    );
+    await player.setItemInHand(hand: Hand.right, stack: held);
+  }
+
+  /// A host stack for [t] with its component patch (`ItemStack.STREAM_CODEC` shape).
+  static Future<ItemStack?> _hostStack(ItemTemplate t) async {
+    final key = controllerIds().keyOf(t.itemId);
+    if (key == null) return null;
+    final stack = ItemStack.create(registryKey: key, count: t.count);
+    for (final (id, bytes) in t.patch.added) {
+      final name = _componentNameOf(id);
+      if (name == null) continue;
+      final vanilla = DataComponent.fromWireName(RegistryKeys.toWireName(name));
+      if (vanilla != null) {
+        await stack.setComponent(component: vanilla, value: bytes);
+      } else {
+        stack.setCustomComponent(name, bytes);
+      }
+    }
+    return stack;
+  }
+
+  /// The `ItemStackTemplate` of [stack]: the stack a click put in a ghost slot, components
+  /// included (`GhostItemMenu.clicked` copies the cursor stack).
+  static Future<ItemTemplate?> _template(ItemStack? stack) async {
+    if (stack == null) return null;
+    final count = await stack.getCount();
+    if (count <= 0) return null;
+    final itemId = controllerIds().idOf(await stack.getRegistryKey());
+    if (itemId == null) return null;
+    final added = <(int, Uint8List)>[];
+    for (final c in await stack.getComponents()) {
+      final id = _componentId(RegistryKeys.fromWireName(c.component.wireName));
+      if (id == null) continue;
+      added.add((id, Uint8List.fromList(c.value)));
+    }
+    return ItemTemplate(itemId, count, ItemComponentPatch(added: added));
+  }
+
+  static int? _componentId(String key) => _ids?.of(RegistryKind.dataComponents, key);
+
+  static String? _componentNameOf(int id) {
+    _componentNames ??= {
+      for (final e in _ids?.all(RegistryKind.dataComponents).entries ?? const <MapEntry<String, int>>[])
+        e.value: e.key,
+    };
+    return _componentNames?[id];
   }
 }

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'bindings.g.dart' as generated;
 import 'bindings.g.dart';
 import 'block_registry_core.dart' as core show BlockBox;
-import 'blocks.dart' show registryKeysMatch;
+import 'blocks.dart' show normalizeRegistryKey, registryKeysMatch;
 import 'events.dart';
 import 'events.g.dart';
 import 'host_result.dart';
@@ -257,7 +257,10 @@ extension BlockBehaviorRegistration on Context {
       'Setting the callbacks of $blockKey',
     );
 
-    bool mine(String block) => registryKeysMatch(block, blockKey);
+    // `registryKeysMatch`, with the block's own key normalized once instead of once per event per
+    // member: the group asks every member of the hook whether it wants the event.
+    final mineKey = normalizeRegistryKey(blockKey);
+    bool mine(String block) => normalizeRegistryKey(block) == mineKey;
     // The plugin can fire the placed event itself for a bulk write that skipped it
     // (`CustomBlockBehaviors.firePlaced`): the host does not fire it there.
     CustomBlockBehaviors.install(this);
@@ -265,6 +268,11 @@ extension BlockBehaviorRegistration on Context {
     final p = behavior.priority;
     final subscriptions = <EventSubscription>[];
 
+    // Every block of a plugin adds its hooks to ONE host handler per event kind and priority
+    // (`BlockHookGroups`). A handler of its own per block would make the host cross into the
+    // plugin once per block for every event of the kind - a bulk write of 5 blocks measured
+    // 5 × 397 crossings and 376 ms, all of it round trips - while the group's members run in the
+    // guest, each exactly as its own host handler would have run it.
     void on<D>(
       EventKind<D> kind,
       String Function(D data) blockOf,
@@ -272,10 +280,25 @@ extension BlockBehaviorRegistration on Context {
     ) {
       if (handler == null) return;
       subscriptions.add(
-        listen(kind, (server, data) {
-          if (!mine(blockOf(data))) return null;
-          return handler(server, data);
-        }, priority: p),
+        BlockHookGroups.listen<D>(
+          this,
+          kind,
+          p,
+        ).add(handler, where: (data) => mine(blockOf(data))),
+      );
+    }
+
+    void onIntercept<D>(
+      EventKind<D> kind,
+      String Function(D data) blockOf,
+      FutureOr<D> Function(Server server, D data) handler,
+    ) {
+      subscriptions.add(
+        BlockHookGroups.intercept<D>(
+          this,
+          kind,
+          p,
+        ).add(handler, where: (data) => mine(blockOf(data))),
       );
     }
 
@@ -290,52 +313,51 @@ extension BlockBehaviorRegistration on Context {
 
     final canPlace = behavior.onCanPlace;
     if (canPlace != null) {
-      subscriptions.add(
-        intercept(Events.customBlockCanPlace, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(canPlace(server, data), (ok) => data.copyWith(canPlace: ok));
-        }, priority: p),
+      onIntercept(
+        Events.customBlockCanPlace,
+        (d) => d.block,
+        (server, data) =>
+            thenOr(canPlace(server, data), (ok) => data.copyWith(canPlace: ok)),
       );
     }
 
     final updateShape = behavior.onUpdateShape;
     if (updateShape != null) {
-      subscriptions.add(
-        intercept(Events.customBlockUpdateShape, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(
-            updateShape(server, data),
-            (index) => index == null ? data : data.copyWith(newStateIndex: index),
-          );
-        }, priority: p),
+      onIntercept(
+        Events.customBlockUpdateShape,
+        (d) => d.block,
+        (server, data) => thenOr(
+          updateShape(server, data),
+          (index) => index == null ? data : data.copyWith(newStateIndex: index),
+        ),
       );
     }
 
     final weak = behavior.onWeakPower;
     final strong = behavior.onStrongPower;
     if (weak != null || strong != null) {
-      subscriptions.add(
-        intercept(Events.customBlockRedstonePower, (server, data) {
-          if (!mine(data.block)) return data;
+      onIntercept(
+        Events.customBlockRedstonePower,
+        (d) => d.block,
+        (server, data) {
           final handler = data.strong ? strong : weak;
           if (handler == null) return data;
           return thenOr(handler(server, data), (power) => data.copyWith(power: power.clamp(0, 15)));
-        }, priority: p),
+        },
       );
     }
 
     final comparator = behavior.onComparatorOutput;
     if (comparator != null) {
-      subscriptions.add(
-        intercept(Events.customBlockComparatorOutput, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(
-            comparator(server, data),
-            (out) => out == null
-                ? data.copyWith(clearOutput: true)
-                : data.copyWith(output: out.clamp(0, 15)),
-          );
-        }, priority: p),
+      onIntercept(
+        Events.customBlockComparatorOutput,
+        (d) => d.block,
+        (server, data) => thenOr(
+          comparator(server, data),
+          (out) => out == null
+              ? data.copyWith(clearOutput: true)
+              : data.copyWith(output: out.clamp(0, 15)),
+        ),
       );
     }
 
@@ -343,67 +365,60 @@ extension BlockBehaviorRegistration on Context {
 
     final shape = behavior.onShape;
     if (shape != null) {
-      subscriptions.add(
-        intercept(Events.customBlockShape, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(
-            shape(server, data),
-            (boxes) => boxes == null
-                ? data
-                : data.copyWith(shapes: [for (final b in boxes) _toWireBox(b)]),
-          );
-        }, priority: p),
+      onIntercept(
+        Events.customBlockShape,
+        (d) => d.block,
+        (server, data) => thenOr(
+          shape(server, data),
+          (boxes) => boxes == null
+              ? data
+              : data.copyWith(shapes: [for (final b in boxes) _toWireBox(b)]),
+        ),
       );
     }
 
     final entityShape = behavior.onEntityCollisionShape;
     if (entityShape != null) {
-      subscriptions.add(
-        intercept(Events.customBlockCollisionShape, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(
-            entityShape(server, data),
-            (boxes) => boxes == null
-                ? data
-                : data.copyWith(shapes: [for (final b in boxes) _toWireBox(b)]),
-          );
-        }, priority: p),
+      onIntercept(
+        Events.customBlockCollisionShape,
+        (d) => d.block,
+        (server, data) => thenOr(
+          entityShape(server, data),
+          (boxes) => boxes == null
+              ? data
+              : data.copyWith(shapes: [for (final b in boxes) _toWireBox(b)]),
+        ),
       );
     }
 
     if (behavior.onUse != null ||
         behavior.onUseWithItem != null ||
         behavior.onUseWithoutItem != null) {
-      subscriptions.add(
-        intercept(Events.customBlockUse, (server, data) {
-          if (!mine(data.block)) return data;
-          final handler = (data.withItem ? behavior.onUseWithItem : behavior.onUseWithoutItem) ?? behavior.onUse;
-          if (handler == null) return data;
-          return thenOr(handler(server, data), (r) => data.copyWith(result: r));
-        }, priority: p),
-      );
+      onIntercept(Events.customBlockUse, (d) => d.block, (server, data) {
+        final handler = (data.withItem ? behavior.onUseWithItem : behavior.onUseWithoutItem) ?? behavior.onUse;
+        if (handler == null) return data;
+        return thenOr(handler(server, data), (r) => data.copyWith(result: r));
+      });
     }
 
     final clone = behavior.onCloneItem;
     if (clone != null) {
-      subscriptions.add(
-        intercept(Events.customBlockCloneItem, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(
-            clone(server, data),
-            (item) => item == null ? data.copyWith(clearItem: true) : data.copyWith(item: item),
-          );
-        }, priority: p),
+      onIntercept(
+        Events.customBlockCloneItem,
+        (d) => d.block,
+        (server, data) => thenOr(
+          clone(server, data),
+          (item) => item == null ? data.copyWith(clearItem: true) : data.copyWith(item: item),
+        ),
       );
     }
 
     final willDestroy = behavior.onPlayerWillDestroy;
     if (willDestroy != null) {
-      subscriptions.add(
-        intercept(Events.customBlockPlayerWillDestroy, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(willDestroy(server, data), (ok) => data.copyWith(cancelled: !ok));
-        }, priority: p),
+      onIntercept(
+        Events.customBlockPlayerWillDestroy,
+        (d) => d.block,
+        (server, data) => thenOr(willDestroy(server, data), (ok) => data.copyWith(cancelled: !ok)),
       );
     }
 
@@ -411,77 +426,97 @@ extension BlockBehaviorRegistration on Context {
     final speed = behavior.onSpeedFactor;
     final jump = behavior.onJumpFactor;
     if (friction != null || speed != null || jump != null) {
-      subscriptions.add(
-        intercept(Events.customBlockPhysics, (server, data) {
-          if (!mine(data.block)) return data;
-          final handler = switch (data.kind) {
-            BlockPhysicsKind.friction => friction,
-            BlockPhysicsKind.speedFactor => speed,
-            BlockPhysicsKind.jumpFactor => jump,
-          };
-          if (handler == null) return data;
-          return thenOr(handler(server, data), (v) => data.copyWith(value: v));
-        }, priority: p),
-      );
+      onIntercept(Events.customBlockPhysics, (d) => d.block, (server, data) {
+        final handler = switch (data.kind) {
+          BlockPhysicsKind.friction => friction,
+          BlockPhysicsKind.speedFactor => speed,
+          BlockPhysicsKind.jumpFactor => jump,
+        };
+        if (handler == null) return data;
+        return thenOr(handler(server, data), (v) => data.copyWith(value: v));
+      });
     }
 
     final destroy = behavior.canEntityDestroy;
     final path = behavior.isPathfindable;
     final redstone = behavior.canConnectRedstone;
     if (destroy != null || path != null || redstone != null) {
-      subscriptions.add(
-        intercept(Events.customBlockCondition, (server, data) {
-          if (!mine(data.block)) return data;
-          final handler = switch (data.condition) {
-            BlockCondition.entityDestroy => destroy,
-            BlockCondition.pathfindableLand ||
-            BlockCondition.pathfindableWater ||
-            BlockCondition.pathfindableAir => path,
-            BlockCondition.redstoneConnect => redstone,
-          };
-          if (handler == null) return data;
-          return thenOr(handler(server, data), (v) => data.copyWith(value: v));
-        }, priority: p),
-      );
+      onIntercept(Events.customBlockCondition, (d) => d.block, (server, data) {
+        final handler = switch (data.condition) {
+          BlockCondition.entityDestroy => destroy,
+          BlockCondition.pathfindableLand ||
+          BlockCondition.pathfindableWater ||
+          BlockCondition.pathfindableAir => path,
+          BlockCondition.redstoneConnect => redstone,
+        };
+        if (handler == null) return data;
+        return thenOr(handler(server, data), (v) => data.copyWith(value: v));
+      });
     }
 
     final landed = behavior.onLandedUpon;
     if (landed != null) {
-      subscriptions.add(
-        intercept(Events.customBlockLanded, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(landed(server, data), (m) => data.copyWith(damageMultiplier: m));
-        }, priority: p),
+      onIntercept(
+        Events.customBlockLanded,
+        (d) => d.block,
+        (server, data) => thenOr(landed(server, data), (m) => data.copyWith(damageMultiplier: m)),
       );
     }
 
     final sound = behavior.soundType;
     if (sound != null) {
-      subscriptions.add(
-        intercept(Events.customBlockSoundType, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(sound(server, data), (name) => data.copyWith(soundType: name));
-        }, priority: p),
+      onIntercept(
+        Events.customBlockSoundType,
+        (d) => d.block,
+        (server, data) => thenOr(sound(server, data), (name) => data.copyWith(soundType: name)),
       );
     }
 
     final fire = behavior.onFireSpread;
     if (fire != null) {
-      subscriptions.add(
-        intercept(Events.customBlockFireSpread, (server, data) {
-          if (!mine(data.block)) return data;
-          return thenOr(
-            fire(server, data),
-            (r) => data.copyWith(
-              spreadChance: r.spreadChance.clamp(0, 255),
-              burnChance: r.burnChance.clamp(0, 255),
-            ),
-          );
-        }, priority: p),
+      onIntercept(
+        Events.customBlockFireSpread,
+        (d) => d.block,
+        (server, data) => thenOr(
+          fire(server, data),
+          (r) => data.copyWith(
+            spreadChance: r.spreadChance.clamp(0, 255),
+            burnChance: r.burnChance.clamp(0, 255),
+          ),
+        ),
       );
     }
     return subscriptions;
   }
+}
+
+/// The host handlers the block hooks of one plugin are dispatched through.
+///
+/// The host crosses into the plugin once per registered handler for every event, so one handler
+/// per block makes each event of a hook cost one round trip per registered block: a bulk write of
+/// 5 blocks paid 5 × 397 crossings and 376 ms, against a write of 112 µs through the path that
+/// fires no events. Every block therefore adds its hooks to the group of its event kind and
+/// priority ([EventApi.listenGroup]), which the host sees as ONE handler, and the guest dispatches
+/// the group's members itself in registration order.
+abstract final class BlockHookGroups {
+  static final Map<(EventType, EventPriority), Object> _listeners = {};
+  static final Map<(EventType, EventPriority), Object> _intercepts = {};
+
+  /// The group the `listen` hooks of [kind] at [priority] belong to, created on first use.
+  static ListenGroup<D> listen<D>(Context context, EventKind<D> kind, EventPriority priority) =>
+      (_listeners[(kind.type, priority)] ??=
+              context.listenGroup(kind, priority: priority))
+          as ListenGroup<D>;
+
+  /// The group the `intercept` hooks of [kind] at [priority] belong to, created on first use.
+  static InterceptGroup<D> intercept<D>(
+    Context context,
+    EventKind<D> kind,
+    EventPriority priority,
+  ) =>
+      (_intercepts[(kind.type, priority)] ??=
+              context.interceptGroup(kind, priority: priority))
+          as InterceptGroup<D>;
 }
 
 /// The [BlockBehavior]s a plugin registered, so it can fire a block event itself.
@@ -490,10 +525,10 @@ extension BlockBehaviorRegistration on Context {
 /// the handlers, but the host only fires them for the writes it makes itself,
 /// one callback per block. A bulk write ([WorldBulkBlocks.placeBlocks]) with
 /// [BlockFlagsFlag.skipBlockAddedCallback] writes every block of the batch in one
-/// host call without those callbacks - each callback is a host-to-plugin round
-/// trip that costs far more than the write itself - so the plugin fires the
-/// `placed` handling of what it wrote itself, once per position and in one
-/// callback of its own: [firePlaced].
+/// host call without those callbacks - and every callback the host does fire is
+/// a host-to-plugin round trip of its own, which for a batch of blocks costs
+/// more than the write - so the plugin fires the `placed` handling of what it
+/// wrote itself, once per position and in one callback of its own: [firePlaced].
 ///
 /// The handlers get the same [CustomBlockPlacedEventData] the host would send for
 /// a `placed` event: the position, the block, its `stateIndex` within the block,

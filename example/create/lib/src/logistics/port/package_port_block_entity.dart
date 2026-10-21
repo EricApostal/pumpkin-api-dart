@@ -427,8 +427,13 @@ class FrogportBlockEntity extends PackagePortBlockEntity
     if (failedLastExport != previousFail) sendData();
   }
 
-  /// `tryPushingToAdjacentInventories()`: boxes the port does not want move into the inventory
-  /// below.
+  /// `tryPushingToAdjacentInventories()`: the boxes in the buffer move into the inventory below.
+  ///
+  /// The buffer itself is read, not the automation view
+  /// (`PackagePortAutomationInventoryWrapper`): Java's `itemHandler.extractItem` offers every box
+  /// here, so a port that is waiting for its boxes still hands them on when nothing else can take
+  /// them -- a box the port wants that the automation view hides would otherwise sit in the
+  /// buffer for good.
   Future<void> _tryPushingToAdjacentInventories() async {
     // Java clears the flag before it looks at the buffer, so a port that emptied its buffer stops
     // reporting the previous failure.
@@ -439,11 +444,7 @@ class FrogportBlockEntity extends PackagePortBlockEntity
     if (inv == null) return;
 
     for (var slot = 0; slot < packages.slots; slot++) {
-      // The automation view (`PackagePortAutomationInventoryWrapper`) only offers boxes the port
-      // does not want; a box it is waiting for stays in the buffer.
-      final box = packageFrom(
-        await _automation.extract(slot, 1, simulate: true),
-      );
+      final box = packages.extractNow(slot, 1, simulate: true);
       if (box.isEmpty) continue;
       unawaited(_pushOne(inv, slot, box));
     }
@@ -451,10 +452,14 @@ class FrogportBlockEntity extends PackagePortBlockEntity
 
   /// `getAdjacentInventory(side)`: the inventory next to the port, never another frogport (two
   /// frogports would hand a box back and forth).
+  ///
+  /// Only another frogport is skipped: `ItemHandlerHelper.getInventory` asks the block capability,
+  /// which a chest or a barrel answers just as much as a plugin inventory does. Skipping every
+  /// position the plugin's own store does not know left a frogport with a chest under it pushing
+  /// nothing -- the boxes it does not want stayed in its buffer forever.
   ItemInv? _adjacentInventory(Direction side) {
     final p = pos.toPos().relative(side);
-    final be = store.at(worldId, p.toBlockPos());
-    if (be == null || be is FrogportBlockEntity) return null;
+    if (store.at(worldId, p.toBlockPos()) is FrogportBlockEntity) return null;
     return inventoryAt(worldId, p, Lg.i.io, side: side.opposite);
   }
 
@@ -464,7 +469,7 @@ class FrogportBlockEntity extends PackagePortBlockEntity
       failedLastExport = true;
       return;
     }
-    _automation.extract(slot, 1);
+    packages.extractNow(slot, 1);
     markDirty();
   }
 

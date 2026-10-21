@@ -40,6 +40,9 @@ abstract class CreateModule {
 /// Handles one world tick; registered with `CreateContext.onWorldTick`.
 typedef WorldTickHandler = FutureOr<void> Function(WorldTick t);
 
+/// One world-tick handler and the name the `[perf-tick]` report shows it under.
+typedef NamedWorldTickHandler = ({String label, WorldTickHandler run});
+
 /// The state shared by all modules.
 final class CreateCore {
   final CreateConfig config;
@@ -50,7 +53,7 @@ final class CreateCore {
   /// The world tick handlers, in registration order: the framework's first, then
   /// the modules' in module order. The plugin runs them from one host listener
   /// per world tick ([WorldTick] resolves the world id at most once).
-  final List<WorldTickHandler> worldTickHandlers = [];
+  final List<NamedWorldTickHandler> worldTickHandlers = [];
 
   final Logger log;
   late final BlockEntityStore blockEntities = BlockEntityStore(
@@ -72,10 +75,19 @@ final class CreateContext {
   final CreateCore _core;
   final Context Function() _host;
 
+  /// The module's name, as in `CreateModule.name`. Also the label prefix its
+  /// world-tick handlers are reported under.
+  final String name;
+
   /// The module's logger (`create.<module>`).
   final Logger log;
 
-  CreateContext(this._core, this._host, String moduleName) : log = _core.log.child(moduleName);
+  /// How many world-tick handlers this module registered, for their labels.
+  int _worldTicks = 0;
+
+  CreateContext(this._core, this._host, String moduleName)
+    : name = moduleName,
+      log = _core.log.child(moduleName);
 
   /// The host's load context (kept for the lifetime of the plugin).
   Context get host => _host();
@@ -99,7 +111,15 @@ final class CreateContext {
   /// Check your module's state first and return early when there is nothing to
   /// do — [WorldTick.worldId] and [WorldTick.playersInWorld] are host calls and
   /// are only made when the handler asks for them, so an idle tick is free.
-  void onWorldTick(WorldTickHandler handler) => _core.worldTickHandlers.add(handler);
+  ///
+  /// [label] names the handler in the `[perf-tick]` breakdown; the default is the
+  /// module name and the handler's position in it, which is what the report uses
+  /// to tell one handler from another (`conveyance#0`).
+  void onWorldTick(WorldTickHandler handler, {String? label}) =>
+      _core.worldTickHandlers.add((
+        label: label ?? '$name#${_worldTicks++}',
+        run: handler,
+      ));
 }
 
 /// What a module gets in `onServerLoaded`.

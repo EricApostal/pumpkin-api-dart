@@ -38,9 +38,11 @@ a cancelled event.
 
 The host fires `BlockBehavior.onPlaced` for every block it writes, and each of
 those callbacks is a round trip of its own: measured on a live server, one such
-callback costs tens of milliseconds while the handler itself runs in
-microseconds. A batch of a few hundred blocks is therefore better off writing
-without the callback and running it once per position itself:
+callback costs hundreds of microseconds while the handler itself runs in
+microseconds (before the block hooks shared one host handler per hook - see
+[events-and-time.md](events-and-time.md) - it was tens of milliseconds, one round
+trip per registered block). A batch of a few hundred blocks is therefore better
+off writing without the callback and running it once per position itself:
 
 ```dart
 final changed = await world.placeBlocks(changes, flags: {

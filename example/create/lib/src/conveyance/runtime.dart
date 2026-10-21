@@ -68,6 +68,17 @@ final class ConveyanceRuntime {
 
   int serverTick = 0;
 
+  /// Writes a block callback may not make itself, applied at the start of the next tick.
+  ///
+  /// A `state_replaced` callback runs inside the host's own block write. A write made from there
+  /// re-enters the plugin's wasm store through the write that fired the callback, and the store
+  /// driver traps and stops for the rest of the run
+  /// (`Wasm plugin store driver stopped ... wasm_plugin_policy="LegacySyncReentry"`), while
+  /// console commands keep working, so the plugin goes silently dead. Java's
+  /// `affectNeighborsAfterRemoval` writes synchronously and never crosses a wasm boundary; the
+  /// port defers the same writes instead.
+  final List<Future<void> Function()> _deferredWrites = [];
+
   ConveyanceRuntime(this.ctx) {
     _instance = this;
     // The host's placement event does not carry the click (the `BlockPlaceContext`), so the last
@@ -83,7 +94,28 @@ final class ConveyanceRuntime {
       );
       return e;
     });
-    ctx.listen(Events.serverTickStart, (server, _) => serverTick++);
+    ctx.listen(Events.serverTickStart, (server, _) {
+      serverTick++;
+      _drainDeferredWrites();
+    });
+  }
+
+  /// Queues [body] for the start of the next tick (see [_deferredWrites]).
+  void deferWrite(Future<void> Function() body) => _deferredWrites.add(body);
+
+  void _drainDeferredWrites() {
+    if (_deferredWrites.isEmpty) return;
+    final pending = List.of(_deferredWrites);
+    _deferredWrites.clear();
+    unawaited(() async {
+      for (final body in pending) {
+        try {
+          await body();
+        } on Object catch (e, s) {
+          log.error('A deferred block write failed', error: e, stackTrace: s);
+        }
+      }
+    }());
   }
 
   void dispose() {

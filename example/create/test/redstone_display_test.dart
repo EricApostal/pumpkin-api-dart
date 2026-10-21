@@ -537,8 +537,8 @@ void main() {
       final c = ctx(env, config: ConfigTag()..putString('Filter', 'Central *'));
       final rows = await s.provideFlapDisplayText(c, DisplayTargetStats(4, 20, DisplayBoardTarget()));
       expect(rows.length, 4);
-      expect([for (final t in rows[0]) t.plain], [' ', 'Now', 'Express', 'Line 1', '2']);
-      expect([for (final t in rows[1]) t.plain], ['2', 'min', 'Slow', 'Line 2', '3']);
+      expect([for (final t in rows[0]) t.plain], [' ', 'now', 'Express', 'Line 1', '2']);
+      expect([for (final t in rows[1]) t.plain], ['2', ' min', 'Slow', 'Line 2', '3']);
       expect([for (final t in rows[2]) t.plain], [' ', ' ~ ', 'Lost', 'Line 3', '1']);
       expect(rows[3].length, 5);
 

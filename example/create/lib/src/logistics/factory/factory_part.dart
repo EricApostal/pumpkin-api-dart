@@ -268,7 +268,7 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
     // An empty hand opens the set-item screen (`FactoryPanelSetItemMenu`); another item is the
     // filter.
     if (held.isEmpty) {
-      FactoryPanelSetItemMenus.open(
+      await FactoryPanelSetItemMenus.open(
         e.player,
         FactoryPanelPosition(e.pos.toPos(), slot),
       );

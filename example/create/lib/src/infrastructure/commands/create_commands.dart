@@ -17,8 +17,6 @@ import '../../core/worlds.dart';
 import '../config/config_service.dart';
 import 'command_parsing.dart';
 import 'railway_report.dart';
-// TEMPORARY (DeferredEventDrainLatency): the write-cost rig.
-import 'temp_write_bench.dart';
 
 /// What the commands need at run time. The module fills it in `onLoad`; the commands are declared
 /// earlier (in `register`).
@@ -233,9 +231,6 @@ void _buildCreate(CommandBuilder c, InfraCommandState st) {
           f.arg('to', ArgumentTypes.blockPos, runs: (ctx) => _glue(ctx, st)),
     ),
   );
-
-  // TEMPORARY (DeferredEventDrainLatency): the write-cost rig. Delete with `temp_write_bench.dart`.
-  registerTempWriteBench(c, st);
 
   // -- utility ------------------------------------------------------------------
   c.sub(

@@ -112,6 +112,15 @@ final class EquipmentEnv {
 
 typedef Vec3 = (double, double, double);
 
+/// A block key with its namespace.
+///
+/// `World.getBlockState().blockName` is the **bare** name for a vanilla block (`farmland`,
+/// `waxed_copper_block`) and the full key for a plugin block, while the keys this module
+/// compares against are always namespaced; `BlockStates.blockKey(stateId)` gives the
+/// namespaced form from the state id alone.
+String namespacedBlockKey(String blockKey) =>
+    blockKey.contains(':') ? blockKey : 'minecraft:$blockKey';
+
 /// Item keys of the equipment module.
 abstract final class EqItems {
   static const wrench = 'create:wrench';

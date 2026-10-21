@@ -46,7 +46,13 @@ final class ProtocolModule extends CreateModule {
     _log = ctx.log;
     ctx.services.provide<PayloadBus>(PayloadBus(_hub, _roster));
     ctx.services.provide<ItemIdResolver>(HostItemStacks.resolverFor(() => ctx.ids));
-    ctx.listen(Events.playerJoin, (server, e) => _roster.add(e.player));
+    ctx.listen(Events.playerJoin, (server, e) {
+      if (_roster.add(server, e.player)) return;
+      _log?.warn(
+        'Could not put ${e.player.getName()} in the player roster: the server does not know that '
+        'player, so broadcasts and tracking sends will skip them',
+      );
+    });
     ctx.listen(Events.playerLeave, (server, e) => _roster.remove(e.player));
   }
 

@@ -93,6 +93,9 @@ BlockBehavior elevatorContactBehavior() => BlockBehavior(
     if (wasPowering || shouldPower) {
       await _setFlag(world, pos, state, 'powering', shouldPower);
     }
+    // `pLevel.updateNeighborsAt(pPos, this)` — the POWERING write above is clients-only, so the
+    // contact's redstone output (and the contact in front of it) only sees the change from this.
+    await world.notifyNeighbors(BlockPos(x: pos.$1, y: pos.$2, z: pos.$3));
   },
   // `getSignal`: no strong power (the block has no `getDirectSignal`), and a contact
   // directly behind the reading side does not power it.
@@ -208,6 +211,8 @@ Future<void> callToContactAndUpdate(
 
   if (powered) current = current.setFlag('powered', true);
   await _setFlag(world, pos, current, 'calling', true);
+  // `pLevel.updateNeighborsAt(pPos, this)` — CALLING is written clients-only.
+  await world.notifyNeighbors(BlockPos(x: pos.$1, y: pos.$2, z: pos.$3));
 
   column.target(pos.$2);
   column.markDirty();

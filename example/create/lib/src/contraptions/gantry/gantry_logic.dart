@@ -15,6 +15,12 @@ import '../../kinetics/geometry.dart';
 const String gantryCarriageKey = 'create:gantry_carriage';
 const String gantryShaftKey = 'create:gantry_shaft';
 
+/// `AllBlockEntityTypes.GANTRY_PINION` (`blockEntity("gantry_pinion", ...)`): the block entity
+/// type the carriage block names. It is *not* the block key, so naming the block key here would
+/// leave every gantry carriage without a block entity — and therefore unable to queue an
+/// assembly at all.
+const String gantryPinionKey = 'create:gantry_pinion';
+
 /// `GantryCarriageBlock.getStateForPlacement`: `DirectionalAxisKineticBlock.getStateForPlacement`
 /// builds the state from `getFacingForPlacement`, which the carriage overrides to
 /// `context.getClickedFace()`; the carriage then cycles `axis_along_first` from the shaft behind

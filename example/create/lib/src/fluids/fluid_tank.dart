@@ -115,6 +115,37 @@ class FluidTankBlockEntity extends CreateBlockEntity
     sendData();
   }
 
+  /// The writes of this block's own state, in the order they were issued.
+  ///
+  /// A member's state is written several times inside one form: the split first gives it a lone
+  /// tank's `bottom`/`top` (`removeController`), then the merge gives it the boundary of its
+  /// place in the multiblock (`notifyMultiUpdated`, `setWindows`). Java writes synchronously, so
+  /// the last write is the one that stays; here a block write is an asynchronous host call
+  /// (`setFluidBlock`, one `spawn_blocking` per call) and two writes issued in the same form can
+  /// reach the server in either order - a member that keeps the lone tank state is what makes an
+  /// 8 tall tank render as several short ones. Chaining the writes keeps Java's order.
+  Future<void> _pendingStateWrites = Future<void>.value();
+
+  /// Writes the state of one member of the multiblock, queued after the previous one.
+  void _writeState(Pos p, BState state) {
+    final w = world;
+    if (w == null) return;
+    final id = BlockRegistry.resolveState(state.key, state.props);
+    if (id == null) return;
+    _pendingStateWrites = _pendingStateWrites
+        .then(
+          (_) => w.setBlockState(
+            pos: BlockPos(x: p.$1, y: p.$2, z: p.$3),
+            state: id,
+            updateFlags: {
+              BlockFlagsFlag.notifyListeners,
+              BlockFlagsFlag.skipShapeUpdate,
+            },
+          ),
+        )
+        .catchError((Object e, StackTrace s) {});
+  }
+
   @override
   void removeController(bool keepContents) {
     updateConnectivity = true;
@@ -128,14 +159,12 @@ class FluidTankBlockEntity extends CreateBlockEntity
     markDirty();
     final state = blockStateOf(this);
     if (PipeBlocks.isTank(state)) {
-      setFluidBlock(
-        world,
+      _writeState(
         partPos,
         state
             .setFlag('bottom', true)
             .setFlag('top', true)
             .setValue('shape', window ? 'window' : 'plain'),
-        flags: {BlockFlagsFlag.notifyListeners, BlockFlagsFlag.skipShapeUpdate},
       );
     }
   }
@@ -146,17 +175,8 @@ class FluidTankBlockEntity extends CreateBlockEntity
   @override
   void notifyMultiUpdated() {
     _capability = null;
-    final state = blockStateOf(this);
-    if (PipeBlocks.isTank(state)) {
-      setFluidBlock(
-        world,
-        partPos,
-        state
-            .setFlag('bottom', controller.y == this.pos.y)
-            .setFlag('top', controller.y + height - 1 == this.pos.y),
-        flags: {BlockFlagsFlag.notifyListeners, BlockFlagsFlag.skipShapeUpdate},
-      );
-    }
+    final state = _memberState(0, 0, 0);
+    if (state != null) _writeState(partPos, state);
     if (isController) setWindows(window);
     onFluidStackChanged(tank.fluid);
     updateBoilerState();
@@ -349,35 +369,49 @@ class FluidTankBlockEntity extends CreateBlockEntity
       for (var xOffset = 0; xOffset < width; xOffset++) {
         for (var zOffset = 0; zOffset < width; zOffset++) {
           final p = partPos.offset(xOffset, yOffset, zOffset);
-          final state = blockStateAt(worldId, p);
-          if (!PipeBlocks.isTank(state)) continue;
-          var shape = 'plain';
-          if (window) {
-            if (width == 1) {
-              shape = 'window';
-            } else if (width == 2) {
-              shape = xOffset == 0
-                  ? (zOffset == 0 ? 'window_nw' : 'window_sw')
-                  : (zOffset == 0 ? 'window_ne' : 'window_se');
-            } else if (width == 3 &&
-                ((xOffset.abs() - zOffset.abs()).abs() == 1)) {
-              shape = 'window';
-            }
-          }
-          setFluidBlock(
-            world,
-            p,
-            state.setValue('shape', shape),
-            flags: {
-              BlockFlagsFlag.notifyListeners,
-              BlockFlagsFlag.skipShapeUpdate,
-            },
-          );
+          final state = _memberState(xOffset, yOffset, zOffset);
+          if (state == null) continue;
+          _writeState(p, state);
         }
       }
     }
     // The windows decide whether the tank emits light at all.
     _applyLight();
+  }
+
+  /// The whole state of the member at the offset (`0,0,0` is this block): the `bottom`/`top`
+  /// boundaries of Java's `notifyMultiUpdated` *and* the `shape` of Java's `setWindows`.
+  ///
+  /// Both are written by two different passes of the same form, and here a block write is an
+  /// asynchronous host call (`setFluidBlock`), so each pass used to write a state it had read
+  /// from the world before the other pass landed: the boundary write carried the old `shape`,
+  /// the window write carried the old `bottom`/`top`, and whichever reached the server last won.
+  /// That is a tank whose members keep a lone tank's or a shorter tank's boundaries - an 8 tall
+  /// tank rendering as two short ones, and only some of them. Java cannot lose that race because
+  /// its writes are synchronous, so the port writes the *complete* member state from both passes
+  /// instead: the two writes are then identical and the result does not depend on their order.
+  BState? _memberState(int xOffset, int yOffset, int zOffset) {
+    final p = partPos.offset(xOffset, yOffset, zOffset);
+    final state = blockStateAt(worldId, p);
+    if (!PipeBlocks.isTank(state)) return null;
+
+    var shape = 'plain';
+    if (window) {
+      if (width == 1) {
+        shape = 'window';
+      } else if (width == 2) {
+        shape = xOffset == 0
+            ? (zOffset == 0 ? 'window_nw' : 'window_sw')
+            : (zOffset == 0 ? 'window_ne' : 'window_se');
+      } else if (width == 3 && ((xOffset.abs() - zOffset.abs()).abs() == 1)) {
+        shape = 'window';
+      }
+    }
+
+    return state
+        .setFlag('bottom', controller.y == p.y)
+        .setFlag('top', controller.y + height - 1 == p.y)
+        .setValue('shape', shape);
   }
 
   /// `updateBoilerState()`.

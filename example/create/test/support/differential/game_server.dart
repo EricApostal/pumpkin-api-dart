@@ -84,8 +84,13 @@ final class ConsoleSession {
     r'Changed the block at|Successfully filled|No blocks were filled',
   );
 
-  /// What both servers say while the target position's chunk is not loaded yet.
-  static final RegExp positionNotLoaded = RegExp(r'not loaded');
+  /// What both servers say while the target position's chunk is not ready for a write yet: the
+  /// plugin says "That position is not loaded", vanilla says "Could not set the block" for a chunk
+  /// that is still being force-loaded or generated. Both are worth retrying; anything else (an
+  /// unknown block, a missing permission) is a failure with the server's own words.
+  static final RegExp positionNotLoaded = RegExp(
+    r'not loaded|Could not set the block',
+  );
 
   /// What both servers say when a force-load lands.
   static final RegExp forceLoaded = RegExp(r'force loaded');
@@ -449,6 +454,9 @@ entity-broadcast-range-percentage=100
 max-players=20
 sync-chunk-writes=false
 difficulty=easy
+# A server that pauses when nobody is online serves no logins: the differential boots a server and
+# then joins it, so the world must keep running while the client connects.
+pause-when-empty-seconds=0
 motd=mctrace differential
 ''';
 

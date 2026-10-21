@@ -116,11 +116,14 @@ final class ScenarioPrecondition {
   final bool Function(NormalisedTrace trace) test;
 
   /// The precondition a contraption scenario is expected to satisfy: an entity was spawned inside
-  /// the rig, carrying its payload in the same bundle.
+  /// the rig carrying a payload in the same bundle.
+  ///
+  /// The channel is deliberately *not* pinned here: a channel the two servers disagree about is a
+  /// difference to report, not a reason to refuse to compare.
   static ScenarioPrecondition contraptionSpawned() => ScenarioPrecondition(
     'an entity was spawned inside the rig with its payload in the same bundle',
     (trace) => trace.events.any(
-      (event) => event.kind == 'add_entity' && event.value.contains('bundle=['),
+      (event) => event.kind == 'add_entity' && event.payloads.isNotEmpty,
     ),
   );
 }

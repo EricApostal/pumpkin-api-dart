@@ -65,7 +65,17 @@ final class CreatePlugin extends Plugin {
     final log = Logger('create');
     Perf.log = log.info;
     try {
-      Perf.enabled = context.files.exists('perf');
+      // The file's content, when it is a number, is the tick interval of the per-tick
+      // attribution report; an empty file keeps the default.
+      final marker = context.files.readAsString('perf');
+      Perf.enabled = true;
+      Perf.tickReportEvery = int.tryParse(marker.trim()) ?? Perf.tickReportEvery;
+      // The per-tick report carries the same numbers as a delta, so the per-200-samples
+      // aggregate lines would only flood the log.
+      Perf.reportEvery = 0;
+      // Attributes every host→guest event callback to the event type that caused it,
+      // whichever API registered the listener.
+      eventTimingSink = Perf.eventTime;
     } on FileException {
       Perf.enabled = false;
     }
@@ -134,13 +144,25 @@ final class CreatePlugin extends Plugin {
       // modules: the host calls into the plugin once per world and tick instead
       // of once per listener, and the world id and player list are fetched at
       // most once for the whole tick (`WorldTick` resolves them lazily).
-      core.worldTickHandlers.add(core.blockEntities.tickWorld);
-      core.worldTickHandlers.add(core.savedData.tickWorld);
+      core.worldTickHandlers.add((
+        label: 'core.blockEntities',
+        run: core.blockEntities.tickWorld,
+      ));
+      core.worldTickHandlers.add((
+        label: 'core.savedData',
+        run: core.savedData.tickWorld,
+      ));
       context.listen(Events.worldTick, (server, event) async {
+        // Closes the per-tick attribution window of the previous tick and logs the
+        // breakdown every `Perf.tickReportEvery` ticks (one `[perf-tick]` line).
+        Perf.onTick(event.tick);
         final tick = WorldTick(server, event, core.worlds);
         for (final handler in core.worldTickHandlers) {
           try {
-            final result = handler(tick);
+            final result = Perf.handler(
+              handler.label,
+              () => handler.run(tick),
+            );
             if (result is Future) await result;
           } catch (e, s) {
             log.error('World tick handler failed', error: e, stackTrace: s);
@@ -220,11 +242,22 @@ final class CreatePlugin extends Plugin {
       log.info('[perf] onLoad total: ${total.elapsedMilliseconds}ms');
       Perf.report('onLoad');
       Perf.reset();
+      // What the instrumentation itself costs on this platform, so a `tick.*` row
+      // can be read against it (a floor of a few us is the measurer, not the mod).
+      Perf.selfTest();
+      // The `[perf-tick]` labels of the world tick, in the order they run: what an
+      // idle tick costs is the sum of these plus the host→guest callbacks.
+      log.info(
+        '[perf] per-tick report every ${Perf.tickReportEvery} ticks; world tick '
+        'handlers: ${core.worldTickHandlers.map((h) => h.label).join(', ')}',
+      );
     }
   }
 
   @override
   Future<void> onUnload(Context context) async {
+    eventTimingSink = null;
+    Perf.enabled = false;
     final core = _core;
     for (final module in _active.reversed) {
       try {

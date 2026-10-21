@@ -5,6 +5,8 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
+import 'perf.dart';
+
 /// One world tick, shared by every `worldTick` handler of the plugin.
 ///
 /// The plugin registers a single host listener per world tick (see
@@ -58,7 +60,12 @@ final class Worlds {
   ///
   /// [world] itself is not kept: the host owns it again once the event returns.
   String touch(World world) {
+    // The one host call an idle world tick makes (`WorldTick.worldId`): the id
+    // is a host import and every handler that checks its world asks for it, so
+    // it is worth its own label in the per-tick attribution.
+    final watch = Perf.enabled ? (Stopwatch()..start()) : null;
     final id = world.getId();
+    if (watch != null) Perf.record('host.worldId', watch.elapsedMicroseconds);
     final kept = _worlds[id];
     if (kept == null || !kept.isValid) {
       _worlds.remove(id)?.dispose();
@@ -71,6 +78,9 @@ final class Worlds {
   World? _resolve(String id) {
     final host = _host;
     if (host == null) return null;
+    // A kept handle that went invalid costs a host round trip here (the list of
+    // worlds plus their ids): visible per tick when it happens every tick.
+    final watch = Perf.enabled ? (Stopwatch()..start()) : null;
     final server = host.getServer();
     try {
       for (final world in server.getAllWorlds()) {
@@ -81,6 +91,9 @@ final class Worlds {
       }
     } finally {
       server.dispose();
+      if (watch != null) {
+        Perf.record('host.resolveWorld', watch.elapsedMicroseconds);
+      }
     }
     return null;
   }

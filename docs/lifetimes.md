@@ -67,6 +67,22 @@ context.runLater(100, (server) {
 });
 ```
 
+`keep()` does not merely fail to help there: when the plugin hands the event back
+the host takes ownership of its handles, so the wrapper you stored is invalidated
+(`StateError: ... ownership was transferred to the host`) on top of the entry being
+gone. A list of online players is the shape this trap usually takes — store the
+uuid of the event's player and look the player up again for each send:
+
+```dart
+final roster = <String, Player>{};
+
+context.listen(Events.playerJoin, (server, event) {
+  final id = event.player.getId();                       // read it here; the handle dies after
+  final player = server.getPlayerByUuid(id: id);         // a handle this plugin owns
+  if (player != null) roster[id.asString] = player.keep();
+});
+```
+
 Borrowed resources (`server`, `sender`, `context`) can't be kept, because the
 server only lends them for the duration of the call. Look the object up again
 when you need it, or use the scheduler APIs that hand you a fresh `server`.

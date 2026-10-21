@@ -105,7 +105,16 @@ final class HostRailwayNetwork implements RailwayNetwork {
 
   @override
   void sendTo(Object player, String channel, Uint8List data) {
-    if (player is! Player) return;
+    if (player is! Player) {
+      // The packet was addressed to something that is not a player handle, so it goes nowhere:
+      // that is a bug in the caller, not a quiet no-op.
+      if (Tr.loaded) {
+        Tr.i.log.warn(
+          'Dropped the railway packet on $channel: ${player.runtimeType} is not a Player',
+        );
+      }
+      return;
+    }
     final fields = _decode(channel, data);
     if (fields == null) return;
     bus.sendClientbound(channel, player, fields);

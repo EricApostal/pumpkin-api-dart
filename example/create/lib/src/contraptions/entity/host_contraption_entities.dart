@@ -1237,7 +1237,22 @@ final class ContraptionHost {
   void spawn(String worldId, AbstractContraptionEntity entity) {
     final world = worldOf(worldId);
     if (world == null) return;
-    unawaited(_spawn(worldId, world, entity));
+    // `_spawn` crosses into the host, so it can fail. Fire-and-forget is required — the caller is
+    // a synchronous `addFreshEntity` — but swallowing the failure leaves a contraption that
+    // exists in the plugin's own bookkeeping and nowhere in the world, with no diagnostic at all.
+    // That is indistinguishable from "the client is not rendering it", which cost real time.
+    unawaited(
+      _spawn(worldId, world, entity).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        log.warn(
+          'Could not spawn a contraption at ${entity.host.position} in $worldId: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }),
+    );
   }
 
   Future<void> _spawn(

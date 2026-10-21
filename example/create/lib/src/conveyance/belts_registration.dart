@@ -105,8 +105,14 @@ void loadBelts(CreateContext ctx) {
   });
 
   // `ServerChainConveyorHandler.tick`: the riding TTLs are global, tick them once per server tick.
+  //
+  // The world is selected by its *dimension*: `WorldTick.worldId` is `World.getId()`, which the
+  // host fills with the world's folder name (`world`, `world_nether` — `get_world_name` of
+  // `crates/pumpkin-core/src/world/mod.rs`), never `minecraft:overworld`. A comparison against
+  // the id was therefore always true, the handler never ran, and the client was never sent
+  // `create:clientbound_chain_conveyor` (measured: 0 on the wire, against 350 from the reference).
   ctx.onWorldTick((t) {
-    if (t.worldId != 'minecraft:overworld') return;
+    if (t.world.getDimension() != 'minecraft:overworld') return;
     ServerChainConveyorHandler.tick(rt);
   });
 }

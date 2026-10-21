@@ -63,7 +63,10 @@ class ControlledContraptionEntity extends AbstractContraptionEntity {
         c - posContaining(host.position),
       );
     final axis = rotationAxis;
-    if (axis != null) compound.putString('Axis', axis.serializedName);
+    // Create writes `rotationAxis.name()`: the enum constant, i.e. `X`/`Y`/`Z`.
+    // Its reader is case-sensitive (`e.name().equals(name)`), so `x` falls back to `Axis.X`.
+    if (axis != null)
+      compound.putString('Axis', axis.serializedName.toUpperCase());
     compound.putFloat('Angle', angle);
   }
 

@@ -1346,20 +1346,22 @@ class Contraption {
   }
 
   static NbtMap _writeState(BState state) {
-    final nbt = NbtMap()..putString('Name', state.key);
+    // `NbtUtils.writeBlockState`: the palette entry key is `id` (not `Name`) and
+    // the property map is `properties` (lowercase) on the 26.3 wire format.
+    final nbt = NbtMap()..putString('id', state.key);
     if (state.props.isNotEmpty) {
       final props = NbtMap();
       for (final e in state.props.entries) {
         props.putString(e.key, e.value);
       }
-      nbt.putCompound('Properties', props);
+      nbt.putCompound('properties', props);
     }
     return nbt;
   }
 
   static BState _readState(NbtMap nbt) {
-    final key = nbt.getString('Name', 'minecraft:air');
-    final props = nbt.getCompoundOrNull('Properties');
+    final key = nbt.getString('id', 'minecraft:air');
+    final props = nbt.getCompoundOrNull('properties');
     return BState(
       key,
       props == null

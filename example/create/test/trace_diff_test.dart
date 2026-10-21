@@ -59,7 +59,7 @@ String framedPayloadHex({
       'Type': NbtValue.string('create:bearing'),
       'Blocks': NbtValue.compound({
         'Palette': NbtValue.list([
-          NbtValue.compound({'Name': NbtValue.string('minecraft:stone')}),
+          NbtValue.compound({'id': NbtValue.string('minecraft:stone')}),
         ]),
         'BlockList': NbtValue.list([
           for (var i = 0; i < blockList.length; i++)

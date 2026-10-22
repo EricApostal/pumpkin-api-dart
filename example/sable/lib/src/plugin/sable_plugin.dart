@@ -32,14 +32,22 @@ import '../../sable_commands.dart' show sableCommandPermission, registerSableCom
 import '../config/sable_synced_config.dart';
 import '../sublevel/api/command/sable_command_state.dart';
 import '../sublevel/api/event/sable_sub_level_container_ready_event.dart';
+import '../sublevel/api/physics_pipeline_provider.dart';
+import '../sublevel/api/sub_level_observer.dart';
 import '../sublevel/config/sable_config.dart';
 import '../sublevel/host/sub_level_host.dart' show SableLevel;
 import '../sublevel/model/server_sub_level_container.dart';
+import '../sublevel/model/sub_level.dart';
 import '../sublevel/model/sub_level_container.dart';
+import '../sublevel/physics/impl/none/static_physics_pipeline.dart';
 import '../sublevel/storage/region/sub_level_storage_file.dart';
 import '../sublevel/storage/serialization/sub_level_storage.dart';
+import '../sublevel/storage/sub_level_removal_reason.dart';
+import '../sublevel/system/physics_system.dart';
 import '../sublevel/system/sable_server_config.dart';
+import '../sublevel/system/tracking_system.dart';
 import 'pumpkin_level.dart';
+import 'sable_sub_level_api.dart';
 
 /// Sable as an addon of Create's declaration model.
 final class SableAddon extends CreateAddon {
@@ -67,6 +75,13 @@ final class _LoadedLevel {
   final ServerSubLevelContainer container;
   final SubLevelStorage storage;
 
+  /// The physics system of the level (attached before the container is
+  /// registered, so the first allocated sub-level gets its mass tracker).
+  SubLevelPhysicsSystem? physics;
+
+  /// The tracking system of the level.
+  SubLevelTrackingSystem? tracking;
+
   /// Set when the container tick threw: the container is left alone instead of
   /// failing on every tick of the server.
   bool tickFailed = false;
@@ -78,7 +93,13 @@ final class SablePlugin extends Plugin {
   /// defaults, since the port has no loader config file yet.
   final SableConfig config = SableConfig();
 
+  /// The server-only settings (`SableServerConfig`), read by the physics system.
+  final SableServerConfig serverConfig = SableServerConfig();
+
   final Map<String, _LoadedLevel> _levels = {};
+
+  /// The operations other plugin components call (see `sable_sub_level_api.dart`).
+  late final SableSubLevelApi _api = SableSubLevelApi(_containerFor, log: logger);
 
   @override
   PluginInfo get info => const PluginInfo(
@@ -103,6 +124,20 @@ final class SablePlugin extends Plugin {
     );
     context.declareNeoForge(createAddonNeoForgeDeclaration(const SableAddon(), registry: registry));
     logger.info('Sable declared ${sableChannels.length} payload channels.');
+
+    // Java's loader finds the physics providers on the classpath (`ServiceLoader`);
+    // a plugin component has no classpath, so the component that links a solver
+    // registers it (priority 1000) and this one registers the no-op fallback
+    // (`StaticPhysicsPipelineProvider`, priority 900) that the model documents.
+    // Without a registered provider `PhysicsPipelineProviders.resolve()` throws
+    // and a level would have no physics system at all -- which is what a
+    // sub-level assembled without a mass tracker came from.
+    PhysicsPipelineProviders.register(const StaticPhysicsPipelineProvider());
+
+    // Other components cannot see this one's containers (a static map is per
+    // wasm instance), so they ask over IPC instead. See the class comment in
+    // `sable_sub_level_api.dart`.
+    _api.install();
 
     // The host loads plugins on the first tick, after every world is loaded and
     // `worldLoad` has already fired, so the subscription below only sees worlds
@@ -161,6 +196,17 @@ final class SablePlugin extends Plugin {
     return loaded.level;
   }
 
+  /// The container named by [world]: a dimension key (`minecraft:overworld`) or
+  /// a world id (`world`), as the IPC callers may hold either.
+  SubLevelContainer? _containerFor(String world) {
+    final direct = _levels[world];
+    if (direct != null) return direct.container;
+    for (final loaded in _levels.values) {
+      if (loaded.level.world.getId() == world) return loaded.container;
+    }
+    return null;
+  }
+
   /// Opens a container for every world the server already has.
   void _openLoadedWorlds(Context context) {
     final server = context.getServer();
@@ -205,15 +251,33 @@ final class SablePlugin extends Plugin {
       ..pruneEmptyFiles = SableServerConfig().subLevelStoragePruning;
 
     container.initializeWithStorage(storage);
+    container.addObserver(_Announcer(_api));
+
+    // The physics system is what builds a sub-level's mass tracker
+    // (`SubLevelPhysicsSystem.onSubLevelAdded` -> `buildMassTracker` +
+    // `pipeline.addSubLevel`), and the tracking system is what syncs a
+    // sub-level to the players near it. Java attaches both when the level's
+    // container is created; they are attached here before the container is
+    // registered, so a sub-level allocated by the command that just ran finds a
+    // tracker instead of `null`.
+    final loaded = _LoadedLevel(level, chunks, container, storage);
+    loaded.physics = SubLevelPhysicsSystem(
+      container: container,
+      pipeline: PhysicsPipelineProviders.createPipeline(level),
+      config: config,
+      serverConfig: serverConfig,
+    )..initialize();
+    loaded.tracking = SubLevelTrackingSystem(container: container, config: config);
+
     SubLevelContainer.register(container);
-    _levels[dimension] = _LoadedLevel(level, chunks, container, storage);
+    _levels[dimension] = loaded;
 
     fireSubLevelContainerReady(level, container);
     logger.info(
       'Sable: sub-level container of $dimension ready '
       '(${1 << container.getLogSideLength()}x${1 << container.getLogSideLength()} plots of '
       '${1 << container.getLogPlotSize()} chunks, origin ${container.getOrigin()}, '
-      'storage $folder).',
+      'storage $folder, pipeline ${loaded.physics!.pipeline.runtimeType}).',
     );
   }
 
@@ -223,10 +287,28 @@ final class SablePlugin extends Plugin {
     if (loaded == null) return;
 
     SubLevelContainer.unregister(loaded.level);
+    loaded.tracking?.close();
     loaded.container.close();
     loaded.storage.close();
     loaded.chunks.clear();
     loaded.level.world.dispose();
     logger.info('Sable: sub-level container of $dimension closed.');
   }
+}
+
+/// Tells the IPC subscribers when a sub-level appears or disappears.
+///
+/// A component that keeps a mirror (it needs synchronous answers from a
+/// synchronous callback) refreshes it from these pushes instead of polling.
+final class _Announcer with SubLevelObserver {
+  _Announcer(this._api);
+
+  final SableSubLevelApi _api;
+
+  @override
+  void onSubLevelAdded(SubLevel subLevel) => _api.announce(subLevel.container);
+
+  @override
+  void onSubLevelRemoved(SubLevel subLevel, SubLevelRemovalReason reason) =>
+      _api.announce(subLevel.container);
 }

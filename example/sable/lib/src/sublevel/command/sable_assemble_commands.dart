@@ -24,6 +24,7 @@ import 'package:pumpkin_api/pumpkin_api.dart'
 import '../api/command/sable_command_state.dart';
 import '../api/sub_level_assembly_helper.dart';
 import '../math/bounding_box.dart';
+import '../model/server_sub_level.dart';
 import '../model/sub_level_container.dart';
 import 'command_support.dart';
 
@@ -95,7 +96,7 @@ void registerAssembleCommands(CommandBuilder sable, SableCommandState state) {
         'sub_level',
         build: (sub) => sub.arg(
           'sub_level',
-          ArgumentTypes.word,
+          ArgumentTypes.greedyString,
           runs: (ctx) => _shatterSubLevel(ctx, state),
         ),
       );
@@ -189,11 +190,7 @@ int _assembleArea(CommandContext ctx, SableCommandState state) {
   );
 
   final subLevel = SubLevelAssemblyHelper.assembleBlocks(container.getLevel(), from, blocks, bounds);
-  if (subLevel.massTracker?.isInvalid() ?? true) {
-    throw CommandException('No blocks to assemble.');
-  }
-
-  ctx.reply('Assembled ${blocks.length} blocks.');
+  _reportAssembly(ctx, subLevel, blocks.length);
   return 1;
 }
 
@@ -210,13 +207,13 @@ int _assembleConnected(CommandContext ctx, SableCommandState state, (int, int, i
     throw CommandException(_gatherFailure(result.assemblyState, capacity));
   }
 
-  SubLevelAssemblyHelper.assembleBlocks(
+  final subLevel = SubLevelAssemblyHelper.assembleBlocks(
     container.getLevel(),
     origin,
     result.blocks!,
     result.boundingBox!,
   );
-  ctx.reply('Assembled ${result.blocks!.length} blocks.');
+  _reportAssembly(ctx, subLevel, result.blocks!.length);
   return 1;
 }
 
@@ -279,11 +276,7 @@ int _assembleCube(CommandContext ctx, SableCommandState state, (int, int, int) o
     blocks,
     bounds,
   );
-  if (subLevel.massTracker?.isInvalid() ?? true) {
-    throw CommandException('No blocks to assemble.');
-  }
-
-  ctx.reply('Assembled ${blocks.length} blocks.');
+  _reportAssembly(ctx, subLevel, blocks.length);
   return 1;
 }
 
@@ -382,6 +375,32 @@ String _gatherFailure(GatherState state, int capacity) => switch (state) {
   GatherState.noBlocks => 'No blocks to assemble.',
   GatherState.success => '',
 };
+
+/// Reports a finished assembly and fails only when the assembly really holds
+/// nothing.
+///
+/// `SableAssembleCommands` ends every assemble branch with the same check: a
+/// sub-level whose mass tracker is invalid has no solid blocks, so nothing was
+/// assembled. A sub-level with **no** tracker is a different thing: the level
+/// has no physics system, so nothing built one (`SubLevelPhysicsSystem
+/// .onSubLevelAdded` is what calls `buildMassTracker`). The Java command has no
+/// such case because a Java level always has a physics system; the port must
+/// not report "No blocks to assemble" for it *after* the blocks were moved,
+/// which reads as a failed assembly and hides a working one.
+void _reportAssembly(CommandContext ctx, ServerSubLevel subLevel, int blockCount) {
+  final tracker = subLevel.massTracker;
+  if (tracker != null && tracker.isInvalid()) {
+    throw CommandException('No blocks to assemble.');
+  }
+
+  ctx.reply('Assembled $blockCount blocks.');
+  if (tracker == null) {
+    ctx.reply(
+      'HOST GAP: ${subLevel.level.dimensionId} has no physics system attached, so the '
+      'sub-level has no mass tracker and no physics body.',
+    );
+  }
+}
 
 /// Every block position between the two corners, inclusive.
 List<(int, int, int)> _blocksBetween((int, int, int) from, (int, int, int) to) => [

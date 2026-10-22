@@ -33,9 +33,13 @@ import 'simulated_host.dart';
 
 /// A world as sable's sub-level model sees it.
 final class PumpkinSableLevel implements SableLevel {
-  PumpkinSableLevel(this.world);
+  PumpkinSableLevel(this._world);
 
-  final World world;
+  /// The world id and a handle that survives its callback (see `WorldRef`).
+  final WorldRef _world;
+
+  /// A handle that is valid right now.
+  World get world => _world.world;
 
   @override
   String get dimensionId => world.dimension;
@@ -64,39 +68,54 @@ final class PumpkinSableLevel implements SableLevel {
 
 /// The world as the assembly sees it.
 final class PumpkinSimAssemblyWorld implements SimAssemblyWorld {
-  PumpkinSimAssemblyWorld(this.world, this.blockEntities)
-    : _level = HostContraptionLevel(world, blockEntities, DefaultContraptionSettings());
+  PumpkinSimAssemblyWorld(this._world, this.blockEntities);
 
-  final World world;
+  /// The world id and a handle that survives its callback (see `WorldRef`).
+  final WorldRef _world;
   final BlockEntityStore blockEntities;
-  final HostContraptionLevel _level;
+
+  /// The level of the world the ref resolves, rebuilt when that handle changed
+  /// (a world that unloaded and loaded again hands out a new one).
+  HostContraptionLevel? _level;
+  World? _levelWorld;
+
+  /// A handle that is valid right now.
+  World get world => _world.world;
+
+  HostContraptionLevel get _hostLevel {
+    final world = _world.world;
+    final cached = _level;
+    if (cached != null && identical(_levelWorld, world)) return cached;
+    _levelWorld = world;
+    return _level = HostContraptionLevel(world, blockEntities, DefaultContraptionSettings());
+  }
 
   @override
-  BState stateAt(Pos pos) => _level.stateAt(pos);
+  BState stateAt(Pos pos) => _hostLevel.stateAt(pos);
 
   @override
-  bool isLoaded(Pos pos) => _level.isLoaded(pos);
+  bool isLoaded(Pos pos) => _hostLevel.isLoaded(pos);
 
   @override
-  bool isOutsideBuildHeight(Pos pos) => _level.isOutsideBuildHeight(pos);
+  bool isOutsideBuildHeight(Pos pos) => _hostLevel.isOutsideBuildHeight(pos);
 
   @override
   bool movementAllowed(BState state, Pos pos) =>
-      BlockMovementChecks.isMovementAllowed(state, _level, pos);
+      BlockMovementChecks.isMovementAllowed(state, _hostLevel, pos);
 
   @override
-  bool isBrittle(BState state) => BlockMovementChecks.isBrittle(state, _level);
+  bool isBrittle(BState state) => BlockMovementChecks.isBrittle(state, _hostLevel);
 
   @override
   bool isBlockAttachedTowards(BState state, Pos pos, Direction direction) =>
-      BlockMovementChecks.isBlockAttachedTowards(state, _level, pos, direction);
+      BlockMovementChecks.isBlockAttachedTowards(state, _hostLevel, pos, direction);
 
   @override
   bool isNotSupportive(BState state, Direction direction) =>
-      BlockMovementChecks.isNotSupportive(state, direction, _level);
+      BlockMovementChecks.isNotSupportive(state, direction, _hostLevel);
 
   @override
-  PushReaction pushReaction(BState state) => _level.pushReaction(state);
+  PushReaction pushReaction(BState state) => _hostLevel.pushReaction(state);
 
   @override
   bool canStickTo(BState a, BState b) => SimServices.instance.canStickTo(a, b);
@@ -106,7 +125,7 @@ final class PumpkinSimAssemblyWorld implements SimAssemblyWorld {
 
   @override
   List<SimGlueBox> superGluesIn(Aabb area) => [
-    for (final glue in _level.gluesIn(area)) SimGlueBox(glue.id, glue.box),
+    for (final glue in _hostLevel.gluesIn(area)) SimGlueBox(glue.id, glue.box),
   ];
 
   /// HOST GAP: honey glue volumes are plugin entities; the plugin's tracker is
@@ -119,7 +138,7 @@ final class PumpkinSimAssemblyWorld implements SimAssemblyWorld {
 
   @override
   void superGlueMoved(SimGlueBox glue, Pos offset) {
-    _level.addGlue(
+    _hostLevel.addGlue(
       glue.box.move(offset.$1.toDouble(), offset.$2.toDouble(), offset.$3.toDouble()),
     );
   }
@@ -139,9 +158,13 @@ final class PumpkinSimAssemblyWorld implements SimAssemblyWorld {
 
 /// The entities of a world, as the disassembly sees them.
 final class PumpkinSimAssemblyEntities implements SimAssemblyEntities {
-  PumpkinSimAssemblyEntities(this.world);
+  PumpkinSimAssemblyEntities(this._world);
 
-  final World world;
+  /// The world id and a handle that survives its callback (see `WorldRef`).
+  final WorldRef _world;
+
+  /// A handle that is valid right now.
+  World get world => _world.world;
 
   /// HOST GAP: the plugin API has no "entities in a box" query, only
   /// `World.getEntities()`, so this filters that list. It is called once per
@@ -245,21 +268,27 @@ final class PumpkinSimulatedHost implements SimulatedHost {
   SableLevel? levelOf(String worldId) {
     final world = worlds.byId(worldId);
     if (world == null) return null;
-    return _levels.putIfAbsent(worldId, () => PumpkinSableLevel(world));
+    return _levels.putIfAbsent(worldId, () => PumpkinSableLevel(WorldRef(worlds, worldId, world)));
   }
 
   @override
   SimAssemblyWorld? assemblyWorldOf(String worldId) {
     final world = worlds.byId(worldId);
     if (world == null) return null;
-    return _assemblyWorlds.putIfAbsent(worldId, () => PumpkinSimAssemblyWorld(world, blockEntities));
+    return _assemblyWorlds.putIfAbsent(
+      worldId,
+      () => PumpkinSimAssemblyWorld(WorldRef(worlds, worldId, world), blockEntities),
+    );
   }
 
   @override
   SimAssemblyEntities entitiesOf(String worldId) {
     final world = worlds.byId(worldId);
     if (world == null) return const NoSimAssemblyEntities();
-    return _entities.putIfAbsent(worldId, () => PumpkinSimAssemblyEntities(world));
+    return _entities.putIfAbsent(
+      worldId,
+      () => PumpkinSimAssemblyEntities(WorldRef(worlds, worldId, world)),
+    );
   }
 
   @override

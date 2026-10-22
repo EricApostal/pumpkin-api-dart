@@ -499,21 +499,26 @@ final class SubLevelPhysicsSystem with SubLevelObserver implements PartialPhysic
     if (!changed) return;
 
     final MassData? tracker = subLevel.massTracker;
-    // Java applies block deltas to the self tracker, never the merged one
-    // (`SubLevelPhysicsSystem.java:527-530`).
-    MutableMassTracker? self;
-    if (tracker is MergedMassTracker) {
-      self = tracker.selfTracker;
-    } else {
-      final Object? candidate = tracker;
-      if (candidate is MutableMassTracker) self = candidate;
-    }
+    // Java applies block deltas to the self tracker and validates the **self**
+    // tracker, never the merged one (`SubLevelPhysicsSystem.java:524-535`: the
+    // local `massTracker` is `getSelfMassTracker()`).
+    //
+    // Checking the merged tracker here was a real bug: the merged properties are
+    // only recomputed at the end of this method (`updateMergedMassData`), so a
+    // freshly allocated sub-level — whose merged tracker is still the empty one,
+    // `mass == 0` — looked invalid on the **first** block of an assembly. The
+    // port then destroyed the plot it had just written to and removed the
+    // sub-level, which is why an assembly produced a NaN pose and vanished on
+    // the next tick.
+    final MassTracker? self = tracker is MergedMassTracker
+        ? tracker.selfTracker
+        : (tracker is MassTracker ? tracker : null);
     if (self != null) {
       if (mass != 0.0) self.addBlockMass(newState, (x, y, z), mass, inertia);
       if (oldMass != 0.0) self.addBlockMass(oldState, (x, y, z), -oldMass, oldInertia);
     }
 
-    if (!subLevel.isRemoved() && (tracker?.isInvalid() ?? false)) {
+    if (!subLevel.isRemoved() && (self?.isInvalid() ?? false)) {
       subLevel.getPlot().destroyAllBlocks();
       subLevel.markRemoved();
       return;

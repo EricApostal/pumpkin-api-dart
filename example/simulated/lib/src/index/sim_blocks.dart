@@ -8,14 +8,19 @@
 //
 // Java: dev.simulated_team.simulated.index.SimBlocks
 // ignore_for_file: implementation_imports
+import 'dart:async';
+
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter, stateIdOf;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/host_bridge.dart';
+import 'package:create/src/contraptions/bearing/bearing_placement.dart'
+    show bearingPlacementRules;
 import 'package:create/src/core/blocks.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../content/blocks/physics_assembler/physics_assembler_block_entity.dart';
+import '../content/blocks/portable_engine/portable_engine_block.dart';
 import '../content/blocks/spring/spring_block_entity.dart';
 import '../content/blocks/steering_wheel/steering_wheel_block_entity.dart';
 import '../content/blocks/swivel_bearing/swivel_bearing_block_entity.dart';
@@ -23,6 +28,7 @@ import '../content/blocks/symmetric_sail/symmetric_sail_lift_provider.dart';
 import '../content/blocks/throttle_lever/throttle_lever_block_entity.dart';
 import '../content/blocks/torsion_spring/torsion_spring_block_entity.dart';
 import '../service/sim_services.dart';
+import '../util/sim_placement_fixes.dart';
 import 'sim_java_order.dart';
 
 /// The state properties Simulated adds to the vanilla ones.
@@ -50,6 +56,9 @@ abstract final class SimBlockKeys {
 
   /// The sail colours, in dye order.
   static const List<String> sailColours = simDyeColors;
+
+  /// The portable-engine colours, in dye order.
+  static const List<String> engineColours = simDyeColors;
 
   static String sail(String colour) => 'simulated:${colour}_symmetric_sail';
 }
@@ -119,6 +128,9 @@ List<CreateBlock> simBlocks({required SimBlockLookup lookup}) {
     _swivelBearing(lookup),
     _swivelBearingPlate(lookup),
     _torsionSpring(lookup),
+    // `PORTABLE_ENGINES` (`SimBlocks.java:327-353`), in `DyeColor.values()` order.
+    for (final colour in SimBlockKeys.engineColours)
+      portableEngineBlock(colour, lookup: lookup),
     _steeringWheel(lookup),
     _throttleLever(lookup),
     for (final colour in SimBlockKeys.sailColours) _sail(colour),
@@ -131,6 +143,13 @@ CreateBlock _physicsAssembler(SimBlockLookup lookup) => CreateBlock(
   // `PhysicsAssemblerBlock extends FaceAttachedHorizontalDirectionalBlock` and
   // adds `FACING, FACE` only (`PhysicsAssemblerBlock.java:30,110-112`); it is
   // not waterlogged, so `waterlogged` was two states this block does not have.
+  //
+  // No placement rules: the host's sources can write `facing` and `axis`, but
+  // nothing gives `AttachFace`'s `floor` / `wall` / `ceiling`, and
+  // `looking-direction` on the four-valued `facing` is exactly the illegal value
+  // the host rejects at load ("property 'facing' has no value 'down'"). The state
+  // `getStateForPlacement` chooses is written by the `player-placed` hook
+  // instead, like Create's decoration blocks (`sim_placement.dart`).
   properties: [CreateProps.horizontalFacing, SimProps.face],
   defaultState: {'facing': 'north', 'face': 'wall'},
   hardness: 2,
@@ -142,9 +161,26 @@ CreateBlock _physicsAssembler(SimBlockLookup lookup) => CreateBlock(
   tags: ['minecraft:mineable/pickaxe', 'minecraft:mineable/axe'],
   blockEntityType: PhysicsAssemblerBlockEntity.type,
   behavior: BlockBehavior(
+    // `FaceAttachedHorizontalDirectionalBlock.getStateForPlacement`: the player's
+    // ordered look directions pick `face` and `facing`. Only the event that carries
+    // the player runs it (the host fires a plain `placed` first).
+    onPlaced: (server, event) async {
+      if (event.player == null) return;
+      await fixFaceAttachedPlacement(
+        server: server,
+        world: event.targetWorld,
+        pos: event.pos,
+        block: event.block,
+        stateIndex: event.stateIndex,
+        playerId: event.player,
+      );
+    },
     onUseWithoutItem: (server, event) {
       final be = lookup<PhysicsAssemblerBlockEntity>(event.targetWorld.getId(), event.pos.toPos());
-      be?.assembleOrDisassemble();
+      // The assembly runs in the Sable component, so it cannot finish inside this
+      // synchronous callback: it is started here and the result lands when the
+      // round trip completes (the client's `simulated:assemble` path awaits it).
+      unawaited(be?.assembleOrDisassemble());
       return BlockUseResult.success;
     },
   ),
@@ -162,7 +198,27 @@ CreateBlock _steeringWheel(SimBlockLookup lookup) => CreateBlock(
   selectionShape: SimShapes.steeringWheel,
   tags: ['minecraft:mineable/axe'],
   blockEntityType: SteeringWheelBlockEntity.type,
+  // `SteeringWheelBlock.getStateForPlacement`: `facing` is the opposite of the
+  // first horizontal look direction (`getDirection()`) and the wheel is
+  // waterlogged like Create's `WrenchableDirectionalBlock` family. `on_floor`
+  // reads the clicked face, which no host source gives, so the `player-placed`
+  // hook writes the whole state (`sim_placement.dart`).
+  placement: const [
+    PlacementRule.horizontalFacing('facing', opposite: true),
+    PlacementRule.inWater('waterlogged'),
+  ],
   behavior: BlockBehavior(
+    onPlaced: (server, event) async {
+      if (event.player == null) return;
+      await fixSteeringWheelPlacement(
+        server: server,
+        world: event.targetWorld,
+        pos: event.pos,
+        block: event.block,
+        stateIndex: event.stateIndex,
+        playerId: event.player,
+      );
+    },
     onComparatorOutput: (server, event) {
       final be = lookup<SteeringWheelBlockEntity>(event.targetWorld.getId(), event.pos.toPos());
       if (be == null) return null;
@@ -183,7 +239,21 @@ CreateBlock _throttleLever(SimBlockLookup lookup) => CreateBlock(
   selectionShape: SimShapes.throttleLever,
   tags: ['minecraft:mineable/axe'],
   blockEntityType: ThrottleLeverBlockEntity.type,
+  // `ThrottleLeverBlock extends FaceAttachedHorizontalDirectionalBlock` and does
+  // not override `getStateForPlacement`: `face` and `facing` come from the look
+  // exactly like the assembler's (`INVERTED` is the wrench's, not a placement).
   behavior: BlockBehavior(
+    onPlaced: (server, event) async {
+      if (event.player == null) return;
+      await fixFaceAttachedPlacement(
+        server: server,
+        world: event.targetWorld,
+        pos: event.pos,
+        block: event.block,
+        stateIndex: event.stateIndex,
+        playerId: event.player,
+      );
+    },
     onUseWithoutItem: (server, event) {
       final be = lookup<ThrottleLeverBlockEntity>(event.targetWorld.getId(), event.pos.toPos());
       be?.changeState(back: event.sneaking);
@@ -297,6 +367,13 @@ CreateBlock _torsionSpring(SimBlockLookup lookup) => CreateBlock(
   selectionShape: SimShapes.torsionSpring,
   tags: ['minecraft:mineable/pickaxe'],
   blockEntityType: TorsionSpringBlockEntity.type,
+  // `TorsionSpringBlock.getStateForPlacement` is
+  // `DirectionalKineticBlock.getStateForPlacement` (the neighbour shaft decides
+  // `facing`, the look does without one) plus `POWERED = level.hasNeighborSignal`,
+  // which the host cannot read on placement: the rule set the bearing family uses
+  // is the same Java method, and `POWERED` follows the redstone update that comes
+  // with the placement.
+  placement: bearingPlacementRules,
   behavior: BlockBehavior(
     onComparatorOutput: (server, event) {
       final be = lookup<TorsionSpringBlockEntity>(event.targetWorld.getId(), event.pos.toPos());
@@ -324,6 +401,11 @@ CreateBlock _swivelBearing(SimBlockLookup lookup) => CreateBlock(
   selectionShape: SimShapes.swivelBearing,
   tags: ['minecraft:mineable/pickaxe', 'simulated:non_movable', 'create:non_movable'],
   blockEntityType: SwivelBearingBlockEntity.type,
+  // `SwivelBearingBlock` does not override `getStateForPlacement`: `facing` comes
+  // from `DirectionalKineticBlock`, the same method the bearing family's rules
+  // evaluate (`bearing_placement.dart`). `ASSEMBLED` and `POWERED` are the block
+  // entity's, not the placement's.
+  placement: bearingPlacementRules,
   behavior: BlockBehavior(
     onUseWithoutItem: (server, event) {
       final be = lookup<SwivelBearingBlockEntity>(event.targetWorld.getId(), event.pos.toPos());

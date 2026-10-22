@@ -66,9 +66,15 @@ not per plugin:
   `create:fan_processing_type`) is a key the client only has because that mod
   creates it; it is sent only when a declaration names it, and then the host's
   registry for it is sent whole.
-* **Ids are positions.** If entries of a mod that named nothing come before
-  entries that did, the registry is left out entirely rather than renumbering the
-  later ones on the client (a warning names the registry).
+* **Ids are positions, so a host-numbered registry is all or nothing.** If the
+  entries of a mod that named nothing come before entries that did, the registry
+  is left out entirely rather than renumbering the later ones on the client (a
+  warning names the registry). The same holds when they come *after*: a snapshot
+  that stopped after the vouched head would leave every entry past it numbered by
+  the host and resolved by the client against its own order — a different item or
+  block, with no error anywhere. A registry the host numbers is therefore sent
+  whole or not at all (`registries::syncable`), and the warning the host logs when
+  it drops one names the mod that has to vouch for it.
 * **A second plugin shifts the ids, and that is fine.** The snapshot is the
   vanilla entries followed by *every* plugin's entries in load order, so the
   entries of a plugin that loaded later do not start at `vanilla count`: they
@@ -90,7 +96,12 @@ matches the client's release name by name. `example/create` passes
 `contentVerified: true` (its registry is verified) and names the registries it
 fills; an addon gets `CreateAddon.contentVerified`, which defaults to `false`, so
 a new addon announces its channels and nothing else until its author says the
-content is verified. `example/cc_tweaked` names `computercraft:recipe_function`.
+content is verified. The Create-family addons that register content —
+`example/{aeronautics,offroad,simulated}` — pass `true`: their names and orders
+are pinned against the Java mod's own tables, and leaving the registries unnamed
+is not the safe default it looks like, because the host numbers their entries
+anyway and a client that has the mod resolves those ids against its own order.
+`example/cc_tweaked` names `computercraft:recipe_function`.
 
 The host re-checks the one thing it can: an entry is sent only if a declaration
 vouches for its namespace in that registry, and a registry whose sent entries are

@@ -13,6 +13,7 @@
 // `aeronautics/common/src/main/java/dev/eriksonn/aeronautics/index/` unless the
 // file says otherwise.
 import 'package:aeronautics/src/index/aero_java_order.dart';
+import 'package:aeronautics/src/plugin/aeronautics_addon.dart';
 import 'package:test/test.dart';
 
 /// The number of states a block has: the product of its value counts.
@@ -28,6 +29,18 @@ int statesOf(String key) {
 
 void main() {
   group('the Java order tables', () {
+    test('the addon names the registries its content goes into', () {
+      // Not cosmetic. The host numbers what a plugin registers by position
+      // (`vanilla count + index`) and writes that id on the wire, so an addon that
+      // declares its channels only leaves the client on its *own* order: the
+      // registry is dropped from the sync, the host keeps handing out ids, and a
+      // client that has the mod resolves each one to a different entry — the
+      // "adding an item gives a different item" divergence. Naming `minecraft:item`
+      // and the rest is what makes the host send them, and the names are the tables
+      // this file pins.
+      expect(const AeronauticsAddon().contentVerified, isTrue);
+    });
+
     test('hold every entry, with no duplicate', () {
       expect(AeroJavaOrder.blocks.length, 43, reason: 'AeroBlocks.java:73-413 + the fluid block');
       expect(AeroJavaOrder.items.length, 46, reason: 'AeroBlocks.java + AeroItems.java:21,40,55');

@@ -10,6 +10,8 @@
 // Java: dev.simulated_team.simulated.content.blocks.swivel_bearing.SwivelBearingBlockEntity
 //       and link_block.SwivelBearingPlateBlockEntity
 // ignore_for_file: implementation_imports
+import 'dart:async';
+
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter, setBlockState;
 import 'package:create/src/common/host_bridge.dart';
@@ -85,13 +87,16 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
       logic.locking = state.flag('powered');
     }
 
-    if (assembleNextTick) {
+    if (assembleNextTick && !_assembling) {
+      assembleNextTick = false;
       if (!logic.assembled) {
-        assemble();
+        // A tick cannot await; the assembly runs in the Sable component, so the
+        // request is started here and the bearing updates when it lands.
+        _assembling = true;
+        unawaited(assemble().whenComplete(() => _assembling = false));
       } else {
         disassemble();
       }
-      assembleNextTick = false;
     }
 
     // Lock/unlock from the redstone signal.
@@ -121,8 +126,11 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
     super.tick();
   }
 
+  /// Whether an assembly request is in flight.
+  bool _assembling = false;
+
   /// `assemble()`.
-  void assemble() {
+  Future<void> assemble() async {
     final host = simulatedHost;
     final level = host.levelOf(worldId);
     final world = host.assemblyWorldOf(worldId);
@@ -133,7 +141,7 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
 
     SimAssemblyResult? result;
     try {
-      result = SimAssemblyHelper.assembleFromSingleBlock(
+      result = await SimAssemblyHelper.assembleFromSingleBlock(
         world,
         level,
         pos.toPos(),
@@ -154,7 +162,7 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
     final subLevel = result?.subLevel;
     if (subLevel == null) return;
 
-    subLevelId = subLevel.uniqueIdOrNull;
+    subLevelId = subLevel.id;
 
     final offset = result!.offset;
     final platePosition = (pos.x + offset.$1, pos.y + offset.$2, pos.z + offset.$3);

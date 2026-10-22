@@ -224,7 +224,11 @@ final class PhysicsAssembler {
   }
 
   /// `assembleOrDisassemble()`.
-  void assembleOrDisassemble() {
+  ///
+  /// Asynchronous because the assembly itself runs in the Sable component (see
+  /// `SimAssemblyHelper.assembleBlocks`): the structure search is local, the
+  /// block move is one IPC round trip.
+  Future<void> assembleOrDisassemble() async {
     final host = simulatedHost;
     final subLevel = host.containingSubLevel(worldId, pos);
 
@@ -253,10 +257,10 @@ final class PhysicsAssembler {
     }
 
     try {
-      final result = SimAssemblyHelper.assembleFromSingleBlock(world, level, pos, assembleTarget);
+      final result = await SimAssemblyHelper.assembleFromSingleBlock(world, level, pos, assembleTarget);
       logic.lastException = null;
 
-      final id = result?.subLevel.uniqueIdOrNull;
+      final id = result?.subLevel.id;
       if (id != null) {
         assembledSubLevelId = id;
         DisassemblyPrevention.setPrimary(id, pos);

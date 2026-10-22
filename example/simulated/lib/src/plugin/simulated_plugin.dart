@@ -9,23 +9,34 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:create/create.dart' show installHostedModuleState;
 import 'package:create/src/core/block_entity.dart';
 import 'package:create/src/core/registry.dart';
 import 'package:create/src/core/registry_apply.dart';
 import 'package:create/src/core/worlds.dart';
+import 'package:create/src/kinetics/block_defs.dart' show FacingBlockDef;
+import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
 import 'package:create/src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../config/sim_config.dart';
 import '../config/sim_config_service.dart';
 import '../config/sim_synced_config.dart';
+import '../content/blocks/portable_engine/portable_engine_block.dart' show portableEngineKey;
+import '../content/blocks/portable_engine/portable_engine_logic.dart'
+    show portableEngineSpeed, portableEngineStressCapacity;
 import '../host/pumpkin_host.dart';
+import '../host/sable_bridge.dart';
+import '../util/assembly/sim_assembly_exception.dart';
+import '../util/sim_assembly_helper.dart';
 import '../host/simulated_host.dart';
 import '../index/sim_channels.dart';
 import '../network/sim_handled.dart';
+import '../index/sim_blocks.dart' show SimBlockKeys;
 import '../index/sim_lift_providers.dart';
 import '../index/sim_registry.dart';
 import '../service/sim_services.dart';
+import '../util/sim_placement_fixes.dart';
 import 'sim_payload_handlers.dart';
 
 /// The plugin of Simulated.
@@ -34,6 +45,7 @@ final class SimulatedPlugin extends Plugin {
   static const String configFile = 'config.json';
 
   final Worlds _worlds = Worlds();
+  final SableBridge _bridge = SableBridge(logger);
   late final BlockEntityStore _blockEntities;
   final CreateRegistry _registry = CreateRegistry();
 
@@ -60,6 +72,11 @@ final class SimulatedPlugin extends Plugin {
     SimConfigService.instance.load(config);
 
     final blockEntities = _blockEntities = BlockEntityStore(_worlds, log.child('blockentities'));
+    // The torsion spring, the swivel bearing and the steering wheel are Create's
+    // kinetic block entities: their lifecycle runs in this component and reads
+    // Create's module state, which only Create's own plugin would install — in
+    // its own component.
+    installHostedModuleState(blockEntities: blockEntities, worlds: _worlds, log: log);
 
     // Phase 1: declare.
     SimRegistry.register(
@@ -83,6 +100,7 @@ final class SimulatedPlugin extends Plugin {
       );
     }
     await applyRegistry(_registry, context, blockEntities, log);
+    _registerKinetics(context, log);
     _worlds.install(context);
     blockEntities.install(context);
 
@@ -93,6 +111,12 @@ final class SimulatedPlugin extends Plugin {
     // Create's payload registry, which is also what the declaration is built
     // from, so a channel cannot be declared and handled twice.
     SimPayloadHandlers(blockEntities: blockEntities, log: log).install(_registry, context);
+
+    // The placement states of the blocks whose Java `getStateForPlacement` reads
+    // the clicked face or the `AttachFace` (see `util/sim_placement_fixes.dart`):
+    // the click has to be recorded while it happens, because the host's `placed`
+    // event does not carry it.
+    (SimPlacementFixes.instance ??= SimPlacementFixes()).install(context);
 
     // Phase 4: declare the mod and its 37 payload channels, so a client that has
     // Simulated installed completes the NeoForge negotiation. This goes through
@@ -120,10 +144,56 @@ final class SimulatedPlugin extends Plugin {
 
     registerSimLiftProviders();
 
+    // The sub-level model lives in the Sable plugin's component (each plugin is
+    // its own wasm instance), so assembly is delegated to it over the host's
+    // plugin IPC instead of calling `SubLevelAssemblyHelper` here, where the
+    // container map is empty. See `host/sable_bridge.dart`.
+    _bridge.install();
+    await _bridge.subscribe();
+    SimAssemblyHelper.assembleBlocks = (world, anchor, blocks, bounds) async {
+      final reply = await _bridge.assemble(
+        world: world,
+        anchor: anchor,
+        blocks: blocks,
+        bounds: (bounds.minX, bounds.minY, bounds.minZ, bounds.maxX, bounds.maxY, bounds.maxZ),
+      );
+      if (!reply.ok) throw SimAssemblyException(reply.error ?? 'assembly failed');
+      final ref = reply.subLevel;
+      if (ref == null) return null;
+      return SimAssembledSubLevel(ref.id, ref.centerBlock);
+    };
+
     log.info(
       'Simulated loaded: ${_registry.blocks.entries.length} blocks, '
       '${_registry.blockEntityTypes.entries.length} block entity types.',
     );
+  }
+
+  /// The portable engines are kinetic generators (`PortableEngineBlock extends
+  /// HorizontalKineticBlock`): a shaft on their facing side, 32 RPM and 64 stress
+  /// capacity (`BlockStressValues.setGeneratorSpeed(32)`,
+  /// `SimStress.setCapacity(64.0)`). Create's kinetics module owns the network,
+  /// so the rules are registered on its service after the blocks are applied.
+  void _registerKinetics(Context context, Logger log) {
+    // `KineticsRuntime.instance` is Create's module state; `KineticNetworkService`
+    // wraps exactly these two calls, and the runtime is what a block of another
+    // plugin may reach.
+    if (!KineticsRuntime.isLoaded) {
+      log.warn("Create's kinetics module is not loaded: the portable engines will not turn.");
+      return;
+    }
+    final runtime = KineticsRuntime.instance;
+    // `PortableEngineBlock.hasShaftTowards(face) = face == HORIZONTAL_FACING`.
+    const def = FacingBlockDef();
+    for (final colour in SimBlockKeys.engineColours) {
+      final key = portableEngineKey(colour);
+      runtime.blocks.register(key, def);
+      runtime.stressTable.register(
+        key,
+        capacity: portableEngineStressCapacity,
+        generatedRpm: portableEngineSpeed,
+      );
+    }
   }
 
   SimConfig _loadConfig(Context context) {
@@ -141,6 +211,8 @@ final class SimulatedPlugin extends Plugin {
 
   @override
   void onUnload(Context context) {
+    SimAssemblyHelper.assembleBlocks = null;
+    _bridge.close();
     _blockEntities.flushAll();
     SimulatedHost.instance = null;
     SimServices.instance = SimServices();

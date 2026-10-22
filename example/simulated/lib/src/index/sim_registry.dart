@@ -17,6 +17,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/sim_sounds.dart';
 import '../content/blocks/physics_assembler/physics_assembler_block_entity.dart';
+import '../content/blocks/portable_engine/portable_engine_block.dart';
+import '../content/blocks/portable_engine/portable_engine_block_entity.dart';
 import '../content/blocks/spring/spring_block_entity.dart';
 import '../content/blocks/steering_wheel/steering_wheel_block_entity.dart';
 import '../content/blocks/swivel_bearing/swivel_bearing_block_entity.dart';
@@ -59,6 +61,13 @@ abstract final class SimRegistry {
         (worldId, pos) => TorsionSpringBlockEntity(worldId, pos));
     _blockEntityType(registry, PhysicsAssemblerBlockEntity.type, const [SimBlockKeys.physicsAssembler],
         (worldId, pos) => PhysicsAssemblerBlockEntity(worldId, pos));
+    // `SimBlockEntityTypes.PORTABLE_ENGINE` (`SimBlockEntityTypes.java:114`):
+    // one type for all sixteen engines (`PortableEngineBlock.getBlockEntityType`).
+    _blockEntityType(
+        registry,
+        PortableEngineBlockEntity.type,
+        [for (final colour in SimBlockKeys.engineColours) portableEngineKey(colour)],
+        (worldId, pos) => PortableEngineBlockEntity(worldId, pos));
     _blockEntityType(registry, SwivelBearingBlockEntity.type, const [SimBlockKeys.swivelBearing],
         (worldId, pos) => SwivelBearingBlockEntity(worldId, pos));
     _blockEntityType(registry, SteeringWheelBlockEntity.type, const [SimBlockKeys.steeringWheel],

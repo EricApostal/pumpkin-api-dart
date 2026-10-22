@@ -88,7 +88,9 @@ abstract final class SimulatedBridge {
     final map = BalloonMap.of(world);
     if (map.isEmpty) return;
 
-    final plotAnchor = result.subLevel.getPlot().getCenterBlock();
+    // The plot's centre block, as Sable's component reported it: the sub-level
+    // itself lives there, not here (see `simulated`'s `host/sable_bridge.dart`).
+    final plotAnchor = result.subLevel.centerBlock;
     final transform = AssemblyTransform(
       anchor,
       plotAnchor,

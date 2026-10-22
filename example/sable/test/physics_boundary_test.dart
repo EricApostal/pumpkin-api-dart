@@ -287,7 +287,86 @@ void main() {
       expect(RopeAttachmentPoint.values, [RopeAttachmentPoint.start, RopeAttachmentPoint.end]);
     });
   });
+  group('updateMassDataFromBlockChange', () {
+    late FakeLevel level;
+    late FakeChunkHost host;
+    late ServerSubLevelContainer container;
+    late SubLevelPhysicsSystem system;
+    late ServerSubLevel subLevel;
+
+    setUp(() {
+      level = FakeLevel();
+      host = FakeChunkHost(level);
+      container = ServerSubLevelContainer(
+        level,
+        host,
+        3,
+        4,
+        SubLevelContainer.defaultOrigin,
+        SubLevelContainer.defaultOrigin,
+      );
+      SubLevelContainer.register(container);
+      system = SubLevelPhysicsSystem(
+        container: container,
+        pipeline: StaticPhysicsPipeline(),
+        config: SableConfig(),
+        serverConfig: SableServerConfig(),
+      );
+      // `allocateSubLevel` fires `onSubLevelAdded`, which builds the real
+      // `MergedMassTracker` over the **empty** plot -- the state every assembly
+      // starts from.
+      subLevel = container.allocateSubLevel('00000000-0000-0000-0000-0000000000a1', 0, 0, Pose3d())
+          as ServerSubLevel;
+      subLevel.getPlot().newEmptyChunk(subLevel.getPlot().getCenterChunk());
+    });
+
+    test('the first block of an assembly is kept and counted', () {
+      final centre = subLevel.getPlot().getCenterBlock();
+
+      system.handleBlockChange(
+        centre.$1,
+        centre.$2,
+        centre.$3,
+        'minecraft:air',
+        'minecraft:stone',
+        subLevelId: subLevel.uniqueId,
+      );
+
+      // The bug this pins: the check used the *merged* tracker, which is still
+      // the empty one on the first block, so the plot was destroyed and the
+      // sub-level removed (`SubLevelPhysicsSystem.java:524-535` validates the
+      // self tracker).
+      expect(subLevel.isRemoved(), isFalse);
+      expect(subLevel.massTracker?.isInvalid(), isFalse);
+      expect(subLevel.massTracker?.getMass(), 1.0);
+    });
+
+    test('removing the last block still removes the sub-level', () {
+      final centre = subLevel.getPlot().getCenterBlock();
+      system.handleBlockChange(
+        centre.$1,
+        centre.$2,
+        centre.$3,
+        'minecraft:air',
+        'minecraft:stone',
+        subLevelId: subLevel.uniqueId,
+      );
+      expect(subLevel.isRemoved(), isFalse);
+
+      system.handleBlockChange(
+        centre.$1,
+        centre.$2,
+        centre.$3,
+        'minecraft:stone',
+        'minecraft:air',
+        subLevelId: subLevel.uniqueId,
+      );
+
+      expect(subLevel.isRemoved(), isTrue);
+    });
+  });
 }
+
 
 /// A body handle that is not the static pipeline's own, to prove the
 /// `instanceof ServerSubLevel` guard.

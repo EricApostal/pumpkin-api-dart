@@ -49,6 +49,11 @@ final class SimAssemblyException implements Exception {
   factory SimAssemblyException.unmovableBlock((int, int, int) pos, String blockKey) =>
       SimAssemblyException('create:gui.assembly.exception.unmovable_block', [pos.$1, pos.$2, pos.$3, blockKey]);
 
+  /// The Sable component's assembly backend is not installed, so the assembly
+  /// cannot run (see `SimAssemblyHelper.assembleBlocks`).
+  static SimAssemblyException noBackend() =>
+      const SimAssemblyException('simulated:gui.assembly.exception.no_backend');
+
   /// `unloadedChunk`: the structure reaches a chunk that is not loaded.
   factory SimAssemblyException.unloadedChunk((int, int, int) pos) =>
       SimAssemblyException('create:gui.assembly.exception.unloaded_chunk', [pos.$1, pos.$2, pos.$3]);

@@ -11,6 +11,7 @@ import 'dart:typed_data';
 import 'package:create/src/common/common.dart' show Pos, vec3Zero;
 import 'package:create/src/common/direction.dart' show Axis, Direction;
 import 'package:offroad/offroad.dart';
+import 'package:offroad/src/plugin/offroad_addon.dart';
 import 'package:test/test.dart';
 
 /// The multiset of `(item, count)` a set of drops became.
@@ -18,6 +19,16 @@ List<String> _dropped(List<MinedDrop> drops) => [for (final d in drops) '${d.ite
 
 void main() {
   group('tire codec', () {
+    test('the addon names the registries its content goes into', () {
+      // Not cosmetic. The host numbers what a plugin registers by position
+      // (`vanilla count + index`) and writes that id on the wire, so an addon that
+      // declares its channels only leaves the client on its *own* order: the
+      // registry is dropped from the sync, the host keeps handing out ids, and a
+      // client that has the mod resolves each one to a different entry. Naming
+      // `minecraft:item` and the rest is what makes the host send them.
+      expect(const OffroadAddon().contentVerified, isTrue);
+    });
+
     test('the presets are the Java numbers', () {
       expect(TireLike.smallTire.radius, 12 / 16);
       expect(TireLike.tire.radius, 15.5 / 16);

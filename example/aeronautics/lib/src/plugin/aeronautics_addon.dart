@@ -3,7 +3,14 @@
 // generic hook. Nothing here names Aeronautics in Create.
 //
 // Host: this file uses `pumpkin_api` (through `package:create/create.dart`).
-import 'package:create/create.dart' show CreateAddon, DeclaredPayload;
+//
+// The addon class itself needs no host binding, and `package:create/create.dart`
+// re-exports `core/registry.dart`, which does use one — so the imports are from
+// `src/`, the way `simulated`'s `sim_channels.dart` does it, and the VM tests can
+// read the addon (see `test/registry_order_test.dart`).
+// ignore_for_file: implementation_imports
+import 'package:create/src/core/addon.dart' show CreateAddon;
+import 'package:create/src/core/payload.dart' show DeclaredPayload;
 
 import '../../aeronautics_channels.dart';
 

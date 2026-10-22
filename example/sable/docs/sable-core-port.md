@@ -155,21 +155,118 @@ that only a plugin can fill, and until it is filled every assembly throws
 * **Ticking**: one `worldTick` handler ticks the container of the world that
   ticked; a container whose tick throws is left un-ticked with one error log
   instead of failing on every tick.
+* **Physics and tracking.** `PhysicsPipelineProviders` gets the no-op fallback
+  registered (`StaticPhysicsPipelineProvider`, priority 900 — the component that
+  links a solver registers that instead, at the Java-default priority 1000), and
+  each container gets a `SubLevelPhysicsSystem` (`initialize()`d) and a
+  `SubLevelTrackingSystem`. The physics system is what runs
+  `MassTracker`/`buildMassTracker` and `pipeline.addSubLevel` in
+  `onSubLevelAdded`, so a sub-level assembled after this has a mass tracker and a
+  physics body. Attaching it **before** `SubLevelContainer.register` matters: an
+  assembly allocates a sub-level and immediately reads `massTracker`.
 * **Unload**: `worldUnload` (and plugin unload) closes the container, unregisters
-  it, closes the storage and releases the kept world handle.
+  it, closes the tracking system and the storage and releases the kept world
+  handle.
 * `/sable` is registered over a `SableCommandState` whose `levelOf` resolves a
-  command's `World` to the container's level view.
+  command's `World` to the container's level view. The `sub_level`/`target`
+  arguments that take a selector (`@e`, `@l`, …) are `greedyString`, not `word`:
+  Brigadier's `word()` stops at the `@`, so `sable info @e` was a parse error.
+* `SableAssembleCommands`' trailing check is now `_reportAssembly`: an invalid
+  (present but empty) tracker still fails the command, but a **missing** tracker
+  no longer reports "No blocks to assemble." after the blocks moved — it says the
+  level has no physics system, which is the real cause (`massTracker ?? true` used
+  to blame the assembly for a missing plugin wire-up).
 
 `plugin/pumpkin_level.dart` holds the host seams: `PumpkinSableLevel`,
 `MemoryPlotChunk` + `PumpkinPlotChunkHost` (world chunks through the plugin API,
 plot chunks in memory) and `PumpkinFileStore`.
 
-Still missing on the plugin side (each a `HOST GAP`, not a container bug): the
-physics system and tracking system are never attached to the container, so a
-sub-level has no mass tracker and `/sable assemble` reports "No blocks to
-assemble." after a successful assembly; `AssemblyEntityHost` is not implemented,
-so entities on the assembled blocks stay where they are; world-chunk block
-entities are not moved (the host exposes only raw NBT bytes).
+### Cross-plugin ownership: one component is not enough
+
+The container registry (`SubLevelContainer._containers`) is a **static map inside
+one wasm component**. The host instantiates one `Store` per plugin
+(`pumpkin-wasm-host-v0_2/src/lib.rs:548`), and each plugin component is compiled
+from its own dependency graph, so `package:sable` is compiled *into* every plugin
+that depends on it. Two consequences, both confirmed:
+
+* the compiled simulated plugin contains sable's model: the cwasm blob whose
+  strings include `Simulated loaded:` also contains the unique
+  `has no sub-level container` message, and it does not contain `Sable declared`;
+* `simulated`'s `simulated:assemble` handler, `aeronautics`' balloon hook and
+  `sable`'s own `/sable` commands therefore each look at **their own** map.
+
+`SablePlugin` fills the map in sable's component, so `/sable` and anything else
+*inside sable's component* works. The physics assembler runs in simulated's
+component, where the map is still empty: it needs a Sable server of its own.
+Attaching physics in sable's component cannot reach it (a `PhysicsPipeline` is a
+Dart object, and IPC between components carries JSON only). The two ways out:
+
+1. **One owner, asked over IPC** (the architecturally right one): the Sable
+   plugin owns containers/storage/physics/tracking and exposes an assemble/lookup
+   API; simulated/create/aeronautics call it through `IpcChannel` instead of
+   calling `SubLevelContainer.of` in their own address space. This is a
+   cross-plugin refactor of the assembly entry points (the flood fill and the
+   block movement would have to run in the owner's component).
+2. **Per-component Sable servers**: each component that needs sub-levels runs the
+   same wire-up with its own storage root. That duplicates every sub-level, and
+   two components pointed at one region-file folder would corrupt it, so the
+   roots must differ — the user then has as many un-synced sub-level universes as
+   plugins.
+
+Until one of those is chosen, the physics assembler cannot assemble; `aeronautics`
+degrades silently (`if (subLevels is ServerSubLevelContainer)`), which is why its
+balloon physics listener is inert on a live server.
+
+### Cross-plugin reach map (the refactor's work list)
+
+Decision taken: **Sable stays the owner; other plugins reach it through
+operations**, not through `SubLevelContainer.of` in their own address space. This
+is every reach found, per plugin component, with the operation it needs. Nothing
+here is converted yet.
+
+| component | call site | reach | needs |
+|---|---|---|---|
+| simulated | `src/util/sim_assembly_helper.dart:138` | `SubLevelAssemblyHelper.assembleBlocks(level, anchor, blocks, bounds)` | `assemble` |
+| simulated | `src/util/sim_assembly_helper.dart:150-200` | `SubLevelAssemblyHelper.moveBlocks` + `plot.getLoadedChunks()` | `disassemble` |
+| simulated | `src/host/pumpkin_host.dart:298` | `SubLevelContainer.of(level)` → `getPlot(...)?.getSubLevel()` | `containing` |
+| simulated | `src/host/pumpkin_host.dart:307` | `SubLevelContainer.of(level)?.getSubLevelById(id)` | `get` |
+| simulated | `src/util/physics_constraints.dart:169` | `SubLevelContainer.of(level)` + `is! ServerSubLevelContainer` | `get` / `joints` |
+| simulated | `src/util/sim_level_util.dart:19,25` | `SubLevelHelper.getContaining` + `...?.chunkHost` | `containing` + `areaLoaded` |
+| simulated | `src/plugin/sim_payload_handlers.dart:173` | `SubLevelHelper.distanceSquaredWithSubLevels` | `distance` |
+| simulated | `src/util/hold_interaction.dart:32` | `SubLevelHelper.projectOutOfSubLevel` | `projectOut` |
+| simulated | `src/content/blocks/swivel_bearing/swivel_bearing_block_entity.dart:136` | `assembleFromSingleBlock` from a block-entity path | `assemble` (queued: see below) |
+| aeronautics | `src/aeronautics_hooks.dart:80-95` | `SubLevelContainer.of(...)` → `physics.prePhysicsTickListeners.add(...)` — **silently inert today** | `physicsListener` |
+| aeronautics | `src/aeronautics_hooks.dart:116`, `src/content/blocks/propeller/gyroscopic_propeller_bearing_block.dart:53`, `propeller_bearing_block.dart:114`, `propeller_block_entity_mixin.dart:19,30,33`, `small_propeller_blocks.dart:127,244`, `src/host/host_propeller_push_world.dart:43` | `SubLevelHelper.getContaining` / `getVelocityOfSubLevel` / `projectOutOfSubLevel` | `containing` / `velocity` / `projectOut` |
+| offroad | `src/host/offroad_hooks.dart:240`, `src/content/blocks/wheel_mount/wheel_mount_block.dart:225`, `src/content/blocks/rock_cutting_wheel/rock_cutting_wheel_block.dart:134` | `SubLevelHelper.getContaining` / `getVelocityOfSubLevel` / `projectOutOfSubLevel` | `containing` / `velocity` / `projectOut` |
+| create | — | none: `create` never imports `package:sable`; the contraption compatibility layer is `example/sable/lib/src/compat/create/**`, compiled into sable's component | — |
+
+Two shapes are needed, and the split is the important part:
+
+* **operations that answer** (`assemble`, `disassemble`, `get`, `containing`,
+  `areaLoaded`, `distance`, `velocity`, `projectOut`): an `IpcChannel` request to
+  the `sable` plugin. The host routes it, so no plugin needs to know another's
+  address beyond the agreed name; Sable does the work in its own component and
+  answers with data (ids, poses), never with objects.
+* **a push + mirror for the synchronous readers**: `containing`/`velocity` are
+  called from block-entity ticks and block callbacks, which are synchronous, and
+  an IPC round trip is a `Future`. So Sable pushes a small change feed
+  (added/removed/moved ids with pose and bounds) and the other components answer
+  sync queries from their mirror, explicitly one push behind. Only the
+  interactive entry points (`simulated:assemble`, a block *use*) may await.
+
+`simulated:assemble` is dispatched from `SimPayloadHandlers.dispatch`, which is
+already `Future<void>` and called by Create's payload dispatch, so `_assemble`
+can await the `assemble` operation. The block-entity-driven callers (swivel
+bearing, physics staff) cannot, so they enqueue the request and apply the reply
+when it lands.
+
+Still missing on the plugin side (each a `HOST GAP`): `SubLevelHost` is not
+implemented, so the tracking system has no player list and sends nothing
+(`container.hostOrNull` is `null`; the payload sink, the chunk view and the UDP
+sender are likewise uninstalled, so even a tracked sub-level is not sent to a
+client); `AssemblyEntityHost` is not implemented, so entities on the assembled
+blocks stay where they are; world-chunk block entities are not moved (the host
+exposes only raw NBT bytes).
 
 ## Deliberately left
 

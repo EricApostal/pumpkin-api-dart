@@ -61,6 +61,11 @@ final class OffroadPlugin extends Plugin {
     // second, never-installed `Worlds` used to be handed to it, so every
     // `CreateBlockEntity.world` was `null`.
     final blockEntities = _blockEntities = BlockEntityStore(core.worlds, log.child('blockentities'));
+    // The wheel mount is a Create kinetic block entity and the borehead bearing a
+    // contraption actuator: their lifecycle runs in this component and reads
+    // Create's module state, which only Create's own plugin would install — in
+    // its own component.
+    installHostedModuleState(blockEntities: blockEntities, worlds: core.worlds, log: log);
     final module = OffroadModule();
 
     // Phase 1: declare.

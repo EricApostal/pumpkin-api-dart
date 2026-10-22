@@ -73,6 +73,51 @@ phase; the others keep going. A module disabled in the config
 only through `ctx.services` (`provide<T>() / require<T>() / find<T>()`) and
 through shared registry keys, never by importing each other's internals.
 
+### Module state in a plugin that hosts Create's content
+
+A module's shared state lives in a `static` next to the module
+(`KineticsRuntime._instance`, `ActuatorRuntime._instance`, ...), which the module
+installs in its `onLoad` because block entities are constructed by the framework
+and cannot take constructor arguments. **One Pumpkin plugin is one wasm
+component, so those statics do not cross the plugin boundary**: a plugin that
+loads `package:create` as a library (an addon: Aeronautics, Simulated, Offroad)
+has its own copy, and nothing in *that* component runs Create's modules.
+
+An addon that registers a block entity extending one of Create's kinetic or
+contraption classes runs that class's whole lifecycle in its own component —
+ticks, `onRemoved`, `read`/`write`, the network. The lifecycle reads
+`KineticsRuntime.instance` and `ActuatorRuntime.instance`, so the addon must
+install them for its own component, from its `Plugin.onLoad`:
+
+```dart
+installHostedModuleState(blockEntities: store, worlds: worlds, log: log);
+```
+
+Practical consequences, all of them per component:
+
+* The settings are the manifest defaults, not this plugin's config: an addon's
+  `config.json` is its own and `infrastructure`, which supplies the live values,
+  is not loaded there either.
+* The addon's kinetic content joins the kinetic network of *its own* component,
+  and only if the addon registers a `KineticBlockDef` for each of its own block
+  keys (`KineticsRuntime.instance.blocks.register(key, def)`): the network
+  resolves every neighbour through that table, and it has none of Create's
+  blocks in this component. A network never spans two plugins either — each
+  resolves its nodes through its own block entity store — so an addon block
+  entity cannot be driven by a shaft of Create's plugin; the host would have to
+  own the network for that.
+* No addon content reaches `FluidsRuntime` or the conveyance, equipment,
+  processing, logistics, redstone or trains runtime, so a component without
+  those modules installs nothing for them; their state is also inseparable from
+  their module (they subscribe to host events, hold the module's hosts or need
+  its recipe book at construction).
+
+Only kinetics and contraptions have the block entity states Create's library
+reads, which is what `installHostedModuleState` installs. Behaviour-level
+helpers (`ActuatorRuntime.maybe`, `KineticsRuntime.isLoaded`) are the other half
+of the rule: code that a host callback can reach from any component reads the
+state through `maybe` and degrades instead of throwing.
+
 ### Adding a module
 
 1. Create `lib/src/<name>/<name>_module.dart` with `final class <Name>Module extends CreateModule`.

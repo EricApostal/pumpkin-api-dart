@@ -26,6 +26,7 @@
 // The Java line numbers are of
 // `simulated/common/src/main/java/dev/simulated_team/simulated/index/`.
 import 'package:create/src/core/ordered_registry.dart';
+import 'package:simulated/src/index/sim_channels.dart';
 import 'package:simulated/src/index/sim_items.dart';
 import 'package:simulated/src/index/sim_java_order.dart';
 import 'package:test/test.dart';
@@ -42,6 +43,17 @@ void main() {
   final blockEntityTypes = OrderedRegistry<Object?>('blockEntityTypes');
 
   group('the registry builds', () {
+    test('the addon names the registries its content goes into', () {
+      // Not cosmetic. The host numbers what a plugin registers by position
+      // (`vanilla count + index`) and writes that id on the wire, so an addon that
+      // declares its channels only leaves the client on its *own* order: `syncable`
+      // drops the registry, the host keeps handing out ids, and a client that has
+      // the mod resolves each one to a different entry. Naming `minecraft:item` and
+      // the rest is what makes the host send them and the client adopt the ids, and
+      // the names are the pinned tables this file checks.
+      expect(const SimulatedAddon().contentVerified, isTrue);
+    });
+
     test('every key is registered once', () {
       // Exactly the calls `SimRegistry.register` makes, in its order. A duplicate
       // here is the `DuplicateRegistrationException` that stopped the plugin from

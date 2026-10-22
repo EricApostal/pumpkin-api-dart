@@ -24,6 +24,7 @@ import 'package:create/src/common/pos.dart';
 import 'package:sable/sable.dart';
 
 import 'assembly/sim_assembly_contraption.dart';
+import 'assembly/sim_assembly_exception.dart';
 
 /// An entity the assembly moves or replaces.
 final class SimAssemblyEntityRef {
@@ -90,10 +91,37 @@ final class NoSimAssemblyEntities implements SimAssemblyEntities {
   void spawnHoneyGlue(Aabb box) {}
 }
 
+/// The sub-level an assembly produced, as the Sable component reports it.
+///
+/// A sub-level is a live object in Sable's address space, not in this one (see
+/// `host/sable_bridge.dart`), so what comes back is data: the id other
+/// operations are addressed by, and the plot's centre block for the offset.
+final class SimAssembledSubLevel {
+  final String? id;
+
+  /// The plot's centre block (`LevelPlot.getCenterBlock`).
+  final Pos centerBlock;
+
+  const SimAssembledSubLevel(this.id, this.centerBlock);
+}
+
+/// `assembleBlocks` on the Sable component, installed by the plugin.
+///
+/// `package:sable` is compiled into this component too, but its
+/// `SubLevelContainer` map is per component, so the assembly has to run where
+/// the container lives. The plugin installs the IPC call here; the pure model
+/// only sees the result.
+typedef SimAssembleBlocks = Future<SimAssembledSubLevel?> Function(
+  String world,
+  Pos anchor,
+  List<Pos> blocks,
+  BoundingBox3ic bounds,
+);
+
 /// The result of an assembly: the new sub-level and the offset from the anchor
 /// block to the plot centre.
 final class SimAssemblyResult {
-  final SubLevel subLevel;
+  final SimAssembledSubLevel subLevel;
   final Pos offset;
 
   const SimAssemblyResult(this.subLevel, this.offset);
@@ -110,17 +138,26 @@ abstract final class SimAssemblyHelper {
     _ => Rotation.clockwise90,
   };
 
+  /// `assembleBlocks` on the Sable component (see [SimAssembleBlocks]).
+  ///
+  /// Installed by the plugin. Without it an assembly cannot run at all: the
+  /// sub-level model lives in Sable's component, and calling it here would use
+  /// this component's empty container map.
+  static SimAssembleBlocks? assembleBlocks;
+
   /// `assembleFromSingleBlock(level, selfPos, toAssemble, includeStart, includeEncasingGlue)`.
   ///
-  /// Returns `null` when there is nothing to assemble.
-  static SimAssemblyResult? assembleFromSingleBlock(
+  /// The structure search runs here; the block move and the sub-level creation
+  /// run in Sable's component ([assembleBlocks]). Returns `null` when there is
+  /// nothing to assemble.
+  static Future<SimAssemblyResult?> assembleFromSingleBlock(
     SimAssemblyWorld world,
     SableLevel level,
     Pos selfPos,
     Pos toAssemble, {
     bool includeStart = true,
     bool includeEncasingGlue = true,
-  }) {
+  }) async {
     if (world.stateAt(toAssemble).isAir) return null;
 
     final contraption = SimAssemblyContraption(
@@ -135,8 +172,16 @@ abstract final class SimAssemblyHelper {
     final bounds = BoundingBox3i.fromPositions(blocks)!;
     final anchor = blocks.first;
 
-    final subLevel = SubLevelAssemblyHelper.assembleBlocks(level, anchor, blocks, bounds);
-    final offset = _offsetOf(subLevel.getPlot().getCenterBlock(), anchor);
+    final assemble = assembleBlocks;
+    if (assemble == null) {
+      // The Sable component owns the sub-level model; without its backend an
+      // assembly cannot run here at all (see [SimAssembleBlocks]).
+      throw SimAssemblyException.noBackend();
+    }
+
+    final subLevel = await assemble(level.dimensionId, anchor, blocks.toList(), bounds);
+    if (subLevel == null) return null;
+    final offset = _offsetOf(subLevel.centerBlock, anchor);
 
     // The glue boxes follow the blocks into their new place.
     for (final glue in contraption.glues) {

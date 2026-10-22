@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:create/create.dart' show installHostedModuleState;
 import 'package:create/src/core/block_entity.dart';
 import 'package:create/src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 import 'package:create/src/core/config.dart';
@@ -21,6 +22,11 @@ import '../aeronautics_module.dart';
 import '../config/aero_config.dart';
 import '../config/aero_synced_config.dart';
 import 'aeronautics_addon.dart';
+
+Object? _probeIdentity(Map<String, Object?> message) => message;
+
+Map<String, Object?> _probeMap(Object? json) =>
+    json is Map ? {for (final entry in json.entries) '${entry.key}': entry.value} : const {};
 
 /// The plugin of Aeronautics.
 final class AeronauticsPlugin extends Plugin {
@@ -52,6 +58,39 @@ final class AeronauticsPlugin extends Plugin {
   Future<void> onLoad(Context context) async {
     final log = logger;
 
+    // TEMPORARY cross-component IPC probe: asks the sable component for a
+    // sub-level lookup and prints the reply.
+    const channel = IpcChannel<Map<String, Object?>>('sable.sublevels', _probeIdentity, _probeMap);
+    channel.handle((sender, message) => null);
+    context.command('sableping', (c) => c.runs((ctx) async {
+      ctx.reply('ping: asking the sable component...');
+      try {
+        final listed = await channel.request('sable', {'op': 'list', 'world': 'minecraft:overworld'});
+        ctx.reply('list reply: $listed');
+        final containing = await channel.request('sable', {
+          'op': 'containing',
+          'world': 'minecraft:overworld',
+          'pos': [0, -62, 0],
+        });
+        ctx.reply('containing reply: $containing');
+        final assembled = await channel.request('sable', {
+          'op': 'assemble',
+          'world': 'minecraft:overworld',
+          'anchor': [-4, -63, -4],
+          'blocks': [
+            [-4, -63, -4],
+            [-3, -63, -4],
+            [-4, -63, -3],
+            [-3, -63, -3],
+          ],
+          'bounds': [-5, -64, -5, -2, -62, -2],
+        });
+        ctx.reply('assemble reply: $assembled');
+      } on Object catch (error) {
+        ctx.reply('ping failed: $error');
+      }
+    }));
+
     // The physics scalars and the per-block limits of `AeroConfig`.
     _loadConfig(context);
 
@@ -63,6 +102,11 @@ final class AeronauticsPlugin extends Plugin {
     // second, never-installed `Worlds` used to be handed to it, so every
     // `CreateBlockEntity.world` was `null`.
     final blockEntities = _blockEntities = BlockEntityStore(core.worlds, log.child('blockentities'));
+    // The propeller bearings, the small propellers and the mounted potato cannon
+    // are Create's kinetic block entities, and the bearings are contraption
+    // actuators: their lifecycle runs in this component and reads Create's module
+    // state, which only Create's own plugin would install — in its own component.
+    installHostedModuleState(blockEntities: blockEntities, worlds: core.worlds, log: log);
     final module = AeronauticsModule();
 
     // Phase 1: declare.

@@ -18,3 +18,4 @@ export 'src/core/world_state.dart';
 export 'src/core/worlds.dart';
 export 'src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 export 'src/plugin/create_neoforge.dart' show createModId, createNeoForgeDeclaration;
+export 'src/plugin/host_module_state.dart' show installHostedModuleState;

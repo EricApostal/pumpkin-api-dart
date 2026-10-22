@@ -29,7 +29,10 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../sublevel/api/sub_level_assembly_helper.dart' show AssemblyBlockHost;
 import '../sublevel/host/sub_level_host.dart';
+import '../sublevel/model/server_sub_level.dart';
 import '../sublevel/model/sub_level_container.dart';
+import '../sublevel/plot/heat/sub_level_heat_map_manager.dart';
+import '../sublevel/system/physics_system.dart';
 
 /// A dimension of the server, as the sub-level model sees it.
 ///
@@ -328,12 +331,82 @@ final class PumpkinPlotChunkHost implements PlotChunkHost, AssemblyBlockHost {
       final chunk = _memoryChunk(chunkX, chunkZ);
       final old = chunk.stateAt(x & 15, y, z & 15);
       chunk.setState(x & 15, y, z & 15, state);
-      notifyBlockChanged(x, y, z, old, state);
+      _afterPlotBlockChange(x, y, z, old, state);
       return;
     }
     // The world write is a host call; the model is synchronous, so it is
-    // issued now and the host applies it before the next read.
+    // issued now and the host applies it before the next read. The old state is
+    // read first, because the level-side hook needs the pair.
+    final physics = SubLevelPhysicsSystem.of(container);
+    final old = physics == null ? null : _worldBlocks.stateAt((x, y, z));
     unawaited(setBlockState(level.world, (x, y, z), state));
+    if (old != null) _afterWorldBlockChange(x, y, z, old, state);
+  }
+
+  /// What the level does after a block inside a **plot** changed
+  /// (`SableCommonEvents.handleBlockChange`).
+  ///
+  /// The mass delta is what an assembly needs: `MassTracker` is built when the
+  /// sub-level is allocated (an empty plot) and learns each moved block here, so
+  /// `SubLevelAssemblyHelper.assembleBlocks` finds a real centre of mass instead
+  /// of throwing "the sub-level has no solid blocks".
+  void _afterPlotBlockChange(int x, int y, int z, BState oldState, BState newState) {
+    final plot = container?.getPlot(x >> 4, z >> 4);
+    if (plot == null) return;
+
+    final local = plot.toLocal((x >> 4, z >> 4));
+    plot.getChunkHolder(local)?.handleBlockChange(x & 15, y, z & 15, oldState.key, newState.key);
+    plot.updateBoundingBox();
+    plot.expandIfNecessary((x, y, z));
+    plot.onBlockChange((x, y, z), newState.key);
+
+    final subLevel = plot.getSubLevel();
+    if (subLevel is ServerSubLevel) {
+      final position = (x, y, z);
+      // Java queues the change for the heat map and the floating-block
+      // controller (`SableCommonEvents.java:63-74`). Both exist only once
+      // something built them (the heat map needs splitting on, the controller
+      // needs the block-property table), so a `null` one is skipped rather than
+      // created here.
+      if (oldState != newState) {
+        subLevel.floatingBlockController?.queueRemoveFloatingBlock(oldState.key, position);
+        subLevel.floatingBlockController?.queueAddFloatingBlock(newState.key, position);
+      }
+      if (oldState.isAir && !newState.isAir) {
+        // `ServerSubLevel.heatMapManager` is typed as the `SubLevelHeatMap`
+        // interface, which does not declare the two hooks
+        // (`SubLevelHeatMapManager` does, and the port only ever builds that).
+        final heatMap = subLevel.heatMapManager;
+        if (heatMap is SubLevelHeatMapManager) heatMap.onSolidAdded(position);
+      }
+      if (!oldState.isAir && newState.isAir) {
+        final heatMap = subLevel.heatMapManager;
+        if (heatMap is SubLevelHeatMapManager) heatMap.onSolidRemoved(position);
+      }
+    }
+
+    final physics = SubLevelPhysicsSystem.of(container);
+    if (physics != null) {
+      physics.handleBlockChange(
+        x,
+        y,
+        z,
+        oldState.key,
+        newState.key,
+        subLevelId: subLevel is ServerSubLevel ? subLevel.uniqueIdOrNull : null,
+      );
+    }
+  }
+
+  /// The same hook for a block in the open **world**: there is no plot at the
+  /// position, so the mass delta is skipped ([SubLevelPhysicsSystem.handleBlockChange]
+  /// resolves no sub-level), but the pipeline still sees the change and the
+  /// sub-levels near it are woken — `SableCommonEvents.handleBlockChange` runs
+  /// for every chunk block change of the level, not only for plot chunks.
+  void _afterWorldBlockChange(int x, int y, int z, BState oldState, BState newState) {
+    final physics = SubLevelPhysicsSystem.of(container);
+    if (physics == null) return;
+    physics.handleBlockChange(x, y, z, oldState.key, newState.key);
   }
 
   @override
@@ -364,17 +437,19 @@ final class PumpkinPlotChunkHost implements PlotChunkHost, AssemblyBlockHost {
     );
   }
 
-  /// `LevelPlot.onBlockChange` + `PlotChunkHolder.handleBlockChange`.
+  /// `markAndNotifyBlock`: the host notifies the block's neighbours.
+  ///
+  /// Java's `Level.markAndNotifyBlock` sends the updates to the neighbours and
+  /// the clients. A plot chunk here is in memory, not in the host's chunk map,
+  /// so it has neither neighbours nor clients to update; the level-side effects
+  /// of the write (`SableCommonEvents.handleBlockChange`) already ran in
+  /// [setBlockStateAt], which is the port's `LevelChunk.setBlockState` hook.
+  ///
+  /// Deliberately not a second [setBlockStateAt]-style hook: `moveBlocks` calls
+  /// this for every block after writing it (and again after the whole batch), so
+  /// hanging the mass delta off it would count every moved block twice.
   @override
-  void notifyBlockChanged(int x, int y, int z, BState oldState, BState newState) {
-    if (!_inYard(x >> 4, z >> 4)) return;
-    final plot = container?.getPlot(x >> 4, z >> 4);
-    if (plot == null) return;
-
-    final local = plot.toLocal((x >> 4, z >> 4));
-    plot.getChunkHolder(local)?.handleBlockChange(x & 15, y, z & 15, oldState.key, newState.key);
-    plot.onBlockChange((x, y, z), newState.key);
-  }
+  void notifyBlockChanged(int x, int y, int z, BState oldState, BState newState) {}
 }
 
 /// The plugin's data folder, as a `SableFileStore`.

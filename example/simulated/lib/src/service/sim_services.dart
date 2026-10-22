@@ -13,6 +13,8 @@
 
 import 'package:create/src/api/block_state.dart' show BState;
 
+import '../manifest/cooking_fuel.g.dart';
+
 /// What the plugin provides to the services that need the host.
 abstract class SimServiceHost {
   const SimServiceHost();
@@ -28,10 +30,15 @@ abstract class SimServiceHost {
   bool isFakePlayer(String playerId) => false;
 
   /// `SimItemService.getBurnTime`: the fuel value of an item, in ticks.
-  int burnTime(String itemKey) => 0;
+  ///
+  /// Java reads the item's `minecraft:cooking_fuel` component. A plugin cannot
+  /// (see `manifest/cooking_fuel.g.dart`), so the port carries the resolved
+  /// table: the host's own numbers, and 0 for an item the table does not know.
+  int burnTime(String itemKey) => vanillaCookingFuelTicks[itemKey] ?? 0;
 
-  /// `SimItemService.getSuperheatedBurnTime`.
-  int superheatedBurnTime(String itemKey) => burnTime(itemKey) * 2;
+  /// `SimItemService.getSuperheatedBurnTime`: the burn time the item has in
+  /// Create's `superheated_blaze_burner_fuels` data map, 0 for anything else.
+  int superheatedBurnTime(String itemKey) => superheatedFuelTicks[itemKey] ?? 0;
 
   /// `SimEntityService.getCustomData`: the mod's per-player data.
   Map<String, Object?> customPlayerData(String playerId) => const {};

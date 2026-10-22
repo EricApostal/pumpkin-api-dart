@@ -38,7 +38,7 @@ void registerSubLevelCommands(CommandBuilder sable, SableCommandState state) {
         'clear',
         build: (clear) => clear.arg(
           'targets',
-          ArgumentTypes.word,
+          ArgumentTypes.greedyString,
           runs: (ctx) => _clearName(ctx, state),
         ),
       );
@@ -46,7 +46,7 @@ void registerSubLevelCommands(CommandBuilder sable, SableCommandState state) {
         'get',
         build: (get) => get.arg(
           'target',
-          ArgumentTypes.word,
+          ArgumentTypes.greedyString,
           runs: (ctx) => _getName(ctx, state),
         ),
       );
@@ -73,7 +73,7 @@ void registerSubLevelCommands(CommandBuilder sable, SableCommandState state) {
     description: 'Removes sub-levels',
     build: (remove) => remove.arg(
       'targets',
-      ArgumentTypes.word,
+      ArgumentTypes.greedyString,
       runs: (ctx) => _remove(ctx, state),
     ),
   );

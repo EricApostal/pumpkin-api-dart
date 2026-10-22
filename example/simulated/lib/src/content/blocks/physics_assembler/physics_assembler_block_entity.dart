@@ -84,8 +84,11 @@ final class PhysicsAssemblerBlockEntity extends CreateBlockEntity {
   }
 
   /// `assembleOrDisassemble()`.
-  void assembleOrDisassemble() {
-    assembler.assembleOrDisassemble();
+  ///
+  /// Completes when the assembly did: the block move runs in the Sable
+  /// component, so this is a round trip rather than a call.
+  Future<void> assembleOrDisassemble() async {
+    await assembler.assembleOrDisassemble();
     sendData();
   }
 

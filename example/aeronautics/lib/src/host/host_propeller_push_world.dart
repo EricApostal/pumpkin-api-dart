@@ -10,6 +10,9 @@ import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter;
 import 'package:create/src/common/host_bridge.dart' show PosToHost;
 import 'package:create/src/common/pos.dart' show Pos;
+import 'package:create/src/core/worlds.dart' show WorldRef;
+
+import '../aeronautics_hooks.dart' show AeronauticsHooks;
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' show BoundingBox3d, Pose3dc, SubLevelHelper, Vector3d;
 
@@ -20,11 +23,19 @@ import '../propeller/propeller_actor_behaviour.dart'
     show PropellerPushTarget, PropellerPushWorld;
 
 /// The push world of one propeller block entity.
+///
+/// The block entity keeps this adapter, so it holds the world by id and resolves
+/// it again when the handle it was built with is gone (a world that unloaded and
+/// loaded again hands out a new one); see `WorldRef`.
 final class HostPropellerPushWorld implements PropellerPushWorld {
-  HostPropellerPushWorld(this.world, this.propellerPos);
+  HostPropellerPushWorld(World world, this.propellerPos)
+    : _world = WorldRef(AeronauticsHooks.worlds, world.getId(), world);
 
-  final World world;
+  final WorldRef _world;
   final Pos propellerPos;
+
+  /// A handle that is valid right now.
+  World get world => _world.world;
 
   @override
   Pose3dc? get propellerSubLevelPose {

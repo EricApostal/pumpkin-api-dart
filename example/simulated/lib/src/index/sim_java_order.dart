@@ -216,12 +216,29 @@ abstract final class SimPorted {
       if (!SimJavaOrder.blocksWithoutItem.contains(key)) key,
   ];
 
-  /// The blocks `simBlocks()` builds, in the Java order (23 of the 95).
+  /// The blocks `simBlocks()` builds, in the Java order (39 of the 95).
   static const List<String> blocks = [
     'simulated:physics_assembler', // SimBlocks.java:100
     'simulated:swivel_bearing', // :118
     'simulated:swivel_bearing_link_block', // :141
     'simulated:torsion_spring', // :263
+    // `PORTABLE_ENGINES` (`:327-353`), in `DyeColor.values()` order.
+    'simulated:white_portable_engine', // :327
+    'simulated:orange_portable_engine',
+    'simulated:magenta_portable_engine',
+    'simulated:light_blue_portable_engine',
+    'simulated:yellow_portable_engine',
+    'simulated:lime_portable_engine',
+    'simulated:pink_portable_engine',
+    'simulated:gray_portable_engine',
+    'simulated:light_gray_portable_engine',
+    'simulated:cyan_portable_engine',
+    'simulated:purple_portable_engine',
+    'simulated:blue_portable_engine',
+    'simulated:brown_portable_engine',
+    'simulated:green_portable_engine',
+    'simulated:red_portable_engine',
+    'simulated:black_portable_engine',
     'simulated:steering_wheel', // :581
     'simulated:throttle_lever', // :605
     'simulated:white_symmetric_sail', // :750
@@ -243,11 +260,12 @@ abstract final class SimPorted {
     'simulated:spring', // :843
   ];
 
-  /// The block entity types `SimRegistry` registers, in the Java order (7 of the
-  /// 30) — `SimBlockEntityTypes.java:60,67,121,128,135,141,229`.
+  /// The block entity types `SimRegistry` registers, in the Java order (8 of the
+  /// 30) — `SimBlockEntityTypes.java:60,67,114,121,128,135,141,229`.
   static const List<String> blockEntityTypes = [
     'simulated:torsion_spring',
     'simulated:physics_assembler',
+    'simulated:portable_engine', // :114
     'simulated:swivel_bearing',
     'simulated:steering_wheel',
     'simulated:spring',
@@ -308,6 +326,12 @@ abstract final class SimPorted {
     // `SymmetricSailBlock extends RotatedPillarBlock` (`:47`): `AXIS`, 3. All
     // sixteen colours share the definition.
     'simulated:white_symmetric_sail': {'axis': ['x', 'y', 'z']},
+    // `PortableEngineBlock extends HorizontalKineticBlock` (`:36`),
+    // `LIT` added (`:58-62`): 4 x 2. All sixteen colours share the definition.
+    'simulated:white_portable_engine': {
+      'facing': ['north', 'south', 'west', 'east'],
+      'lit': ['true', 'false'],
+    },
     // `SpringBlock extends WrenchableDirectionalBlock` (`SpringBlock.java:39`)
     // -> `FACING`, `SIZE` (`:40,48-49`): 6 x 3.
     'simulated:spring': {
@@ -316,8 +340,11 @@ abstract final class SimPorted {
     },
   };
 
-  /// The state properties of [key]; the fifteen dyed sails share the white one.
-  static Map<String, List<String>> propertiesOf(String key) => key.endsWith('_symmetric_sail')
-      ? stateProperties['simulated:white_symmetric_sail']!
-      : stateProperties[key]!;
+  /// The state properties of [key]; the fifteen dyed sails share the white one,
+  /// and so do the fifteen dyed engines.
+  static Map<String, List<String>> propertiesOf(String key) {
+    if (key.endsWith('_symmetric_sail')) return stateProperties['simulated:white_symmetric_sail']!;
+    if (key.endsWith('_portable_engine')) return stateProperties['simulated:white_portable_engine']!;
+    return stateProperties[key]!;
+  }
 }

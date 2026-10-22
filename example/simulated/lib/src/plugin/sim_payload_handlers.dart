@@ -96,7 +96,7 @@ final class SimPayloadHandlers {
   Future<void> dispatch(Player player, SimPacket packet) async {
     switch (packet) {
       case AssemblePacket():
-        _assemble(player, packet);
+        await _assemble(player, packet);
       case ThrottleLeverSignalPacket():
         _throttleLever(player, packet);
       case SteeringWheelPacket():
@@ -118,10 +118,10 @@ final class SimPayloadHandlers {
   ///
   /// TODO(parity): `SimStats.INTERACT_WITH_ASSEMBLER.awardTo(player)`; the
   /// package has no statistic table.
-  void _assemble(Player player, AssemblePacket packet) {
+  Future<void> _assemble(Player player, AssemblePacket packet) async {
     final worldId = player.getWorld().getId();
     final assembler = blockEntities.typed<PhysicsAssemblerBlockEntity>(worldId, packet.pos.toBlockPos());
-    assembler?.assembleOrDisassemble();
+    await assembler?.assembleOrDisassemble();
   }
 
   /// `ThrottleLeverSignalPacket.handle`: the lever moved, within reach.

@@ -2,7 +2,8 @@ import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/bounds.dart' show Aabb;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/contraptions/core/level.dart' show PushReaction;
-import 'package:sable/sable.dart' show AssemblyTransform, Rotation, SableLevel;
+import 'package:sable/sable.dart'
+    show AssemblyTransform, Rotation, SableLevel, SubLevelAssemblyHelper;
 import 'package:simulated/simulated.dart';
 import 'package:test/test.dart';
 
@@ -75,7 +76,22 @@ final class FakeWorld implements SimAssemblyWorld {
 }
 
 void main() {
-  setUp(() => SimConfigService.instance.load(SimConfig.defaults));
+  setUp(() {
+    SimConfigService.instance.load(SimConfig.defaults);
+    // The assembly backend normally lives in Sable's plugin component and is
+    // reached over IPC; in a single-address-space test the real model is the
+    // backend, so the tests keep exercising it end to end.
+    SimAssemblyHelper.assembleBlocks = (world, anchor, blocks, bounds) async {
+      final subLevel = SubLevelAssemblyHelper.assembleBlocks(
+        FakeLevel(),
+        anchor,
+        blocks,
+        bounds,
+      );
+      return SimAssembledSubLevel(subLevel.uniqueIdOrNull, subLevel.getPlot().getCenterBlock());
+    };
+  });
+  tearDown(() => SimAssemblyHelper.assembleBlocks = null);
 
   group('SimAssemblyContraption', () {
     test('follows sticky neighbours', () {
@@ -211,11 +227,11 @@ void main() {
       expect(SimAssemblyHelper.rotationFrom90DegRots(7).quarterTurns, 1);
     });
 
-    test('an air block assembles nothing', () {
+    test('an air block assembles nothing', () async {
       final world = FakeWorld({});
       final level = FakeLevel();
       expect(
-        SimAssemblyHelper.assembleFromSingleBlock(world, level, (0, 0, 0), (0, 1, 0)),
+        await SimAssemblyHelper.assembleFromSingleBlock(world, level, (0, 0, 0), (0, 1, 0)),
         isNull,
       );
     });

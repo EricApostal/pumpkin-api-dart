@@ -149,6 +149,10 @@ abstract interface class ContraptionEntityHost {
   void playSound(String sound, Vec3 at, {double volume = 1, double pitch = 1});
   void sendPayload(String channel, Map<String, Object?> fields);
   void setStalled(bool stalled);
+
+  /// `entityData.set(index, value)` of a plugin entity: [data] is the serializer id (a VarInt)
+  /// followed by the value, sent to the clients tracking the entity (`Entity.setSyncedEntry`).
+  void setSyncedEntry(int index, List<int> data);
   String? get controllingPlayer;
   void setControllingPlayer(String? uuid);
   NbtValue? getPersistentData(String key);

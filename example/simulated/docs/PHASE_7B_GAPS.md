@@ -19,7 +19,8 @@
 | `util/SimMathUtils`, `SimLevelUtil` | `util/` |
 | `SteeringWheelBlockEntity` | `content/blocks/steering_wheel/` — angle machine, generated speed, comparator output |
 | `ThrottleLeverBlock(Entity)` | `content/blocks/throttle_lever/` — lever state, redstone output |
-| `SymmetricSailBlock` | `content/blocks/symmetric_sail/` — lift provider + dye |
+| `SymmetricSailBlock` | `content/blocks/symmetric_sail/` — lift provider, dye, the placement helper (`symmetric_sail_placement.dart`) and `AXIS` from the clicked face (`PlacementRule.clickedAxis`) |
+| `PortableEngineBlock`, `PortableEngineBlockEntity`, `PortableEngineInventory` | `content/blocks/portable_engine/` — the sixteen dyed blocks, the fuel table (`manifest/cooking_fuel.g.dart`), the burn state machine, the kinetic generator, the dye swap and the comparator |
 | `HoneyGlueEntity`, `HoneyGlueMaxSizing` | `content/entities/honey_glue/` — volume model, tracker, size rules, and the decision of all three honey glue payloads (`honey_glue_packet_logic.dart`) |
 | `SpringBlockEntity`, `SpringItemHandler` (length) | `content/blocks/spring/` — length state machine and the placement rules of `PlaceSpringPacket` (`spring_placement.dart`) |
 | `TorsionSpringBlockEntity` | `content/blocks/torsion_spring/` |
@@ -121,7 +122,7 @@ the target projected out of its sub-level (`Sable.HELPER.projectOutOfSubLevel`).
 - **end sea** — the dimension overrides (`EndSeaPhysics.physicsTick`, which needs
   Sable's queued force groups and mass tracker). The record and the payload are
   ported.
-- **misc content** — `handle`, `portable_engine`, `physics_staff` (item and
+- **misc content** — `handle`, `physics_staff` (item and
   server handler), `plunger_launcher`, `absorbed` blocks.
 - **`compat/` (25)** — mostly out of scope (other mods), except the CC: Tweaked
   peripherals, which are ported under `lib/src/compat/computercraft/`: the twelve
@@ -141,7 +142,7 @@ the target projected out of its sub-level (`Sable.HELPER.projectOutOfSubLevel`).
 
 ## Registry surface
 
-The package registers 7 of the 95 blocks, 3 of the 86 items and 7 of the 30
+The package registers 39 of the 95 blocks, 25 of the 86 items and 8 of the 30
 block entity types, and it **names no registry** in its NeoForge declaration
 (`createNeoForgeDeclaration` sets no `NeoForgeRegistryAddition`). That is the
 safe state for a partial port, confirmed against the host's sync rules:
@@ -163,6 +164,28 @@ other) for this mod.
 
 `TODO(parity)` on the expansion, tracked with `RegistrySyncConnect` (their
 answer: expand first, name the registries after the names are verified).
+
+## Host gaps the portable engine hit
+
+* **An item's own data components are not readable.** `ItemStack.getComponents`
+  answers with the stack's *patched* components only
+  (`pumpkin-wasm-host-v0_2/src/item_stack.rs:701`), and
+  `DataComponentCodec.notReadByHost` lists `minecraft:cooking_fuel` as having no
+  reader — while the fuel of a vanilla item is a *default* component of its item
+  definition. The port therefore carries the resolved table
+  (`manifest/cooking_fuel.g.dart`, `tool/generate_cooking_fuel.py`) and a fuel
+  component on an item added by a plugin or a datapack does not burn. A host
+  import for "the resolved value of component X of this stack" would remove the
+  table.
+* **No per-state light level.** A plugin block's `luminance` is one number for all
+  of its states, so a lit portable engine does not glow (Java: 6 when `lit`).
+* **The slot cannot be served by a custom handler.** The host gives a plugin block
+  entity a *fixed* inventory it owns (`PluginInventories`, reachable only with the
+  asynchronous `ItemHandler` calls); the engine's burn step runs in the synchronous
+  block entity tick, so the slot is the entity's own `SmartInventory` and a hopper
+  cannot feed the engine (the same gap `create/lib/src/fluids/drain.dart`
+  documents). Java's `PortableEngineInventory` is exactly a fixed one-slot
+  inventory, so a synchronous handler interface would close this.
 
 ## Host gaps that block the slice from being playable
 

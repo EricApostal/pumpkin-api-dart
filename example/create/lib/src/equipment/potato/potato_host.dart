@@ -3,12 +3,14 @@
 // every tick: gravity, drag, block and entity hits, hit actions).
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/damage.dart';
 import '../../api/util.dart';
 import '../../contraptions/core/entity_type_keys.dart' show reportedEntityTypeKey;
+import '../../contraptions/core/nbt_map.dart' show NbtMap;
 import '../../core/module.dart';
 import '../../core/nbt.dart';
 import '../../manifest/manifest.dart';
@@ -25,6 +27,26 @@ import 'potato_model.dart';
 
 const String potatoEntityKey = 'create:potato_projectile';
 
+/// The spawn data of a `create:potato_projectile`: exactly the persistent fields of
+/// `PotatoProjectileEntity.addAdditionalSaveData` (`Item`, `AdditionalDamage`,
+/// `AdditionalKnockback`, `Recovery`), which is also what `writeSpawnData` sends to a client.
+///
+/// A projectile spawned by another component (the mounted potato cannon) carries these too: the
+/// projectile is adopted from them on its first tick (see `_adoptProjectile`).
+Uint8List potatoSpawnData({
+  required String itemKey,
+  double additionalDamage = 1,
+  double additionalKnockback = 0,
+  double recovery = 0,
+}) => NetworkNbt.encode(
+  NbtValue.compound({
+    'Item': NbtValue.compound({'id': NbtValue.string(itemKey), 'count': const NbtValue.int32(1)}),
+    'AdditionalDamage': NbtValue.float(additionalDamage),
+    'AdditionalKnockback': NbtValue.float(additionalKnockback),
+    'Recovery': NbtValue.float(recovery),
+  }),
+);
+
 /// One live projectile (the plugin keeps the state, the host entity is only the body).
 final class _Projectile {
   final PotatoFlight flight;
@@ -32,8 +54,20 @@ final class _Projectile {
   final double recoveryChance;
   final String? ownerUuid;
   final String worldName;
+
+  /// `additionalDamageMult`: the damage multiplier the spawner set on the projectile. A hand-fired
+  /// shot uses 1, the mounted potato cannon 2 (`aeronautics$setDamageMultiplier(2)`).
+  final double additionalDamage;
+
   int? stuckEntityId;
-  _Projectile(this.flight, this.itemKey, this.recoveryChance, this.ownerUuid, this.worldName);
+  _Projectile(
+    this.flight,
+    this.itemKey,
+    this.recoveryChance,
+    this.ownerUuid,
+    this.worldName, {
+    this.additionalDamage = 1,
+  });
 }
 
 final class PotatoHost {
@@ -50,6 +84,9 @@ final class PotatoHost {
 
   void install(CreateContext ctx) {
     ctx.host.intercept(Events.playerUseItem, _onUse);
+    // `PotatoCannonItem.canDestroyBlock` (`PotatoCannonItem.java:196-199`): holding a cannon, a
+    // left click never breaks the block.
+    ctx.host.intercept(Events.canAttackBlock, _onCanAttackBlock);
     ctx.listen(Events.entityTick, _onEntityTick);
     try {
       ctx.host.tickPluginEntities(potatoEntityKey, interval: 1);
@@ -60,6 +97,12 @@ final class PotatoHost {
   }
 
   PotatoType? typeForItem(String itemKey) => types.forItem(itemKey, inTag: (tag, key) => Tags.item(key, tag));
+
+  /// `PotatoCannonItem.canDestroyBlock` (`PotatoCannonItem.java:196-199`): the cannon never
+  /// breaks the block it is pointed at, so the attack is cancelled the way the zapper cancels
+  /// its own left click (`equipment/zapper/zapper_host.dart:292-305`).
+  Future<CanAttackBlockEventData> _onCanAttackBlock(Server server, CanAttackBlockEventData e) async =>
+      await stackKey(e.stack) == EqItems.potatoCannon ? e.cancel() : e;
 
   // -- PotatoCannonItem.use ----------------------------------------------------------------
 
@@ -192,32 +235,75 @@ final class PotatoHost {
     String itemKey,
     double recoveryChance,
   ) async {
-    final spawnData = NetworkNbt.encode(
-      NbtValue.compound({
-        'Item': NbtValue.compound({'id': NbtValue.string(itemKey), 'count': const NbtValue.int32(1)}),
-        'AdditionalDamage': const NbtValue.float(1),
-        'AdditionalKnockback': const NbtValue.float(0),
-        'Recovery': NbtValue.float(recoveryChance),
-      }),
-    );
+    final spawnData = potatoSpawnData(itemKey: itemKey, recovery: recoveryChance);
     final entity = await world.spawnPlugin(potatoEntityKey, pos, spawnData: spawnData);
     final flight = PotatoFlight(pos, motion, type);
     _live[entity.getId()] = _Projectile(flight, itemKey, recoveryChance, owner.getId().asString, world.getName());
     entity.setVelocity(velocity: motion);
   }
 
+  /// Rebuilds the flight state of a projectile this plugin did not spawn, from the entity's spawn
+  /// data and its motion, or `null` when the payload does not name a projectile type.
+  ///
+  /// `PotatoProjectileEntity`'s own fields are the analogue: Java's mounted cannon sets the item,
+  /// the damage multiplier and the origin flag on the entity it spawns, and the entity's tick then
+  /// uses them. The port keeps that state per projectile in this plugin, so the payload the spawner
+  /// wrote is the only carrier across the component boundary.
+  _Projectile? _adoptProjectile(Entity entity) {
+    final data = entity.pluginSpawnData;
+    if (data == null || data.isEmpty) return null;
+    final String itemKey;
+    final double damage;
+    final double recovery;
+    try {
+      final root = NetworkNbt.read(PacketReader(data));
+      if (root == null || root.kind != NbtKind.compound) return null;
+      final compound = NbtMap.of(root);
+      itemKey = compound.getCompound('Item').getString('id');
+      damage = compound.getDouble('AdditionalDamage', 1);
+      recovery = compound.getDouble('Recovery', 0);
+    } on Object {
+      return null;
+    }
+    if (itemKey.isEmpty) return null;
+    final type = typeForItem(itemKey);
+    if (type == null) return null;
+
+    final pos = entity.getPosition();
+    final motion = entity.getVelocity();
+    return _Projectile(
+      PotatoFlight(pos, motion, type),
+      itemKey,
+      recovery,
+      null,
+      entity.getWorld().getName(),
+      additionalDamage: damage,
+    );
+  }
+
+  /// `Events.entityTick`: the flight of one live projectile.
   Future<void> _onEntityTick(Server server, EntityTickEventData e) async {
     if (reportedEntityTypeKey(e.entityType) != potatoEntityKey) return;
-    final proj = _live[e.entityId];
     final entity = findEntity(server, e.entityId);
     if (entity == null) {
       _live.remove(e.entityId);
       return;
     }
+    var proj = _live[e.entityId];
     if (proj == null) {
-      // A projectile from a previous run (saved entity): it has no state, drop it.
-      entity.remove();
-      return;
+      // A projectile another component spawned: its spawn data carries what `setItem` and the
+      // `PotatoProjectileEntityExtension` setters would have (the mounted potato cannon is the only
+      // spawner outside this plugin), so the flight state is rebuilt from it and the projectile
+      // lives. This used to drop every projectile this plugin did not spawn itself, which made a
+      // mounted cannon's shot disappear on its first tick.
+      final adopted = _adoptProjectile(entity);
+      if (adopted == null) {
+        // A projectile from a previous run (saved entity): it has no state, drop it.
+        entity.remove();
+        return;
+      }
+      proj = adopted;
+      _live[e.entityId] = adopted;
     }
     final world = entity.getWorld();
     proj.flight.tickCount++;
@@ -387,7 +473,7 @@ final class PotatoHost {
       if (consumed) return;
     }
     final isEnderman = targetType == EntityType.enderman;
-    final damage = PotatoMath.damage(type, 1);
+    final damage = PotatoMath.damage(type, proj.additionalDamage);
     final knockback = PotatoMath.knockback(type, 0);
     final owner = proj.ownerUuid == null ? null : server.getPlayerByUuid(id: Uuids.parse(proj.ownerUuid!));
 

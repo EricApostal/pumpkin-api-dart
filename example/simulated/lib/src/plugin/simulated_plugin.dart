@@ -33,6 +33,7 @@ import '../host/simulated_host.dart';
 import '../index/sim_channels.dart';
 import '../network/sim_handled.dart';
 import '../index/sim_blocks.dart' show SimBlockKeys;
+import '../index/sim_kinetics.dart' show registerSimKinetics;
 import '../index/sim_lift_providers.dart';
 import '../index/sim_registry.dart';
 import '../service/sim_services.dart';
@@ -110,7 +111,8 @@ final class SimulatedPlugin extends Plugin {
     // assembler, the wheel, the lever, the spring, honey glue). They go through
     // Create's payload registry, which is also what the declaration is built
     // from, so a channel cannot be declared and handled twice.
-    SimPayloadHandlers(blockEntities: blockEntities, log: log).install(_registry, context);
+    final handlers = SimPayloadHandlers(blockEntities: blockEntities, log: log);
+    handlers.install(_registry, context);
 
     // The placement states of the blocks whose Java `getStateForPlacement` reads
     // the clicked face or the `AttachFace` (see `util/sim_placement_fixes.dart`):
@@ -157,7 +159,7 @@ final class SimulatedPlugin extends Plugin {
         blocks: blocks,
         bounds: (bounds.minX, bounds.minY, bounds.minZ, bounds.maxX, bounds.maxY, bounds.maxZ),
       );
-      if (!reply.ok) throw SimAssemblyException(reply.error ?? 'assembly failed');
+      if (!reply.ok) throw SimAssemblyException.backendError(reply.error ?? 'assembly failed');
       final ref = reply.subLevel;
       if (ref == null) return null;
       return SimAssembledSubLevel(ref.id, ref.centerBlock);
@@ -194,6 +196,12 @@ final class SimulatedPlugin extends Plugin {
         generatedRpm: portableEngineSpeed,
       );
     }
+
+    // The swivel bearing, the steering wheel and the torsion spring are
+    // `IRotate`s too: without a rule a shaft cannot drive the swivel bearing
+    // (so it never turns and never assembles from rotation) and the wheel's
+    // rotation goes nowhere.
+    registerSimKinetics(runtime);
   }
 
   SimConfig _loadConfig(Context context) {

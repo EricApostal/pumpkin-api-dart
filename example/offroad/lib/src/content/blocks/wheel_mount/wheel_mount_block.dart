@@ -21,7 +21,6 @@ import 'package:create/src/kinetics/kinetic_block_entity.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart';
 
-import '../../../config/offroad_config.dart';
 import '../../../host/offroad_hooks.dart';
 import '../../../index/offroad_ids.dart';
 import '../../components/tire_like.dart';
@@ -81,10 +80,13 @@ final class WheelMountBlockEntity extends KineticBlockEntity implements BlockEnt
   /// The suspension strength the player set (`strength.getValue()`).
   int get suspensionStrength => _strength?.value ?? SuspensionStrength.defaultValue;
 
-  /// `calculateStressApplied`: the impact of `OffroadStress.setImpact(16.0)`
-  /// (`OffroadBlocks.java:97`), scaled by the speed the network drives it at.
-  @override
-  double calculateStressApplied() => OffroadConfig.wheelMountImpact * speed.abs() / 16.0;
+  // `calculateStressApplied` is not overridden: Java's `WheelMountBlockEntity` leaves it
+  // to `KineticBlockEntity`, which returns the plain impact of
+  // `OffroadStress.setImpact(16.0)` (`OffroadBlocks.java:97`), and the network multiplies
+  // a member's stress by its speed (`KineticNetwork.getActualStressOf`). Overriding it
+  // with `impact * |speed| / 16` squared that: the network multiplied the already scaled
+  // value again, so the mount drew `16·speed²/16` — right at 16 RPM and four times too
+  // high at 64.
 
   // -- The held item ------------------------------------------------------------
 
@@ -166,8 +168,8 @@ final class WheelMountBlockEntity extends KineticBlockEntity implements BlockEnt
     super.tick();
   }
 
-  /// Reads the two steering signals asynchronously and caches them for the next
-  /// tick (`getBestNeighborSignal` is a host call).
+  /// Reads the two steering signals and the brake signal asynchronously and caches them
+  /// for the next tick (`getBestNeighborSignal` and `getRedstonePower` are host calls).
   void _readSignals() {
     final w = world;
     if (w == null) return;
@@ -179,6 +181,16 @@ final class WheelMountBlockEntity extends KineticBlockEntity implements BlockEnt
             .then((value) => _signals[target] = value),
       );
     }
+    // `level.getSignal(blockPos.above(), Direction.UP)` (`WheelMountBlockEntity.java:225`):
+    // the power the block *above* the mount provides towards the mount, which the host's
+    // `getRedstonePower(pos, up)` answers (`getSignal` of that neighbour towards `pos`).
+    // The key is the position above, so `brakeSignal` reads exactly Java's lookup.
+    final above = (this.pos.x, this.pos.y + 1, this.pos.z);
+    unawaited(
+      w
+          .getRedstonePower(pos: this.pos, direction: Direction.up.toHost())
+          .then((value) => _signals[above] = value),
+    );
   }
 
   // -- Physics ------------------------------------------------------------------
@@ -241,7 +253,7 @@ final class WheelMountBlockEntity extends KineticBlockEntity implements BlockEnt
       sideD: sideD,
       rayHitNormal: (0.0, 1.0, 0.0),
       kineticSpeed: WheelMountLogic.physicsKineticSpeed(speed: speed, axis: axis),
-      brakeSignal: _brakeSignal(),
+      brakeSignal: brakeSignal,
     );
 
     _queuedForcePos.set(center.$1, center.$2, center.$3);
@@ -261,8 +273,14 @@ final class WheelMountBlockEntity extends KineticBlockEntity implements BlockEnt
     return inverse <= 0 ? 0 : 1 / inverse;
   }
 
-  /// `this.level.getSignal(blockPos.above(), Direction.UP)`.
-  int _brakeSignal() => _signals[(this.pos.x, this.pos.y + 1, this.pos.z)] ?? 0;
+  /// `this.level.getSignal(blockPos.above(), Direction.UP)`: the redstone power the block
+  /// above the mount provides towards it, as the last `tick` read it.
+  ///
+  /// Java reads it inline on every physics tick; the host call is asynchronous here, so
+  /// the value is read once per game tick (`_readSignals`) and this is the one the
+  /// physics tick uses — and what a diagnostic reads (`offroad` exposes nothing else of
+  /// the brake).
+  int get brakeSignal => _signals[(this.pos.x, this.pos.y + 1, this.pos.z)] ?? 0;
 
   /// The friction of the block the wheel rests on
   /// (`PhysicsBlockPropertyHelper.getFriction`).

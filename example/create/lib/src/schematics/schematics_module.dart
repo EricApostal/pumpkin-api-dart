@@ -4,6 +4,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/blocks.dart';
 import '../api/payloads.dart';
+import '../common/block_entity_item_data.dart';
+import '../common/block_entity_item_data_host.dart';
 import '../common/common.dart';
 import '../common/host_bridge.dart';
 import '../contraptions/core/movement_checks.dart';
@@ -69,6 +71,34 @@ final BlockShape _cannonShape = BlockShape.boxes([
   _box16(0.5, 8, 0.5, 15.5, 11, 15.5),
 ]);
 
+/// The schematicannon's item data: the `create:schematicannon_options` component
+/// (`SchematicannonBlockEntity.collectImplicitComponents`; the loot table copies it with
+/// `copy_components` in Java, which the host does not run for a plugin block - the drop intercept
+/// writes it instead).
+final ItemDataBlock cannonItemData = ItemDataBlock(
+  blockKey: 'create:schematicannon',
+  itemKey: manifestItemKeyOf('schematicannon'),
+  componentKey: cannonOptionsComponent,
+  customComponent: true,
+  entityAt: (world, pos) => SchematicsRuntime.instance
+      .entityAt<SchematicannonBlockEntity>(world.getId(), pos.toPos()),
+  itemComponent: (be) {
+    final core = (be as SchematicannonBlockEntity).core;
+    return BlockEntityItemData.encodeCannonOptions(
+      core.replaceMode,
+      core.skipMissing,
+      core.replaceBlockEntities,
+    );
+  },
+  applyComponent: (be, bytes) {
+    final options = BlockEntityItemData.cannonOptions(bytes);
+    final core = (be as SchematicannonBlockEntity).core;
+    core.replaceMode = options.replaceMode;
+    core.skipMissing = options.skipMissing;
+    core.replaceBlockEntities = options.replaceBlockEntities;
+  },
+);
+
 /// Schematics: provides [SchematicHooks] (and so `SchematicRequirements`) and [SchematicUploadReceiver].
 final class SchematicsModule extends CreateModule {
   @override
@@ -76,6 +106,7 @@ final class SchematicsModule extends CreateModule {
 
   @override
   void register(CreateRegistry registry) {
+    ItemDataStamps.register(cannonItemData);
     registry.item(
       const ItemRegistration(key: 'create:empty_schematic', maxStackSize: 1),
     );
@@ -129,7 +160,10 @@ final class SchematicsModule extends CreateModule {
         selectionShape: _cannonShape,
         blockEntityType: cannonBlockEntityType,
         behavior: BlockBehavior(
-          onPlaced: (server, e) {
+          onPlaced: (server, e) async {
+            // `BlockItem.updateBlockEntityComponents` runs before `setPlacedBy`: the item's
+            // `create:schematicannon_options`, or the placement default (2, true, false).
+            await ItemDataStamps.applyPlaced(cannonItemData, server, e);
             final rt = SchematicsRuntime.instance;
             final be = rt.entityAt<SchematicannonBlockEntity>(
               e.targetWorld.getId(),
@@ -147,6 +181,9 @@ final class SchematicsModule extends CreateModule {
               be.sendData();
             }
           },
+          // `getCloneItemStack`: the cannon with its options on it (vanilla's
+          // `addBlockDataToItem` + `collectComponents`).
+          onCloneItem: (server, e) => ItemDataStamps.cloneItem(cannonItemData, e),
           onNeighborUpdate: (server, e) {
             SchematicsRuntime.instance
                 .entityAt<SchematicannonBlockEntity>(
@@ -191,6 +228,8 @@ final class SchematicsModule extends CreateModule {
 
   @override
   void onLoad(CreateContext ctx) {
+    // The cannon's item data (the same shared mechanism the tanks use).
+    ItemDataStamps.install(ctx);
     final hooks = SchematicHooks();
     // `BlockMovementChecks.isBrittle`: the printer defers brittle blocks so they do not lose
     // their support while printing.

@@ -101,13 +101,22 @@ abstract final class BlazeBurnerBlock {
     return HeatLevel.byName(value) ?? HeatLevel.none;
   }
 
-  /// `BlazeBurnerBlock.getLight` as far as a static luminance can express it (the host cannot
-  /// change the light level per state; the block is registered with 0).
+  /// `BlazeBurnerBlock.getLight`: `NONE` 0, `SMOULDERING` 8, the rest 15.
   static int lightOf(HeatLevel heat) => switch (heat) {
     HeatLevel.none => 0,
     HeatLevel.smouldering => 8,
     _ => 15,
   };
+
+  /// [lightOf] as host light rules, for the `blaze` states that emit light.
+  static List<LightRule> get lightRules => [
+    for (final heat in HeatLevel.values)
+      if (lightOf(heat) > 0)
+        LightRule(
+          when: {blazeProperty: heat.serializedName},
+          level: lightOf(heat),
+        ),
+  ];
 
   /// `BlazeBurnerBlock.tryInsert`: feeds one item of [stack] to the burner at [pos]. The caller
   /// consumes the item (the returned [InsertResult.object] is the container to give back).
@@ -155,6 +164,7 @@ abstract final class BlazeBurnerBlock {
   static CreateBlock build() => createBlockFromManifest(
     'blaze_burner',
     blockEntityType: BlazeBurnerBlockEntity.type,
+    lightRules: lightRules,
     placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
     collisionShape: shape,
     selectionShape: shape,
@@ -324,8 +334,21 @@ abstract final class LitBlazeBurnerBlock {
   /// `FlameType` (`regular` / `soul`).
   static const String flameTypeProperty = 'flame_type';
 
+  /// `LitBlazeBurnerBlock.getLight`: `SOUL` 9, `REGULAR` 12.
+  static int lightOf(String flameType) => flameType == 'soul' ? 9 : 12;
+
+  /// [lightOf] as host light rules (both flame types light up).
+  static List<LightRule> get lightRules => [
+    for (final flame in const ['regular', 'soul'])
+      LightRule(
+        when: {flameTypeProperty: flame},
+        level: lightOf(flame),
+      ),
+  ];
+
   static CreateBlock build() => createBlockFromManifest(
     'lit_blaze_burner',
+    lightRules: lightRules,
     collisionShape: BlazeBurnerBlock.shape,
     selectionShape: BlazeBurnerBlock.shape,
     behavior: BlockBehavior(

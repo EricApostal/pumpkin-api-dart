@@ -12,7 +12,8 @@ import '../../common/menu_mirror.dart';
 import '../../contraptions/core/entity_type_keys.dart' show reportedEntityTypeKey;
 import '../../core/module.dart';
 import '../../core/nbt.dart';
-import '../../protocol/item_stack.dart';
+import '../../logistics/host/runtime.dart' show Lg;
+import '../../logistics/model/stack_wire.dart' show StackWire;
 import '../armor/armor_host.dart' show findEntity;
 import '../data/equipment_components.dart';
 import '../host/env.dart';
@@ -22,6 +23,7 @@ import '../model/dir.dart';
 import '../model/vec.dart';
 import '../toolbox/toolbox_model.dart';
 import 'blueprint_geometry.dart';
+import 'blueprint_rules.dart';
 
 const String blueprintEntityKey = 'create:crafting_blueprint';
 const String blueprintMenuType = 'create:crafting_blueprint';
@@ -72,6 +74,7 @@ final class BlueprintHost {
     ctx.listen(Events.entityStartTracking, _onStartTracking);
     ctx.listen(Events.menuSlotChanged, _onMenuSlotChanged);
     ctx.listen(Events.menuClosed, _onMenuClosed);
+    ctx.host.intercept(Events.menuClick, _onMenuClick);
     env.bus.onServerbound('create:blueprint_complete_recipe', _onCompleteRecipe);
     try {
       ctx.host.tickPluginEntities(blueprintEntityKey, interval: 20);
@@ -373,46 +376,10 @@ final class BlueprintHost {
 
   // -- Crafting from the inventory -------------------------------------------------------------------
 
-  bool _matchesFilter(TStack filter, TStack candidate) {
-    if (filter.isEmpty) return false;
-    if (filter.key == 'create:filter') return _listFilterMatches(filter, candidate);
-    return filter.key == candidate.key;
-  }
-
-  bool _listFilterMatches(TStack filter, TStack candidate) {
-    List<int>? items;
-    var blacklist = false;
-    for (final (name, bytes) in filter.comps) {
-      if (name == '${StackCodec.customPrefix}create:filter_items') items = bytes;
-      if (name == '${StackCodec.customPrefix}create:filter_items_blacklist') blacklist = bytes.isNotEmpty && bytes[0] != 0;
-    }
-    if (items == null) return false;
-    final keys = readItemContainerKeys(items);
-    if (keys.isEmpty) return blacklist; // an empty blacklist lets everything pass
-    final contains = keys.contains(candidate.key);
-    return blacklist ? !contains : contains;
-  }
-
-  /// The item keys of an `ItemContainerContents` component value (26.3: optional item templates).
-  List<String> readItemContainerKeys(List<int> bytes) {
-    try {
-      return PacketBuffer.decode(bytes, (r) {
-        final n = r.readVarInt();
-        final out = <String>[];
-        for (var i = 0; i < n; i++) {
-          if (!r.readBool()) continue;
-          final id = r.readVarInt();
-          r.readVarInt();
-          ItemComponentPatch.read(r);
-          final k = env.itemIds.keyOf(id);
-          if (k != null) out.add(k);
-        }
-        return out;
-      });
-    } on Object {
-      return const [];
-    }
-  }
+  /// The wire that decodes the ghost slots of a list filter: the logistics runtime's
+  /// (`LgRuntime.wire`, the server's item and component ids), the same object
+  /// `ItemFilterApiAdapter.wire` hands over. `null` without the module, like there.
+  StackWire? get _filterWire => Lg.loaded ? Lg.i.wire : null;
 
   Future<void> _craft(Player player, BlueprintSection section) async {
     final server = player.getWorld();
@@ -441,7 +408,7 @@ final class BlueprintHost {
           if (stack == null) continue;
           final cand = await StackCodec.read(stack);
           if (cand.isEmpty || (used[slot] ?? 0) >= cand.count) continue;
-          if (!_matchesFilter(filter, cand)) continue;
+          if (!blueprintFilterTest(filter, cand, wire: _filterWire)) continue;
           found = slot;
           key = cand.key;
           break;
@@ -592,6 +559,35 @@ final class BlueprintHost {
     _syncToTrackers(entity, st);
   }
 
+  /// `GhostItemMenu.quickMoveStack` of the blueprint menu: a shift-click copies one item of a
+  /// mirror slot into the first empty ghost slot, or takes one item out of a ghost slot
+  /// ([applyBlueprintQuickMove]). The host's own quick-move can never apply (the menu's
+  /// `quickMoveTargets` is empty and Java returns `ItemStack.EMPTY`), so the click is cancelled
+  /// after the plugin applied it.
+  ///
+  /// The change goes through the same path as a client slot change: the icon slot stops being
+  /// inferred, a grid slot re-infers the result slot, and the model is saved and synced
+  /// (`BlueprintCraftSlot.setChanged` / `ghostSlotChanged`).
+  Future<MenuClickEventData> _onMenuClick(Server server, MenuClickEventData e) async {
+    if (e.menuType != blueprintMenuType) return e;
+    if (e.mode != MenuClickMode.quickMove) return e;
+    final open = _openMenus[e.player.getId().asString];
+    if (open == null) return e;
+    final entity = findEntity(server, open.$1);
+    final st = entity == null ? null : stateOf(entity);
+    if (entity == null || st == null) return e.cancel();
+    final sec = st.section(open.$2);
+    final source = await StackCodec.read(await playerStackAt(e.player, e.slot));
+    final slot = applyBlueprintQuickMove(sec.items, menuSlot: e.slot, source: source);
+    if (slot < 0) return e.cancel();
+    if (slot == 9 && !sec.items[9].isEmpty) st.inferredIcon = false;
+    if (slot < 9) await _inferResult(e.player, st, sec);
+    _save(entity, st);
+    _syncToTrackers(entity, st);
+    await setMenuSlot(e.player, blueprintGhostSlot(slot), await StackCodec.write(sec.items[slot]));
+    return e.cancel();
+  }
+
   /// `BlueprintMenu.onCraftMatrixChanged`: the result slot follows the crafting recipe the grid forms.
   Future<void> _inferResult(Player player, BlueprintState st, BlueprintSection sec) async {
     final recipes = _recipeManager(player);
@@ -650,14 +646,13 @@ final class BlueprintHost {
     }
     final cells = <TStack>[];
     final shape = info.shape;
-    TStack ingredientStack(Ingredient ing) {
-      final key = switch (ing) {
-        IngredientItem(:final value) => value,
-        IngredientOneOf(:final value) => value.isEmpty ? null : value.first,
-        IngredientTag() => null,
-      };
-      return key == null ? TStack.empty : TStack(key.contains(':') ? key : 'minecraft:$key', 1);
-    }
+    /// `BlueprintItem.convertIngredientToFilter`: the host's ingredient types end here, the grid
+    /// keeps the pure stacks (`blueprint_rules.dart`).
+    TStack ingredientStack(Ingredient ing) => switch (ing) {
+      IngredientItem(:final value) => blueprintItemStack(value),
+      IngredientTag(:final value) => blueprintTagStack(value),
+      IngredientOneOf(:final value) => blueprintAlternativesStack(value, ids: env.itemIds),
+    };
 
     if (shape != null && shape.pattern.isNotEmpty) {
       final keyMap = {for (final (k, i) in shape.key) k: i};

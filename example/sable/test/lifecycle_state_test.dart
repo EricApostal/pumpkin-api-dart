@@ -198,7 +198,12 @@ void main() {
       expect(info.tickets, contains(ticket));
     });
 
-    test('a real removal drops both the active set and the saved ticket info', () {
+    test('a removal drops the active set but keeps the saved ticket', () {
+      // Deliberate divergence from Java, which drops both: a ticket is the only
+      // pointer that can load the sub-level back, so a transient failure (a
+      // tracker that reads empty for one tick) would otherwise destroy the last
+      // way to recover the ship. The explicit delete path opts out through
+      // `forgetTickets`.
       final level = FakeLevel();
       final host = FakeChunkHost(level);
       final container = makeContainer(level, host);
@@ -210,6 +215,27 @@ void main() {
       );
       container.allTickets[uuidA] = SubLevelTicketInfo(null, {ticket});
       container.activeTickets[subLevel] = {ticket};
+
+      SubLevelTicketLoadingSystem(container)
+          .onSubLevelRemoved(subLevel, SubLevelRemovalReason.removed);
+
+      expect(container.activeTickets, isEmpty);
+      expect(container.allTickets.keys, contains(uuidA));
+    });
+
+    test('an explicit delete drops the saved ticket too', () {
+      final level = FakeLevel();
+      final host = FakeChunkHost(level);
+      final container = makeContainer(level, host);
+      final subLevel = addSubLevel(container, 0, 0, uuidA);
+      final ticket = SubLevelLoadingTicket(
+        SubLevelLoadingTicketType.commandForced,
+        uuidA,
+        const Object(),
+      );
+      container.allTickets[uuidA] = SubLevelTicketInfo(null, {ticket});
+      container.activeTickets[subLevel] = {ticket};
+      container.forgetTickets(uuidA);
 
       SubLevelTicketLoadingSystem(container)
           .onSubLevelRemoved(subLevel, SubLevelRemovalReason.removed);

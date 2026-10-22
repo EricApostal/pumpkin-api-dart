@@ -19,6 +19,7 @@ import '../../../math/pose.dart';
 import '../../../math/vector.dart';
 import '../../../model/server_sub_level.dart';
 import '../../../api/physics.dart';
+import '../../../api/physics_capabilities.dart';
 import '../../../api/physics_pipeline.dart';
 import '../../../api/physics_pipeline_provider.dart';
 
@@ -37,7 +38,7 @@ final class StaticPhysicsPipelineProvider implements PhysicsPipelineProvider {
 }
 
 /// A physics engine that does nothing, and keeps every sub-level static.
-final class StaticPhysicsPipeline implements PhysicsPipeline {
+final class StaticPhysicsPipeline implements PhysicsPipeline, FeatureAwarePhysicsPipeline {
   /// The bodies added to this pipeline, by sub-level.
   final Map<ServerSubLevel, StaticBodyHandle> bodies = {};
 
@@ -214,6 +215,14 @@ final class StaticPhysicsPipeline implements PhysicsPipeline {
   /// simulates them; a real solver assigns unique ids.
   @override
   int getNextRuntimeId() => 0;
+
+  /// Both contraptions and ropes are accepted, so both are declared supported:
+  /// this engine never throws, it just never moves them. Java does the same —
+  /// `StaticPhysicsPipeline.java:65-90` ignores a contraption and returns
+  /// `null` from `addRope`. `JoltPhysicsPipeline` is the engine that cannot
+  /// accept them, and it declares them unsupported.
+  @override
+  bool supportsFeature(PhysicsPipelineFeature feature) => true;
 }
 
 /// The body handle a [StaticPhysicsPipeline] hands out.

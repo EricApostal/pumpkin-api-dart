@@ -24,7 +24,7 @@ import 'dart:typed_data';
 // ignore_for_file: implementation_imports
 import 'package:create/src/common/bounds.dart' show Aabb;
 import 'package:create/src/common/direction.dart' show Direction;
-import 'package:create/src/core/nbt.dart' show NetworkNbt;
+import 'package:create/src/core/nbt.dart' show NbtKind, NbtValue, NetworkNbt;
 import 'package:create/src/core/payload.dart' show PayloadRegistry;
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:create/src/protocol/item_stack.dart' show ItemStackData;
@@ -173,7 +173,7 @@ void main() {
     /// declared-only list.
     PayloadRegistry<Object?> registered() {
       final payloads = PayloadRegistry<Object?>();
-      for (final id in SimHandledPayloads.ids) {
+      for (final id in SimHandledPayloads.serverboundIds) {
         final codec = SimPayloads.byId[id]!;
         payloads.serverbound<SimPacket>(
           id,
@@ -182,18 +182,45 @@ void main() {
           version: SimChannel.version,
         );
       }
+      final sync = SimPayloads.byId[HoneyGlueSyncBoundsPacket.type]!;
+      payloads.clientbound<SimPacket>(
+        HoneyGlueSyncBoundsPacket.type,
+        PayloadCodec<SimPacket>.of(
+          encode: (packet) =>
+              sync.encode(packet as HoneyGlueSyncBoundsPacket),
+          decode: sync.decode,
+        ),
+        version: SimChannel.version,
+      );
       SimulatedAddon(handled: SimHandledPayloads.idSet).contribute(payloads);
       return payloads;
     }
 
     test('the handled channels are serverbound channels of the mod', () {
-      expect(SimHandledPayloads.ids, hasLength(6));
-      expect(SimHandledPayloads.ids.toSet(), hasLength(6));
-      for (final id in SimHandledPayloads.ids) {
+      expect(SimHandledPayloads.serverboundIds, hasLength(6));
+      expect(SimHandledPayloads.serverboundIds.toSet(), hasLength(6));
+      for (final id in SimHandledPayloads.serverboundIds) {
         final codec = SimPayloads.byId[id];
         expect(codec, isNotNull, reason: id);
         expect(codec!.direction, SimPacketDirection.serverbound, reason: id);
       }
+    });
+
+    test('the glue sync is the one clientbound channel the plugin sends', () {
+      expect(SimHandledPayloads.ids, hasLength(7));
+      expect(
+        SimHandledPayloads.ids.where(
+          (id) => SimPayloads.byId[id]!.direction == SimPacketDirection.clientbound,
+        ),
+        [HoneyGlueSyncBoundsPacket.type],
+      );
+      // The plugin's own registration path: the sync is a clientbound channel, so it has a sender
+      // (`ClientboundChannel.sendAll`) instead of being declared-only.
+      final payloads = registered();
+      expect(
+        payloads.clientboundChannels.map((c) => c.id),
+        contains(HoneyGlueSyncBoundsPacket.type),
+      );
     });
 
     test('handling some and declaring the rest covers all 37 once', () {
@@ -210,7 +237,7 @@ void main() {
     test('the addon declares exactly the channels the plugin does not handle', () {
       final addon = SimulatedAddon(handled: SimHandledPayloads.idSet);
       final declared = addon.channels.map((c) => c.id).toList();
-      expect(declared, hasLength(31));
+      expect(declared, hasLength(30));
       expect(declared.where(SimHandledPayloads.idSet.contains), isEmpty);
       expect(
         {...declared, ...SimHandledPayloads.ids},
@@ -284,6 +311,34 @@ void main() {
               ..uuid(_uuid))
             .bytes,
       );
+    });
+
+    test('the spawn data is the box, relative to the entity position', () {
+      // `HoneyGlueEntityMixin.writeSpawnData` is `writeNbt(addAdditionalSaveData(...))`: a
+      // nameless network-NBT root, which is what the client's `readSpawnData` reads with
+      // `readNbt` (the disk format would decode as an empty compound and the client would keep an
+      // entity it cannot draw, then discard it on its first tick).
+      const box = Aabb(2, 64, 1, 6, 71, 6);
+      const position = (4.0, 64.0, 3.5);
+      final data = honeyGlueSpawnData(box, position);
+
+      final root = NetworkNbt.decode(data)!;
+      expect(root.kind, NbtKind.compound);
+      expect(root.asCompound.keys.toSet(), {'From', 'To', 'Pos'});
+
+      // `From` / `To` are the box moved to the origin: `Vec3` is a list of three doubles.
+      List<double> vec(String key) => [
+        for (final v in root.asCompound[key]!.value as List<NbtValue>) v.value as double,
+      ];
+      expect(vec('From'), [2.0 - 4.0, 64.0 - 64.0, 1.0 - 3.5]);
+      expect(vec('To'), [6.0 - 4.0, 71.0 - 64.0, 6.0 - 3.5]);
+      expect(vec('Pos'), [4.0, 64.0, 3.5]);
+
+      // `new AABB(from, to).move(pos)`: the client's box is the world box again.
+      final rebuilt = honeyGlueBoxFromSpawnData(data)!;
+      expect((rebuilt.minX, rebuilt.minY, rebuilt.minZ), (2.0, 64.0, 1.0));
+      expect((rebuilt.maxX, rebuilt.maxY, rebuilt.maxZ), (6.0, 71.0, 6.0));
+      expect(honeyGlueBoxFromSpawnData(null), isNull);
     });
 
     test('sync is six doubles, the entity id, then the optional uuid', () {

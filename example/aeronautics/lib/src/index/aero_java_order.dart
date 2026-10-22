@@ -137,6 +137,64 @@ abstract final class AeroJavaOrder {
   /// `index/AeroDataComponents.java:16-20`.
   static const List<String> dataComponents = ['aeronautics:levitating', 'aeronautics:converter'];
 
+  /// The sound event keys in registration order (25) —
+  /// `index/AeroSoundEvents.java:33-119`.
+  ///
+  /// Every entry comes from `AeroSoundEvents.REGISTRY.create(<name>, ...)`, and
+  /// `SoundEventRegistry.create` builds the id as `modId + ":" + name`
+  /// (`simulated/.../api/sound/SoundEventRegistry.java:26-31`), so the raw name
+  /// *is* the path: `ENVELOPE_BREAK = create("block.envelope.break", ...)` is
+  /// `aeronautics:block.envelope.break`. The list below is the field-initialiser
+  /// order of the `SimSoundEntry` fields.
+  ///
+  /// All of them are variable-range events (`SoundEvent.createVariableRangeEvent`,
+  /// `SoundEventRegistry.java:30`): none sets a fixed range, and the
+  /// `setAttenuationDistance` values are of the sound *files* in the generated
+  /// `sounds.json`, which the Java client already has.
+  static const List<String> sounds = [
+    'aeronautics:block.envelope.break',
+    'aeronautics:block.envelope.hit',
+    'aeronautics:block.envelope.place',
+    'aeronautics:fluid.levitite_blend.crystallize',
+    'aeronautics:fluid.levitite_blend.empty',
+    'aeronautics:fluid.levitite_blend.fill',
+    'aeronautics:block.levitite.break',
+    'aeronautics:block.levitite.place',
+    'aeronautics:block.propeller_bearing.large_loop',
+    'aeronautics:block.propeller_bearing.small_loop',
+    'aeronautics:block.hot_air_burner.head',
+    'aeronautics:block.hot_air_burner.idle',
+    'aeronautics:block.steam_vent.head',
+    'aeronautics:block.steam_vent.idle',
+    'aeronautics:block.steam_vent.open',
+    'aeronautics:block.steam_vent.close',
+    'aeronautics:item.cloud_skipper_transform',
+    'aeronautics:entity.gust',
+    'aeronautics:music_disc.cloud_skipper',
+    'aeronautics:music.adrift',
+    'aeronautics:music.cirrus',
+    'aeronautics:music.glide',
+    'aeronautics:music.mammatus',
+    'aeronautics:music.clear',
+    'aeronautics:music.rain',
+  ];
+
+  /// The particle type keys in registration order (5) —
+  /// `index/AeroParticleTypes.java:11-15`.
+  ///
+  /// `AeroParticleTypesNeoForge.registerEventListeners`
+  /// (`neoforge/index/AeroParticleTypesNeoForge.java:16-19`) walks
+  /// `AeroParticleTypes.values()` in enum order and registers each under
+  /// `CreateLang.asId(name)` — the enum name lowercased (`Lang.asId`) — so the
+  /// order below is the enum's and the ids are `aeronautics:<name as id>`.
+  static const List<String> particles = [
+    'aeronautics:propeller_air_flow',
+    'aeronautics:hot_air_ember',
+    'aeronautics:levitite_sparkle',
+    'aeronautics:gust',
+    'aeronautics:air_poof',
+  ];
+
   /// `aeronautics:lifting_gas_type` — `index/AeroLiftingGasTypes.java:16-17`.
   static const String liftingGasTypeRegistry = 'aeronautics:lifting_gas_type';
   static const List<String> liftingGasTypes = ['aeronautics:default', 'aeronautics:steam'];

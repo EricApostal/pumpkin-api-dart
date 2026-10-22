@@ -121,6 +121,11 @@ void registerAeronautics(
   );
 
   // -- Entity types ---------------------------------------------------------------
+  // `AeroEntityTypes.PROPELLER_CONTROLLED_CONTRAPTION` (`AeroEntityTypes.java:23-36`):
+  // `clientTrackingRange(20).updateInterval(40).sized(1, 1).eyeHeight(0).fireImmune()`.
+  // It is an `AbstractContraptionEntity`, so it implements `IEntityWithComplexSpawn`: without the
+  // spawn payload (`neoforge:advanced_add_entity`) a client receives the entity but no contraption
+  // and renders nothing.
   registry.entityType(
     const EntityTypeSpec(
       key: 'aeronautics:propeller_bearing_contraption',
@@ -130,8 +135,14 @@ void registerAeronautics(
       fireImmune: true,
       trackingRange: 20,
       updateInterval: 40,
+      spawnDataChannel: 'neoforge:advanced_add_entity',
     ),
   );
+  // `AeroEntityTypes.GUST` (`AeroEntityTypes.java:37-44`) sets no update interval, so it keeps the
+  // vanilla default of 3 and not the bearing's 40: a gust lives five ticks, so a 40-tick position
+  // update would never be sent at all. Its spawn data is a raw f64 quaternion
+  // (`GustEntity.writeSpawnData` -> `SableBufferUtils.write`), *not* NBT, so a spawn must not route
+  // it through `NetworkNbt`.
   registry.entityType(
     const EntityTypeSpec(
       key: 'aeronautics:gust',
@@ -140,13 +151,32 @@ void registerAeronautics(
       eyeHeight: 0,
       fireImmune: true,
       trackingRange: 20,
-      updateInterval: 40,
+      updateInterval: 3,
+      spawnDataChannel: 'neoforge:advanced_add_entity',
     ),
   );
 
   // -- Data components ------------------------------------------------------------
   registry.dataComponent('aeronautics:levitating', codec: levitatingComponentCodec, persistent: true);
   registry.dataComponent('aeronautics:converter', codec: converterComponentCodec, persistent: true);
+
+  // -- Sounds and particles -------------------------------------------------------
+  // Java registers 25 sound events on `BuiltInRegistries.SOUND_EVENT`
+  // (`index/AeroSoundEvents.java:33-119`) and 5 particle types
+  // (`index/AeroParticleTypes.java:11-15`); both registries are host-numbered by
+  // position, so the tables are the Java order. Without the sound events every
+  // sound the port plays (`aeronautics:fluid.levitite_blend.crystallize`,
+  // `aeronautics:item.cloud_skipper_transform`) is an unresolved key, and without
+  // the particle types the `aeronautics:levitite_sparkle` the `aeronautics:levitating`
+  // component writes (`content/components/levitating.dart`) can never resolve
+  // client-side. `createAddonNeoForgeDeclaration` turns the two into the
+  // `minecraft:sound_event` / `minecraft:particle_type` declaration entries.
+  for (final key in AeroJavaOrder.sounds) {
+    registry.sound(SoundSpec(key));
+  }
+  for (final key in AeroJavaOrder.particles) {
+    registry.particle(ParticleSpec(key, options: _particleOptions(key)));
+  }
 
   // -- Custom registries ----------------------------------------------------------
   registry.syncedRegistry(aeroLiftingGasTypeRegistry, aeroLiftingGasTypes);
@@ -192,22 +222,109 @@ void registerAeronautics(
   // hook, not through this registry: a channel declared twice is rejected.
 
   // -- Tags -----------------------------------------------------------------------
-  registry.tag(TagKind.block, 'aeronautics:airtight', [
-    for (final color in aeroDyeColors) ...[
-      envelopeKey(color),
-      encasedEnvelopeKey(color),
-    ],
+  // Java: `AeroTags.BlockTags.genBlockTags` / `AeroTags.ItemTags.genItemTags`
+  // (`AeroTags.java:40-96`) and the datagen files
+  // `data/aeronautics/tags/{block,item}/*.json`,
+  // `data/minecraft/tags/block/mineable/{pickaxe,axe}.json`,
+  // `data/minecraft/tags/block/dampens_vibrations.json`. Those block tags are
+  // data-driven on the Java side; here the host only loads item/function
+  // datapack tags, so every block tag has to be registered dynamically.
+  //
+  // The 32 dyed envelope keys, in `envelope.json` order: the 16 plain keys and
+  // then the 16 encased-shaft keys, both in [aeroDyeColors] order.
+  final envelopeKeys = <String>[
+    for (final color in aeroDyeColors) envelopeKey(color),
+    for (final color in aeroDyeColors) encasedEnvelopeKey(color),
+  ];
+
+  registry.tag(TagKind.block, 'aeronautics:envelope', envelopeKeys);
+  // `genBlockTags` references the envelope tag instead of re-listing the keys.
+  registry.tag(TagKind.block, 'aeronautics:airtight', const [
+    '#aeronautics:envelope',
+    '#minecraft:wool',
   ]);
   registry.tag(TagKind.block, 'aeronautics:levitite', const [
     'aeronautics:levitite',
     'aeronautics:pearlescent_levitite',
   ]);
+  registry.tag(TagKind.block, 'aeronautics:levitite_breakable', const [
+    'minecraft:clay',
+    'minecraft:mud',
+    'minecraft:packed_mud',
+    'minecraft:coarse_dirt',
+  ]);
+  registry.tag(TagKind.block, 'aeronautics:levitite_catalyzer', const [
+    'minecraft:campfire',
+    'minecraft:magma_block',
+    'minecraft:torch',
+    'minecraft:wall_torch',
+    'create:lit_blaze_burner',
+    'minecraft:fire',
+  ]);
+  registry.tag(TagKind.block, 'aeronautics:levitite_soul_catalyzer', const [
+    'minecraft:soul_campfire',
+    'minecraft:soul_torch',
+    'minecraft:soul_wall_torch',
+    'minecraft:soul_fire',
+  ]);
+  registry.tag(TagKind.block, 'aeronautics:levitite_adjacent_catalyzer', const [
+    'minecraft:netherrack',
+    '#c:storage_blocks/coal',
+  ]);
+  registry.tag(TagKind.block, 'aeronautics:levitite_adjacent_soul_catalyzer', const [
+    '#minecraft:soul_fire_base_blocks',
+  ]);
+  registry.tag(TagKind.block, 'minecraft:dampens_vibrations', const ['#aeronautics:envelope']);
+
+  // The two vanilla mineable tags carry every block whose `requiresCorrectTool`
+  // is true; the entries are `mineable/pickaxe.json` / `mineable/axe.json`.
+  registry.tag(TagKind.block, 'minecraft:mineable/pickaxe', [
+    hotAirBurnerKey,
+    steamVentKey,
+    propellerBearingKey,
+    gyroscopicPropellerBearingKey,
+    SmallPropellerKeys.smart,
+    SmallPropellerKeys.andesite,
+    SmallPropellerKeys.wooden,
+    mountedPotatoCannonKey,
+    levititeKey,
+    pearlescentLevititeKey,
+  ]);
+  registry.tag(TagKind.block, 'minecraft:mineable/axe', [
+    ...envelopeKeys,
+    propellerBearingKey,
+    gyroscopicPropellerBearingKey,
+    SmallPropellerKeys.smart,
+    SmallPropellerKeys.andesite,
+    SmallPropellerKeys.wooden,
+  ]);
+
+  registry.tag(TagKind.item, 'aeronautics:envelope', envelopeKeys);
+  registry.tag(TagKind.item, 'aeronautics:shaftless_envelope', [
+    for (final color in aeroDyeColors) envelopeKey(color),
+  ]);
   registry.tag(TagKind.item, 'aeronautics:levitite', const [
     'aeronautics:levitite',
     'aeronautics:pearlescent_levitite',
   ]);
-  registry.tag(TagKind.block, 'aeronautics:levitite_catalyzer', const ['minecraft:fire']);
-  registry.tag(TagKind.block, 'aeronautics:levitite_soul_catalyzer', const ['minecraft:soul_fire']);
+  registry.tag(TagKind.item, 'aeronautics:levitite_catalyzer', const [
+    'minecraft:flint_and_steel',
+    'minecraft:fire_charge',
+    'minecraft:torch',
+    'minecraft:campfire',
+  ]);
+  registry.tag(TagKind.item, 'aeronautics:levitite_soul_catalyzer', const [
+    'minecraft:soul_torch',
+    'minecraft:soul_campfire',
+  ]);
+  registry.tag(TagKind.item, 'aeronautics:levitite_catalyzer_no_consume', const [
+    'minecraft:torch',
+    'minecraft:campfire',
+    'minecraft:soul_torch',
+    'minecraft:soul_campfire',
+  ]);
+  registry.tag(TagKind.item, 'aeronautics:burner_fire', const ['minecraft:coal_block']);
+  registry.tag(TagKind.item, 'aeronautics:converts_to_cloud_skipper', const ['#c:music_discs']);
 
   // -- Id order -------------------------------------------------------------------
   registry.useOrder(RegistryKind.blocks, aeroBlockOrder);
@@ -231,3 +348,21 @@ List<CreateBlock> _blocks() => [
   buildPearlescentLevititeBlock(),
   buildLevititeBlendBlock(),
 ];
+
+/// How each particle type's options are written on the wire (the `StreamCodec` of
+/// its data class in `content/particle/*ParticleData.java`).
+///
+/// `levitite_sparkle` is the one the list of `BuiltInRegistries.PARTICLE_TYPE`
+/// needs to be spawnable: `LevititeSparkleParticleData.STREAM_CODEC` is one
+/// `ByteBufCodecs.INT` (the colour, `LevititeSparkleParticleData.java:22-25`),
+/// which is the host's `color` format. `air_poof` is `StreamCodec.unit`
+/// (`AirPoofParticleData.java:14`) — no options at all. The rest carry a boolean
+/// pair, a boolean, and a quaternion (`PropellerAirParticleData.java:20-23`,
+/// `HotAirEmberParticleData.java:19-22`, `GustParticleData.java:21-24`), which no
+/// host format names; they are `bytes`, the format that writes them as the mod's
+/// codec does.
+ParticleOptions _particleOptions(String key) => switch (key) {
+  'aeronautics:levitite_sparkle' => ParticleOptions.color,
+  'aeronautics:air_poof' => ParticleOptions.none,
+  _ => ParticleOptions.bytes,
+};

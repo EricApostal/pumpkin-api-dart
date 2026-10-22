@@ -24,7 +24,7 @@ Java tree: `sable/common/src/main/java/dev/ryanhcode/sable` at `227077f`
 | `sublevel/tracking_points/**` | `tracking_points/tracking_point.dart`, `tracking_point_observer.dart` | points, save/load, `take`, **projection on removal** |
 | `api/SubLevelHelper.java` | `api/sub_level_helper.dart` | entity projection, velocity, dependency chains |
 | `api/block/**` | `api/block/**` | lift providers, actors, collision shapes, custom centre of mass |
-| `api/physics/**` | `api/physics.dart`, `api/physics_pipeline.dart`, `api/physics_pipeline_provider.dart`, `api/physics_constraint.dart`, `api/physics_rope.dart` | force groups, handles, mass, constraints, the provider registry |
+| `api/physics/**` | `api/physics.dart`, `api/physics_pipeline.dart`, `api/physics_capabilities.dart`, `api/physics_pipeline_provider.dart`, `api/physics_constraint.dart`, `api/physics_rope.dart` | force groups, handles, mass, constraints, the provider registry, the capability declarations |
 | `api/physics/PhysicsPipelineProvider.java`, `physics/impl/none/StaticPhysicsPipeline*.java` | `api/physics_pipeline_provider.dart`, `physics/impl/none/static_physics_pipeline.dart` | priority selection and the no-op fallback pipeline |
 | `api/math/**`, `util/**` | `math/**`, `util/**` | vectors, poses, boxes, bit grids, NBT, UUIDs |
 | `index/SableAttributes.java`, `SableTags.java`, `SableToasts.java` | `index/sable_index.dart` | two attributes + `getPushCooldownTicks`, seven tags, three toast tokens |
@@ -144,10 +144,52 @@ that only a plugin can fill, and until it is filled every assembly throws
 * **Geometry** comes from the model's constants
   (`SubLevelContainer.defaultLogSizeLength` 7, `defaultLogPlotSize` 7,
   `defaultOrigin` 10000); the Sable config has no keys for them.
-* **Storage.** `SubLevelStorage` is rooted at `<plugin data>/<world id>/sublevels`
-  (`PumpkinFileStore` over `DataFolder`, hence `fs.write.data`), and the
-  container is initialized with it (`initializeWithStorage`), which installs the
-  ticket loading system and the holding chunk map.
+* **Storage.** `SubLevelStorage` is rooted at
+  `<plugin data>/sublevels/<dimension id, ':' -> '_'>` (`PumpkinFileStore` over
+  `DataFolder`, hence `fs.write.data`), and the container is initialized with it
+  (`initializeWithStorage`), which installs the ticket loading system, the
+  holding chunk map and the load-failure sink.
+  `World.getId()` is `world` for *every* dimension in Pumpkin, so keying the
+  storage by it made all three dimensions share one store: the nether's and the
+  end's empty save overwrote the overworld's saved data (`{tickets: []}`) and
+  their holding chunks would have collided. Java roots one shared
+  `<save root>/sublevels` for the whole server; the sandbox has no world path, so
+  the port keeps the per-dimension split the containers already assume.
+  * **The payload codec is Sable's own**: `NbtSubLevelCodec` (gzip NBT, i.e.
+    `NbtIo.writeCompressed`/`readCompressed`, what `SubLevelStorageFile` writes;
+    the gzip is `util/gzip.dart`, because the wasm component has no `dart:io` and
+    the API exposes no compression). `JsonSubLevelCodec` is only for tests; it
+    cannot read a Java payload and Java cannot read what it writes.
+  * **`saveAll` runs on the level save** (`Events.worldSave`, where Java hooks
+    `ServerLevel.save`) and again on unload/shutdown, so the region files (the
+    holding chunks' pointers) and the payloads reach disk. Nothing needs to be
+    flushed by hand: before this, only payloads were written at close and
+    everything unloaded was lost.
+  * **The saved data is written too**: `SavedDataFiles` keeps the three Java
+    saved-data objects (`sable_sub_level_occupancy`,
+    `sable_sub_level_force_load_tickets`, `sable_tracking_points`) as gzip NBT
+    files under `sublevels/<dimension>/data/<name>.dat` — the payload bytes are
+    Java's, the folder is the plugin's, because the API has no `getWorldPath`.
+    The occupancy and the tickets are read back at level open, *before*
+    `initializeWithStorage`, so the ticketed sub-levels force-load again, and the
+    number snatched back from disk is logged on open
+    (`SubLevelHoldingChunkMap.snatchLog`) — a restore that finds nothing must
+    say so, because the ticket is the only thing that can load the sub-level.
+    `SubLevelLoadingTicketType.registry` installs its built-ins when it is first
+    touched: Dart's statics are lazy, so `byName` on a fresh plugin instance
+    otherwise searched an empty registry and dropped every saved ticket as an
+    "unknown type".
+  * **A payload that does not decode is loud**: `SubLevelStorage.onError` is
+    installed (the plugin logs at error level, like the Java `LOGGER.error`); with
+    no sink the storage throws. `SubLevelStorageFile.read` distinguishes an empty
+    slot from an undecodable payload (`SubLevelPayloadException`).
+  * **Plot chunk keys are Java's**: `chunks` is keyed by the packed `ChunkPos`
+    (`"<packed long>"`); the port's old `"x,z"` form still loads, an unreadable
+    key is reported (`ServerLevelPlot.onChunkKeyError`) instead of dropped.
+    The chunk *body* is still the port's (`blocks`/`block_entities` from
+    `MemoryPlotChunk`, since Pumpkin cannot hand a plugin a real `LevelChunk`),
+    so a Java-written plot body is not decoded and a port-written one is not
+    read by Java.
 * **Registration and announcement**: `SubLevelContainer.register(container)`,
   then `fireSubLevelContainerReady(level, container)`
   (`api/event/sable_sub_level_container_ready_event.dart`, which also calls
@@ -213,9 +255,38 @@ Dart object, and IPC between components carries JSON only). The two ways out:
    roots must differ — the user then has as many un-synced sub-level universes as
    plugins.
 
-Until one of those is chosen, the physics assembler cannot assemble; `aeronautics`
-degrades silently (`if (subLevels is ServerSubLevelContainer)`), which is why its
-balloon physics listener is inert on a live server.
+**Chosen: `sable_jolt` owns the containers** (`SablePlugin.startServer`). It links
+the solver, so the pipeline and the containers it drives share one address space;
+the `sable` plugin declares the mod and then stands down once
+`sable_jolt` answers the ownership probe (`sable.ownership`). This is a
+**deliberate layering inversion** — the solver's plugin owns the model — taken
+because the alternative is a package cycle: `sable_jolt` depends on `sable` (its
+pipeline implements `sable`'s `PhysicsPipeline`/`ConstraintPipeline` and uses its
+`Vector3d`/`Pose3d`/`ServerSubLevel`), so `sable` cannot depend on `sable_jolt`.
+Do not "fix" this back into a dependency: it is a cycle, not a preference. The
+alternative that would restore the layering is moving the model types the pipeline
+touches into a shared base package, a wide refactor of `sable`'s imports.
+
+**One door.** Callers never touch a container directly; they send operations on
+`sable.sublevels`, and the plugin that answers is discovered once on
+`sable.ownership` (`sable_jolt` when it is loaded, otherwise `sable`). Commands run
+in the owner's component, so `/sable …` and the operation channel always see the
+same containers — there is one owner and one door, not two ownership stories.
+
+Verified live with the solver owning the levels:
+```
+Jolt module: ABI 1, version id 329217.
+Sable: sub-level container of minecraft:overworld ready (… pipeline JoltPhysicsPipeline).
+Sable: sable_jolt owns the sub-level containers (it links the solver); this component only declares the mod.
+Assembled 19 blocks.
+  position 0.50, -181.32, 0.50 … mass 38.00 … linear velocity 0.00, -44.23, 0.00
+  (later) position 0.50, -985.60, 0.50 … linear velocity 0.00, -93.23, 0.00
+```
+A sub-level integrated by Jolt now moves — which is what "the physics assembler does
+nothing" was about.
+
+Not converted yet (each still reads this component's empty map, or needs the
+mirror): `PumpkinSimulatedHost.containingSubLevel` / `subLevelById`,
 
 ### Cross-plugin reach map (the refactor's work list)
 
@@ -260,13 +331,55 @@ can await the `assemble` operation. The block-entity-driven callers (swivel
 bearing, physics staff) cannot, so they enqueue the request and apply the reply
 when it lands.
 
-Still missing on the plugin side (each a `HOST GAP`): `SubLevelHost` is not
-implemented, so the tracking system has no player list and sends nothing
-(`container.hostOrNull` is `null`; the payload sink, the chunk view and the UDP
-sender are likewise uninstalled, so even a tracked sub-level is not sent to a
-client); `AssemblyEntityHost` is not implemented, so entities on the assembled
+### What is converted (and what is not)
+
+Implemented:
+
+* `example/sable/lib/src/plugin/sable_sub_level_api.dart`: the operation channel
+  (`IpcChannel` named `sable.sublevels`, addressed to the plugin `sable`), the
+  ops `list`, `get`, `containing`, `areaLoaded`, `assemble`, and a
+  `subscribe`/`changed` push. The handler is synchronous by construction, so an
+  operation runs to completion inside Sable's component; replies carry ids,
+  poses, bounds, mass and the plot's centre block, never objects. A temp command
+  in the Aeronautics plugin proved the round trip live (`list` answered `ok=true`
+  from the sable component).
+* `example/simulated/lib/src/host/sable_bridge.dart`: the caller half — the
+  operations above, plus a **mirror** (`subLevelAt`, `subLevelById`,
+  `subLevelsOf`) refreshed by the `changed` pushes, one push behind, for callers
+  that cannot await.
+* `SimAssemblyHelper.assembleFromSingleBlock` now searches the structure locally
+  and calls the installed `SimAssemblyHelper.assembleBlocks` hook for the block
+  move; the plugin installs it over the bridge. `SimAssemblyResult.subLevel` is a
+  `SimAssembledSubLevel` snapshot (id + plot centre block) instead of a `SubLevel`.
+* Callers converted: `PhysicsAssembler.assembleOrDisassemble` is `async`
+  (`simulated:assemble` awaits it; the synchronous `onUseWithoutItem` starts it);
+  `SwivelBearingBlockEntity.assemble` is queued from its tick with an
+  `_assembling` guard; `Aeronautics`' `SimulatedBridge.balloonsAssembled` uses the
+  snapshot's `centerBlock`.
+
+Not converted yet (each still reads this component's empty map, or needs the
+mirror): `PumpkinSimulatedHost.containingSubLevel` / `subLevelById`,
+`SimLevelUtil.isAreaActuallyLoaded`, `physics_constraints.dart`,
+`SubLevelHelper.distanceSquaredWithSubLevels` / `projectOutOfSubLevel` /
+`getVelocityOfSubLevel`, `SimAssemblyHelper.disassembleSubLevel` + `moveBlocks`
+(the disassembly path), Aeronautics' `physics.prePhysicsTickListeners` hook, and
+Offroad's three `SubLevelHelper` calls.
+
+Still missing on the plugin side (each a `HOST GAP`): the payload sink, the chunk
+view and the UDP sender are uninstalled, so even a tracked sub-level is not sent
+to a client; `AssemblyEntityHost` is not implemented, so entities on the assembled
 blocks stay where they are; world-chunk block entities are not moved (the host
 exposes only raw NBT bytes).
+
+`SubLevelHost` **is** implemented now (`plugin/pumpkin_sub_level_host.dart`,
+installed as `container.hostOrNull`): it answers the saved data through
+`SavedDataFiles`, the players through `Server.getAllPlayers` filtered by
+dimension, the sub-level lookup through the container, and the pose/mass/velocity
+from the loaded `ServerSubLevel` (Java reads them from the physics pipeline). The
+chunk-unload half of `updateChunkStatus` stays unwired: the host's
+`ChunkUnloadEvent` carries no world, and `World::unload_chunk` never fires it, so
+only `Events.chunkLoad` is subscribed; the unload half is driven by
+`PhysicsChunkTicketManager`.
 
 ## Deliberately left
 
@@ -277,7 +390,11 @@ exposes only raw NBT bytes).
 * **The physics solver** — `physics/impl/rapier/**` and `sable_rapier`. The
   Dart port defines the pipeline contract (`api/physics_pipeline.dart`), the
   provider registry and the `impl/none` fallback; the solver itself is another
-  slice (`example/sable_jolt`).
+  slice (`example/sable_jolt`). A feature an engine cannot implement is declared
+  through `api/physics_capabilities.dart` (`FeatureAwarePhysicsPipeline`) so
+  Sable never calls it — `JoltPhysicsPipeline` declares contraptions and ropes
+  unsupported, because the checked-in native module has no kinematic body
+  factory and no rope chain.
 * **The UDP server** — `SableUDPServer`, `SableUDPAuthenticationState`,
   `SableUDPChannelHandlerServer`, `SableUDPEchoPacket`, the encoder/decoder and
   `AddressedSableUDPPacket`. The six datagram kinds and their codecs are ported
@@ -344,4 +461,165 @@ exposes only raw NBT bytes).
 | `physics/impl/none/static_physics_pipeline.dart` | `StaticPhysicsPipeline.java:92-103` | Java returns `null` from `addBox`/`addRope`; this returns a handle that remembers the object, because the Dart contract's handles are non-nullable |
 | `physics/impl/none/static_physics_pipeline.dart` | `StaticPhysicsPipeline.java:163-165` | `getNextRuntimeId()` returns the constant `0`, so two bodies share an id — harmless without simulation, kept for parity |
 | `system/tickets.dart` | `PhysicsChunkTicket.java:57-63` | `hashCode` includes `lastInhabitedTick` while `equals` compares only `pos`; the Java inconsistency is kept |
+| `api/sub_level_ticket_loading_system.dart` | `SubLevelTicketLoadingSystem.java` | a `REMOVED` sub-level keeps its force-load ticket (and pointer) unless `/sable remove` cleared it, so a transient restore failure cannot delete the only pointer to the sub-level |
 | `storage/holding/sub_level_holding_chunk_map.dart` | `SubLevelHoldingChunkMap.java` | `pack` is an in-process key with the halves swapped relative to `ChunkPos.pack`; `unpack` matches, and nothing crosses a boundary with it |
+
+## Fixes landed after the first live validation
+
+Each of these came from a live run or a static audit; the Java site is named in
+the code at every one.
+
+* **The mass delta validated the wrong tracker** (`system/physics_system.dart`):
+  `_updateMassDataFromBlockChange` checked the **merged** tracker where Java
+  checks the **self** tracker (`SubLevelPhysicsSystem.java:524-535`). The merged
+  properties are recomputed only at the *end* of that method, so on the first
+  block of an assembly the merged tracker was still the empty one (`mass == 0`) →
+  "invalid" → the port destroyed the plot it had just written to and removed the
+  sub-level. That one ordering bug produced both the disappearing sub-level and
+  the `mass=12, pose=(NaN,NaN,NaN)` state. Regression tests in
+  `test/physics_boundary_test.dart` ("the first block of an assembly is kept and
+  counted" — verified to fail against the old check — and "removing the last
+  block still removes the sub-level").
+* **The same merged/self confusion in two more places**, fixed as a class: the
+  saved pose recentres on the **self** tracker
+  (`SubLevelSerializer.java:50-53`) and the heat map's zero-mass guard reads the
+  self tracker through `isInvalid()` instead of a getter that *throws*
+  (`SubLevelHeatMapManager.java:243-247`).
+* **NaN recovery threw instead of removing** (`SubLevelPhysicsSystem.java:376-381`):
+  it read `getCenterOfMass().x.isNaN`, which throws for an empty tracker where
+  Java's `getCenterOfMass() == null` decides. `isInvalid()` now decides.
+* **The block-change hook** is wired (`SableCommonEvents.handleBlockChange`): plot
+  writes run holder bounds, plot bounds/expand, actors, the heat/floating queues
+  and the mass delta; world writes run the pipeline notify + wake half.
+* **Assembly commands report the truth** (`command/sable_assemble_commands.dart`):
+  `_hasAssembledMass` runs **before** the assembly
+  (`SableAssembleCommands.java:302-310`) so an empty selection moves nothing and
+  leaves no mass-less sub-level; the success count is `_countAssembledBlocks`
+  (solid blocks, not the selection volume) **taken before the move** — Java
+  evaluates it inside a `sendSuccess` supplier, i.e. after `assembleBlocks` has
+  destroyed the originals, which prints `Assembled 0 blocks.` for a real
+  assembly; and `assembleBlocks` no longer throws when the tracker has no mass —
+  Java's getter returns `null` there and takes the fallback branch.
+* **`shatter` destroyed builds**: `shatterBlocks` had Java's condition inverted —
+  it deleted every non-air block *before* assembling, so
+  `shatter cube|sphere|area` removed the structure and created no sub-levels.
+  Java destroys only the **non-solid** blocks and then assembles each remaining
+  block on its own.
+* **Selector arguments**: Brigadier's `word()` stops at `@`, so every
+  `sub_level`/`target` argument now uses the host's `token` type (one
+  whitespace-delimited token, unchanged) — `@e[limit=1]` now works in front of
+  further arguments, which is what `/sable physics …` and `/sable teleport …`
+  needed.
+* **Dimension drag** comes from `dimensionDrag(level)` instead of a 0.09
+  constant (`SubLevelPhysicsSystem.java:168-170`), and the solver settings reach
+  the pipeline through the opt-in `ConfigurablePhysicsPipeline`
+  (`SubLevelPhysicsSystem.java:171-172`).
+* **Chunk tickets are real**: `addChunkTicket`/`removeChunkTicket` use the host's
+  `ChunkTickets.forceLoadChunk`/`releaseChunkTicket` for **world** chunks. Yard
+  positions deliberately take no ticket: the plot blocks live in
+  `MemoryPlotChunk`, and a host ticket there would make worldgen write terrain
+  into the yard (the `chunk-source` gap).
+* **The structure search batches its reads** (`BatchingBlockHost`, implemented by
+  the chunk host): every visited block re-reads its 18 neighbours, and each read
+  is a host call, which is why `/sable assemble connected` over real terrain
+  stalled the tick loop for ~100 s.
+
+### Force-load across a restart
+
+**One deliberate divergence:** Java drops a sub-level's force-load ticket when the
+sub-level is removed (`SubLevelTicketLoadingSystem.onSubLevelRemoved`). The port
+keeps it, unless the removal came from an explicit delete (`/sable remove`, which
+calls `ServerSubLevelContainer.forgetTickets`). A ticket is the only pointer that
+can load the sub-level back, so Java's rule turns a transient failure — a tracker
+that reads empty for one tick, a plot whose chunks have not been restored yet —
+into permanent loss of the ship and of the file entry that named it, with nothing
+in the log. A kept ticket re-arms the force-load on the next start. See
+`docs/sable-core-port.md`'s deviations table for the same note in one line.
+
+
+
+`/sable forceload add` → save → restart was reproduced end to end, and the ticket
+half is now proven working:
+
+```
+session 1: Force-loaded 1 sub-level.
+           saving 1 force-load ticket(s) in minecraft:overworld, 1 with a save pointer.
+session 2: loaded 1 force-load ticket(s) for minecraft:overworld, 1 with a save pointer.
+           DEBUG snatch <uuid> at [chunkPos=(0,0), storageIndex=0, subLevelIndex=0]
+           DEBUG holding chunk (0,0) pointers=[...] loaded=[<uuid>]
+           DEBUG observer: removed <uuid> reason=SubLevelRemovalReason.removed
+```
+
+So the ticket persists, the pointer resolves, the holding chunk holds the
+sub-level — and the sub-level is then **removed during the load with no failure
+message**. Two causes are ruled in, and both are in the load path rather than the
+ticket path:
+
+* `fullyLoad` removes the sub-level (`SubLevelRemovalReason.removed`) when
+  `plot.getBoundingBox()` is empty, which is what happens if `plot.load` restored
+  a chunk that decodes to no blocks; the matching `onFailure` message is not
+  printed, so the failure sink is not reaching the caller on that path.
+* independent of that, the mass tracker is built by `onSubLevelAdded` while the
+  plot is still **empty**, so a restored sub-level starts invalid and the next
+  tick's removal pass destroys it. `SubLevelSerializer.fullyLoad` now rebuilds the
+  tracker once the plot is loaded (`subLevel.buildMassTracker()`), which is the
+  same thing `SubLevelPhysicsSystem.recoverSubLevel` does on the paths that
+  matter.
+
+Fixed, and verified across a real restart:
+
+* `SubLevelSerializer.fullyLoad` rebuilds the tracker after the plot is loaded
+  **and primes the merged one** (`updateMergedMassData(0.0)`). Both halves are
+  needed: `allocateSubLevel` builds the tracker while the plot is still empty, and
+  a freshly wrapped `MergedMassTracker` keeps its own empty `mass`/`centerOfMass`
+  until `update` runs — and `SubLevelContainer.tick` runs
+  `processSubLevelRemovals()` **before** the observers (the physics system), so an
+  un-primed tracker reads as invalid and the restore is removed on its first tick.
+* Live, two sessions, same world:
+  ```
+  session 1: Assembled 18 blocks. … mass 36.00
+             Force-loaded 1 sub-level.
+             saving 1 force-load ticket(s) in minecraft:overworld, 1 with a save pointer.
+  session 2: loaded 1 force-load ticket(s) for minecraft:overworld, 1 with a save pointer.
+             1 loaded sub-level(s) of minecraft:overworld are force-loading back …
+             1 ticket on 1 sub-level in minecraft:overworld.
+             1 sub-level: <uuid> position 20481034.00, 67.00, 20481034.00
+               [global->[chunkPos=(0, 0), storageIndex=0, subLevelIndex=0]] … mass 36.00
+  ```
+  and the tickets file is still 173 bytes with its entry after the second session
+  (previously it was rewritten empty, which also destroyed the only pointer that
+  could load the ship next time).
+
+`SablePlugin` also logs the ticket count and how many carry a pointer on both
+save and load: losing a force-loaded sub-level across a restart used to be
+completely silent, and this is the line that showed the ticket itself was fine.
+
+Open, and each needs a decision rather than another edit:
+
+* **No solver can be attached to a container.** `PhysicsPipelineProviders`
+  resolves inside one wasm component, and the Jolt pipeline exists only in
+  `sable_jolt`'s component, so the container owner can only get the static
+  fallback (`pipeline StaticPhysicsPipeline` in every run) — nothing can move.
+  **Linking Jolt into `sable` is not a build-hook job: it is a package cycle.**
+  `sable_jolt` already depends on `sable` (its pipeline implements
+  `PhysicsPipeline` from `package:sable`), so `sable` cannot depend on
+  `sable_jolt` without a cycle; moving `JoltPhysicsPipeline` into `sable` would
+  drag `dart:_wasm`, the Jolt ABI and the native module into a package whose
+  whole point is that it loads on the plain Dart VM in tests (`sable.dart` is
+  explicitly VM-loadable). The two ways out are therefore: (a) split the solver
+  into a third package that both may depend on (e.g. `sable_jolt_core` with the
+  ABI + pipeline, leaving `sable_jolt` as the plugin that links the module), or
+  (b) move container ownership to `sable_jolt` and proxy the commands and the
+  operation channel to it. (b) is the smaller change and keeps `sable` pure.
+* **Per-block mass now comes from Sable's datapack**, loaded by `SablePlugin`
+  (`_installBlockProperties`) from the embedded copy of the pack
+  (`sableDatapackBlobs`): 19 `physics_block_properties` entries, applied in
+  priority order, with the table's block hooks (`MassTracker.blockMass`,
+  `blockInertia`, `isSolid`) pointed at it. **Verified live**: 19 stone blocks
+  now weigh `38.00` (2.0 each, matching Java) instead of `19.00`, and each
+  shattered block is `2.00` instead of `1.00`.
+  Tag membership is resolved from the pack's own `tags/block/**` (nested `#tag`
+  entries followed), because the host only sees a pack under
+  `<world>/datapacks/<name>` and that link is a manual operator step — the host
+  is consulted only for a tag the pack does not define (`#c:stones` and other
+  conventional tags).

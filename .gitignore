@@ -9,3 +9,5 @@ world/
 pumpkin.toml
 data/
 logs/
+
+.mixin.out/

@@ -143,6 +143,16 @@ final class CommandContext {
   /// A block position argument, or `null` if it wasn't typed.
   BlockPos? blockPosOrNull(String key) => args.blockPosOrNull(key);
 
+  /// A block-state argument ([ArgumentTypes.blockState]): the namespaced block
+  /// key the host parsed, e.g. `minecraft:stone`. Fails the command if it is
+  /// missing.
+  String blockState(String key) =>
+      blockStateOrNull(key) ??
+      (throw CommandException('Argument "$key" is missing.'));
+
+  /// A block-state argument, or `null` if it wasn't typed.
+  String? blockStateOrNull(String key) => args.blockStateOrNull(key);
+
   /// A duration argument ([ArgumentTypes.duration]): `10s`, `5m`, `1h30m`.
   Duration duration(String key) => parseDurationOrThrow(string(key));
 

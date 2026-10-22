@@ -16,12 +16,14 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../common/direction.dart' as dir;
 import '../common/host_bridge.dart';
 import '../common/pos.dart';
+import '../common/map_colors.dart';
 import '../core/blocks.dart';
 import '../core/perf.dart';
 import '../manifest/manifest.dart';
 import 'block_state.dart';
 
 export 'block_state.dart';
+export '../common/map_colors.dart' show mapColorIds, mapColorIdOf;
 
 // -- Reading ---------------------------------------------------------------------------------
 
@@ -300,71 +302,13 @@ final Map<String, ManifestBlock> manifestBlocksByKey = {
   for (final b in kBlocks) b.key: b,
 };
 
-/// The vanilla `MapColor` ids by constant name.
-const Map<String, int> mapColorIds = {
-  'NONE': 0,
-  'GRASS': 1,
-  'SAND': 2,
-  'WOOL': 3,
-  'FIRE': 4,
-  'ICE': 5,
-  'METAL': 6,
-  'PLANT': 7,
-  'SNOW': 8,
-  'CLAY': 9,
-  'DIRT': 10,
-  'STONE': 11,
-  'WATER': 12,
-  'WOOD': 13,
-  'QUARTZ': 14,
-  'COLOR_ORANGE': 15,
-  'COLOR_MAGENTA': 16,
-  'COLOR_LIGHT_BLUE': 17,
-  'COLOR_YELLOW': 18,
-  'COLOR_LIGHT_GREEN': 19,
-  'COLOR_PINK': 20,
-  'COLOR_GRAY': 21,
-  'COLOR_LIGHT_GRAY': 22,
-  'COLOR_CYAN': 23,
-  'COLOR_PURPLE': 24,
-  'COLOR_BLUE': 25,
-  'COLOR_BROWN': 26,
-  'COLOR_GREEN': 27,
-  'COLOR_RED': 28,
-  'COLOR_BLACK': 29,
-  'GOLD': 30,
-  'DIAMOND': 31,
-  'LAPIS': 32,
-  'EMERALD': 33,
-  'PODZOL': 34,
-  'NETHERRACK': 35,
-  'TERRACOTTA_WHITE': 36,
-  'TERRACOTTA_ORANGE': 37,
-  'TERRACOTTA_MAGENTA': 38,
-  'TERRACOTTA_LIGHT_BLUE': 39,
-  'TERRACOTTA_YELLOW': 40,
-  'TERRACOTTA_LIGHT_GREEN': 41,
-  'TERRACOTTA_PINK': 42,
-  'TERRACOTTA_GRAY': 43,
-  'TERRACOTTA_LIGHT_GRAY': 44,
-  'TERRACOTTA_CYAN': 45,
-  'TERRACOTTA_PURPLE': 46,
-  'TERRACOTTA_BLUE': 47,
-  'TERRACOTTA_BROWN': 48,
-  'TERRACOTTA_GREEN': 49,
-  'TERRACOTTA_RED': 50,
-  'TERRACOTTA_BLACK': 51,
-  'CRIMSON_NYLIUM': 52,
-  'CRIMSON_STEM': 53,
-  'CRIMSON_HYPHAE': 54,
-  'WARPED_NYLIUM': 55,
-  'WARPED_STEM': 56,
-  'WARPED_HYPHAE': 57,
-  'WARPED_WART_BLOCK': 58,
-  'DEEPSLATE': 59,
-  'RAW_IRON': 60,
-  'GLOW_LICHEN': 61,
-};
+/// The host map colour id of the manifest block `create:[key]`.
+int manifestMapColor(String key) {
+  final m =
+      manifestBlocksByKey[key] ??
+      (throw ArgumentError.value(key, 'key', 'not in the block manifest'));
+  return mapColorIdOf(m.mapColor);
+}
 
 /// The host block property of a manifest property.
 BlockProperty hostProperty(ManifestProperty p) => switch (p.type) {
@@ -394,6 +338,9 @@ PistonBehavior _piston(String reaction) => switch (reaction) {
 /// stats, item and sound come from the manifest; the caller adds behaviour, shapes, placement and
 /// the drops that differ from "the block item".
 ///
+/// [lightRules] carry a Java `lightLevel(state -> ...)`, which the manifest records as
+/// `lightDynamic` without the function: pass the levels of each state of the block.
+///
 /// [collisionShape] and [selectionShape] default to the manifest's `noCollision` (empty) and to
 /// vanilla's `Block.getShape` (a full cube). A block whose Java class overrides `getShape` must
 /// pass its boxes, or its hitbox is the whole block: the pipes carry theirs from
@@ -408,6 +355,7 @@ CreateBlock manifestBlock(
   BlockDrops? drops,
   String? blockEntityType,
   List<String> tags = const [],
+  List<LightRule> lightRules = const [],
 }) {
   final m =
       manifestBlocksByKey[key] ??
@@ -420,10 +368,15 @@ CreateBlock manifestBlock(
     blastResistance: m.blastResistance,
     requiresCorrectTool: m.requiresCorrectTool,
     soundType: m.soundType.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_'),
-    luminance: m.lightLevel,
+    // The host takes `luminance` as the level of *every* state, so a block whose
+    // Java `lightLevel` is a function of the state starts dark and gets its
+    // levels from [lightRules].
+    luminance: m.lightDynamic ? 0 : m.lightLevel,
+    lightRules: lightRules,
+    ignitedByLava: m.ignitedByLava,
     canOcclude: !m.noOcclusion,
     replaceable: m.replaceable,
-    mapColor: mapColorIds[m.mapColor] ?? 0,
+    mapColor: mapColorIdOf(m.mapColor),
     collisionShape:
         collisionShape ??
         (m.noCollision ? BlockShape.empty : BlockShape.fullCube),

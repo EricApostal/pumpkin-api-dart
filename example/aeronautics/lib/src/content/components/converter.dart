@@ -23,7 +23,7 @@ final class Converter {
   /// Ticks left; the conversion happens when it reaches 0.
   final int ticks;
 
-  /// The sound played on conversion (`aeronautics:cloud_skipper_transform`).
+  /// The sound played on conversion (`aeronautics:item.cloud_skipper_transform`).
   final String? sound;
 
   /// The particle burst on conversion (`minecraft:white_smoke`).
@@ -33,10 +33,16 @@ final class Converter {
 
   /// `Converter.cloudSkipper()`: the music disc turns into itself after three
   /// seconds.
+  ///
+  /// The sound is `AeroSoundEvents.CLOUD_SKIPPER_TRANSFORM.id()`
+  /// (`Converter.java:31-33`), which `SoundEventRegistry.create` builds from the
+  /// raw name `"item.cloud_skipper_transform"`
+  /// (`index/AeroSoundEvents.java:86`) — `aeronautics:item.cloud_skipper_transform`,
+  /// not the bare `aeronautics:cloud_skipper_transform` this used to play.
   static const Converter cloudSkipper = Converter(
     'aeronautics:music_disc_cloud_skipper',
     60,
-    sound: 'aeronautics:cloud_skipper_transform',
+    sound: 'aeronautics:item.cloud_skipper_transform',
     particle: 'minecraft:white_smoke',
   );
 

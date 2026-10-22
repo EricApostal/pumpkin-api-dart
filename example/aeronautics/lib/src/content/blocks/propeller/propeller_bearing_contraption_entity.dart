@@ -14,6 +14,11 @@ import 'package:create/src/common/common.dart';
 import 'package:create/src/contraptions/entity/controlled_contraption_entity.dart';
 import 'package:sable/sable.dart' show Quaterniond, Vector3d;
 
+/// The registered entity type key (`AeroEntityTypes.PROPELLER_CONTROLLED_CONTRAPTION`,
+/// `AeroEntityTypes.java:23`).
+const String propellerBearingContraptionEntityKey =
+    'aeronautics:propeller_bearing_contraption';
+
 /// `PropellerBearingContraptionEntity`.
 class PropellerBearingContraptionEntity extends ControlledContraptionEntity {
   PropellerBearingContraptionEntity(super.host);

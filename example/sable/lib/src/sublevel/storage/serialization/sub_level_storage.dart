@@ -15,6 +15,25 @@ import '../region/sub_level_storage_file.dart';
 import 'sub_level_data.dart';
 import 'sub_level_serializer.dart';
 
+/// A failure the storage layer reports through [SubLevelStorage.onError].
+///
+/// With a sink installed it is only reported (Java logs and continues); without
+/// one it is thrown, so a caller that never installed a sink cannot lose a
+/// sub-level without noticing.
+final class SubLevelStorageFailure implements Exception {
+  SubLevelStorageFailure(this.message, this.cause);
+
+  /// What the Java mod logs, e.g. `Failed to load sub-level for (0, 0)`.
+  final String message;
+
+  /// What actually went wrong (a [SubLevelPayloadException] for a codec
+  /// failure).
+  final Object cause;
+
+  @override
+  String toString() => '$message: $cause';
+}
+
 /// Manages the sub-level holding chunks and regions for a level.
 final class SubLevelStorage {
   /// The maximum number of cached region/storage files.
@@ -22,6 +41,16 @@ final class SubLevelStorage {
 
   /// The extension of the region files.
   static const String regionExtension = '.slvlr';
+
+  /// Where failures go.
+  ///
+  /// Every read/save of the Java class logs and continues; the port has no
+  /// logger of its own, so a host that wants the Java behaviour installs one
+  /// here (the plugin wires this to the plugin logger). While it is null a
+  /// failure **throws** instead of being swallowed: an undecodable payload must
+  /// never look like an absent one — that is exactly how a whole world's
+  /// sub-levels disappeared silently.
+  void Function(String message, Object error, StackTrace stack)? onError;
 
   final SableFileStore store;
   final String folder;
@@ -34,6 +63,21 @@ final class SubLevelStorage {
   final Map<int, SubLevelStorageFile> storageCache = {};
 
   SubLevelStorage(this.store, this.folder, this.codec);
+
+  /// Reports [error] and returns true when a sink is installed; throws it
+  /// otherwise, so nothing is lost silently.
+  void _report(String message, Object error, StackTrace stack) {
+    final sink = onError;
+    if (sink == null) {
+      Error.throwWithStackTrace(SubLevelStorageFailure(message, error), stack);
+    }
+    sink(message, error, stack);
+  }
+
+  /// Reports a condition Java logs at error level but does not treat as a
+  /// failure (a dangling pointer, a recovery). Nothing is thrown: the callers
+  /// recover, and the sink is what makes it visible.
+  void _warn(String message, Object error) => onError?.call(message, error, StackTrace.current);
 
   /// The file name of the region at [chunkX], [chunkZ].
   static String fileName(int chunkX, int chunkZ) => 'r.${chunkX >> 5}.${chunkZ >> 5}';
@@ -96,12 +140,17 @@ final class SubLevelStorage {
   bool pruneEmptyFiles = true;
 
   /// Loads the holding chunk at [chunkX], [chunkZ], or `null`.
+  ///
+  /// `null` means "this chunk has no holding chunk". A payload that exists but
+  /// does not decode is reported through [onError] (Java logs at error level),
+  /// or thrown when no sink is installed.
   SubLevelHoldingChunk? attemptLoadHoldingChunk(int chunkX, int chunkZ) {
     try {
       final tag = getRegionFile(chunkX, chunkZ).read(chunkX, chunkZ);
       if (tag == null) return null;
       return SubLevelHoldingChunk.from((chunkX, chunkZ), tag);
-    } catch (_) {
+    } on Object catch (error, stack) {
+      _report('Failed to load holding chunk for ($chunkX, $chunkZ)', error, stack);
       return null;
     }
   }
@@ -112,8 +161,8 @@ final class SubLevelStorage {
       final tag = <String, Object?>{};
       holdingChunk.writeTo(tag);
       getRegionFile(chunkX, chunkZ).trySave(chunkX & 31, chunkZ & 31, tag);
-    } catch (_) {
-      // Java logs and continues.
+    } on Object catch (error, stack) {
+      _report('Failed to save holding chunk for ($chunkX, $chunkZ)', error, stack);
     }
   }
 
@@ -121,8 +170,8 @@ final class SubLevelStorage {
   void attemptRemoveHoldingChunk(int chunkX, int chunkZ) {
     try {
       getRegionFile(chunkX, chunkZ).tryRemove(chunkX & 31, chunkZ & 31);
-    } catch (_) {
-      // Java logs and continues.
+    } on Object catch (error, stack) {
+      _report('Failed to remove holding chunk for ($chunkX, $chunkZ)', error, stack);
     }
   }
 
@@ -131,10 +180,24 @@ final class SubLevelStorage {
     try {
       final storageFile = getStorageFile(chunkX, chunkZ, pointer.storageIndex);
       final tag = storageFile.read(pointer.subLevelIndex);
-      if (tag == null) return null;
+      if (tag == null) {
+        _warn(
+          'Couldn\'t find sub-level at index ${pointer.subLevelIndex} in storage file for '
+          'chunk ($chunkX, $chunkZ)',
+          StateError('the holding chunk points at an empty storage slot'),
+        );
+        return null;
+      }
 
       final data = SubLevelSerializer.fromData(tag);
-      if (data == null) return null;
+      if (data == null) {
+        _warn(
+          'Failed to load sub-level at index ${pointer.subLevelIndex} in storage file for '
+          'chunk ($chunkX, $chunkZ): the payload has no usable uuid/pose',
+          FormatException('undecodable sub-level payload', tag),
+        );
+        return null;
+      }
 
       // Recover zeroed-out bounds (a known corruption in the Java mod).
       final bounds = data.bounds;
@@ -144,6 +207,11 @@ final class SubLevelStorage {
           bounds.maxX == 0.0 &&
           bounds.maxY == 0.0 &&
           bounds.maxZ == 0.0) {
+        _warn(
+          'Recovering zeroed out bounds for sub-level ${data.uuid} loaded at $pointer in chunk '
+          '($chunkX, $chunkZ)',
+          StateError('the saved bounds were zeroed out'),
+        );
         final position = data.pose.position();
         bounds
             .setValues(position.x, position.y, position.z, position.x, position.y, position.z)
@@ -152,7 +220,8 @@ final class SubLevelStorage {
 
       data.setOriginLoadedChunk((chunkX, chunkZ));
       return data;
-    } catch (_) {
+    } on Object catch (error, stack) {
+      _report('Failed to load sub-level for ($chunkX, $chunkZ)', error, stack);
       return null;
     }
   }
@@ -171,7 +240,8 @@ final class SubLevelStorage {
         }
         storageIndex++;
       }
-    } catch (_) {
+    } on Object catch (error, stack) {
+      _report('Failed to save sub-level for ($chunkX, $chunkZ)', error, stack);
       return null;
     }
   }
@@ -181,8 +251,8 @@ final class SubLevelStorage {
     try {
       final storageFile = getStorageFile(pointer.chunkX, pointer.chunkZ, pointer.storageIndex);
       storageFile.write(pointer.subLevelIndex, subLevel?.fullTag);
-    } catch (_) {
-      // Java logs and continues.
+    } on Object catch (error, stack) {
+      _report('Failed to save sub-level for ${pointer.chunkX}, ${pointer.chunkZ}', error, stack);
     }
   }
 
@@ -190,25 +260,36 @@ final class SubLevelStorage {
   String getFolder() => folder;
 
   /// Flushes every open file.
+  ///
+  /// One file that cannot be written does not stop the others: every failure is
+  /// reported, so a save never looks complete when part of it is missing.
   void flush() {
     for (final file in regionCache.values) {
-      file.flush();
+      _attempt('Failed to flush ${file.filePath}', file.flush);
     }
     for (final file in storageCache.values) {
-      file.flush();
+      _attempt('Failed to flush ${file.filePath}', file.flush);
     }
   }
 
-  /// Closes every open file.
+  /// Closes every open file, flushing each.
   void close() {
     for (final file in storageCache.values) {
-      file.close();
+      _attempt('Failed to close ${file.filePath}', file.close);
     }
     for (final file in regionCache.values) {
-      file.close();
+      _attempt('Failed to close ${file.filePath}', file.close);
     }
     storageCache.clear();
     regionCache.clear();
+  }
+
+  void _attempt(String message, void Function() operation) {
+    try {
+      operation();
+    } on Object catch (error, stack) {
+      _report(message, error, stack);
+    }
   }
 
   /// Prunes empty files from the caches.

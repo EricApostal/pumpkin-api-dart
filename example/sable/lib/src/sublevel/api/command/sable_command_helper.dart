@@ -22,12 +22,20 @@ enum SableCommandError {
   noSubLevelsModified('commands.sable.fail.unmodified'),
   subLevelUnnamed('commands.sable.sub_level.get_name.failure_unnamed'),
   missingJointSubLevelTarget('commands.sable.joint.missing_sublevel_target'),
-  constraintsUnsupported('commands.sable.joint.unsupported');
+  /// Java's `requireSubLevelPhysicsPipeline` hands back whatever `getPipeline()`
+  /// returned; only the port narrows it to a constraint pipeline, so this failure
+  /// has no key in the mod's lang (`commands.sable.joint.unsupported` exists in
+  /// neither `en_us.json` nor any Sable source).
+  constraintsUnsupported(null),
+  /// `/sable spawn rope_test` on an engine without rope support
+  /// (`PhysicsPipelineFeature.rope`). Java has no such failure: its only engine
+  /// always accepts `addRope`, so there is no key in the mod's lang either.
+  ropeUnsupported(null);
 
   const SableCommandError(this.translationKey);
 
-  /// The key the Java client translates.
-  final String translationKey;
+  /// The key the Java client translates, `null` when the failure is the port's own.
+  final String? translationKey;
 
   /// The English text the port reports.
   String get message => switch (this) {
@@ -42,6 +50,8 @@ enum SableCommandError {
     SableCommandError.missingJointSubLevelTarget => 'Both sub-levels of a joint are required.',
     SableCommandError.constraintsUnsupported =>
       'The physics pipeline of this dimension does not support constraints.',
+    SableCommandError.ropeUnsupported =>
+      'The physics pipeline of this dimension does not support ropes.',
   };
 }
 

@@ -58,3 +58,38 @@ final class TestContainer extends SubLevelContainer {
         'directly.',
       );
 }
+
+/// A container that can allocate sub-levels, for the tests that need a section
+/// to be resolved through the plot grid (`SubLevelContainer.getPlot`) rather
+/// than through an explicit runtime id.
+final class TestServerContainer extends SubLevelContainer {
+  TestServerContainer(SableLevel level, PlotChunkHost chunkHost)
+    : super(
+        level,
+        chunkHost,
+        SubLevelContainer.defaultLogSizeLength,
+        SubLevelContainer.defaultLogPlotSize,
+        SubLevelContainer.defaultOrigin,
+        SubLevelContainer.defaultOrigin,
+      );
+
+  /// The sub-levels handed out by [createSubLevel], in allocation order.
+  final List<ServerSubLevel> allocated = [];
+
+  @override
+  SubLevel createSubLevel(int globalPlotX, int globalPlotZ, Pose3d pose, String uuid) {
+    final subLevel = ServerSubLevel(
+      level,
+      globalPlotX,
+      globalPlotZ,
+      pose,
+      runtimeId: 100 + allocated.length,
+    );
+    // `ServerSubLevelContainer.createSubLevel` applies the allocated uuid
+    // (`server_sub_level_container.dart:176`); the container reads
+    // `subLevel.uniqueId` straight after this returns.
+    subLevel.setUniqueId(uuid);
+    allocated.add(subLevel);
+    return subLevel;
+  }
+}

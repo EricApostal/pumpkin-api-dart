@@ -21,7 +21,24 @@ final class TicketKeyCodec<T> {
 /// `SubLevelLoadingTicketType<T>`: a named ticket type with a key codec.
 final class SubLevelLoadingTicketType<T> {
   /// Every registered type, by name (Java's static `REGISTRY`).
-  static final Map<String, SubLevelLoadingTicketType<Object?>> registry = {};
+  ///
+  /// The built-in types are installed when this map is first touched. Dart's
+  /// statics are lazy, so without that `byName` on a fresh plugin instance would
+  /// search an empty registry: a saved force-load ticket would be dropped as an
+  /// "unknown type" and the ship would not come back — silently, since the
+  /// ticket was the only thing that could load it. (Java initializes the class
+  /// and its `COMMAND_FORCED` static together, so it never has this window.)
+  static final Map<String, SubLevelLoadingTicketType<Object?>> registry = _withBuiltIns();
+
+  static Map<String, SubLevelLoadingTicketType<Object?>> _withBuiltIns() {
+    final map = <String, SubLevelLoadingTicketType<Object?>>{};
+    final forced = SubLevelLoadingTicketType<Object?>._(
+      'sable:command_forced',
+      TicketKeyCodec<Object?>((_) => null, (_) => const Object()),
+    );
+    map[forced.name] = forced;
+    return map;
+  }
 
   final String name;
   final TicketKeyCodec<T> codec;
@@ -39,8 +56,7 @@ final class SubLevelLoadingTicketType<T> {
   static SubLevelLoadingTicketType<Object?>? byName(String name) => registry[name];
 
   /// The built-in `sable:command_forced` type, whose key is `Unit` (`null`).
-  static final SubLevelLoadingTicketType<Object?> commandForced =
-      create<Object?>('sable:command_forced', TicketKeyCodec<Object?>((_) => null, (_) => const Object()));
+  static final SubLevelLoadingTicketType<Object?> commandForced = registry['sable:command_forced']!;
 
   @override
   String toString() => 'SubLevelTicketType{name=$name}';

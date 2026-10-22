@@ -10,10 +10,14 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../api/block_state.dart';
 import '../api/blocks.dart' show manifestBlock;
 import '../api/wrenchable.dart';
+import '../common/block_entity_item_data.dart';
+import '../common/block_entity_item_data_host.dart';
 import '../common/direction.dart';
 import '../common/host_bridge.dart'
     show BlockDirectionToPure, BlockStates, PosToHost;
+import '../common/nbt_convert.dart' show compoundOf, valueOfCompound;
 import '../common/pos.dart';
+import '../core/nbt.dart' show NbtValue;
 import '../contraptions/bearing/bearing_placement.dart' show bearingShaftNeighbours;
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
@@ -37,6 +41,7 @@ import 'fluid_runtime.dart';
 import 'fluid_stack.dart';
 import 'fluid_tank.dart';
 import 'fluid_world.dart';
+import 'flowing_fluid.dart' show FlowingFluidDef, FlowingFluidLogic, placeableFluidDefs;
 import 'generic_item_fluid.dart';
 import 'hose_pulley_entity.dart';
 import 'pipe_block_entities.dart';
@@ -338,6 +343,8 @@ CreateBlock _tankBlock(
   required bool creative,
 }) {
   late final CreateBlock block;
+  final itemData = tankItemDataBlock(key, blockEntityType);
+  ItemDataStamps.register(itemData);
   block = manifestBlock(
     key,
     blockEntityType: blockEntityType,
@@ -348,8 +355,14 @@ CreateBlock _tankBlock(
           e.pos,
         );
         if (be is FluidTankBlockEntity) be.updateConnectivityNow();
+        // `FluidTankBlock.onPlace` forms the multiblock first; vanilla merges the item's block
+        // entity data onto the fresh entity afterwards (`BlockItem.place`).
+        await ItemDataStamps.applyPlaced(itemData, server, e);
         await _tryTankMultiPlace(server, e, block, blockEntityType);
       },
+      // `getCloneItemStack` with the tank's data on it (vanilla's `addBlockDataToItem`); the
+      // placement sanitises it again (`FluidTankItem.place`).
+      onCloneItem: (server, e) => ItemDataStamps.cloneItem(itemData, e),
       onNeighborUpdate: (server, e) {
         // `updateShape`: a change below refreshes the boiler temperature; a steam engine or
         // whistle next to the tank changes the boiler itself.
@@ -387,6 +400,58 @@ CreateBlock _tankBlock(
   return block;
 }
 
+// -- The tank's item data (break -> place) ----------------------------------------------------
+
+/// The item data of the tank blocks: the block entity's saved NBT in the vanilla
+/// `minecraft:block_entity_data` component.
+///
+/// The data is written raw on drop and on pick-block (Java's `addBlockDataToItem`) and
+/// sanitised again on placement, exactly as `FluidTankItem.place` does.
+ItemDataBlock tankItemDataBlock(String blockKey, String blockEntityType) => ItemDataBlock(
+  blockKey: 'create:$blockKey',
+  itemKey: manifestItemKeyOf(blockKey),
+  componentKey: blockEntityDataComponent,
+  entityAt: (world, pos) {
+    final runtime = FluidsRuntime.instance;
+    final be = runtime.store.at(runtime.worlds.touch(world), pos);
+    // A creative tank is a `FluidTankBlockEntity` too, so the type of the block decides.
+    return be is FluidTankBlockEntity && be.typeKey == blockEntityType ? be : null;
+  },
+  itemComponent: _tankSavedNbtComponent,
+  applyComponent: _applyTankItemData,
+);
+
+/// The tank's own saved NBT as the item component (`ServerGamePacketListenerImpl
+/// .addBlockDataToItem` writes what `saveCustomOnly` produces).
+List<int> _tankSavedNbtComponent(CreateBlockEntity be) =>
+    BlockEntityItemData.encodeBlockEntityData(_tankSavedNbt(be));
+
+Map<String, NbtValue> _tankSavedNbt(CreateBlockEntity be) {
+  final tag = NbtCompound();
+  be.write(tag, clientPacket: false);
+  return valueOfCompound(tag).asCompound;
+}
+
+/// `FluidTankItem.place` + `TypedEntityData.loadInto`: the item's data with the multiblock keys
+/// gone and the contents clamped, merged *over* the fresh tank's own saved NBT and read back.
+///
+/// Merging over the fresh entity's NBT is what keeps the contents: the item has no `Size`/
+/// `Height` (they were stripped), so the fresh single tank's own `1`/`1` survive, its capacity is
+/// one block's, and the clamped `TankContent` fits instead of being drained away.
+void _applyTankItemData(CreateBlockEntity be, List<int>? bytes) {
+  if (bytes == null) return;
+  final itemData = BlockEntityItemData.decodeBlockEntityData(bytes);
+  if (itemData == null) return;
+  final merged = BlockEntityItemData.merge(
+    _tankSavedNbt(be),
+    BlockEntityItemData.sanitiseTankItemData(
+      itemData,
+      capacityMultiplier: FluidTankBlockEntity.capacityMultiplier,
+    ),
+  );
+  be.read(compoundOf(NbtValue.compound(merged)), clientPacket: false);
+}
+
 /// `ComparatorUtil.fractionToRedstoneLevel`.
 int fractionToRedstoneLevel(double fraction) {
   if (fraction <= 0) return 0;
@@ -399,7 +464,9 @@ Future<void> _setHand(Player player, Hand hand, FluidItemSpec spec) async {
     await player.setItemInHand(hand: hand, stack: null);
     return;
   }
-  final stack = await HostStacks.write(PStack(spec.key, spec.count));
+  final stack = await HostStacks.write(
+    PStack(spec.key, spec.count, comps: spec.comps),
+  );
   if (stack == null) return;
   await player.setItemInHand(hand: hand, stack: stack);
 }
@@ -437,7 +504,7 @@ Future<BlockUseResult> _tankUse(
   final itemKey = await stack.getRegistryKey();
   final count = await stack.getCount();
   if (count <= 0) return BlockUseResult.tryEmptyHand;
-  final item = FluidItemSpec(itemKey, count);
+  final item = FluidItemSpec(itemKey, count, await fluidItemComponents(stack));
   final emptying = GenericItemEmptying(runtime.rules, runtime.recipes);
   final filling = GenericItemFilling(runtime.rules);
   final previous = storage.fluidInTank(0);
@@ -461,7 +528,7 @@ Future<BlockUseResult> _tankUse(
         } else {
           await _setHand(player, e.hand, newStack);
           final back = await HostStacks.write(
-            PStack(remainder.key, remainder.count),
+            PStack(remainder.key, remainder.count, comps: remainder.comps),
           );
           if (back != null) await items.give(back);
         }
@@ -496,7 +563,9 @@ Future<BlockUseResult> _tankUse(
         if (be is! CreativeFluidTankBlockEntity) {
           await _setHand(player, e.hand, remaining);
         }
-        final out = await HostStacks.write(PStack(result.key, result.count));
+        final out = await HostStacks.write(
+          PStack(result.key, result.count, comps: result.comps),
+        );
         if (out != null) await items.give(out);
       }
       if (creative && be is CreativeFluidTankBlockEntity) {
@@ -750,7 +819,7 @@ Future<BlockUseResult> _drainUse(CustomBlockUseEventData e) async {
         return BlockUseResult.tryEmptyHand;
       }
       final count = await stack.getCount();
-      final item = FluidItemSpec(key, count);
+      final item = FluidItemSpec(key, count, await fluidItemComponents(stack));
       final emptying = GenericItemEmptying(
         FluidsRuntime.instance.rules,
         FluidsRuntime.instance.recipes,
@@ -770,7 +839,7 @@ Future<BlockUseResult> _drainUse(CustomBlockUseEventData e) async {
           }
           if (remainder.isNotEmpty) {
             final remainderStack = await HostStacks.write(
-              PStack(remainder.key, remainder.count),
+              PStack(remainder.key, remainder.count, comps: remainder.comps),
             );
             if (remainderStack != null) await items.give(remainderStack);
           }
@@ -898,6 +967,34 @@ List<BlockEntityTypeSpec> buildFluidBlockEntityTypes() => [
 
 // -- Blocks ----------------------------------------------------------------------------------
 
+/// The behaviour of a `LiquidBlock` that holds a fluid the host has no flow physics for.
+///
+/// Vanilla runs the fluid from fluid ticks (`LiquidBlock.onPlace`/`neighborChanged` schedule
+/// them, `FlowingFluid.tick` re-schedules itself). `World::schedule_fluid_tick` only ever
+/// reaches `FlowingWater`/`FlowingLava` (`pumpkin-core/src/world/mod.rs:2095-2108`), so a fluid
+/// tick for honey or chocolate goes nowhere: the block schedules a block tick of its own at
+/// [FlowingFluidDef.tickRate] instead, and runs [FlowingFluidLogic.tick] there
+/// (`FluidHostWorld` maps the logic's own re-scheduling onto the same hook).
+BlockBehavior liquidBlockBehavior(FlowingFluidDef def) {
+  void schedule(World world, BlockPos pos) {
+    if (world.hasScheduledTick(pos: pos)) return;
+    world.scheduleBlockTick(
+      pos: pos,
+      delayTicks: def.tickRate.clamp(1, 255),
+      priority: TickPriority.high,
+    );
+  }
+
+  return BlockBehavior(
+    // `LiquidBlock.onPlace`: the fluid tick Java schedules from the placement.
+    onPlaced: (server, e) => schedule(e.targetWorld, e.pos),
+    // `LiquidBlock.neighborChanged`: a neighbour change always re-schedules the fluid tick.
+    onNeighborUpdate: (server, e) => schedule(e.targetWorld, e.pos),
+    onScheduledTick: (server, e) =>
+        FlowingFluidLogic(def, fluidWorldOf(e.targetWorld)).tick(posOf(e.pos)),
+  );
+}
+
 /// The non-kinetic fluid blocks (the kinetic ones are built by the module, which
 /// needs the kinetic service).
 List<CreateBlock> buildFluidBlocks() => [
@@ -942,8 +1039,12 @@ List<CreateBlock> buildFluidBlocks() => [
   ),
   _spoutBlock(),
   _drainBlock(),
-  manifestBlock('honey', drops: BlockDrops.nothing),
-  manifestBlock('chocolate', drops: BlockDrops.nothing),
+  manifestBlock('honey', behavior: liquidBlockBehavior(placeableFluidDefs['create:honey']!), drops: BlockDrops.nothing),
+  manifestBlock(
+    'chocolate',
+    behavior: liquidBlockBehavior(placeableFluidDefs['create:chocolate']!),
+    drops: BlockDrops.nothing,
+  ),
 ];
 
 // -- Kinetic blocks --------------------------------------------------------------------------
@@ -1210,6 +1311,14 @@ void registerFluids(CreateRegistry registry) {
     final attributes = def.attributes;
     final density = int.tryParse(attributes['density'] ?? '') ?? 1000;
     final viscosity = int.tryParse(attributes['viscosity'] ?? '') ?? 1000;
+    // `FluidBuilder.fluidProperties`: honey and chocolate are extracted with
+    // `levelDecreasePerBlock: 2, tickRate: 25, slopeFindDistance: 3`; water-like fluids fall back
+    // to the vanilla defaults the manifest repeats as `defaultsForUnlisted`. Both variants carry
+    // them: Java builds source and flowing from one shared `BaseFlowingFluid.Properties`
+    // (`AllFluids.java:61-105`).
+    final tickRate = int.tryParse(attributes['tickRate'] ?? '') ?? 5;
+    final levelDecreasePerBlock = int.tryParse(attributes['levelDecreasePerBlock'] ?? '') ?? 1;
+    final slopeFindDistance = int.tryParse(attributes['slopeFindDistance'] ?? '') ?? 4;
     final tags = switch (def.key) {
       'honey' => const ['c:honey'],
       'chocolate' => const ['c:chocolate'],
@@ -1232,7 +1341,9 @@ void registerFluids(CreateRegistry registry) {
     registry.fluid(
       FluidSpec(
         key: flowing,
-        tickRate: 5,
+        tickRate: tickRate,
+        levelDecreasePerBlock: levelDecreasePerBlock,
+        slopeFindDistance: slopeFindDistance,
         density: density,
         viscosity: viscosity,
       ),
@@ -1245,6 +1356,9 @@ void registerFluids(CreateRegistry registry) {
             ? null
             : FluidPlacement(block: block, flowing: false),
         bucketItem: def.bucketKey == null ? null : 'create:${def.bucketKey}',
+        tickRate: tickRate,
+        levelDecreasePerBlock: levelDecreasePerBlock,
+        slopeFindDistance: slopeFindDistance,
         density: density,
         viscosity: viscosity,
         tags: tags,

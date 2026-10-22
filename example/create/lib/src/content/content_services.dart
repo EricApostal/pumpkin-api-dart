@@ -80,7 +80,10 @@ final class CreateSoundsImpl implements CreateSounds {
 final class CreateAdvancementsImpl implements CreateAdvancements {
   final AdvancementTree tree;
 
-  CreateAdvancementsImpl(this.tree);
+  /// The online players (`PlayerRoster` of the payload bus, which keeps the handles alive).
+  final Iterable<Player> Function() online;
+
+  CreateAdvancementsImpl(this.tree, this.online);
 
   @override
   bool canAward(String id) => tree.awardable.contains(id);
@@ -98,6 +101,18 @@ final class CreateAdvancementsImpl implements CreateAdvancements {
     final progress = player.advancementProgress('create:$id');
     if (progress == null) return true;
     return progress.isDone;
+  }
+
+  @override
+  Player? playerByUuid(String uuid) {
+    for (final player in online()) {
+      try {
+        if (player.getId().asString == uuid) return player;
+      } on Object {
+        // a handle that went invalid
+      }
+    }
+    return null;
   }
 }
 

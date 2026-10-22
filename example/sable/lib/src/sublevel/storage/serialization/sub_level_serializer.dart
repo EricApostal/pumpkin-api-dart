@@ -12,6 +12,7 @@
 import '../../math/bounding_box.dart';
 import '../../math/pose.dart';
 import '../../math/vector.dart';
+import '../../model/mass_tracker.dart';
 import '../../model/server_sub_level.dart';
 import '../../model/sub_level_container.dart';
 import '../../util/sable_nbt.dart';
@@ -35,7 +36,7 @@ abstract final class SubLevelSerializer {
     // The serialized pose is recentred on the centre of mass so the physics body
     // is reconstructed around the same point.
     final serializedPose = Pose3d.copy(subLevel.logicalPose);
-    final centerOfMass = _centerOfMassOrOrigin(subLevel);
+    final centerOfMass = _selfCenterOfMassOrOrigin(subLevel);
     serializedPose.position().setFrom(subLevel.logicalPose.transformPosition(Vector3d.copy(centerOfMass)));
     serializedPose.rotationPoint().setFrom(centerOfMass);
 
@@ -96,8 +97,14 @@ abstract final class SubLevelSerializer {
   /// Fully loads a sub-level and adds it to its container.
   ///
   /// Returns `null` when the tag is unusable (invalid pose, occupied plot, empty
-  /// bounds), like the Java method.
-  static ServerSubLevel? fullyLoad(SubLevelContainer container, SubLevelData halfLoadedSubLevel) {
+  /// bounds), like the Java method — and reports *why* through [onFailure], which
+  /// the Java method logs at error level. A `null` without a reason is a
+  /// sub-level that silently disappears.
+  static ServerSubLevel? fullyLoad(
+    SubLevelContainer container,
+    SubLevelData halfLoadedSubLevel, {
+    void Function(String message, Object? error)? onFailure,
+  }) {
     final tag = halfLoadedSubLevel.fullTag;
     final plotTag = tag['plot'];
     final plotMap = plotTag is Map ? Map<String, Object?>.from(plotTag) : const <String, Object?>{};
@@ -110,23 +117,57 @@ abstract final class SubLevelSerializer {
     final rotationPoint = pose.rotationPoint();
 
     if (!position.isFinite || !rotationPoint.isFinite) {
+      onFailure?.call('Failed to load sub-level ${halfLoadedSubLevel.uuid}, invalid pose', null);
       return null;
     }
 
     final ServerSubLevel subLevel;
     try {
       final allocated = container.allocateSubLevel(halfLoadedSubLevel.uuid, plotX, plotZ, pose);
-      if (allocated is! ServerSubLevel) return null;
+      if (allocated is! ServerSubLevel) {
+        onFailure?.call(
+          'Failed to load sub-level ${halfLoadedSubLevel.uuid}: the container allocated a '
+          'non-server sub-level at plot ($plotX, $plotZ)',
+          null,
+        );
+        return null;
+      }
       subLevel = allocated;
-    } on ArgumentError {
+    } on ArgumentError catch (error) {
+      onFailure?.call(
+        'Failed to load sub-level ${halfLoadedSubLevel.uuid} at plot ($plotX, $plotZ), skipping',
+        error,
+      );
       return null;
     }
 
     final plot = subLevel.getPlot();
     plot.load(plotMap);
 
+    // `allocateSubLevel` fires `onSubLevelAdded`, which builds the mass tracker —
+    // but the plot was still empty at that point, so the tracker describes no
+    // blocks and reads as invalid. The next tick's removal pass then destroys
+    // the plot and removes the sub-level, silently: the ship was on disk, came
+    // back for one tick, and vanished. Java never sees this because its
+    // `MassTracker` is rebuilt by `SubLevelPhysicsSystem.recoverSubLevel` on the
+    // paths that matter; the port rebuilds it here, once the blocks exist.
+    subLevel.buildMassTracker();
+    // `buildMassTracker` wraps a fresh `MergedMassTracker`, whose own `mass` and
+    // `centerOfMass` stay empty until `update` runs — and the container's
+    // removal pass runs *before* the physics substeps of the same tick, so an
+    // un-primed merged tracker still reads as invalid and the sub-level is
+    // removed anyway. Priming it here is what makes the restore survive its
+    // first tick.
+    subLevel.updateMergedMassData(0.0);
+
     final bounds = plot.getBoundingBox();
     if (identical(bounds, BoundingBox3i.empty) || bounds.volume() <= 0) {
+      onFailure?.call(
+        'Failed to load sub-level ${halfLoadedSubLevel.uuid}, invalid plot bounds: '
+        '${identical(bounds, BoundingBox3i.empty) ? 'EMPTY' : bounds} '
+        '(${plot.getLoadedChunks().length} chunk(s) restored)',
+        null,
+      );
       container.removeSubLevelAt(subLevel, SubLevelRemovalReason.removed);
       return null;
     }
@@ -180,8 +221,21 @@ abstract final class SubLevelSerializer {
     );
   }
 
-  static Vector3d _centerOfMassOrOrigin(ServerSubLevel subLevel) {
+  /// The centre of mass the saved pose is recentred on, or the origin when the
+  /// sub-level has none.
+  ///
+  /// Java recentres on the **self** tracker (`SubLevelSerializer.java:50-53`:
+  /// `getSelfMassTracker().getCenterOfMass()`), not the merged one: the saved
+  /// pose is the sub-level's own body frame, and a kinematic contraption riding
+  /// on it must not move the reconstruction point.
+  static Vector3d _selfCenterOfMassOrOrigin(ServerSubLevel subLevel) {
+    // `getSelfMassTracker()` throws when the physics system has not built one
+    // yet (a sub-level serialized straight after allocation) and when the
+    // installed tracker is a plain `MassData` (the test fakes); Java's serializer
+    // can assume a `MassTracker` because its physics system always builds one.
     final tracker = subLevel.massTracker;
-    return tracker == null ? Vector3d() : Vector3d.copy(tracker.getCenterOfMass());
+    if (tracker == null) return Vector3d();
+    final self = tracker is MergedMassTracker ? tracker.selfTracker : tracker;
+    return self.isInvalid() ? Vector3d() : Vector3d.copy(self.getCenterOfMass());
   }
 }

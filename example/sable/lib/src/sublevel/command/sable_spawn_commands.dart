@@ -24,6 +24,7 @@ import 'package:pumpkin_api/pumpkin_api.dart'
 
 import '../api/command/sable_command_helper.dart';
 import '../api/command/sable_command_state.dart';
+import '../api/physics_capabilities.dart';
 import '../api/physics_constraint.dart';
 import '../api/physics_pipeline.dart';
 import '../api/physics_rope.dart';
@@ -43,16 +44,21 @@ void registerSpawnCommands(CommandBuilder sable, SableCommandState state) {
   sable.sub('spawn', description: 'Spawns test sub-levels', build: (spawn) {
     spawn.sub(
       'jenga',
-      build: (jenga) => _named(jenga, (ctx, name) => _spawnJenga(ctx, state, name))
-        ..arg('height', ArgumentTypes.integer(min: 1, max: 256), build: (height) =>
-            _named(height, (ctx, name) => _spawnJenga(ctx, state, name))),
+      build: (jenga) => jenga.arg(
+        'height',
+        ArgumentTypes.integer(min: 1, max: 256),
+        build: (height) => _named(height, (ctx, name) => _spawnJenga(ctx, state, name)),
+      ),
     );
 
     spawn.sub(
       'clone',
-      build: (clone) => _named(clone, (ctx, name) => _clone(ctx, state, name))
-        ..arg('sub_level', ArgumentTypes.word, build: (sub) =>
-            _named(sub, (ctx, name) => _clone(ctx, state, name))),
+      build: (clone) => clone.arg(
+        'sub_level',
+        ArgumentTypes.token,
+        suggests: subLevelSelectorSuggestions,
+        build: (sub) => _named(sub, (ctx, name) => _clone(ctx, state, name)),
+      ),
     );
 
     spawn.sub(
@@ -63,16 +69,16 @@ void registerSpawnCommands(CommandBuilder sable, SableCommandState state) {
         runs: (ctx) => _spawnSphere(ctx, state, _defaultMaterial, null),
         build: (radius) => radius.arg(
           'block',
-          ArgumentTypes.word,
+          ArgumentTypes.blockState,
           runs: (ctx) => _spawnSphere(
             ctx,
             state,
-            BState(ctx.string('block')),
+            BState(ctx.blockState('block')),
             ctx.stringOrNull('name'),
           ),
           build: (block) => _named(
             block,
-            (ctx, name) => _spawnSphere(ctx, state, BState(ctx.string('block')), name),
+            (ctx, name) => _spawnSphere(ctx, state, BState(ctx.blockState('block')), name),
           ),
         ),
       ),
@@ -82,7 +88,7 @@ void registerSpawnCommands(CommandBuilder sable, SableCommandState state) {
       'schematic',
       build: (schematic) => schematic.arg(
         'name',
-        ArgumentTypes.word,
+        ArgumentTypes.string,
         runs: (ctx) => throw CommandException(
           'HOST GAP: /sable spawn schematic needs Sable\'s StructureTemplate loader '
           '(SchematicLoader) and the schematic folder; the Pumpkin plugin has neither, '
@@ -108,16 +114,16 @@ void registerSpawnCommands(CommandBuilder sable, SableCommandState state) {
         runs: (ctx) => _spawnGrid(ctx, state, _defaultMaterial, null),
         build: (side) => side.arg(
           'block',
-          ArgumentTypes.word,
+          ArgumentTypes.blockState,
           runs: (ctx) => _spawnGrid(
             ctx,
             state,
-            BState(ctx.string('block')),
+            BState(ctx.blockState('block')),
             ctx.stringOrNull('name'),
           ),
           build: (block) => _named(
             block,
-            (ctx, name) => _spawnGrid(ctx, state, BState(ctx.string('block')), name),
+            (ctx, name) => _spawnGrid(ctx, state, BState(ctx.blockState('block')), name),
           ),
         ),
       ),
@@ -125,17 +131,16 @@ void registerSpawnCommands(CommandBuilder sable, SableCommandState state) {
 
     spawn.sub(
       'block',
-      build: (block) => _named(
-        block,
-        (ctx, name) => _spawnBlock(ctx, state, _defaultMaterial, name),
-      )..arg(
-        'block',
-        ArgumentTypes.word,
-        build: (material) => _named(
-          material,
-          (ctx, name) => _spawnBlock(ctx, state, BState(ctx.string('block')), name),
+      build: (block) => block
+        ..runs((ctx) => _spawnBlock(ctx, state, _defaultMaterial, null))
+        ..arg(
+          'block',
+          ArgumentTypes.blockState,
+          build: (material) => _named(
+            material,
+            (ctx, name) => _spawnBlock(ctx, state, BState(ctx.blockState('block')), name),
+          ),
         ),
-      ),
     );
 
     spawn.sub(
@@ -146,16 +151,16 @@ void registerSpawnCommands(CommandBuilder sable, SableCommandState state) {
         runs: (ctx) => _spawnPlatform(ctx, state, _defaultMaterial, null),
         build: (size) => size.arg(
           'block',
-          ArgumentTypes.word,
+          ArgumentTypes.blockState,
           runs: (ctx) => _spawnPlatform(
             ctx,
             state,
-            BState(ctx.string('block')),
+            BState(ctx.blockState('block')),
             ctx.stringOrNull('name'),
           ),
           build: (block) => _named(
             block,
-            (ctx, name) => _spawnPlatform(ctx, state, BState(ctx.string('block')), name),
+            (ctx, name) => _spawnPlatform(ctx, state, BState(ctx.blockState('block')), name),
           ),
         ),
       ),
@@ -447,6 +452,13 @@ int _spawnJointTest(CommandContext ctx, SableCommandState state) {
 int _spawnRopeTest(CommandContext ctx, SableCommandState state) {
   final physics = _physics(ctx, state);
   final pipeline = physics.getPipeline();
+  // An engine without rope support (`Jolt`) declares the feature unsupported
+  // (`api/physics_capabilities.dart`) and its `addRope` throws; the same
+  // capability check as `_spawnJointTest` does for constraints keeps the throw
+  // unreachable and reports the reason to the sender instead.
+  if (!pipeline.supportsFeature(PhysicsPipelineFeature.rope)) {
+    throw CommandException(SableCommandError.ropeUnsupported.message);
+  }
   final position = ctx.sender.position() ?? (0.0, 0.0, 0.0);
 
   final points = [

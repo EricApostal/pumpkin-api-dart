@@ -72,6 +72,10 @@ abstract final class VanillaIds {
   /// `minecraft:mob_effect`.
   static RegistryIds get mobEffects => _of('mob_effect');
 
+  /// `minecraft:potion`: the ids `PotionContents` carries (`PotionContents.potion`), in the
+  /// order the host numbers them.
+  static RegistryIds get potions => _of('potion');
+
   /// `minecraft:entity_type`.
   static RegistryIds get entityTypes => _of('entity_type');
 

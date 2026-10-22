@@ -155,6 +155,30 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
 
   bool get isWindmill => false;
 
+  /// The entity type of the contraption this bearing builds, `null` for the plain
+  /// `create:stationary_contraption` (`ControlledContraptionEntity`).
+  ///
+  /// Java's propeller bearing and borehead bearing copy `assemble()` to construct their own
+  /// `ControlledContraptionEntity` subclass; here the controller names the kind instead
+  /// (`ContraptionHostHooks.registerControlledEntity`), so the client receives the entity as the
+  /// subclass it has a renderer and a transform for.
+  String? get contraptionEntityKey => null;
+
+  /// `assemble`'s guard: Java's `block instanceof BearingBlock`. Create's three bearings; a
+  /// module that builds its own bearing on this class overrides it (aeronautics'
+  /// `PropellerBearingBlock`, which `extends BearingBlock`).
+  bool isBearingBlock(String blockKey) => bearingBlocks.contains(blockKey);
+
+  /// The extra check a bearing adds once the structure was captured, before anything leaves the
+  /// world (`BearingContraptionMixin.aeronautics$tryFailAssembly`: a propeller needs two sails).
+  /// Throws an [AssemblyException] to reject the assembly.
+  void validateAssembledContraption(BearingContraption contraption) {}
+
+  /// What a click with an empty hand on a *running* bearing does. Create disassembles at once
+  /// (`BearingBlock.useItemOn`); a propeller bearing winds the sails down first
+  /// (`PropellerBearingBlock.useItemOn` -> `startDisassemblySlowdown`).
+  void onUseWhileRunning() => disassemble();
+
   /// The position as a [Pos]; the inherited `pos` is a host `BlockPos` and the `pos` of
   /// `common/pos.dart` shadows it in this library.
   Pos get localPos => (this.pos.x, this.pos.y, this.pos.z);
@@ -170,12 +194,13 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
     final state = HostBlockGetter.stateOfId(
       world!.getBlockStateId(pos: this.pos),
     );
-    if (!bearingBlocks.contains(state.key)) return;
+    if (!isBearingBlock(state.key)) return;
 
     final direction = state.dir('facing') ?? Direction.north;
     final contraption = BearingContraption(isWindmill, direction);
     try {
       if (!await contraption.assemble(level, localPos)) return;
+      validateAssembledContraption(contraption);
       lastException = null;
     } on AssemblyException catch (e) {
       lastException = e;
@@ -184,7 +209,12 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
     }
 
     await contraption.removeBlocksFromWorld(level, posZero);
-    final entity = factory.createControlled(worldId, localPos, contraption);
+    final entity = factory.createControlled(
+      worldId,
+      localPos,
+      contraption,
+      entityKey: contraptionEntityKey,
+    );
     final anchor = localPos.relative(direction);
     entity.setPos(anchor.toVec3());
     entity.setRotationAxis(direction.axis);

@@ -5,10 +5,17 @@
 import '../api/block_state.dart';
 import '../common/direction.dart';
 import '../common/pos.dart';
+import '../manifest/registries.g.dart' show kFluids;
 import 'fluid_stack.dart';
 import 'fluid_world.dart';
 
 /// The parameters of a flowing fluid (`BaseFlowingFluid.Properties`).
+///
+/// Honey and chocolate are the only standard fluids of the mod. Their flow parameters are
+/// extracted into the manifest (`FluidBuilder.fluidProperties`, `AllFluids.java:61-105`:
+/// `levelDecreasePerBlock(2) tickRate(25) slopeFindDistance(3)` for both), so
+/// [FlowingFluidDef.fromAttributes] reads them from there instead of repeating the numbers: the
+/// fluid registration and the block's flow logic then cannot drift apart.
 final class FlowingFluidDef {
   /// The still fluid (`create:honey`).
   final String still;
@@ -31,28 +38,37 @@ final class FlowingFluidDef {
     this.canConvertToSource = false,
   });
 
-  /// Honey: slow and sticky.
-  static const FlowingFluidDef honey = FlowingFluidDef(
-    still: FluidKeys.honey,
-    flowing: FluidKeys.flowingHoney,
-    blockKey: 'create:honey',
-    tickRate: 25,
-    levelDecreasePerBlock: 2,
-    slopeFindDistance: 3,
+  /// The parameters of the manifest fluid [attributes], with the vanilla defaults of
+  /// `FlowingFluid.Properties` (the manifest repeats them as `defaultsForUnlisted`).
+  factory FlowingFluidDef.fromAttributes({
+    required String still,
+    required String flowing,
+    required String blockKey,
+    required Map<String, String> attributes,
+  }) => FlowingFluidDef(
+    still: still,
+    flowing: flowing,
+    blockKey: blockKey,
+    tickRate: int.tryParse(attributes['tickRate'] ?? '') ?? 5,
+    levelDecreasePerBlock: int.tryParse(attributes['levelDecreasePerBlock'] ?? '') ?? 1,
+    slopeFindDistance: int.tryParse(attributes['slopeFindDistance'] ?? '') ?? 4,
   );
-
-  static const FlowingFluidDef chocolate = FlowingFluidDef(
-    still: FluidKeys.chocolate,
-    flowing: FluidKeys.flowingChocolate,
-    blockKey: 'create:chocolate',
-    tickRate: 25,
-    levelDecreasePerBlock: 2,
-    slopeFindDistance: 3,
-  );
-
-  /// Both fluids by their block key.
-  static const Map<String, FlowingFluidDef> byBlock = {'create:honey': honey, 'create:chocolate': chocolate};
 }
+
+/// The flow parameters of every placeable fluid of the manifest, by block key
+/// (`create:honey`, `create:chocolate`), read from the extracted `FluidBuilder.fluidProperties`
+/// (`AllFluids.java:61-105`) so the fluid registration and the blocks' flow logic use the same
+/// numbers.
+final Map<String, FlowingFluidDef> placeableFluidDefs = {
+  for (final def in kFluids)
+    if (def.kind == 'standard' && def.blockKey != null)
+      'create:${def.blockKey}': FlowingFluidDef.fromAttributes(
+        still: 'create:${def.sourceKey}',
+        flowing: 'create:${def.flowingKey}',
+        blockKey: 'create:${def.blockKey}',
+        attributes: def.attributes,
+      ),
+};
 
 /// The `level` property of a fluid block as a fluid state.
 FluidInfo fluidInfoOfBlock(BState state, FlowingFluidDef def) {
@@ -100,7 +116,7 @@ class FlowingFluidLogic {
       } else if (!_equal(newState, fluidState)) {
         fluidState = newState;
         world.setBlock(pos, fluidBlockState(def, newState), quiet: true);
-        world.scheduleFluidTick(pos, def.still, def.tickRate);
+        world.scheduleFlowTick(pos, def.still, def.tickRate);
         world.neighboursChanged(pos);
       }
     }

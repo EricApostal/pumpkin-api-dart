@@ -7,9 +7,15 @@
 * Permission `registry.extra` (`Permissions.registryExtra`); all registries are
   append only and close when the server accepts connections.
 * The n-th entry registered gets the id `vanilla count + n` in registries that
-  clients synchronise. NeoForge clients get the ids through the handshake (a
-  `declareNeoForge` call is not needed for them); other clients do not know the
-  entries.
+  clients synchronise. A NeoForge client only gets them when the plugin's
+  declaration **names the registry** (`Context.declareNeoForge`,
+  `NeoForgeRegistryAddition`): `minecraft:sound_event`, `minecraft:particle_type`,
+  `minecraft:mob_effect` and `minecraft:map_decoration_type` are sent like
+  `minecraft:item`, and a registry a mod owns (`mymod:thing`,
+  `declareSyncedRegistry`) is sent whole only when it is named. Declaring the mod
+  vouches for nothing: an entry no declaration names keeps the whole registry out
+  of the snapshot, for every plugin. Other clients do not know the entries either
+  way.
 * Failures throw `HostException`.
 
 ```dart
@@ -51,7 +57,12 @@ NeoForge clients get it with the registry data.
 ## Plugin synced registries
 
 For registries like `create:fan_processing_type`: synced to NeoForge clients with
-all entries in id order.
+all entries in id order, **once the declaration names the registry**
+(`Context.declareNeoForge` with a `NeoForgeRegistryAddition` for the key, whose
+`entries` are the ones added here). The key only exists on a client whose mod
+creates the registry, so the host sends it only when a declaration vouches for it;
+an unvouched registry is left out (and one sent without the key being declared
+would be refused with "unknown keys").
 
 ```dart
 ExtraRegistries.declareSyncedRegistry('my_plugin:processing_type');

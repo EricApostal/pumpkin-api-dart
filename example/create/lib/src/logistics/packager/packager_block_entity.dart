@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/util.dart' hide pos;
 import '../../common/bounds.dart';
 import '../../conveyance/items/inventory.dart' show ItemInventory;
@@ -108,7 +109,18 @@ class PackagerBlockEntity extends LgBlockEntity
 
   final Map<String, dynamic> _state = {};
 
-  PackagerBlockEntity(super.worldId, super.pos);
+  /// `AdvancementBehaviour(this, AllAdvancements.PACKAGER)`: the player that placed the packager
+  /// gets the advancement when it sends its first package.
+  late final AdvancementBehaviour advancements;
+
+  PackagerBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.packager],
+        () => Lg.i.advancements,
+      ),
+    );
+  }
 
   @override
   Map<String, dynamic> get state => _state;
@@ -586,6 +598,8 @@ class PackagerBlockEntity extends LgBlockEntity
     heldBox = createdBox;
     animationInward = false;
     animationTicks = cycle;
+    // `advancements.awardPlayer(AllAdvancements.PACKAGER)`.
+    unawaited(advancements.awardPlayer(AllAdvancements.packager));
     triggerStockCheck();
     notifyUpdate();
   }

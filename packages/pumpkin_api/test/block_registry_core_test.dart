@@ -410,6 +410,89 @@ void main() {
       );
     });
 
+    test('light rules, ignited by lava', () {
+      // The rose quartz lamp: `lightLevel(s -> POWERING ? 15 : 0)`.
+      const props = [BlockProperty.boolean('powering')];
+      final lamp = BlockDefinition(
+        key: 'a:lamp',
+        properties: props,
+        defaultState: const {'powering': 'false'},
+        hardness: 0.3,
+        blastResistance: 0.3,
+        luminance: 0,
+        lightRules: const [
+          LightRule(when: {'powering': 'true'}, level: 15),
+        ],
+        ignitedByLava: true,
+      );
+      expect(lamp.validate(), isEmpty);
+      expect(lamp.lightRules.single.level, 15);
+      expect(lamp.ignitedByLava, isTrue);
+
+      // The host rejects a level above 15, an unknown property, an unknown
+      // value and a property twice, in its own order.
+      expect(
+        BlockDefinition(
+          key: 'a:lamp',
+          properties: props,
+          hardness: 1,
+          blastResistance: 1,
+          lightRules: const [LightRule(level: 16)],
+        ).validate().single,
+        contains('0 to 15'),
+      );
+      expect(
+        BlockDefinition(
+          key: 'a:lamp',
+          properties: props,
+          hardness: 1,
+          blastResistance: 1,
+          lightRules: const [
+            LightRule(when: {'missing': 'true'}, level: 1),
+          ],
+        ).validate().single,
+        contains('unknown property'),
+      );
+      expect(
+        BlockDefinition(
+          key: 'a:lamp',
+          properties: props,
+          hardness: 1,
+          blastResistance: 1,
+          lightRules: const [
+            LightRule(when: {'powering': 'up'}, level: 1),
+          ],
+        ).validate().single,
+        contains('not a value'),
+      );
+      expect(
+        BlockDefinition(
+          key: 'a:lamp',
+          properties: props,
+          hardness: 1,
+          blastResistance: 1,
+          lightRules: const [
+            LightRule(when: {'powering': 'true'}, level: 1),
+            LightRule(when: {'powering': 'false'}, level: 2),
+          ],
+        ).validate(),
+        isEmpty,
+      );
+      expect(
+        BlockDefinition(
+          key: 'a:lamp',
+          properties: props,
+          hardness: 1,
+          blastResistance: 1,
+          lightRules: [
+            for (var i = 0; i <= BlockRegistryChecks.maxLightRules; i++)
+              const LightRule(level: 1),
+          ],
+        ).validate(),
+        contains(contains('more than 64 light rules')),
+      );
+    });
+
     test('shapes, loot table', () {
       expect(
         base(collision: BlockShape.boxes([BlockBox.unit])).validate(),

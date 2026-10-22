@@ -60,6 +60,21 @@ abstract interface class AssemblyBlockHost {
   void notifyBlockChanged(int x, int y, int z, BState oldState, BState newState);
 }
 
+/// A block host that can cache its reads for one batch of queries.
+///
+/// The structure search asks for the same position many times (every block of
+/// the frontier re-reads its 18 neighbours), and a host whose reads cross a
+/// boundary — a plugin host calling the server per block — pays for each of them.
+/// A host that implements this turns the batch into one cached pass; the search
+/// stays identical.
+abstract interface class BatchingBlockHost {
+  /// Starts caching reads.
+  void beginBatch();
+
+  /// Stops caching and drops the cache.
+  void endBatch();
+}
+
 /// An entity the assembly moves when it sits on a moved block.
 abstract interface class AssemblyEntity {
   /// The entity position.
@@ -154,13 +169,25 @@ abstract final class SubLevelAssemblyHelper {
     moveOtherStuff(level, transform, blocks, bounds);
     moveBlocks(level, transform, blocks);
 
-    final centerOfMass = subLevel.massTracker?.getCenterOfMass();
+    // Java's `getMassTracker().getCenterOfMass()` returns `null` for an empty
+    // tracker and the else branch below handles it; this port's getter *throws*
+    // instead, which turned "the selection had no solid block" into a raw
+    // `StateError` out of the command (`/sable assemble cube` over air).
+    final tracker = subLevel.massTracker;
+    final centerOfMass = tracker == null || tracker.isInvalid() ? null : tracker.getCenterOfMass();
     var subLevelCenter = Vector3d(anchor.$1.toDouble(), anchor.$2.toDouble(), anchor.$3.toDouble());
 
     if (centerOfMass != null) {
       subLevelCenter = subLevelCenter
           .sub(Vector3d(plotAnchor.$1.toDouble(), plotAnchor.$2.toDouble(), plotAnchor.$3.toDouble()))
           .add(centerOfMass);
+      // `MergedMassTracker.uploadData` (`MergedMassTracker.java:105-126`) sets the
+      // rotation point to the centre of mass; Java's next physics tick does it for
+      // an assembly, the port did not, and a pose with a zero rotation point
+      // rotates the plot bounds (~20M blocks out) about the world origin — a
+      // `/sable physics rotation` then threw the sub-level's global bounds to
+      // 28.9M and the ticket manager unloaded it.
+      subLevel.logicalPose.rotationPoint().setFrom(centerOfMass);
     } else {
       subLevel.logicalPose.rotationPoint().set(
         plotAnchor.$1 + 0.5,
@@ -269,10 +296,32 @@ abstract final class SubLevelAssemblyHelper {
     int maximumBlocksToAssemble,
     FrontierPredicate? frontierPredicate,
   ) {
+    final host = _blockHostOf(level);
+
+    // One batch for the whole search: a block host that crosses into the server
+    // per read (a plugin host) would otherwise pay 18 reads per visited block
+    // for the same positions. Purely a read cache; the search is unchanged.
+    if (host case final BatchingBlockHost batching) {
+      batching.beginBatch();
+      try {
+        return _gatherConnected(host, gatherOrigin, maximumBlocksToAssemble, frontierPredicate);
+      } finally {
+        batching.endBatch();
+      }
+    }
+    return _gatherConnected(host, gatherOrigin, maximumBlocksToAssemble, frontierPredicate);
+  }
+
+  /// The search of [gatherConnectedBlocks], over an already-configured [host].
+  static GatherResult _gatherConnected(
+    AssemblyBlockHost host,
+    Pos gatherOrigin,
+    int maximumBlocksToAssemble,
+    FrontierPredicate? frontierPredicate,
+  ) {
     final frontier = ListQueue<(Pos, BState)>();
     final frontierPositions = <Pos>{};
     final blocks = <Pos>{};
-    final host = _blockHostOf(level);
 
     final gatherOriginState = host.blockStateAt(gatherOrigin.$1, gatherOrigin.$2, gatherOrigin.$3);
     if (gatherOriginState.isAir) {
@@ -286,13 +335,32 @@ abstract final class SubLevelAssemblyHelper {
     var maxX = gatherOrigin.$1, maxY = gatherOrigin.$2, maxZ = gatherOrigin.$3;
 
     var blockCount = 0;
+    // Port guard: the search cost is `examined positions x 18` host reads, so the
+    // number of *positions* has to be bounded too. Java only bounds the blocks it
+    // collects (`maximumBlocksToAssemble`), which is free there because its reads
+    // are local; here an unbounded walk through connected terrain stalls the tick
+    // loop (~95 s, `1908 ticks behind`) and then exhausts the plugin's wasm store.
+    // The port therefore also stops after [maximumExaminedPositions], which a
+    // walk through open terrain reaches far sooner than the block count — a
+    // deliberate deviation, since the alternative is a stalled tick loop and a
+    // dead wasm store. The bound is the cost of one host read (~4 us measured on
+    // a live server) times 18 neighbours: 65536 positions is a few seconds, and
+    // covers structures of roughly twenty thousand blocks. A bigger assembly
+    // needs a bulk block read from the host, which the plugin API does not have
+    // yet (`HOST GAP`: `bulk-placement` writes blocks, it does not read them).
+    const maximumExaminedPositions = 65536;
+    final maximumExamined = maximumBlocksToAssemble < maximumExaminedPositions
+        ? maximumBlocksToAssemble
+        : maximumExaminedPositions;
+    var examined = 0;
     while (frontier.isNotEmpty) {
       final pair = frontier.removeFirst();
       final pos = pair.$1;
       frontierPositions.remove(pos);
 
       blockCount++;
-      if (blockCount > maximumBlocksToAssemble) {
+      examined++;
+      if (blockCount > maximumBlocksToAssemble || examined > maximumExamined) {
         return GatherResult(null, blockCount, null, GatherState.tooManyBlocks);
       }
 
@@ -305,6 +373,16 @@ abstract final class SubLevelAssemblyHelper {
 
       blocks.add(pos);
 
+      // The batch cache is a cache: dropping it periodically keeps a walk of
+      // hundreds of thousands of blocks from growing it without bound.
+      if (examined % 32768 == 0) {
+        if (host is BatchingBlockHost) {
+          (host as BatchingBlockHost)
+            ..endBatch()
+            ..beginBatch();
+        }
+      }
+
       for (var x = -1; x <= 1; x++) {
         for (var y = -1; y <= 1; y++) {
           for (var z = -1; z <= 1; z++) {
@@ -316,6 +394,10 @@ abstract final class SubLevelAssemblyHelper {
 
             final candidate = (pos.$1 + x, pos.$2 + y, pos.$3 + z);
             if (frontierPositions.contains(candidate)) continue;
+            // Already collected: its state is known and it is queued or visited,
+            // so the read below would be one of the ~18 redundant host calls per
+            // block that made a walk through terrain cost minutes.
+            if (blocks.contains(candidate)) continue;
 
             final direction = absTotal == 1
                 ? _nearestDirection(x, y, z)

@@ -38,11 +38,12 @@ final class RecipeFluidItemRecipes implements FluidItemRecipes {
 
   TagLookup get _tags => book.tags;
 
-  static PStack _stack(FluidItemSpec item) => PStack(item.key, item.count);
+  static PStack _stack(FluidItemSpec item) =>
+      item.isEmpty ? PStack.empty : PStack(item.key, item.count, comps: item.comps);
 
   static FluidItemSpec _item(PStack stack) => stack.isEmpty
       ? FluidItemSpec.empty
-      : FluidItemSpec(stack.key, stack.count);
+      : FluidItemSpec(stack.key, stack.count, stack.comps);
 
   @override
   EmptyingResult? findEmptying(FluidItemSpec item) {

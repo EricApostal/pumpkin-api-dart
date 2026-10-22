@@ -2,6 +2,7 @@
 // tests can run the host's block validation on all of them).
 import 'package:pumpkin_api/pumpkin_api_core.dart';
 
+import '../common/map_colors.dart';
 import '../manifest/manifest.dart';
 import 'shapes.dart';
 
@@ -42,8 +43,11 @@ final class KineticBlockData {
   final bool requiresCorrectTool;
   final String soundType;
   final int luminance;
+  final List<LightRule> lightRules;
   final bool canOcclude;
   final bool replaceable;
+  final int mapColor;
+  final bool ignitedByLava;
   final BlockShape collisionShape;
   final BlockShape selectionShape;
   final List<ShapeRule> shapeRules;
@@ -62,8 +66,11 @@ final class KineticBlockData {
     required this.requiresCorrectTool,
     required this.soundType,
     required this.luminance,
+    required this.lightRules,
     required this.canOcclude,
     required this.replaceable,
+    required this.mapColor,
+    required this.ignitedByLava,
     required this.collisionShape,
     required this.selectionShape,
     required this.shapeRules,
@@ -84,8 +91,11 @@ final class KineticBlockData {
     requiresCorrectTool: requiresCorrectTool,
     soundType: soundType,
     luminance: luminance,
+    lightRules: lightRules,
     canOcclude: canOcclude,
     replaceable: replaceable,
+    mapColor: mapColor,
+    ignitedByLava: ignitedByLava,
     collisionShape: collisionShape,
     selectionShape: selectionShape,
     drops: drops,
@@ -150,6 +160,7 @@ KineticBlockData kineticBlockData(
   PistonBehavior? pistonBehavior,
   bool? canOcclude,
   bool useLootTable = true,
+  List<LightRule> lightRules = const [],
 }) {
   final m = manifestBlockOf(path);
   final rules = shapeRules ?? kineticShapeRules[path] ?? const <ShapeRule>[];
@@ -161,9 +172,14 @@ KineticBlockData kineticBlockData(
     blastResistance: m.blastResistance,
     requiresCorrectTool: m.requiresCorrectTool,
     soundType: m.soundType.toLowerCase(),
+    // The host takes `luminance` as the level of *every* state; a block with a Java
+    // `lightLevel(state -> ...)` starts dark and gets its levels from [lightRules].
     luminance: m.lightDynamic ? 0 : m.lightLevel,
+    lightRules: lightRules,
     canOcclude: canOcclude ?? !m.noOcclusion,
     replaceable: m.replaceable,
+    mapColor: mapColorIdOf(m.mapColor),
+    ignitedByLava: m.ignitedByLava,
     collisionShape:
         collisionShape ??
         kineticBaseShapes[path] ??

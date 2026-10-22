@@ -4,9 +4,11 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/util.dart' hide pos;
 import '../host/lg_block_entity.dart';
 import '../host/lvl.dart';
+import '../host/runtime.dart';
 import '../host/state_props.dart';
 import '../packager/packager_block_entity.dart';
 import '../packager/repackager/repackager_block_entity.dart';
@@ -21,7 +23,17 @@ class FactoryPanelBlockEntity extends LgBlockEntity {
 
   final Map<String, dynamic> _state = {};
 
+  /// `advancements = new AdvancementBehaviour(this, AllAdvancements.FACTORY_GAUGE)`: the player
+  /// that placed the panel gets the advancement when a gauge of it requests items.
+  late final AdvancementBehaviour advancements;
+
   FactoryPanelBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.factoryGauge],
+        () => Lg.i.advancements,
+      ),
+    );
     for (final slot in PanelSlot.values) {
       final behaviour = FactoryPanelBehaviour(this, slot);
       panels[slot] = behaviour;

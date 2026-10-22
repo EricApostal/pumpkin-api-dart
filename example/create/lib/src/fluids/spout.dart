@@ -65,10 +65,10 @@ class SpoutBlockEntity extends CreateBlockEntity
 
   static FluidItemSpec _item(PStack stack) => stack.isEmpty
       ? FluidItemSpec.empty
-      : FluidItemSpec(stack.key, stack.count);
+      : FluidItemSpec(stack.key, stack.count, stack.comps);
 
   static PStack _stack(FluidItemSpec item) =>
-      item.isEmpty ? PStack.empty : PStack(item.key, item.count);
+      item.isEmpty ? PStack.empty : PStack(item.key, item.count, comps: item.comps);
 
   /// `onItemReceived`.
   ProcessingResult _onItemReceived(

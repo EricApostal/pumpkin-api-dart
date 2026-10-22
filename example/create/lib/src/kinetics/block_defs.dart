@@ -120,14 +120,23 @@ class FacingAxisBlockDef extends FacingBlockDef {
 }
 
 /// A block with a `facing` and an `axis_along_first` property
-/// (`DirectionalAxisKineticBlock`: the gauges).
+/// (`DirectionalAxisKineticBlock`: the gauges, the mounted potato cannon).
 class DirectionalAxisBlockDef extends KineticBlockDef {
-  const DirectionalAxisBlockDef();
+  /// The `facing` property name.
+  final String facingProperty;
+
+  /// The `axis_along_first` property name.
+  final String alongFirstProperty;
+
+  const DirectionalAxisBlockDef({
+    this.facingProperty = 'facing',
+    this.alongFirstProperty = 'axis_along_first',
+  });
 
   @override
   KAxis rotationAxis(KState state) {
-    final pistonAxis = (state.dirOf('facing') ?? Dir.north).axis;
-    final alongFirst = state.flag('axis_along_first');
+    final pistonAxis = (state.dirOf(facingProperty) ?? Dir.north).axis;
+    final alongFirst = state.flag(alongFirstProperty);
     return switch (pistonAxis) {
       KAxis.x => alongFirst ? KAxis.y : KAxis.z,
       KAxis.y => alongFirst ? KAxis.x : KAxis.z,
@@ -227,6 +236,26 @@ class TurntableDef extends KineticBlockDef {
 
   @override
   bool hasShaftTowards(KState state, Dir face) => face == Dir.down;
+}
+
+/// A block with a vertical rotation axis whose only shaft is on the top or the
+/// bottom face, chosen by a boolean property: the smart propeller (`ceiling`:
+/// up when set) and the steering wheel (`on_floor`: down when set).
+class VerticalShaftDef extends KineticBlockDef {
+  /// The boolean property that picks the side.
+  final String property;
+
+  /// Whether the shaft is on `up` when [property] is `true` (`false`: on `down`).
+  final bool shaftUpWhenSet;
+
+  const VerticalShaftDef({required this.property, required this.shaftUpWhenSet});
+
+  @override
+  KAxis rotationAxis(KState state) => KAxis.y;
+
+  @override
+  bool hasShaftTowards(KState state, Dir face) =>
+      face == (state.flag(property) == shaftUpWhenSet ? Dir.up : Dir.down);
 }
 
 /// The gantry shaft: a shaft along its `facing` axis. The powered state is part of the kinetic

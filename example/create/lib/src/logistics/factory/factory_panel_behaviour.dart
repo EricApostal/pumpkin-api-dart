@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/panel_support.dart';
 import '../../api/util.dart' hide pos;
 import '../filter/filter_item_stack.dart';
@@ -404,8 +405,25 @@ class FactoryPanelBehaviour extends FilteringBehaviour
   void tick() {
     if (owner != panelBE) return;
     super.tick();
-    tickStorageMonitor();
-    tickRequests();
+    unawaited(_tickStorageMonitorAndRequests());
+  }
+
+  /// Whether a [tickStorageMonitor] run is in flight.
+  bool _monitoring = false;
+
+  /// Java's `tick()`: `tickStorageMonitor()` then `tickRequests()`. The monitor reads the
+  /// network summary, which is a host resource and can only be read asynchronously here, so the
+  /// requests wait for it instead of running against the value the last tick reported.
+  Future<void> _tickStorageMonitorAndRequests() async {
+    if (_monitoring) return;
+    _monitoring = true;
+    try {
+      await tickStorageMonitor();
+      if (owner != panelBE) return;
+      tickRequests();
+    } finally {
+      _monitoring = false;
+    }
   }
 
   @override
@@ -485,6 +503,9 @@ class FactoryPanelBehaviour extends FilteringBehaviour
     promiseClearingInterval = panelTag.getInt('PromiseClearingInterval') ?? 0;
     final freq = panelTag.getIntArray('Freq');
     if (freq != null && freq.length >= 4) network = uuidFromInts(freq);
+    // The summary of the network belongs to the load that read it.
+    _cachedSummary = null;
+    _cachedSummaryNetwork = null;
 
     targeting.clear();
     for (final entry in panelTag.getList('Targeting') ?? const <Object>[]) {
@@ -554,7 +575,7 @@ class FactoryPanelBehaviour extends FilteringBehaviour
   }
 
   /// `tickStorageMonitor()`.
-  void tickStorageMonitor() {
+  Future<void> tickStorageMonitor() async {
     final item = filter.item;
     final unloadedLinkCount = getUnloadedLinks;
     if (!panelBE.restocker &&
@@ -563,7 +584,9 @@ class FactoryPanelBehaviour extends FilteringBehaviour
       Lg.i.manager.summaries.invalidate(network);
     }
 
-    final inStorage = getLevelInStorage;
+    // Java reads the summary synchronously; here it is resolved before it is used, so the
+    // monitor never compares the level against an empty, not-yet-filled cache.
+    final inStorage = await resolveLevelInStorage();
     final promised = getPromised;
     final demand = count * (upTo ? 1 : max(1, filter.maxStackSize));
     final shouldSatisfy = item.isEmpty || inStorage >= demand;
@@ -697,6 +720,9 @@ class FactoryPanelBehaviour extends FilteringBehaviour
 
     final promises = Lg.i.global.getQueuedPromises(network);
     promises?.add(RequestPromise(BigStack(filter.item, recipeOutput)));
+
+    // `panelBE.advancements.awardPlayer(AllAdvancements.FACTORY_GAUGE)`.
+    unawaited(panelBE.advancements.awardPlayer(AllAdvancements.factoryGauge));
   }
 
   /// `tryRestock()`.
@@ -717,7 +743,7 @@ class FactoryPanelBehaviour extends FilteringBehaviour
       return;
     }
 
-    final inStorage = getLevelInStorage;
+    final inStorage = await resolveLevelInStorage();
     final promised = getPromised;
     final maxStackSize = item.maxStack;
     final demand = count * (upTo ? 1 : maxStackSize);
@@ -810,32 +836,47 @@ class FactoryPanelBehaviour extends FilteringBehaviour
   }
 
   /// `getLevelInStorage()`.
+  ///
+  /// Java's is synchronous; the summary of a network is read from the host's inventories here,
+  /// which only happens asynchronously, so a resolved summary cannot be produced on the spot.
+  /// A reader therefore sees the summary of the last resolution, and — before the first one of
+  /// this load — the level this panel last reported (Java's client shortcut, which a reload also
+  /// restores from NBT). Reading `_cachedSummary ?? empty` used to make every consumer of a
+  /// freshly loaded panel believe the storage was empty, which flipped `satisfied` and pulsed
+  /// the panel's support links; the fallback is the level the panel had before it was unloaded.
   int get getLevelInStorage {
-    if (filter.item.isEmpty) return 0;
-    return _relevantSummary().countOf(filter.item);
+    final item = filter.item;
+    if (item.isEmpty) return 0;
+    final cached = _cachedSummary;
+    if (cached != null && _cachedSummaryNetwork == network)
+      return cached.countOf(item);
+    return _lastReportedLevelInStorage;
   }
 
+  /// The summary of the last [resolveLevelInStorage], and the network it was read from.
   InventorySummary? _cachedSummary;
+  String? _cachedSummaryNetwork;
 
-  InventorySummary _relevantSummary() {
-    // `getRelevantSummary` is asynchronous on the host; the last summary is used and refreshed
-    // by [_refreshRelevantSummary] from [tickRequests].
-    unawaited(_refreshRelevantSummary());
-    return _cachedSummary ?? InventorySummary();
+  /// `getRelevantSummary()`, read now: the level in storage the panel's own reads use.
+  Future<int> resolveLevelInStorage() async {
+    final item = filter.item;
+    if (item.isEmpty) return 0;
+    final freq = network;
+    final summary = await _readRelevantSummary(freq);
+    _cachedSummary = summary;
+    _cachedSummaryNetwork = freq;
+    return summary.countOf(item);
   }
 
-  Future<void> _refreshRelevantSummary() async {
+  /// `getRelevantSummary()` of the network [freq].
+  Future<InventorySummary> _readRelevantSummary(String freq) async {
     if (panelBE.restocker) {
       final packager = panelBE.getRestockedPackager();
-      _cachedSummary = packager == null
+      return packager == null
           ? InventorySummary()
           : await packager.getAvailableItems();
-      return;
     }
-    _cachedSummary = await Lg.i.manager.getSummaryOfNetwork(
-      network,
-      accurate: false,
-    );
+    return Lg.i.manager.getSummaryOfNetwork(freq, accurate: false);
   }
 
   /// `getPromised()`.

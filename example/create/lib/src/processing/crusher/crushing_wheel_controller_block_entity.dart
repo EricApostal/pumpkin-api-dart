@@ -17,6 +17,7 @@ import '../../core/nbt.dart';
 import '../common/capabilities.dart';
 import '../common/stack.dart';
 import '../common/storage.dart';
+import '../deployer/deployer_items.dart';
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
 import '../recipe/recipe_book.dart';
@@ -120,6 +121,12 @@ class CrushingWheelControllerBlockEntity extends CreateBlockEntity
         for (final stack in match.rollResults(random)) {
           _addToList(list, stack);
         }
+      }
+      // `CrushingWheelControllerBlockEntity.java:321-323`: the input's crafting remainder is
+      // merged into the same list before it is written into the slots.
+      final remainder = craftingRemainderOf(input);
+      if (remainder != null) {
+        _addToList(list, remainder);
       }
       for (
         var slot = 0;

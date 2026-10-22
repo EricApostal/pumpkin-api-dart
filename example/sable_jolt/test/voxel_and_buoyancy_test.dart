@@ -196,6 +196,65 @@ void main() {
       }
     });
 
+    test('drag strength is the constant 1.0 and lift uses the collider volume', () {
+      // `do_drag(body, &vels, static_pos, &local_pos, size, 1.0)`
+      // (`buoyancy.rs:88`) versus
+      // `do_float(body, static_pos, &local_pos, size, voxel_collider_data.volume)`
+      // (`buoyancy.rs:135`): the drag strength is always 1.0, and only the lift
+      // is scaled by the sub-level block's own collider volume.
+      colliders.add(const BlockColliderData(volume: 0.25));
+      final quarter = packBlockState(2, VoxelPhysicsState.face);
+
+      final states = List<int>.filled(4096, 0);
+      states[0] = packBlockState(0, VoxelPhysicsState.face);
+      world.setSection(0, 0, 0, states);
+
+      final pose = Pose3d()..position().set(0.5, 0.5, 0.5);
+      final forces = computeBuoyancy(
+        pose: pose,
+        centerOfMass: Vector3d(0.5, 0.5, 0.5),
+        localBounds: BoundingBox3i.values(-8, -8, -8, 8, 8, 8),
+        bodyBlocks: [((0, 0, 0), quarter)],
+        colliders: colliders,
+        world: StoreBlockSource(world),
+        velocityAt: (_) => Vector3d(1.0, 0.0, 0.0),
+      );
+
+      expect(forces, hasLength(1));
+      // `-velo * 1.7 * overlap * 1.0` — the same drag the 0.5-volume block gets.
+      expect(forces.single.force.x, closeTo(-1.7, 1e-9));
+      // `10.5 * overlap * volume`, with volume = 0.25.
+      expect(forces.single.force.y, closeTo(10.5 * 0.25, 1e-9));
+    });
+
+    test('a block with the default collider volume still drags', () {
+      // The default `BlockColliderData.volume` is 0.0 (`voxel.dart:75`). The
+      // Rust never passes it to `do_drag` (`buoyancy.rs:63,88` pass `1.0`), so
+      // such a block still gets drag, just no lift.
+      colliders.add(const BlockColliderData());
+      final noVolume = packBlockState(2, VoxelPhysicsState.face);
+
+      final states = List<int>.filled(4096, 0);
+      states[0] = packBlockState(0, VoxelPhysicsState.face);
+      world.setSection(0, 0, 0, states);
+
+      final pose = Pose3d()..position().set(0.5, 0.5, 0.5);
+      final forces = computeBuoyancy(
+        pose: pose,
+        centerOfMass: Vector3d(0.5, 0.5, 0.5),
+        localBounds: BoundingBox3i.values(-8, -8, -8, 8, 8, 8),
+        bodyBlocks: [((0, 0, 0), noVolume)],
+        colliders: colliders,
+        world: StoreBlockSource(world),
+        velocityAt: (_) => Vector3d(1.0, 0.0, 0.0),
+      );
+
+      expect(forces, hasLength(1));
+      expect(forces.single.force.x, closeTo(-1.7, 1e-9));
+      expect(forces.single.force.y, 0.0);
+      expect(dragStrength, 1.0);
+    });
+
     test('a rotated body transforms its sample points but not the lift axis', () {
       final states = List<int>.filled(4096, 0);
       states[0] = packBlockState(0, VoxelPhysicsState.face);

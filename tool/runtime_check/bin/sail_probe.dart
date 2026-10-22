@@ -21,7 +21,7 @@ final class SailProbe extends Plugin {
       ..execute((sender, server, args) async {
         final key = args.string('action');
         try {
-          for (final line in await probe(server)) {
+          for (final line in await probe(server, key)) {
             logger.info('SP $key $line');
           }
         } on Object catch (e) {
@@ -34,7 +34,7 @@ final class SailProbe extends Plugin {
   }
 }
 
-Future<List<String>> probe(Server server) async {
+Future<List<String>> probe(Server server, String action) async {
   final world =
       server.getWorldByName(name: 'minecraft:overworld') ??
       server.getWorldByName(name: 'world') ??
@@ -87,6 +87,11 @@ Future<List<String>> probe(Server server) async {
     'plugin_items=${ItemRegistries.host.registeredItems.length}',
   );
 
+  if (action != 'run' && action != 'engine' && action != 'feed' && action != 'symrow') {
+    FakePlayers.remove(bot);
+    return out;
+  }
+
   // 0. Control: a vanilla block item placed by the same fake player.
   await set((0, 100, 0), stone);
   await set((0, 101, 0), air);
@@ -131,6 +136,62 @@ Future<List<String>> probe(Server server) async {
     'north=${at((8, 101, 7))} held_after=${held()} '
     '(java: a sail with facing=east where the run grew)',
   );
+
+  if (action == 'symrow') {
+    // 5. The symmetric sail's own row placement (`SymmetricSailPlacementHelper`):
+    // a `y` sail, clicked near its north edge with a sail item.
+    final sailY = BlockRegistry.resolveState('simulated:white_symmetric_sail', {'axis': 'y'})!;
+    await set((16, 100, 16), stone);
+    await set((16, 101, 16), sailY);
+    await set((16, 101, 15), air);
+    await set((16, 101, 17), air);
+    FakePlayerActions(bot).moveTo(world, (17.5, 100.9, 16.5), yaw: 0, pitch: 0);
+    await hold('simulated:white_symmetric_sail');
+    final symRow = await bot.useItemOnBlock(
+      BlockPos(x: 16, y: 101, z: 16),
+      BlockDirection.up,
+      cursor: (0.5, 0.5, 0.1),
+    );
+    out.add(
+      'symrow placed=$symRow clicked=${at((16, 101, 16))} north=${at((16, 101, 15))} '
+      'south=${at((16, 101, 17))} held_after=${held()} '
+      '(java: a sail where the sheet grew, axis=y)',
+    );
+    FakePlayers.remove(bot);
+    return out;
+  }
+
+  if (action == 'engine') {
+    // 3. The portable engine: place it on stone.
+    await set((12, 100, 12), stone);
+    await set((12, 101, 12), air);
+    FakePlayerActions(bot).moveTo(world, (13.5, 101.0, 12.5), yaw: 0, pitch: 90);
+    await hold('simulated:white_portable_engine');
+    final enginePlaced = await bot.useItemOnBlock(
+      BlockPos(x: 12, y: 100, z: 12),
+      BlockDirection.up,
+      cursor: (0.5, 0.5, 0.5),
+    );
+    out.add('engine placed=$enginePlaced at(12,101,12)=${at((12, 101, 12))}');
+    FakePlayers.remove(bot);
+    return out;
+  }
+
+  if (action == 'feed') {
+    // 4. Feed the engine (a separate call, so the block entity that was placed is
+    // the one the host is ticking: a click in the placing tick is a race the host
+    // wins by re-announcing the entity).
+    FakePlayerActions(bot).moveTo(world, (13.5, 101.0, 12.5), yaw: 0, pitch: 90);
+    await hold('minecraft:coal');
+    final fed = await bot.useItemOnBlock(
+      BlockPos(x: 12, y: 101, z: 12),
+      BlockDirection.up,
+      cursor: (0.5, 0.5, 0.5),
+    );
+    out.add('engine fed=$fed at(12,101,12)=${at((12, 101, 12))} held_after=${held()}');
+    FakePlayers.remove(bot);
+    return out;
+  }
 
   FakePlayers.remove(bot);
   return out;

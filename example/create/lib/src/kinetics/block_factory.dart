@@ -30,6 +30,7 @@ CreateBlock createBlockFromManifest(
   PistonBehavior? pistonBehavior,
   bool? canOcclude,
   bool useLootTable = true,
+  List<LightRule> lightRules = const [],
 }) {
   final d = kineticBlockData(
     path,
@@ -39,6 +40,7 @@ CreateBlock createBlockFromManifest(
     pistonBehavior: pistonBehavior,
     canOcclude: canOcclude,
     useLootTable: useLootTable,
+    lightRules: lightRules,
   );
   return CreateBlock(
     key: d.key,
@@ -50,8 +52,11 @@ CreateBlock createBlockFromManifest(
     requiresCorrectTool: d.requiresCorrectTool,
     soundType: d.soundType,
     luminance: d.luminance,
+    lightRules: d.lightRules,
     canOcclude: d.canOcclude,
     replaceable: d.replaceable,
+    mapColor: d.mapColor,
+    ignitedByLava: d.ignitedByLava,
     collisionShape: d.collisionShape,
     selectionShape: d.selectionShape,
     shapeRules: d.shapeRules,

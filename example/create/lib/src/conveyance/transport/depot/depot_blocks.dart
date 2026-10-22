@@ -10,6 +10,7 @@ import '../../../api/wrenchable.dart';
 import '../../../common/direction.dart';
 import '../../../common/host_bridge.dart';
 import '../../../core/block_entity.dart';
+import '../../../core/module.dart';
 import '../../../core/registry.dart';
 import '../../belt/transported_item.dart';
 import '../../items/item_codec.dart';
@@ -64,6 +65,22 @@ void registerDepot(CreateRegistry registry) {
       tickInterval: 1,
     ),
   );
+}
+
+/// Phase 2: the item hooks of the depot area.
+///
+/// `EjectorItem.useOn` (`EjectorItem.java:26-31`): a sneaking player does not place the weighted
+/// ejector, because the item answers the click with `SUCCESS`. The host has no item-behaviour hook,
+/// so `useOn` runs from `itemUseFirst`, which fires before the block handles the click and before
+/// the item is used or placed — the hook the other items use for their `useOn`
+/// (`equipment/zapper/zapper_host.dart:108-116`).
+void installDepotItemHooks(CreateContext ctx) {
+  ctx.host.intercept(Events.itemUseFirst, (server, e) async {
+    if (e.useResult != ItemUseFirstResult.pass) return e;
+    if (await e.stack.getRegistryKey() != 'create:weighted_ejector') return e;
+    if (!e.player.asEntity().isSneaking()) return e;
+    return e.copyWith(useResult: ItemUseFirstResult.success);
+  });
 }
 
 /// Phase 3: the wrench action of the depot.

@@ -21,7 +21,9 @@ const EntityTypeSpec seatEntityType = EntityTypeSpec(
   updateInterval: 2147483647,
   trackDeltas: false,
   fireImmune: true,
-  saveable: false,
+  // `AllEntityTypes.register` never calls `noSave()`, so a seat is saved with the chunk and its
+  // rider survives a reload; a non-saved seat is dropped, and with it the passenger.
+  saveable: true,
   collidable: false,
   pushable: false,
 );

@@ -12,8 +12,9 @@ import 'package:create/create.dart';
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Axis, Direction;
 import 'package:create/src/common/pos.dart' show Pos;
-import 'package:create/src/contraptions/bearing/bearing_placement.dart' show bearingPlacementRules;
+import 'package:create/src/kinetics/behavior_builder.dart' show buildKineticBehavior;
 import 'package:create/src/kinetics/block_data.dart' show facingShaftTag;
+import 'package:create/src/kinetics/block_factory.dart' show KineticBlockSpec;
 import 'package:create/src/kinetics/kinetic_block_entity.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart';
@@ -21,6 +22,8 @@ import 'package:sable/sable.dart';
 import '../../../config/aero_config.dart';
 import '../../../host/host_propeller_push_world.dart';
 import '../../../host/world_balloon_world.dart';
+import '../../../propeller/placement.dart'
+    show propellerPlacementRules, smartPropellerPlacement;
 import '../../../propeller/propeller_actor_behaviour.dart';
 import '../../../propeller/small_propeller.dart';
 import 'propeller_block_entity_mixin.dart';
@@ -279,23 +282,38 @@ CreateBlock _smallPropellerBlock(String key, String type) => CreateBlock(
   soundType: 'wood',
   canOcclude: false,
   tags: [facingShaftTag],
-  placement: bearingPlacementRules,
+  placement: propellerPlacementRules,
   blockEntityType: type,
 );
 
-CreateBlock _smartPropellerBlock() => CreateBlock(
-  key: SmallPropellerKeys.smart,
-  properties: [
-    BlockProperty.enumeration('horizontal_axis', ['x', 'z']),
-    BlockProperty.boolean('reversed'),
-    BlockProperty.boolean('ceiling'),
-  ],
-  defaultState: {'horizontal_axis': 'x'},
-  hardness: 2,
-  blastResistance: 4,
-  requiresCorrectTool: true,
-  soundType: 'copper',
-  canOcclude: false,
-  tags: [facingShaftTag],
-  blockEntityType: 'aeronautics:smart_propeller',
-);
+/// `SmartPropellerBlock`: `HorizontalAxisKineticBlock`'s hinge axis, swapped, plus `ceiling`.
+///
+/// The host cannot express the swap in a placement rule, so the state the host placed is
+/// corrected once the placing player is known (`KineticBlockSpec.placement`), the same way
+/// Create's own kinetic blocks correct theirs.
+CreateBlock _smartPropellerBlock() {
+  late final CreateBlock block;
+  late final KineticBlockSpec spec;
+  block = CreateBlock(
+    key: SmallPropellerKeys.smart,
+    properties: [
+      BlockProperty.enumeration('horizontal_axis', ['x', 'z']),
+      BlockProperty.boolean('reversed'),
+      BlockProperty.boolean('ceiling'),
+    ],
+    defaultState: {'horizontal_axis': 'x'},
+    hardness: 2,
+    blastResistance: 4,
+    requiresCorrectTool: true,
+    soundType: 'copper',
+    canOcclude: false,
+    tags: [facingShaftTag],
+    blockEntityType: 'aeronautics:smart_propeller',
+    behavior: buildKineticBehavior(() => block, specRef: () => spec),
+  );
+  spec = KineticBlockSpec(
+    block,
+    placement: (ctx, placed, use, world) => smartPropellerPlacement(ctx, placed),
+  );
+  return block;
+}

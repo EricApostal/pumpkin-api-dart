@@ -1,70 +1,48 @@
+// The mod's NeoForge declaration. The host runs the handshake now (`neoforge.wit`,
+// see `docs/neoforge-host.md` of pumpkin_api), so the plugin does not speak the
+// protocol itself and no longer installs `pumpkin_neoforge`'s `NeoForgeServer`
+// (which the library says only one plugin per server may do, and which would talk
+// to the client on top of the host's handshake).
+//
+// What the declaration has to carry is the *vouch*: naming a registry is the claim
+// that the entries the plugin registered in it are the client's, in the host's
+// order. The host numbers them itself (`vanilla count + index`) and writes those
+// ids in chunk data and packets, and a client that is not sent the snapshot
+// resolves each id against its own order — a different item or block, silently. A
+// registry the host numbers is sent whole or not at all
+// (`crates/pumpkin-core/src/net/neoforge/registries.rs`, `syncable`), so leaving one
+// out drops it from the sync for *every* plugin, not only for this one.
+//
+// Lonsdaleite has no payload channels, so nothing else is declared: the client's
+// mod needs the ids, and a client without the mod is refused (`reject`), the way
+// the plugin's own handshake refused it before.
 import 'package:pumpkin_api/pumpkin_api.dart';
-import 'package:pumpkin_neoforge/pumpkin_neoforge.dart';
 
-import 'block_install.dart';
-import 'item_install.dart';
+import 'declared_registries.dart';
 import 'manifest.dart';
-import 'neoforge_spec.dart';
 
-/// How the plugin opens the NeoForge negotiation: `adhoc` (the default, see
-/// [installNeoForge]) or `full` (the real order, with the pre-brand hold). A
-/// constant, not a config file: the plugin has no config of its own.
-const NeoForgeNegotiation lonsdaleiteNegotiation = NeoForgeNegotiation.adhoc;
-
-/// Makes the server speak NeoForge's configuration protocol so clients with
-/// the Lonsdaleite mod can join: the registry sync (items and the wardframe
-/// block, from which the client numbers the block states) and the check that
-/// the client has all of it. See `packages/pumpkin_neoforge` and
-/// `docs/neoforge-protocol.md`.
+/// The declaration of the mod in [manifest], for `Context.declareNeoForge`.
 ///
-/// Call this **after** the items and the block are registered
-/// ([installManifestItems], [installManifestBlock]): the sync tells clients
-/// the ids the host assigned, [installation] and [blocks] carry them.
+/// The registries come from [lonsdaleiteDeclaredRegistries] — the two the plugin
+/// registers content into. Both are host-numbered, so the addition's `entries` are
+/// ignored for them: what the host sends is its own dynamic registry, which is what
+/// the plugin registered, in registration order.
 ///
-/// The negotiation is [lonsdaleiteNegotiation], by default the library's
-/// `adhoc` mode (no `neoforge:register` query; the host's play packets stay
-/// vanilla), and clients that are not NeoForge are refused with a message, since
-/// they lack the mod's items and would break on the first stack of one.
-///
-/// Why `adhoc` and not `full`: Lonsdaleite has no payloads of its own, so the
-/// mod needs no channel negotiation, and the registry sync with its
-/// acknowledgement already proves that the client has every entry. `full`
-/// makes the client treat the connection as NeoForge for good, which costs
-/// something that is not verified against a live client: the elytra attribute
-/// and `neoforge:recipe_content` have to be sent by the plugin
-/// (`NeoForgeServer.installPlay`), the host writes NeoForge encodings for
-/// particles, and the vanilla attribute list of the host has to match the
-/// client's. Switch to `full` by changing [lonsdaleiteNegotiation] (the plugin
-/// then installs the play helpers as well) once a live client has been tried.
-NeoForgeServer installNeoForge(
-  Context context,
-  Manifest manifest,
-  ItemInstallation installation,
-  BlockInstallation blocks, {
-  NeoForgeServerOptions options = const NeoForgeServerOptions(
-    negotiation: lonsdaleiteNegotiation,
+/// `reject`: a client without the mod has none of the items, and a block the server
+/// places would arrive as a different one, so such clients are disconnected with
+/// [rejectMessage] (`{mods}` is replaced by the mod list; the host formats it).
+NeoForgeDeclaration lonsdaleiteDeclaration(Manifest manifest) => NeoForgeDeclaration(
+  mod: NeoForgeMod(
+    id: manifest.mod.id,
+    version: manifest.mod.version,
+    displayName: manifest.mod.name,
   ),
-}) {
-  final spec = neoForgeSpecFor(
-    manifest,
-    installation.items,
-    blocks: [blocks.block],
-  );
-  final server = NeoForgeServer(spec, options: options);
-  server.install(context);
-  // Only the full mode marks connections as NeoForge, and only those need the
-  // play-phase extras (elytra attribute, recipe content).
-  if (options.negotiation == NeoForgeNegotiation.full) {
-    server.installPlay(context);
-  }
-  // NeoForgeServer logs every decided handshake (joined, refused, not NeoForge).
-  logger.info(
-    'NeoForge registry sync installed: ${manifest.mod.name} ${manifest.mod.version}, '
-    '${installation.items.length} items (ids ${installation.vanillaCount} to '
-    '${installation.vanillaCount + installation.items.length - 1}), '
-    'block ${blocks.block.key} (id ${blocks.block.id}, ${blocks.block.stateCount} states from state id '
-    '${blocks.block.baseStateId}), '
-    'negotiation ${options.negotiation.name}.',
-  );
-  return server;
-}
+  registries: [
+    for (final key in lonsdaleiteDeclaredRegistries)
+      NeoForgeRegistryAddition(key, const []),
+  ],
+  policy: NonNeoForgeClientPolicy.reject,
+  rejectMessage:
+      'This server runs the ${manifest.mod.name} port for Pumpkin: install the mod '
+      '({mods}) to join.',
+);

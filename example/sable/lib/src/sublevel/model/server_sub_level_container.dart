@@ -72,18 +72,38 @@ final class ServerSubLevelContainer extends SubLevelContainer {
     this.config,
   });
 
+  /// How many sub-levels the last force-load pass snatched out of each holding
+  /// chunk, by `"chunkX,chunkZ"` (`SubLevelHoldingChunkMap.snatchLog`).
+  Map<String, int> get snatchLog => _holdingChunkMap?.snatchLog ?? const {};
+
+  /// Where a sub-level that could not be loaded back is reported.
+  ///
+  /// Installed before [initialize]/[initializeWithStorage] run, because the
+  /// force-load happens inside them: a sink installed afterwards misses exactly
+  /// the failures it exists for.
+  void Function(String message, Object? error)? onLoadFailure;
+
   /// Initializes the parts that need the container to exist: the holding chunk
   /// map and the force-loaded sub-levels.
-  void initialize(SubLevelHoldingChunkMap Function(ServerSubLevelContainer container) createHoldingMap) {
-    _holdingChunkMap = createHoldingMap(this);
+  void initialize(
+    SubLevelHoldingChunkMap Function(ServerSubLevelContainer container) createHoldingMap, {
+    void Function(String message, Object? error)? onLoadFailure,
+  }) {
+    this.onLoadFailure = onLoadFailure ?? this.onLoadFailure;
+    _holdingChunkMap = createHoldingMap(this)..onLoadFailure = this.onLoadFailure;
     addObserver(SubLevelTicketLoadingSystem(this));
     loadForceLoadedSubLevels();
   }
 
   /// Initializes with [storage] (the usual case: the plugin opens the level's
   /// `sublevels` folder and passes the storage in).
-  void initializeWithStorage(SubLevelStorage storage) {
-    _holdingChunkMap = SubLevelHoldingChunkMap(this, chunkHost, storage);
+  void initializeWithStorage(
+    SubLevelStorage storage, {
+    void Function(String message, Object? error)? onLoadFailure,
+  }) {
+    this.onLoadFailure = onLoadFailure ?? this.onLoadFailure;
+    _holdingChunkMap = SubLevelHoldingChunkMap(this, chunkHost, storage)
+      ..onLoadFailure = this.onLoadFailure;
     addObserver(SubLevelTicketLoadingSystem(this));
     loadForceLoadedSubLevels();
   }
@@ -156,6 +176,12 @@ final class ServerSubLevelContainer extends SubLevelContainer {
 
   /// The host of the level, when the container was given one.
   SubLevelHost? hostOrNull;
+
+  /// Creates a new sub-level with the global plot coordinates and pose; the
+  /// occupancy grid gains an entry, so the saved data is dirty
+  /// (`SubLevelContainer.java:258-260`).
+  @override
+  void onSubLevelAllocated(SubLevel subLevel) => markOccupancyDirty();
 
   @override
   ServerSubLevel createSubLevel(int globalPlotX, int globalPlotZ, Pose3d pose, String uuid) {
@@ -237,6 +263,17 @@ final class ServerSubLevelContainer extends SubLevelContainer {
   /// Marks the ticket saved data dirty.
   void markTicketsDirty() => hostOrNull?.markSavedDataDirty(ticketsSavedDataName);
 
+  /// The sub-level ids whose tickets must be dropped when they are removed.
+  ///
+  /// The explicit delete paths (`/sable remove`) add their target here first;
+  /// every other removal keeps its ticket, so a transient failure cannot destroy
+  /// the only pointer that loads the sub-level back (see
+  /// `SubLevelTicketLoadingSystem.onSubLevelRemoved`).
+  final Set<String> forgottenTickets = {};
+
+  /// Drops the ticket of [uuid] when the sub-level is removed.
+  void forgetTickets(String uuid) => forgottenTickets.add(uuid);
+
   /// Collects all force-loaded sub-levels, including their dependency chains.
   ///
   /// `ServerSubLevelContainer.collectForceLoadedSubLevels`
@@ -268,8 +305,15 @@ final class ServerSubLevelContainer extends SubLevelContainer {
       final pointer = entry.value.pointer;
       if (pointer != null) {
         _holdingChunkMap?.snatchAndLoad(pointer, entry.key);
+      } else {
+        // `ServerSubLevelContainer.java:307`: a ticket saved without a pointer
+        // cannot be loaded, and Java says so.
+        onLoadFailure?.call(
+          'Cannot load force-loaded sub-level with ID ${entry.key} because the ticket info '
+          'was not saved with a pointer',
+          null,
+        );
       }
-      // A ticket without a pointer cannot be loaded (Java logs an error).
     }
   }
 

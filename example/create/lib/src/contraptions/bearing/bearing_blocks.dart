@@ -96,7 +96,9 @@ BlockBehavior bearingBehavior(String blockKey) => BlockBehavior(
     final be = runtime.store.typed<MechanicalBearingBlockEntity>(worldId, pos);
     if (be == null) return BlockUseResult.pass;
     if (be.running) {
-      be.disassemble();
+      // Create disassembles at once; a propeller bearing winds down first
+      // (`onUseWhileRunning`).
+      be.onUseWhileRunning();
     } else {
       be.assembleNextTick = true;
     }

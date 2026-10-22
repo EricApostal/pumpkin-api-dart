@@ -87,6 +87,14 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
       logic.locking = state.flag('powered');
     }
 
+    // `checkedInitialAssembly` (`SwivelBearingBlockEntity.java:177-186`): a bearing that arrives
+    // already turning (a saved chunk, a schematic) never *changes* speed, and `onSpeedChanged` --
+    // the only thing that ever asks for assembly -- never runs. Assemble on the first tick then.
+    if (!_checkedInitialAssembly) {
+      _checkedInitialAssembly = true;
+      if (!logic.assembled && speed != 0) assembleNextTick = true;
+    }
+
     if (assembleNextTick && !_assembling) {
       assembleNextTick = false;
       if (!logic.assembled) {
@@ -129,6 +137,18 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
   /// Whether an assembly request is in flight.
   bool _assembling = false;
 
+  /// Whether the first-tick assembly check (`checkedInitialAssembly`) already ran.
+  bool _checkedInitialAssembly = false;
+
+  /// `SwivelBearingCogwheelBlockEntity.onSpeedChanged` (`SwivelBearingBlockEntity.java:920-926`):
+  /// the cogwheel asks the bearing to assemble as soon as it turns, which is what makes a
+  /// shaft-driven bearing assemble without a click.
+  @override
+  void onSpeedChanged(double previousSpeed) {
+    super.onSpeedChanged(previousSpeed);
+    if (speed != 0 && !logic.assembled) assembleNextTick = true;
+  }
+
   /// `assemble()`.
   Future<void> assemble() async {
     final host = simulatedHost;
@@ -156,11 +176,16 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
       return;
     }
 
-    setBlockFlag('assembled', true);
-    sendData();
-
+    // `SwivelBearingBlockEntity.java:430-500`: Java sets `ASSEMBLED` only once it has a
+    // sub-level. With the block in front empty `assembleFromSingleBlock` returns `null` and Java
+    // allocates an empty plot, writes the plate into it and hinges the bearing to it
+    // (`:445-495`); the port has no empty-plot allocation yet, so it leaves the bearing
+    // unassembled instead of claiming `assembled` with no sub-level id, no plate and no hinge.
     final subLevel = result?.subLevel;
     if (subLevel == null) return;
+
+    setBlockFlag('assembled', true);
+    sendData();
 
     subLevelId = subLevel.id;
 
@@ -430,6 +455,9 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
     subLevelId = tag.getString('SubLevelID');
     final plate = tag.getInt('SwivelPlate');
     if (plate != null) platePos = unpackPos(plate);
+    // `AssemblyException.read`.
+    final message = tag.getCompound('LastException')?.getString('Component');
+    lastException = message == null ? null : SimAssemblyException.fromComponentJson(message);
   }
 
   @override
@@ -442,6 +470,11 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
     if (plate != null) tag.putLong('SwivelPlate', packPos(plate.$1, plate.$2, plate.$3));
     if (logic.sequencedAngleLimit >= 0) {
       tag.putDouble('SequencedAngleLimit', logic.sequencedAngleLimit);
+    }
+    // `AssemblyException.write`: the message's component JSON, which the client reads.
+    final exception = lastException;
+    if (exception != null) {
+      tag.putCompound('LastException', NbtCompound()..putString('Component', exception.toComponentJson()));
     }
   }
 

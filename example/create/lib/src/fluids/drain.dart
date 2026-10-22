@@ -82,10 +82,11 @@ class ItemDrainBlockEntity extends CreateBlockEntity
 
   static FluidItemSpec _item(PStack stack) => stack.isEmpty
       ? FluidItemSpec.empty
-      : FluidItemSpec(stack.key, stack.count);
+      : FluidItemSpec(stack.key, stack.count, stack.comps);
 
-  static PStack _stack(FluidItemSpec item) =>
-      item.isEmpty ? PStack.empty : PStack(item.key, item.count);
+  static PStack _stack(FluidItemSpec item) => item.isEmpty
+      ? PStack.empty
+      : PStack(item.key, item.count, comps: item.comps);
 
   /// `tryInsertingFromSide`.
   PStack _tryInsertingFromSide(
@@ -364,7 +365,7 @@ final class ItemDrainItemHandler {
     PStack returned;
     if (inserted.count > 1 &&
         blockEntity.emptying.canItemBeEmptied(
-          FluidItemSpec(inserted.key, inserted.count),
+          FluidItemSpec(inserted.key, inserted.count, inserted.comps),
         )) {
       returned = inserted.withCount(inserted.count - 1);
       inserted = inserted.withCount(1);

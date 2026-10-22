@@ -967,6 +967,21 @@ final class _Host implements SubLevelHost {
   @override
   SablePlayer? playerById(String uuid) => chunks.players[uuid];
 
+  /// The saved data this host has been handed, by name.
+  final Map<String, Map<String, Object?>> savedData = {};
+
+  /// The saved-data names marked dirty.
+  final List<String> dirty = [];
+
+  @override
+  Map<String, Object?>? readSavedData(String name) => savedData[name];
+
+  @override
+  void markSavedDataDirty(String name) => dirty.add(name);
+
+  @override
+  void writeSavedData(String name, Map<String, Object?> data) => savedData[name] = data;
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

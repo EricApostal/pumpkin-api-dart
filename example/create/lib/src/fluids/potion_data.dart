@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:pumpkin_api/pumpkin_api_core.dart' show PacketReader, PacketWriter, VanillaIds;
 
 import '../core/nbt.dart';
 import 'fluid_stack.dart';
@@ -222,6 +223,132 @@ class PotionFluidData with PotionFluidDataMappable {
       bottle: bottle,
       customEffects: effects,
     );
+  }
+}
+
+/// The `minecraft:potion_contents` component of a bottle item (`PotionContents.STREAM_CODEC`).
+///
+/// The bytes are the component's network encoding, which is what the host's data component API
+/// reads and writes (`item-stack.get-components` / `set-component`), so the potion of a bottle
+/// survives the trip through a drain, a spout or a basin instead of being thrown away.
+///
+/// The port's [PotionFluidData] models the potion and its custom effects, like the component
+/// JSON of the fluid the module writes; a custom colour or name of the contents is read past and
+/// dropped (it is dropped everywhere in this module, see [PotionFluidData]). The effect ids are
+/// registry ids, which [VanillaIds] resolves (the list is generated from Pumpkin's assets, the
+/// same ids `PotionContentsImpl` carries on the wire).
+abstract final class PotionContentsComponent {
+  static const String key = 'minecraft:potion_contents';
+
+  /// The contents of a bottle of the [bottle] type whose component bytes are [bytes].
+  ///
+  /// A bottle without the component holds vanilla's default, `new PotionContents(Potions.WATER)`
+  /// (`Items.POTION`, `SPLASH_POTION` and `LINGERING_POTION` all default to it), and a component
+  /// that cannot be read must not be guessed at, so both read as water: the fluid is then plain
+  /// water for a regular bottle and a water potion fluid for the other two, which is exactly what
+  /// `PotionFluidHandler.getFluidFromPotionItem` returns for those (`PotionFluidHandler.java:63-71`).
+  static PotionFluidData read(List<int>? bytes, {required BottleType bottle}) =>
+      (bytes == null || bytes.isEmpty ? null : _decode(bytes, bottle)) ??
+      PotionFluidData('minecraft:water', bottle: bottle);
+
+  /// The network bytes of [data]'s contents: the potion id, no custom colour, the custom
+  /// effects, no custom name (`PotionContents.STREAM_CODEC`).
+  ///
+  /// Throws an [ArgumentError] for a potion or effect this registry does not know: the host's
+  /// potion registry holds the vanilla entries only, so a name outside [VanillaIds] cannot be
+  /// written as an id and must not be mislabelled as another potion.
+  static List<int> encode(PotionFluidData data) {
+    final w = PacketWriter();
+    final potion = VanillaIds.potions.idOf(data.potion);
+    if (potion == null) {
+      throw ArgumentError.value(data.potion, 'potion', 'is not a vanilla potion');
+    }
+    w.writeBool(true);
+    w.writeVarInt(potion);
+    w.writeBool(false); // no custom colour
+    w.writeVarInt(data.customEffects.length);
+    for (final e in data.customEffects) {
+      final effect = VanillaIds.mobEffects.idOf(e.effect);
+      if (effect == null) {
+        throw ArgumentError.value(e.effect, 'effect', 'is not a vanilla mob effect');
+      }
+      w.writeVarInt(effect);
+      w.writeVarInt(e.amplifier);
+      w.writeVarInt(e.duration);
+      w.writeBool(e.ambient);
+      w.writeBool(e.visible);
+      w.writeBool(true); // show icon: the port's effect model has no flag for it
+      w.writeBool(false); // no hidden effect
+    }
+    w.writeBool(false); // no custom name
+    return w.toBytes();
+  }
+
+  /// The components of a bottle filled from a potion fluid (or nothing when [data] is `null`).
+  ///
+  /// `PotionFluidHandler.fillBottle` sets `POTION_CONTENTS` from the fluid's own contents; a
+  /// potion or effect this registry does not know cannot be turned into an id the host accepts,
+  /// so the bottle keeps no component rather than a wrong one.
+  static List<(String, List<int>)> componentsOf(PotionFluidData? data) {
+    if (data == null) return const [];
+    try {
+      return [(key, encode(data))];
+    } on ArgumentError {
+      return const [];
+    }
+  }
+
+  static PotionFluidData? _decode(List<int> bytes, BottleType bottle) {
+    try {
+      final r = PacketReader(bytes);
+      final potion = r.readBool() ? VanillaIds.potions.keyOf(r.readVarInt()) : null;
+      if (r.readBool()) r.readInt(); // custom colour
+      final effects = <PotionEffectData>[];
+      for (var i = 0, count = r.readVarInt(); i < count; i++) {
+        final effect = VanillaIds.mobEffects.keyOf(r.readVarInt());
+        if (effect == null) return null;
+        final amplifier = r.readVarInt();
+        final duration = r.readVarInt();
+        final ambient = r.readBool();
+        final visible = r.readBool();
+        r.readBool(); // show icon
+        if (r.readBool()) _skipHiddenEffect(r);
+        effects.add(
+          PotionEffectData(
+            effect,
+            duration: duration,
+            amplifier: amplifier,
+            ambient: ambient,
+            visible: visible,
+          ),
+        );
+      }
+      if (r.readBool()) r.readString(); // custom name
+      // A contents without a potion id is nothing the client sends; the model needs a potion
+      // name, and water is the default of every bottle item.
+      return PotionFluidData(
+        potion ?? 'minecraft:water',
+        bottle: bottle,
+        customEffects: effects,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  /// The nested `MobEffectInstance` of a hidden effect: the host's reader
+  /// (`pumpkin-protocol/src/codec/data_component.rs`) skips the same parameters, without an
+  /// effect id, until the nested instance has no hidden effect of its own.
+  static void _skipHiddenEffect(PacketReader r) {
+    for (var depth = 0; ; depth++) {
+      if (depth > 32) throw const FormatException('potion effect hidden effect too deep');
+      r.readVarInt(); // amplifier
+      r.readVarInt(); // duration
+      r.readBool(); // ambient
+      r.readBool(); // show particles
+      r.readBool(); // show icon
+      if (!r.readBool()) return;
+    }
   }
 }
 

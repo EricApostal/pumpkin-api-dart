@@ -125,8 +125,38 @@ final class SableBridge {
   /// The channel name, shared with `SableSubLevelApi`.
   static const String channelName = 'sable.sublevels';
 
-  /// The plugin that owns the containers.
-  static const String pluginName = 'sable';
+  /// The channel that answers "which plugin owns the containers?".
+  static const String ownershipChannelName = 'sable.ownership';
+
+  /// The plugin that runs the levels when no solver is loaded.
+  static const String fallbackOwner = 'sable';
+
+  /// The plugin that runs them when it links a solver.
+  static const String solverPlugin = 'sable_jolt';
+
+  /// The owner discovered by [owner], cached until a request fails.
+  String? _ownerName;
+
+  static const IpcChannel<Map<String, Object?>> _ownership =
+      IpcChannel<Map<String, Object?>>(ownershipChannelName, _identity, _asMap);
+
+  /// The plugin that owns the sub-level containers.
+  ///
+  /// The containers live in one component, and which one depends on whether a
+  /// solver plugin is loaded (`sable_jolt` runs the levels itself so its pipeline
+  /// and the containers share an address space). There is still exactly one door —
+  /// this channel — only its address is discovered once.
+  Future<String> owner() async {
+    final cached = _ownerName;
+    if (cached != null) return cached;
+    try {
+      final reply = await _ownership.request(solverPlugin, const {'op': 'owns'});
+      if (reply is Map && reply['owns'] == true) return _ownerName = solverPlugin;
+    } on Object {
+      // No solver plugin: the `sable` plugin owns the levels.
+    }
+    return _ownerName = fallbackOwner;
+  }
 
   static const IpcChannel<Map<String, Object?>> _channel =
       IpcChannel<Map<String, Object?>>(channelName, _identity, _asMap);
@@ -162,7 +192,7 @@ final class SableBridge {
     try {
       await _rawRequest({'op': 'subscribe'});
       _subscribed = true;
-      _log.info('Sable bridge: subscribed to the sub-level changes of the sable component.');
+      _log.info('Sable bridge: subscribed to the sub-level changes of $_ownerName.');
     } on Object catch (error) {
       _log.warn('Sable bridge: could not subscribe to the sable plugin yet: $error');
     }
@@ -264,8 +294,21 @@ final class SableBridge {
   }
 
   /// One request, without the subscribe retry.
+  ///
+  /// A failure drops the cached owner and retries once: a plugin set that changes
+  /// between runs (a solver added or removed) would otherwise leave every call
+  /// addressed at a component that no longer answers.
   Future<SableReply> _rawRequest(Map<String, Object?> message) async {
-    final reply = await _channel.request(pluginName, message);
+    try {
+      return await _send(message, await owner());
+    } on Object {
+      _ownerName = null;
+      return _send(message, await owner());
+    }
+  }
+
+  Future<SableReply> _send(Map<String, Object?> message, String plugin) async {
+    final reply = await _channel.request(plugin, message);
     if (reply is! Map) return const SableReply(false, {}, 'malformed reply');
     final payload = _asMap(reply);
     final ok = payload['ok'] == true;

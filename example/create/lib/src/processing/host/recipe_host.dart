@@ -176,6 +176,59 @@ CustomRecipe _asCustom(Object recipe, String id, Map<String, dynamic>? source) {
   }
 }
 
+/// Registers the recipes of [sources] with the host, without a [RecipeBook].
+///
+/// This is the entry point of another package that ships `create:*` recipes in its *own* data
+/// pack (Aeronautics does): the host cannot parse `create:*` recipe JSON, so those recipes are
+/// invisible to it, and this port's machines read their recipes from the plugin's own data pack
+/// (`RecipeSources.embedded`), which is per component. The recipes are registered as plugin
+/// recipes of their `create:*` type, with the source JSON in `extra` — what
+/// `registerRecipesWithHost` also stores, and what
+/// `loadHostRecipes` reads back into the book of the Create component, which is the component
+/// that runs the machines.
+///
+/// [sources] is `(id, json)`; an id without a namespace gets `create:`. Recipes whose type is
+/// not a `create:*` type are skipped (the host reads those from the data pack itself), and the
+/// counted rejections land in the returned report.
+RecipeLoadReport registerRecipeSourcesWithHost(
+  RecipeManager manager,
+  Iterable<(String, Map<String, dynamic>)> sources,
+) {
+  final report = RecipeLoadReport();
+  for (final (rawId, json) in sources) {
+    final id = rawId.contains(':') ? rawId : 'create:$rawId';
+    try {
+      final type = recipeTypeOf(json);
+      if (type == null) {
+        report.skippedByCondition++;
+        continue;
+      }
+      final recipe = parseRecipe(id, json);
+      if (recipe == null) {
+        report.skippedByCondition++;
+        continue;
+      }
+      // Registering the same type twice does nothing on the host, and Create's own component
+      // registers all of them; a component that loads first still contributes its recipes.
+      manager.defineRecipeType(type.key);
+      manager.addCustomRecipe(type.key, _asCustom(recipe, id, json));
+      report.loaded++;
+      report.registeredWithHost++;
+      report.perType[type] = (report.perType[type] ?? 0) + 1;
+    } on RecipeParseException catch (e) {
+      report.invalid++;
+      report.errors.add('$id: ${e.message}');
+    } on HostException catch (e) {
+      report.invalid++;
+      report.errors.add('host rejected $id: ${e.message}');
+    } on Object catch (e) {
+      report.invalid++;
+      report.errors.add('$id: $e');
+    }
+  }
+  return report;
+}
+
 /// Registers every recipe of [book] with the host (`registerCustomRecipe`), with the network
 /// encoding of [encoder] when given. Throws nothing: failures are counted in [report].
 void registerRecipesWithHost(

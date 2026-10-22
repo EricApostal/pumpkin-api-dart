@@ -403,7 +403,10 @@ final class RoseQuartzLampBlock {
   CreateBlock build() {
     block = buildManifestBlock(
       key,
-      // The host has one luminance per block: the lit state (POWERING) cannot be expressed.
+      // `lightLevel(s -> s.getValue(POWERING) ? 15 : 0)`.
+      lightRules: const [
+        LightRule(when: {'powering': 'true'}, level: 15),
+      ],
       behavior: BlockBehavior(
         onPlaced: _onPlaced,
         onNeighborUpdate: _onNeighborUpdate,

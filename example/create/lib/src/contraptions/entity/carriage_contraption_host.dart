@@ -37,6 +37,7 @@ import '../core/nbt_map.dart';
 import '../core/structure_info.dart';
 import '../storage/train_cargo_manager.dart';
 import 'contraption_entity.dart';
+import 'contraption_synced_data.dart' show ContraptionSyncedData;
 import 'host_contraption_entities.dart';
 import 'oriented_contraption_entity.dart';
 
@@ -251,9 +252,10 @@ final class HostCarriageContraptionEntity extends OrientedContraptionEntity {
   /// The pure train side; set right after construction.
   CarriageContraptionEntity? train;
 
-  /// The synced values the train side sets. [lastCarriageData] is also sent to the clients
-  /// tracking the entity (see `HostCarriageEntity.setCarriageData`); [scheduled] and [trackGraph]
-  /// have no entry yet and stay server side.
+  /// The synced values the train side sets. All four are pushed to the clients tracking the entity
+  /// as `SynchedEntityData` entries (`ContraptionSyncedData`): [lastCarriageData] as `CARRIAGE_DATA`
+  /// (`HostCarriageEntity.setCarriageData`), [scheduled] as `SCHEDULED` and [trackGraph] as
+  /// `TRACK_GRAPH` (`setScheduled`/`setTrackGraph`).
   CarriageSyncData? lastCarriageData;
   bool scheduled = false;
   String? trackGraph;
@@ -515,12 +517,33 @@ final class HostCarriageEntity implements CarriageEntityHost {
     );
   }
 
+  /// `entityData.set(SCHEDULED, value)`: the client's `hasSchedule()` gates the conductor hats and
+  /// the blaze burner schedule display, so a train's schedule has to reach the client.
   @override
-  void setScheduled(bool scheduled) => worldEntity.scheduled = scheduled;
+  void setScheduled(bool scheduled) {
+    if (worldEntity.scheduled == scheduled) return;
+    worldEntity.scheduled = scheduled;
+    worldEntity.host.setSyncedEntry(
+      ContraptionSyncedData.scheduledIndex,
+      ContraptionSyncedData.booleanEntry(scheduled),
+    );
+  }
 
-  /// `entityData.set(TRACK_GRAPH, ...)`: no channel; the server side keeps it for the tick.
+  /// `entityData.set(TRACK_GRAPH, Optional.ofNullable(id))`: the client resolves the id in its own
+  /// `RAILWAYS.trackNetworks` and marks the carriage derailed when it is empty
+  /// (`CarriageContraptionEntity.updateTrackGraph`), so without the entry every carriage looks
+  /// derailed.
   @override
-  void setTrackGraph(String? graphId) => worldEntity.trackGraph = graphId;
+  void setTrackGraph(String? graphId) {
+    if (worldEntity.trackGraph == graphId) return;
+    worldEntity.trackGraph = graphId;
+    final entry = ContraptionSyncedData.optionalUuidEntry(graphId);
+    if (entry == null) return;
+    worldEntity.host.setSyncedEntry(
+      ContraptionSyncedData.trackGraphIndex,
+      entry,
+    );
+  }
 
   @override
   void blockChanged(Pos localPos, ContraptionBlockInfo info) =>

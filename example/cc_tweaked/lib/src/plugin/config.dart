@@ -41,6 +41,12 @@ final class PluginConfig {
   /// Whether to install the NeoForge handshake and registry sync for the
   /// real CC: Tweaked client mod. It only works on a host that sends the
   /// NeoForge query before the brand; see docs/host-requirements.md.
+  ///
+  /// Defaults to true: a client with CC: Tweaked installed requires its
+  /// channels, and a server that never declares the mod refuses that client's
+  /// handshake outright ("the network channels of your mods do not match the
+  /// server"). Declaring costs nothing when no client has the mod — the host
+  /// only uses it during negotiation.
   final bool neoForge;
 
   /// Whether turtles need fuel to move (CC: `turtlesNeedFuel`), and the fuel
@@ -65,7 +71,7 @@ final class PluginConfig {
     this.terminalHeight = 19,
     this.maxComputersPerPlayer = 5,
     this.defaultSettings = '',
-    this.neoForge = false,
+    this.neoForge = true,
     this.turtlesNeedFuel = true,
     this.turtleFuelLimit = 20000,
     this.advancedTurtleFuelLimit = 100000,

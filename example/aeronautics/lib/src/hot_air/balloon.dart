@@ -18,6 +18,7 @@ import 'balloon_builder.dart';
 import 'balloon_layer_data.dart';
 import 'balloon_layer_graph.dart';
 import 'balloon_world.dart';
+import 'gust_hook.dart';
 import 'lifting_gas_provider.dart';
 
 /// `Balloon`.
@@ -219,7 +220,8 @@ abstract class Balloon {
 
   /// Spawns one gust at [x], [y], [z] pointing in [direction]. The server
   /// balloon's host adapter spawns the entity.
-  void spawnGust(int x, int y, int z, Direction direction) {}
+  void spawnGust(int x, int y, int z, Direction direction) =>
+      GustSpawnHooks.spawn?.call(world.id, (x, y, z), direction);
 
   /// Called when the volume opened to the outside.
   void setLeaking() {}

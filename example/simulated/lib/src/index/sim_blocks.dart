@@ -11,20 +11,20 @@
 import 'dart:async';
 
 import 'package:create/src/api/block_state.dart' show BState;
-import 'package:create/src/api/blocks.dart' show HostBlockGetter, stateIdOf;
+import 'package:create/src/api/blocks.dart' show HostBlockGetter, setBlockState, stateIdOf;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/host_bridge.dart';
-import 'package:create/src/contraptions/bearing/bearing_placement.dart'
-    show bearingPlacementRules;
 import 'package:create/src/core/blocks.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../content/blocks/physics_assembler/physics_assembler_block_entity.dart';
+import '../content/blocks/sim_placement.dart' show simDirectionalPlacement;
 import '../content/blocks/portable_engine/portable_engine_block.dart';
 import '../content/blocks/spring/spring_block_entity.dart';
 import '../content/blocks/steering_wheel/steering_wheel_block_entity.dart';
 import '../content/blocks/swivel_bearing/swivel_bearing_block_entity.dart';
 import '../content/blocks/symmetric_sail/symmetric_sail_lift_provider.dart';
+import '../content/blocks/symmetric_sail/symmetric_sail_placement.dart';
 import '../content/blocks/throttle_lever/throttle_lever_block_entity.dart';
 import '../content/blocks/torsion_spring/torsion_spring_block_entity.dart';
 import '../service/sim_services.dart';
@@ -199,14 +199,11 @@ CreateBlock _steeringWheel(SimBlockLookup lookup) => CreateBlock(
   tags: ['minecraft:mineable/axe'],
   blockEntityType: SteeringWheelBlockEntity.type,
   // `SteeringWheelBlock.getStateForPlacement`: `facing` is the opposite of the
-  // first horizontal look direction (`getDirection()`) and the wheel is
-  // waterlogged like Create's `WrenchableDirectionalBlock` family. `on_floor`
-  // reads the clicked face, which no host source gives, so the `player-placed`
-  // hook writes the whole state (`sim_placement.dart`).
-  placement: const [
-    PlacementRule.horizontalFacing('facing', opposite: true),
-    PlacementRule.inWater('waterlogged'),
-  ],
+  // first horizontal entry of the *promoted* look list (the clicked face for a
+  // side click, see `sim_placement.dart`) and `on_floor` reads the clicked face,
+  // so the `player-placed` hook writes both. Waterlogging the host can express
+  // exactly, so it is a rule.
+  placement: const [PlacementRule.inWater('waterlogged')],
   behavior: BlockBehavior(
     onPlaced: (server, event) async {
       if (event.player == null) return;
@@ -276,6 +273,15 @@ CreateBlock _sail(String colour) {
     key: key,
     properties: [CreateProps.axis],
     defaultState: {'axis': 'y'},
+    // `SymmetricSailBlock.getStateForPlacement` (bytecode of the client's jar):
+    //
+    //   defaultBlockState().setValue(AXIS, context.getNearestLookingDirection().getAxis())
+    //
+    // and `getNearestLookingDirection()` is the promoted front of
+    // `getNearestLookingDirections()`, i.e. the opposite of the clicked face, so the
+    // axis is the clicked face's axis. Without it every sail placed by a player was a
+    // horizontal sheet (`axis: y`).
+    placement: const [PlacementRule.clickedAxis('axis')],
     hardness: 1,
     blastResistance: 1,
     soundType: 'wool',
@@ -297,25 +303,46 @@ CreateBlock _sail(String colour) {
     // nothing.
     hasItem: colour == 'white',
     drops: colour == 'white' ? BlockDrops.selfItem : BlockDrops.nothing,
+    // `SymmetricSailBlock.useItemOn`, in Java's order: a dye dyes, a sail item
+    // places the next sail of the sheet (`SymmetricSailPlacementHelper.getOffset`),
+    // and anything else falls through to the empty-hand use.
     behavior: BlockBehavior(
       onUseWithItem: (server, event) async {
         final itemKey = await event.item.getRegistryKey();
-        final colour = SimServices.dyeColorOf(itemKey);
-        if (colour == null) return BlockUseResult.pass;
         final world = event.targetWorld;
         final base = event.pos.toPos();
         final state = HostBlockGetter.stateOfIndex(event.block, event.stateIndex);
-        SymmetricSailDye.applyDye(
+
+        final colour = SimServices.dyeColorOf(itemKey);
+        if (colour != null) {
+          SymmetricSailDye.applyDye(
+            state: state,
+            colour: colour,
+            neighbourAt: (offset) => _sailStateAt(world, base, offset),
+            setAt: (offset, newState) {
+              final target = (base.$1 + offset.$1, base.$2 + offset.$2, base.$3 + offset.$3);
+              final id = stateIdOf(newState);
+              if (id == null) return;
+              ignoredSet(world, target, id);
+            },
+          );
+          return BlockUseResult.success;
+        }
+
+        if (!isSymmetricSailItem(itemKey)) return BlockUseResult.tryEmptyHand;
+
+        // `BlockHitResult.getLocation()`: the host reports the click as `0..1`
+        // inside the clicked block, so the hit point is `pos + cursor`.
+        final offset = symmetricSailOffset(
+          level: HostBlockGetter(world),
           state: state,
-          colour: colour,
-          neighbourAt: (offset) => _sailStateAt(world, base, offset),
-          setAt: (offset, newState) {
-            final target = (base.$1 + offset.$1, base.$2 + offset.$2, base.$3 + offset.$3);
-            final id = stateIdOf(newState);
-            if (id == null) return;
-            ignoredSet(world, target, id);
-          },
+          pos: base,
+          hit: (base.$1 + event.cursor.$1, base.$2 + event.cursor.$2, base.$3 + event.cursor.$3),
         );
+        if (offset.isSuccessful) {
+          await setBlockState(world, offset.pos, offset.transform(BState(itemKey)));
+          await _consumeSail(event.player, event.hand);
+        }
         return BlockUseResult.success;
       },
     ),
@@ -369,11 +396,10 @@ CreateBlock _torsionSpring(SimBlockLookup lookup) => CreateBlock(
   blockEntityType: TorsionSpringBlockEntity.type,
   // `TorsionSpringBlock.getStateForPlacement` is
   // `DirectionalKineticBlock.getStateForPlacement` (the neighbour shaft decides
-  // `facing`, the look does without one) plus `POWERED = level.hasNeighborSignal`,
-  // which the host cannot read on placement: the rule set the bearing family uses
-  // is the same Java method, and `POWERED` follows the redstone update that comes
-  // with the placement.
-  placement: bearingPlacementRules,
+  // `facing`, the clicked face does without one) plus
+  // `POWERED = level.hasNeighborSignal`, which the host cannot read on placement:
+  // `POWERED` follows the redstone update that comes with the placement.
+  placement: simDirectionalPlacement,
   behavior: BlockBehavior(
     onComparatorOutput: (server, event) {
       final be = lookup<TorsionSpringBlockEntity>(event.targetWorld.getId(), event.pos.toPos());
@@ -402,10 +428,10 @@ CreateBlock _swivelBearing(SimBlockLookup lookup) => CreateBlock(
   tags: ['minecraft:mineable/pickaxe', 'simulated:non_movable', 'create:non_movable'],
   blockEntityType: SwivelBearingBlockEntity.type,
   // `SwivelBearingBlock` does not override `getStateForPlacement`: `facing` comes
-  // from `DirectionalKineticBlock`, the same method the bearing family's rules
-  // evaluate (`bearing_placement.dart`). `ASSEMBLED` and `POWERED` are the block
-  // entity's, not the placement's.
-  placement: bearingPlacementRules,
+  // from `DirectionalKineticBlock`, whose fallback is the clicked face, not the look
+  // (`simDirectionalPlacement` in `sim_placement.dart`). `ASSEMBLED` and `POWERED`
+  // are the block entity's, not the placement's.
+  placement: simDirectionalPlacement,
   behavior: BlockBehavior(
     onUseWithoutItem: (server, event) {
       final be = lookup<SwivelBearingBlockEntity>(event.targetWorld.getId(), event.pos.toPos());
@@ -438,6 +464,29 @@ CreateBlock _swivelBearingPlate(SimBlockLookup lookup) => CreateBlock(
     },
   ),
 );
+
+/// Takes one sail item out of [hand] (survival): `PlacementOffset.placeInWorld`
+/// places through `BlockItem.place`, which consumes the item.
+Future<void> _consumeSail(Player player, Hand hand) async {
+  if (player.isCreative) return;
+  try {
+    final inv = player.getInventory();
+    final stack = inv.getItemInHand(hand: hand);
+    if (stack == null) return;
+    final key = await stack.getRegistryKey();
+    final count = await stack.getCount();
+    if (count <= 1) {
+      await inv.setItemInHand(hand: hand, item: null);
+    } else {
+      await inv.setItemInHand(
+        hand: hand,
+        item: ItemStack.create(registryKey: key, count: count - 1),
+      );
+    }
+  } on Object {
+    // The item stack is the client's; a refused write leaves it as it was.
+  }
+}
 
 /// The state of a sail at [base] + [offset].
 BState _sailStateAt(World world, (int, int, int) base, (int, int, int) offset) {

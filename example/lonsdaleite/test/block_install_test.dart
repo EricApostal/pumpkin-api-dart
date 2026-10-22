@@ -4,7 +4,6 @@ import 'package:lonsdaleite/src/component_codec.dart';
 import 'package:lonsdaleite/src/item_install.dart';
 import 'package:lonsdaleite/src/manifest.dart';
 import 'package:lonsdaleite/src/manifest.g.dart';
-import 'package:lonsdaleite/src/neoforge_spec.dart';
 import 'package:pumpkin_api/pumpkin_api_core.dart';
 import 'package:pumpkin_neoforge/lonsdaleite.dart' show lonsdaleiteSpec;
 import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart'
@@ -395,77 +394,40 @@ void main() {
     });
   });
 
-  group('the NeoForge spec', () {
-    test('the block registry gets the wardframe at 1286, its states start at 35723', () {
+  group("the client-side registry (the library spec)", () {
+    test('the wardframe is the block the host registered, at 1286', () {
       final result = install(host());
-      final spec = neoForgeSpecFor(manifest, items, blocks: [result.block]);
-      final block = spec.registries.firstWhere(
+      final blocks = lonsdaleiteSpec().registries.firstWhere(
         (r) => r.key == 'minecraft:block',
       );
-      expect(block.length, vanillaBlocks + 1);
-      expect(
-        block.entries[result.block.id],
-        'lonsdaleite:lonsdaleite_wardframe',
-      );
+      // The host numbers the plugin block after the 1286 vanilla ones and sends
+      // `vanilla entries + the plugin entries in registration order`; the client
+      // adopts its snapshot by name, so the id the host reports is the id it writes.
+      expect(blocks.entries[result.block.id], result.block.key);
+      expect(result.block.id, 1286);
       expect(result.block.baseStateId, vanillaBlockStateCount);
+      expect(vanillaBlockStateCount, 35723);
     });
 
-    test('equals the library spec of the preset', () {
+    test('every item the host registered is where the client has it', () {
       final result = install(host());
-      final spec = neoForgeSpecFor(manifest, items, blocks: [result.block]);
-      final library = lonsdaleiteSpec();
-      for (final key in library.registryKeys) {
-        expect(
-          spec.registries.firstWhere((r) => r.key == key).entries,
-          library.registries.firstWhere((r) => r.key == key).entries,
-        );
+      final specItems = lonsdaleiteSpec().registries.firstWhere(
+        (r) => r.key == 'minecraft:item',
+      );
+      final installed = <int, String>{for (final i in items) i.id: i.key};
+      expect(installed, isNotEmpty);
+      for (final entry in installed.entries) {
+        expect(specItems.entries[entry.key], entry.value, reason: 'id ${entry.key}');
       }
-    });
-
-    test('a block with another id or other first state is refused', () {
-      final good = install(host()).block;
-      expect(
-        () => neoForgeSpecFor(
-          manifest,
-          items,
-          blocks: [
-            RegisteredBlock(
-              key: good.key,
-              id: good.id + 1,
-              baseStateId: good.baseStateId,
-              stateCount: 64,
-            ),
-          ],
-        ),
-        throwsA(
-          isA<BlockRegistryException>().having(
-            (e) => e.message,
-            'm',
-            contains('block id 1287'),
-          ),
-        ),
-      );
-      expect(
-        () => neoForgeSpecFor(
-          manifest,
-          items,
-          blocks: [
-            RegisteredBlock(
-              key: good.key,
-              id: good.id,
-              baseStateId: good.baseStateId + 1,
-              stateCount: 64,
-            ),
-          ],
-        ),
-        throwsA(
-          isA<BlockRegistryException>().having(
-            (e) => e.message,
-            'm',
-            contains('start at id 35724'),
-          ),
-        ),
-      );
+      // And the ids are contiguous from the vanilla count: the host numbers them
+      // `vanilla count + index` in registration order, which is what the snapshot
+      // repeats to the client.
+      final ids = installed.keys.toList()..sort();
+      expect(ids.first, 1658);
+      for (var i = 0; i < ids.length; i++) {
+        expect(ids[i], 1658 + i);
+      }
+      expect(result.block.itemId, items.firstWhere((i) => i.key == result.block.key).id);
     });
   });
 }

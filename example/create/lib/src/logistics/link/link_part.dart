@@ -94,6 +94,7 @@ Future<PlayerUseItemEventData> _onLinkedItemUse(
 /// `PackagerLinkBlock`.
 CreateBlock stockLinkBlock() => CreateBlock(
   key: 'create:stock_link',
+  mapColor: manifestMapColor('stock_link'),
   properties: [
     attachFaceProperty,
     horizontalFacingProperty,

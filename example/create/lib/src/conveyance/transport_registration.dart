@@ -37,6 +37,8 @@ void loadTransport(CreateContext ctx) {
   }
   // The ejector takes part in the kinetic network.
   ConveyanceRuntime.i.kinetics?.registerKineticBlock('create:weighted_ejector', const EjectorKineticDef());
+  // The depot area's item hooks (`EjectorItem.useOn`).
+  installDepotItemHooks(ctx);
 }
 
 /// Phase 3: the server finished loading.

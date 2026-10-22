@@ -6,16 +6,18 @@
 // Everything here is exercised without the host: `package:offroad/offroad.dart`
 // has no `pumpkin_api` import.
 import 'dart:math' as math;
-import 'dart:typed_data';
 
+import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/common.dart' show Pos, vec3Zero;
 import 'package:create/src/common/direction.dart' show Axis, Direction;
+import 'package:create/src/kinetics/geometry.dart' show KPos, KState;
+import 'package:create/src/kinetics/network.dart' show KineticNetwork;
+import 'package:create/src/kinetics/node.dart'
+    show KineticBlockRegistry, KineticLevel, KineticNode, KineticNodeMixin;
+import 'package:create/src/kinetics/settings.dart' show KineticsSettings, KineticStressTable;
 import 'package:offroad/offroad.dart';
 import 'package:offroad/src/plugin/offroad_addon.dart';
 import 'package:test/test.dart';
-
-/// The multiset of `(item, count)` a set of drops became.
-List<String> _dropped(List<MinedDrop> drops) => [for (final d in drops) '${d.itemKey}x${d.count}'];
 
 void main() {
   group('tire codec', () {
@@ -593,6 +595,149 @@ void main() {
     });
   });
 
+  group('the directional axis placement', () {
+    // `AbstractDirectionalAxisBlock.getStateForPlacement` (`:32-53`): the host's placement
+    // rules turn the clicked face into `facing` (`PlacementRule.clickedFace('facing')`,
+    // `getFacingForPlacement` = `context.getClickedFace()`, `:97-100`), and this is the
+    // `axis_along_first` that goes with it — `sneaking != alongFirst`, which is why the
+    // host had to place both blocks in the default state before: no placement rule source
+    // combines the clicked face's axis with the player's look.
+    test("the horizontal look direction is Java's `Direction.fromYRot`", () {
+      expect(horizontalLookDirection(0), Direction.south);
+      expect(horizontalLookDirection(90), Direction.west);
+      expect(horizontalLookDirection(180), Direction.north);
+      expect(horizontalLookDirection(270), Direction.east);
+      expect(horizontalLookDirection(-90), Direction.east);
+      expect(horizontalLookDirection(359), Direction.south);
+    });
+
+    test('a horizontal click takes the axis of the clicked face', () {
+      // `alongFirst = faceAxis == Z`: a north or south face is along Z, an east or west
+      // face is not. A plain click on a north face therefore gives `axis_along_first =
+      // true`, which is *not* the default state (`false`) the port used to place.
+      for (final sneaking in [false, true]) {
+        for (final facing in [Direction.north, Direction.south]) {
+          expect(
+            axisAlongFirstForPlacement(
+              facing: facing,
+              horizontalLook: Direction.east,
+              sneaking: sneaking,
+            ),
+            !sneaking,
+            reason: '$facing, sneaking $sneaking',
+          );
+        }
+        for (final facing in [Direction.east, Direction.west]) {
+          expect(
+            axisAlongFirstForPlacement(
+              facing: facing,
+              horizontalLook: Direction.north,
+              sneaking: sneaking,
+            ),
+            sneaking,
+            reason: '$facing, sneaking $sneaking',
+          );
+        }
+      }
+      expect(
+        axisAlongFirstForPlacement(
+          facing: Direction.north,
+          horizontalLook: Direction.east,
+          sneaking: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test("a vertical click takes the axis of the player's look", () {
+      // `getAxisAlignmentForPlacement` (`:50-53`):
+      // `context.getHorizontalDirection().getAxis() == Z` — a player looking along Z
+      // (`north`/`south`) is the `alongFirst` case, so a plain click on a top or bottom
+      // face then gives `axis_along_first = true`.
+      for (final facing in [Direction.up, Direction.down]) {
+        for (final look in [Direction.north, Direction.south]) {
+          expect(
+            axisAlongFirstForPlacement(facing: facing, horizontalLook: look, sneaking: false),
+            isTrue,
+            reason: '$facing, looking $look',
+          );
+          expect(
+            axisAlongFirstForPlacement(facing: facing, horizontalLook: look, sneaking: true),
+            isFalse,
+          );
+        }
+        for (final look in [Direction.east, Direction.west]) {
+          expect(
+            axisAlongFirstForPlacement(facing: facing, horizontalLook: look, sneaking: false),
+            isFalse,
+            reason: '$facing, looking $look',
+          );
+          expect(
+            axisAlongFirstForPlacement(facing: facing, horizontalLook: look, sneaking: true),
+            isTrue,
+          );
+        }
+      }
+    });
+  });
+
+  group('the rock cutting wheel assembly rules', () {
+    // `RockCuttingWheelBlock.java:12-33`: the wheel attaches towards every direction but
+    // its own face and does not support what its face points at, so a contraption never
+    // drags the block in front of a wheel into the structure.
+    test('the wheel faces exactly one direction', () {
+      for (final facing in Direction.values) {
+        final state = BState(OffroadIds.rockCuttingWheel, {'facing': facing.serializedName});
+        for (final direction in Direction.values) {
+          expect(
+            rockCuttingWheelFacesDirection(state, direction),
+            direction == facing,
+            reason: 'facing $facing, asked $direction',
+          );
+        }
+      }
+    });
+
+    test('another block is not a wheel', () {
+      const other = BState('minecraft:stone');
+      expect(isRockCuttingWheel(other), isFalse);
+      expect(rockCuttingWheelFacesDirection(other, Direction.north), isFalse);
+      expect(rockCuttingWheelFacing(other), Direction.north, reason: 'the default of a state without a facing');
+    });
+  });
+
+  group('the wheel mount stress', () {
+    // Java's `WheelMountBlockEntity` does not override `calculateStressApplied`, so the
+    // applied stress is the plain impact of `OffroadStress.setImpact(16.0)`
+    // (`OffroadBlocks.java:97`) and the network multiplies it by the member's speed
+    // (`KineticNetwork.getActualStressOf`) — hence `16·|speed|`.
+    //
+    // The port used to override it with `impact * |speed| / 16`, which the network then
+    // scaled *again*: `16·speed²/16`, right at 16 RPM and four times too high at 64.
+    test('the applied stress does not depend on the speed', () {
+      final level = _FakeKineticLevel();
+      level.stress.register(OffroadIds.wheelMount, impact: OffroadConfig.wheelMountImpact);
+      final node = _FakeKineticNode(level, const KPos(0, 0, 0), const KState(OffroadIds.wheelMount));
+
+      node.setSpeed(16);
+      expect(node.calculateStressApplied(), 16);
+      node.setSpeed(64);
+      expect(node.calculateStressApplied(), 16, reason: 'the impact is the impact at any speed');
+    });
+
+    test('the network draws 16 per RPM at every speed', () {
+      final level = _FakeKineticLevel();
+      level.stress.register(OffroadIds.wheelMount, impact: OffroadConfig.wheelMountImpact);
+      final node = _FakeKineticNode(level, const KPos(0, 0, 0), const KState(OffroadIds.wheelMount));
+      final network = KineticNetwork(level, 1)..members[node] = node.calculateStressApplied();
+
+      for (final speed in [16.0, 48.0, 64.0, -64.0]) {
+        node.setSpeed(speed);
+        expect(network.getActualStressOf(node), 16 * speed.abs(), reason: 'at $speed RPM');
+      }
+    });
+  });
+
   group('the config', () {
     test('the defaults are the Java ones', () {
       final config = OffroadServerConfig();
@@ -719,5 +864,53 @@ final class _Supplier implements MultiMiningSupplier {
     taken += n;
     return n;
   }
+}
+
+/// A [KineticLevel] with nothing in it but the stress table, for the stress test
+/// (`create`'s own kinetic tests use one like this).
+final class _FakeKineticLevel extends KineticLevel {
+  @override
+  final settings = const KineticsSettings();
+
+  @override
+  final blocks = KineticBlockRegistry();
+
+  @override
+  final KineticStressTable stress = KineticStressTable(const KineticsSettings());
+
+  /// Unused: the stress test never looks a neighbour up.
+  @override
+  KineticNode? nodeAt(KPos pos) => null;
+
+  @override
+  KState stateAt(KPos pos) => KState.air;
+
+  @override
+  bool isLoaded(KPos pos) => true;
+
+  @override
+  void destroyBlock(KPos pos) {}
+}
+
+/// A kinetic node that carries the behaviour of `KineticBlockEntity`'s shared part
+/// (`KineticNodeMixin`), so `calculateStressApplied` is the one the wheel mount inherits:
+/// the plain impact of its block key.
+final class _FakeKineticNode with KineticNodeMixin {
+  @override
+  final KPos kpos;
+
+  @override
+  final _FakeKineticLevel level;
+
+  @override
+  final KState blockState;
+
+  _FakeKineticNode(this.level, this.kpos, this.blockState);
+
+  @override
+  void sendData() {}
+
+  @override
+  void markChanged() {}
 }
 

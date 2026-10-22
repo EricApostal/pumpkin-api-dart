@@ -14,10 +14,12 @@ import '../../api/payloads.dart';
 import '../../api/sounds.dart' show CreateSounds;
 import '../../api/util.dart' hide pos;
 import '../../common/ghost_menu_layout.dart';
+import '../../common/ghost_quick_move.dart';
 import '../../common/menu_mirror.dart';
 import '../../core/module.dart';
 import '../../core/nbt.dart' show NetworkNbt;
 import '../../core/registry.dart' show RegistryKind;
+import '../../logistics/model/stack.dart';
 import '../entity/train_level.dart' show TrainFx;
 import '../support/runtime.dart';
 import '../util/ctag.dart';
@@ -102,6 +104,34 @@ final class ScheduleHost {
     ctx.host.intercept(Events.itemUseFirst, _onUseFirst);
     ctx.host.intercept(Events.playerUseItem, _onUseItem);
     ctx.host.intercept(Events.playerInteractEntity, _onInteractEntity);
+    // The host applies the vanilla clicks (the player inventory mirror and the two picker slots; a
+    // picker takes one item off the cursor). The shift-clicks follow
+    // `GhostItemMenu.quickMoveStack` and are applied here: one item of a mirror slot goes into the
+    // first empty picker, one item leaves a picker.
+    ctx.host.intercept(Events.menuClick, (server, e) async {
+      if (e.menuType != scheduleMenuType) return e;
+      final menu = openMenus[e.player.getId().asString];
+      if (menu == null || e.mode != MenuClickMode.quickMove) return e;
+      final sourceHost = await playerStackAt(e.player, e.slot);
+      final sourceKey = sourceHost == null ? null : await sourceHost.getRegistryKey();
+      final sourceCount = sourceHost == null ? 0 : await sourceHost.getCount();
+      final move = ghostQuickMove(
+        menuSlot: e.slot,
+        source: sourceKey == null ? LStack.empty : LStack.of(sourceKey, sourceCount),
+        ghostSlots: ScheduleMenu.slots,
+        ghostEmpty: (i) => menu.ghostInventory[i].isEmpty,
+      );
+      if (!move.isNone) {
+        final current = menu.ghostInventory[move.ghost];
+        final next = move.take
+            ? (current.count > 1 ? current.withCount(current.count - 1) : ItemStackData.empty)
+            : await _oneItem(sourceHost);
+        if (menu.setGhost(move.ghost, next)) {
+          await setMenuSlot(e.player, scheduleGhostSlot(move.ghost), HostItemStacks.toHost(next, _ids));
+        }
+      }
+      return e.copyWith(cancelled: true);
+    });
     ctx.listen(Events.menuClosed, (Server server, MenuClosedEventData e) {
       if (e.menuType == scheduleMenuType) openMenus.remove(e.player.getId().asString);
     });
@@ -148,7 +178,7 @@ final class ScheduleHost {
         MenuSlotRule(
           slot: scheduleGhostSlot(i),
           kind: const MenuSlotKindGhost(),
-          maxStackSize: null,
+          maxStackSize: 1,
         ),
     ],
     quickMoveTargets: const [],
@@ -327,6 +357,13 @@ final class ScheduleHost {
       if (slot == null) continue;
       menu.setGhost(slot, await HostItemStacks.fromHost(change.stack, _ids));
     }
+  }
+
+  /// The `ItemStackData` of exactly one item of [stack] (`copy.setCount(1)`), empty when the stack
+  /// has no item or the registry does not know it.
+  Future<ItemStackData> _oneItem(ItemStack? stack) async {
+    final data = await HostItemStacks.fromHost(stack, _ids);
+    return data.isEmpty ? ItemStackData.empty : ItemStackData(data.itemId, 1, data.patch);
   }
 
   /// `GhostItemSubmitPacket.handle(player)` for the schedule menu.

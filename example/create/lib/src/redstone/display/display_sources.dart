@@ -5,6 +5,7 @@
 // decoration business and are not ported.
 import 'dart:math' as math;
 
+import '../../api/advancements.dart' show AllAdvancements;
 import '../../common/common.dart';
 import '../../core/nbt.dart' show NbtKind, NbtValue;
 import '../support/text.dart';
@@ -1103,6 +1104,9 @@ final class StationSummaryDisplaySource extends DisplaySource {
       lines.add(Txt.literal(platform.trim()));
       list.add(lines);
     }
+
+    // `if (list.size() > 0) context.blockEntity().award(AllAdvancements.DISPLAY_BOARD)`.
+    if (list.isNotEmpty) context.award?.call(AllAdvancements.displayBoard);
 
     final toPad = stats.maxRows - list.length;
     for (var padding = 0; padding < toPad; padding++) {

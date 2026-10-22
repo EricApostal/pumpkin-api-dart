@@ -15,6 +15,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 // ignore: implementation_imports
 import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 
+import '../../common/ghost_quick_move.dart';
+import '../../common/menu_mirror.dart' show playerStackAt;
 import '../../core/module.dart';
 import '../../core/pos.dart' show packPos;
 import '../filter/filter_menu_clicks.dart' show ghostMenuPlayerSlots, inventoryIndexAt;
@@ -257,17 +259,23 @@ abstract final class RedstoneRequesterMenus {
       final session = get(e.player);
       if (session == null || session.containerId != e.containerId) return e;
       // The host applies the vanilla clicks (the player inventory mirror and the ghost slots; a
-      // ghost slot takes one item off the cursor), except a shift-click from a ghost slot:
-      // `GhostItemMenu.quickMoveStack` takes one item out of the request.
-      if (e.slot < requesterPlayerSlots || e.mode != MenuClickMode.quickMove) return e;
-      final index = e.slot - requesterPlayerSlots;
-      if (index < 0 || index >= requesterGhostSlots) return e;
-      final current = session.ghosts[index];
-      if (current.isEmpty) return e.copyWith(cancelled: true);
-      session.ghosts[index] = current.count > 1
-          ? current.withCount(current.count - 1)
-          : LStack.empty;
-      await _sendGhosts(e.player, session);
+      // ghost slot takes one item off the cursor). The shift-clicks follow
+      // `GhostItemMenu.quickMoveStack` and are applied here instead: one item of a mirror slot goes
+      // into the first empty request slot, one item leaves a request slot.
+      if (e.mode != MenuClickMode.quickMove) return e;
+      final move = ghostQuickMove(
+        menuSlot: e.slot,
+        source: await Lg.i.read(await playerStackAt(e.player, e.slot)),
+        ghostSlots: requesterGhostSlots,
+        ghostEmpty: (i) => session.ghosts[i].isEmpty,
+      );
+      if (!move.isNone) {
+        final current = session.ghosts[move.ghost];
+        session.ghosts[move.ghost] = move.take
+            ? (current.count > 1 ? current.withCount(current.count - 1) : LStack.empty)
+            : move.stack;
+        await _sendGhosts(e.player, session);
+      }
       return e.copyWith(cancelled: true);
     });
 

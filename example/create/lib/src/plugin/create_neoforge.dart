@@ -82,6 +82,8 @@ List<NeoForgeRegistryAddition> contentRegistries(CreateRegistry registry) {
   add('minecraft:sound_event', registry.sounds.length);
   add('minecraft:particle_type', registry.particles.length);
   add('minecraft:mob_effect', registry.mobEffects.length);
+  add('minecraft:map_decoration_type', registry.mapDecorations.length);
+  add('neoforge:entity_data_serializers', registry.entityDataSerializers.length);
   // The recipe types are synced separately (`declareSyncedRecipeTypes`), but the
   // two registries they add entries to are gated like every other one.
   final syncedRecipes = registry.recipeTypes.entries.where((e) => e.value).length;

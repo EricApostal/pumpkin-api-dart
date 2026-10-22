@@ -28,17 +28,19 @@ void registerSubLevelCommands(CommandBuilder sable, SableCommandState state) {
       name.sub(
         'set',
         build: (set) => set
-          ..arg('targets', ArgumentTypes.word, build: (targets) => targets.arg(
-            'name',
-            ArgumentTypes.string,
-            runs: (ctx) => _setName(ctx, state, ctx.string('name')),
-          )),
+          ..arg('targets', ArgumentTypes.token,
+            suggests: subLevelSelectorSuggestions,
+            build: (targets) => targets.arg(
+              'name',
+              ArgumentTypes.string,
+              runs: (ctx) => _setName(ctx, state, ctx.string('name')),
+            )),
       );
       name.sub(
         'clear',
         build: (clear) => clear.arg(
           'targets',
-          ArgumentTypes.greedyString,
+          ArgumentTypes.token,
           runs: (ctx) => _clearName(ctx, state),
         ),
       );
@@ -46,7 +48,7 @@ void registerSubLevelCommands(CommandBuilder sable, SableCommandState state) {
         'get',
         build: (get) => get.arg(
           'target',
-          ArgumentTypes.greedyString,
+          ArgumentTypes.token,
           runs: (ctx) => _getName(ctx, state),
         ),
       );
@@ -56,16 +58,33 @@ void registerSubLevelCommands(CommandBuilder sable, SableCommandState state) {
   sable.sub(
     'teleport',
     description: 'Teleports sub-levels',
-    build: (teleport) => teleport
-      ..arg('targets', ArgumentTypes.word, build: (targets) => targets
-        ..arg('x', ArgumentTypes.number(), build: (x) => x
-          ..arg('y', ArgumentTypes.number(), build: (y) => y
-            ..arg('z', ArgumentTypes.number(), runs: (ctx) => _teleport(ctx, state, false), build: (z) => z
-              ..arg('yaw', ArgumentTypes.number(), build: (yaw) => yaw.arg(
+    build: (teleport) => teleport.arg(
+      'targets',
+      ArgumentTypes.token,
+      suggests: subLevelSelectorSuggestions,
+      build: (targets) => targets.arg(
+        'x',
+        ArgumentTypes.number(),
+        build: (x) => x.arg(
+          'y',
+          ArgumentTypes.number(),
+          build: (y) => y.arg(
+            'z',
+            ArgumentTypes.number(),
+            runs: (ctx) => _teleport(ctx, state, false),
+            build: (z) => z.arg(
+              'yaw',
+              ArgumentTypes.number(),
+              build: (yaw) => yaw.arg(
                 'pitch',
                 ArgumentTypes.number(),
                 runs: (ctx) => _teleport(ctx, state, true),
-              )))))),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   sable.sub(
@@ -73,7 +92,7 @@ void registerSubLevelCommands(CommandBuilder sable, SableCommandState state) {
     description: 'Removes sub-levels',
     build: (remove) => remove.arg(
       'targets',
-      ArgumentTypes.greedyString,
+      ArgumentTypes.token,
       runs: (ctx) => _remove(ctx, state),
     ),
   );
@@ -190,6 +209,9 @@ int _remove(CommandContext ctx, SableCommandState state) {
 
   final origin = container.getOrigin();
   for (final target in targets) {
+    // An explicit delete is the one removal that must not be recovered: drop the
+    // ticket, or the next start force-loads the sub-level back.
+    container.forgetTickets(target.uniqueId);
     final plot = target.getPlot();
     container.removeSubLevel(
       plot.plotPos.$1 - origin.$1,

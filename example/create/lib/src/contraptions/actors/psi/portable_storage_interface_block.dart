@@ -315,7 +315,15 @@ CreateBlock buildPortableStorageInterfaceBlock({required bool fluids}) {
     blockEntityType: fluids
         ? PortableFluidInterfaceBlockEntity.type
         : PortableItemInterfaceBlockEntity.type,
-    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
+    // `PortableStorageInterfaceBlock.getStateForPlacement` (bytecode of the client's
+    // jar): `facing = getNearestLookingDirection()`, flipped when the player sneaks,
+    // then `FACING = facing.getOpposite()`. With the promotion
+    // (`getNearestLookingDirection()` is the clicked face's opposite) that is the
+    // clicked face for a normal click and its opposite while sneaking.
+    placement: const [
+      PlacementRule.clickedFace('facing', whenSneaking: false),
+      PlacementRule.clickedFace('facing', opposite: true, whenSneaking: true),
+    ],
     collisionShape: const BlockShape.boxes([BlockBox(0, 0, 0, 1, 1, 1)]),
     selectionShape: BlockShape.boxes(box),
     shapeRules: psiShapeRules(box),

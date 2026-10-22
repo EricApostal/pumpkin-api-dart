@@ -7,7 +7,6 @@ import 'package:sable/sable.dart'
         ConstraintJointAxis,
         PhysicsConstraintHandle,
         Quaterniond,
-        SubLevel,
         Vector3d;
 import 'package:simulated/simulated.dart';
 import 'package:test/test.dart';
@@ -78,7 +77,10 @@ void main() {
         logic.tickDisassemblingWith(angleError: 1, distanceToGoal: 1);
       }
       expect(logic.disassembling, isFalse);
-      expect(logic.lastException?.translationKey, contains('could_not_align'));
+      expect(
+        logic.lastException?.translationKey,
+        'simulated.gui.assembly.exception.couldNotAlign',
+      );
     });
 
     test('startDisassembling picks the closest quarter turn', () {
@@ -316,7 +318,7 @@ void main() {
         heard.add((worldId, anchor));
       });
 
-      final subLevel = _StubSubLevel();
+      final subLevel = _stubSubLevel();
       SimAssemblyEvents.notifyAssembled('minecraft:overworld', (1, 2, 3), SimAssemblyResult(subLevel, (4, 5, 6)));
       expect(heard, [('minecraft:overworld', (1, 2, 3))]);
 
@@ -342,7 +344,7 @@ void main() {
         heard.add((worldId, anchor, subLevel));
       });
 
-      final subLevel = _StubSubLevel();
+      final subLevel = _stubSubLevel();
       SimAssemblyEvents.notifyDisassembled('minecraft:the_nether', (4, 70, -9), subLevel);
 
       expect(heard, hasLength(1));
@@ -459,7 +461,7 @@ final class _RecordingConstraintHandle implements PhysicsConstraintHandle {
 }
 
 /// A sub-level that does nothing: the event tests never touch it.
-final class _StubSubLevel implements SubLevel {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+/// The sub-level an assembly reports: Sable's component owns the model, so this
+/// side only ever sees the snapshot (id + plot centre block).
+SimAssembledSubLevel _stubSubLevel() =>
+    const SimAssembledSubLevel('00000000-0000-0000-0000-0000000000aa', (0, 0, 0));

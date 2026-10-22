@@ -1,8 +1,9 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:pumpkin_neoforge/pumpkin_neoforge.dart'
-    show NeoForgeServer, VanillaRegistries, vanillaBlockStateCount;
+    show VanillaRegistries, vanillaBlockStateCount;
 
 import 'block_install.dart';
+import 'declared_registries.dart';
 import 'host_adapter.dart';
 import 'item_install.dart';
 import 'manifest.dart';
@@ -12,12 +13,12 @@ import 'omnitool.dart';
 import 'validation.dart';
 
 /// The server side of the Lonsdaleite Tools NeoForge mod: registers its items
-/// and item tags, answers NeoForge's registry sync so clients with the mod can
-/// join, and runs the behaviour that the mod's Java code executes on the
-/// server.
+/// and item tags, declares the mod to the host's NeoForge handshake (so a client
+/// with the mod knows the ids of the entries and joins), and runs the behaviour
+/// that the mod's Java code executes on the server.
 ///
-/// Needs the `registry.items` and `registry.blocks` permissions and a Pumpkin
-/// build with the `item-registry` and `block-registry` interfaces (see
+/// Needs the `registry.items`, `registry.blocks` and `neoforge` permissions and a
+/// Pumpkin build with the `item-registry` and `block-registry` interfaces (see
 /// README.md).
 final class LonsdaleitePlugin extends Plugin {
   @override
@@ -25,7 +26,11 @@ final class LonsdaleitePlugin extends Plugin {
     name: 'lonsdaleite',
     version: '0.1.0',
     description: 'Server side of the Lonsdaleite Tools mod.',
-    permissions: [Permissions.registryItems, Permissions.registryBlocks],
+    permissions: [
+      Permissions.registryItems,
+      Permissions.registryBlocks,
+      Permissions.neoforge,
+    ],
   );
 
   late final Manifest manifest = Manifest.parse(lonsdaleiteManifestJson);
@@ -74,24 +79,52 @@ final class LonsdaleitePlugin extends Plugin {
       '${blocks.blockTags.length} block tags (${blocks.blockTags.join(', ')}).',
     );
 
-    final neoforge = installNeoForge(context, manifest, installation, blocks);
-    _command(context, neoforge);
+    _declareNeoForge(context, installation, blocks);
+    _command(context);
     _omnitool(context);
   }
 
-  /// `/lonsdaleite`: which players joined with the NeoForge handshake.
-  void _command(Context context, NeoForgeServer neoforge) {
+  /// Declares the mod to the host's NeoForge handshake (`Context.declareNeoForge`,
+  /// `neoforge.dart`): the mod, and the two registries the plugin registered content
+  /// in (`minecraft:item`, `minecraft:block`). Naming a registry is the vouch that
+  /// lets the host send the mod's entries in it; without it the host drops the
+  /// registry from the sync for every plugin, not just for this one.
+  ///
+  /// Called **after** the items and the block: the host numbers the entries in
+  /// registration order, and the declaration claims exactly what was registered.
+  void _declareNeoForge(
+    Context context,
+    ItemInstallation installation,
+    BlockInstallation blocks,
+  ) {
+    try {
+      context.declareNeoForge(lonsdaleiteDeclaration(manifest));
+    } on HostException catch (e) {
+      logger.error('Could not declare the mod to the NeoForge handshake: ${e.message}');
+      rethrow;
+    }
+    logger.info(
+      'Declared ${manifest.mod.name} ${manifest.mod.version} to the NeoForge handshake: '
+      '${lonsdaleiteDeclaredRegistries.join(', ')} with '
+      '${installation.items.length} items (ids ${installation.vanillaCount} to '
+      '${installation.vanillaCount + installation.items.length - 1}) and block '
+      '${blocks.block.key} (id ${blocks.block.id}, ${blocks.block.stateCount} states from '
+      'state id ${blocks.block.baseStateId}); clients without the mod are refused.',
+    );
+  }
+
+  /// `/lonsdaleite`: which online players joined with the NeoForge handshake.
+  void _command(Context context) {
     context.command(
       'lonsdaleite',
       description: 'Which players joined with the NeoForge handshake',
       permission: 'lonsdaleite:command.lonsdaleite',
       (c) => c.runs((ctx) {
         final lines = [
-          for (final client in neoforge.clients)
-            '${client.username}: ${client.outcome.name}'
-                ' brand=${client.brand} synced=${client.syncedRegistries.length}',
+          for (final player in ctx.server.allPlayers)
+            '${player.getName()}: ${player.isNeoForge ? 'NeoForge' : 'not NeoForge'}',
         ];
-        ctx.replyLines(['NeoForge clients: ${lines.length}', ...lines]);
+        ctx.replyLines(['Online players: ${lines.length}', ...lines]);
       }),
     );
   }

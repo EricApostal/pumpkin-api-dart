@@ -14,25 +14,42 @@
 // ([MountedPotatoCannonLogic], [MountedPotatoCannonInventory], in
 // `mounted_potato_cannon_logic.dart`); the block entity below is the host glue.
 // ignore_for_file: implementation_imports
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:create/create.dart';
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/conveyance/nbt_names.dart' show enumNbtName;
+import 'package:create/src/equipment/model/dir.dart' show Ax;
+import 'package:create/src/equipment/model/vec.dart' show V3, V3Math, rotateVec, lookAtVec;
+import 'package:create/src/equipment/potato/potato_host.dart' show potatoEntityKey, potatoSpawnData;
 import 'package:create/src/equipment/potato/potato_model.dart' show PotatoType, PotatoTypes;
 import 'package:create/src/kinetics/kinetic_block_entity.dart';
 import 'package:create/src/manifest/registries.g.dart' show kPotatoProjectileTypes;
 import 'package:pumpkin_api/pumpkin_api.dart';
+import 'package:sable/sable.dart'
+    show BlockEntitySubLevelActor, RigidBodyHandle, ServerSubLevel, SubLevel, Vector3d;
 
 import '../../../aeronautics_hooks.dart';
+import '../../../aeronautics_runtime.dart' show AeroRuntime, heavierArtilleryAdvancement;
 import 'mounted_potato_cannon_logic.dart';
 
 /// The block and block entity key.
 const String mountedPotatoCannonKey = 'aeronautics:mounted_potato_cannon';
 
 /// `MountedPotatoCannonBlockEntity`.
-final class MountedPotatoCannonBlockEntity extends KineticBlockEntity {
+final class MountedPotatoCannonBlockEntity extends KineticBlockEntity implements BlockEntitySubLevelActor {
   MountedPotatoCannonBlockEntity(super.worldId, super.pos);
+
+  /// `level.getRandom()`.
+  final math.Random _random = math.Random();
+
+  /// `RECOIL_CENTER` and `RECOIL_DIR`: the scratch vectors of `sable$physicsTick`, kept on the
+  /// entity so a physics tick allocates nothing (`MountedPotatoCannonBlockEntity.java:47-48`).
+  final Vector3d _recoilCenter = Vector3d();
+  final Vector3d _recoilDirection = Vector3d();
 
   /// The pure state machine.
   final MountedPotatoCannonLogic logic = MountedPotatoCannonLogic();
@@ -62,7 +79,12 @@ final class MountedPotatoCannonBlockEntity extends KineticBlockEntity {
   @override
   void initialize() {
     super.initialize();
-    inventory.readMap({}, potatoTypes);
+    // `MountedPotatoCannonBlockEntity.initialize` (`:75-82`): refresh the cached projectile type
+    // from the slot, then re-derive the state. The slot itself was restored by `read`.
+    //
+    // This used to read an empty map into the inventory, which zeroed `item`/`count` on the first
+    // tick after a load and threw the saved ammo away.
+    inventory.updateCachedType(potatoTypes, inTag: Tags.item);
     logic.resetAndUpdate(hasAmmo: inventory.ammo != null, reloadTicks: inventory.ammo?.type.reloadTicks ?? 0);
   }
 
@@ -123,19 +145,89 @@ final class MountedPotatoCannonBlockEntity extends KineticBlockEntity {
 
   /// `FIRING`: spawn one projectile per `type.split()`, then take the recoil.
   ///
-  /// TODO(parity): `MountedPotatoCannonBlockEntity.java:163-200` spawns
-  /// `AllEntityTypes.POTATO_PROJECTILE` with `aeronautics$setDamageMultiplier(2)`.
-  /// Create's `PotatoHost._onEntityTick` removes any `create:potato_projectile`
-  /// that its own `_live` map does not know, so a projectile spawned from here
-  /// dies on its first tick until Create exposes a spawn seam; the shot is
-  /// therefore consumed without an entity (see the port report).
+  /// `MountedPotatoCannonBlockEntity.java:163-206`. The projectiles are spawned by this component
+  /// and adopted by Create's own projectile tick from their spawn data (see
+  /// `PotatoHost._adoptProjectile`), which is why they no longer die on their first tick.
   void _fire(bool trapdoor) {
     final ammo = inventory.ammo;
     if (ammo == null) return;
 
     inventory.extract(1);
-    logic.applyRecoil(ammo.type.split);
+    final type = ammo.type;
+    final aim = aimingVector;
+    final barrel = logic.barrelPos((pos.x, pos.y, pos.z), aim, trapdoor);
+
+    final world = this.world;
+    if (world != null) {
+      // `motion = aimingVector.scale(type.velocityMultiplier() * 2)`
+      final motion = aim.vscale(type.velocityMultiplier * mountedCannonRange);
+
+      // `VecHelper.rotate(new Vec3(0, 0.1, 0), 360 * random, Axis.Z)` and the per-projectile
+      // offset: the shot is a spray, not a line.
+      final sprayBase = rotateVec((0.0, 0.1, 0.0), 360 * _random.nextDouble(), Ax.z);
+      final sprayChange = 360 / type.split;
+      for (var i = 0; i < type.split; i++) {
+        var shotMotion = motion;
+        if (type.split > 1) {
+          final imperfection = 40 * (_random.nextDouble() - 0.5);
+          shotMotion = motion.vplus(
+            lookAtVec(rotateVec(sprayBase, i * sprayChange + imperfection, Ax.z), motion),
+          );
+        }
+        unawaited(_spawnProjectile(world, barrel, shotMotion, ammo.item));
+      }
+
+      // `AllSoundEvents.FWOOMP.playOnServer(level, worldPosition, 1, type.soundPitch() + random * .2)`
+      world.playCustomSound(
+        soundName: 'create:fwoomp',
+        category: SoundCategory.players,
+        pos: (pos.x + 0.5, pos.y + 0.5, pos.z + 0.5),
+        volume: 1,
+        pitch: type.soundPitch + _random.nextDouble() * 0.2,
+      );
+      AeroRuntime.awardNearby(world, (pos.x, pos.y, pos.z), heavierArtilleryAdvancement);
+    }
+
+    logic.applyRecoil(type.split);
     sendData();
+  }
+
+  /// `level.addFreshEntity(shootyBoomBoom)`: the entity's spawn data carries the item and the
+  /// damage multiplier the cannon sets on it (`aeronautics$setDamageMultiplier(2)`).
+  Future<void> _spawnProjectile(World world, V3 pos, V3 motion, String itemKey) async {
+    final entity = await world.spawnPlugin(
+      potatoEntityKey,
+      pos,
+      spawnData: potatoSpawnData(
+        itemKey: itemKey,
+        additionalDamage: mountedCannonDamageMultiplier,
+      ),
+    );
+    entity.setVelocity(velocity: motion);
+  }
+
+  // -- Physics -------------------------------------------------------------------
+
+  /// `BlockEntitySubLevelActor.sable$tick`: the cannon has no per-game-tick sub-level work in Java
+  /// either.
+  @override
+  void sable$tick(ServerSubLevel subLevel) {}
+
+  @override
+  Iterable<SubLevel>? sable$getConnectionDependencies() => null;
+
+  @override
+  Iterable<SubLevel>? sable$getLoadingDependencies() => null;
+
+  /// `BlockEntitySubLevelActor.sable$physicsTick`
+  /// (`MountedPotatoCannonBlockEntity.java:250-258`): the shot's recoil, one impulse per physics
+  /// tick while `recoilMagnitude` lasts.
+  @override
+  void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
+    final facing = bState.dir('facing') ?? Direction.north;
+    if (!logic.recoilDirection(facing, _recoilDirection)) return;
+    _recoilCenter.set(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
+    handle.applyImpulseAtPoint(_recoilCenter, _recoilDirection);
   }
 
   @override

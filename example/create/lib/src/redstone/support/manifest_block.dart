@@ -3,7 +3,7 @@
 // state ids a Create client computes.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../../api/blocks.dart' show mapColorIds;
+import '../../api/blocks.dart' show mapColorIdOf;
 import '../../core/blocks.dart';
 import '../../manifest/manifest.dart';
 
@@ -26,8 +26,8 @@ String soundTypeName(String manifest) => switch (manifest) {
   final s => s.toLowerCase(),
 };
 
-/// `CreateBlock` for the manifest block [key]. [luminance] overrides the manifest
-/// (state dependent light cannot be expressed on the host: it stays constant).
+/// `CreateBlock` for the manifest block [key]. [luminance] overrides the manifest and [lightRules]
+/// carry a Java `lightLevel(state -> ...)`, which the manifest only records as dynamic.
 CreateBlock buildManifestBlock(
   String key, {
   BlockBehavior? behavior,
@@ -38,6 +38,7 @@ CreateBlock buildManifestBlock(
   List<ShapeRule> shapeRules = const [],
   List<String> tags = const [],
   int? luminance,
+  List<LightRule> lightRules = const [],
   PistonBehavior? pistonBehavior,
   BlockDrops? drops,
   bool? hasItem,
@@ -53,8 +54,10 @@ CreateBlock buildManifestBlock(
     requiresCorrectTool: m.requiresCorrectTool,
     soundType: soundTypeName(m.soundType),
     luminance: luminance ?? (m.lightDynamic ? 0 : m.lightLevel),
+    lightRules: lightRules,
+    ignitedByLava: m.ignitedByLava,
     canOcclude: !m.noOcclusion,
-    mapColor: mapColorIds[m.mapColor] ?? 0,
+    mapColor: mapColorIdOf(m.mapColor),
     replaceable: m.replaceable,
     collisionShape: collisionShape ?? shape,
     selectionShape: selectionShape ?? BlockShape.fullCube,

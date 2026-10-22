@@ -1,6 +1,6 @@
 // Generates lib/src/registry_ids.g.dart: the vanilla registry entries that data
 // component values refer to by numeric id (items, blocks, sound events,
-// attributes, mob effects, entity types, damage types, enchantments), in the
+// attributes, mob effects, entity types, damage types, enchantments, potions), in the
 // order of the ids Pumpkin's host reads and writes.
 //
 //   puro dart run tool/generate_registry_ids.dart [--assets <Pumpkin>/assets]
@@ -18,7 +18,9 @@
 //                  sorted by name (`BTreeMap`, id = index)
 //   enchantments   assets/datapack/data/minecraft/enchantment/*.json
 //                  sorted by file path (id = index)
-//   data components assets/data_component.json  value = id
+//   data components assets/data_component.json  "id" field
+//   potions        assets/potion.json           "id" field
+//                  (the id `PotionContents` carries on the wire)
 //
 // The output is checked in; run this only when Pumpkin's assets change.
 import 'dart:convert';
@@ -83,11 +85,6 @@ void main(List<String> args) {
     return stems;
   }
 
-  List<String> byValue(String file) {
-    final map = (json(file) as Map).cast<String, dynamic>();
-    return byId(file, {for (final e in map.entries) e.key: e.value as int});
-  }
-
   final blocks = (json('blocks.json') as Map).cast<String, dynamic>();
   final registries = <String, List<String>>{
     'item': byIdField('items.json'),
@@ -99,7 +96,8 @@ void main(List<String> args) {
     'attribute': byIdField('attributes.json'),
     'mob_effect': byIdField('effect.json'),
     'entity_type': byIdField('entities.json'),
-    'data_component_type': byValue('data_component.json'),
+    'data_component_type': byIdField('data_component.json'),
+    'potion': byIdField('potion.json'),
     'damage_type': directoryStems(
       'datapack/data/minecraft/damage_type',
       byPath: false,

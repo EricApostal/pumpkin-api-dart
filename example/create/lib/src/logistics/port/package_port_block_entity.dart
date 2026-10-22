@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/equipment.dart' show addClipboardAddress;
 import '../../api/util.dart' hide pos;
 import '../../conveyance/chain/chain_conveyor_block_entity.dart';
@@ -278,7 +279,18 @@ class FrogportBlockEntity extends PackagePortBlockEntity
   double passiveYaw = 0;
   bool failedLastExport = false;
 
-  FrogportBlockEntity(super.worldId, super.pos);
+  /// `AdvancementBehaviour(this, AllAdvancements.FROGPORT)`: the player that placed the port gets
+  /// the advancement when it catches a package.
+  late final AdvancementBehaviour advancements;
+
+  FrogportBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.frogport],
+        () => Lg.i.advancements,
+      ),
+    );
+  }
 
   @override
   Map<String, dynamic> get state => super.state;
@@ -333,6 +345,8 @@ class FrogportBlockEntity extends PackagePortBlockEntity
     if (box.isEmpty) return;
     if (packages.insertStackedNow(box).isNotEmpty) drop(box);
     markDirty();
+    // `advancements.awardPlayer(AllAdvancements.FROGPORT)`.
+    unawaited(advancements.awardPlayer(AllAdvancements.frogport));
   }
 
   ChainConveyorBlockEntity? get _chainConveyor {
@@ -519,6 +533,8 @@ class FrogportBlockEntity extends PackagePortBlockEntity
       return;
     }
     if (packages.insertStackedNow(box).isNotEmpty) drop(box);
+    // `advancements.awardPlayer(AllAdvancements.FROGPORT)`: only a caught package counts.
+    unawaited(advancements.awardPlayer(AllAdvancements.frogport));
   }
 
   void _deposit(LStack box) {

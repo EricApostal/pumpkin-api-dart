@@ -80,6 +80,9 @@ final class _TestWorld extends BlockGetter implements FluidWorld {
   @override
   void scheduleFluidTick(Pos p, String fluid, int delay) {}
 
+  void scheduleFlowTick(Pos p, String fluid, int delay) =>
+      scheduleFluidTick(p, fluid, delay);
+
   @override
   void placeFluidSource(Pos p, String fluid) => blocks[p] = BState(fluid);
 

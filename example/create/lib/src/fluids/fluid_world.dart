@@ -190,6 +190,16 @@ abstract class FluidWorld extends BlockGetter {
   /// `Level.scheduleTick(pos, fluid, delay)`.
   void scheduleFluidTick(Pos p, String fluid, int delay);
 
+  /// The next flow step of [fluid] at [p] (`FlowingFluid.tick` re-schedules itself with
+  /// `level.scheduleTick(pos, fluid, tickRate)`).
+  ///
+  /// A fluid the plugin registered has no flow physics in the host, so its
+  /// [`FlowingFluidLogic`] is run from the fluid block's own scheduled block tick and the
+  /// worlds over such fluids override this to schedule that tick instead
+  /// (`HostFluidWorld`). The default is the fluid tick of the Java port.
+  void scheduleFlowTick(Pos p, String fluid, int delay) =>
+      scheduleFluidTick(p, fluid, delay);
+
   /// Places the source block of [fluid] at [p].
   void placeFluidSource(Pos p, String fluid);
 

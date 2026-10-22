@@ -12,6 +12,7 @@ import 'dart:io';
 import 'src/blocks_build.dart';
 import 'src/blocks_emit.dart';
 import 'src/blocks_enum.dart';
+import 'src/blocks_props.dart';
 import 'src/interp.dart';
 import 'src/items_build.dart';
 import 'src/java.dart';
@@ -117,6 +118,7 @@ void _dumpBlock(List<BlockRecord> recs, String key) {
       stdout.writeln('  ${p.name} ${p.kind} ${p.values} verified=${p.verified} from ${p.source}');
     }
     stdout.writeln('  defaults ${r.props.defaults}');
+    stdout.writeln('  defaultStateIndex ${defaultStateIndex(r.props.defaults, r.props.props.values)} (of ${r.stateCount})');
     stdout.writeln('  hardness ${r.stats.hardness}/${r.stats.resistance} sound ${r.stats.sound} map ${r.stats.mapColor} light ${r.stats.light}');
     stdout.writeln('  notes ${r.notes}');
   }

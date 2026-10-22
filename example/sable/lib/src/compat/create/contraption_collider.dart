@@ -105,6 +105,11 @@ final class SubLevelContraptionHost implements ContraptionEntityHost {
 
   SubLevelContraptionHost(this.delegate, this.pose);
 
+  /// The synced-data write goes to the real entity: the wrapper only projects
+  /// positions, and a metadata update is not positional.
+  @override
+  void setSyncedEntry(int index, List<int> data) => delegate.setSyncedEntry(index, data);
+
   @override
   int get entityId => delegate.entityId;
 

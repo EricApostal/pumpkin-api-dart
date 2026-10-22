@@ -19,7 +19,9 @@ final effect = await stack.enchantmentEffect('my_plugin:crush');   // [{enchantm
 ```
 
 The effect components are part of the `minecraft:enchantment` registry data sent
-to every client (NeoForge clients also get the new component type). The host
+to every client; a new component type is one of the host-numbered registries, so a
+NeoForge client gets it in `minecraft:enchantment_effect_component_type` once the
+plugin **names** that registry in `Context.declareNeoForge`. The host
 stores and syncs them but does **not evaluate** the effects of plugin
 enchantments, and there is no anvil or enchanting table support for them: read
 `enchantmentEffect` in your own events. Errors throw `HostException`.

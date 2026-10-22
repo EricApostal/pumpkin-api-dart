@@ -65,6 +65,10 @@ void registerOffroad(CreateRegistry registry) {
   // `OffroadEntityTypes.BOREHEAD_CONTRAPTION_ENTITY`: `sized(1, 1)`,
   // `clientTrackingRange(20)`, `updateInterval(40)`, `eyeHeight(0)`,
   // `fireImmune()`, `noLootTable()`.
+  //
+  // The spawn-data channel is what makes the client rebuild the contraption: the Java
+  // entity is an `IEntityWithComplexSpawn`, so without it the host sends a bare
+  // add-entity packet and the client keeps an entity it cannot render.
   registry.entityType(
     const EntityTypeSpec(
       key: OffroadIds.boreheadContraptionEntity,
@@ -74,6 +78,7 @@ void registerOffroad(CreateRegistry registry) {
       fireImmune: true,
       trackingRange: 20,
       updateInterval: 40,
+      spawnDataChannel: 'neoforge:advanced_add_entity',
     ),
   );
 
@@ -85,6 +90,15 @@ void registerOffroad(CreateRegistry registry) {
   // `#c:ores`, `borehead_super_effective` is ancient debris.
   registry.tag(TagKind.block, 'offroad:borehead_effective', const ['#c:ores']);
   registry.tag(TagKind.block, 'offroad:borehead_super_effective', const ['minecraft:ancient_debris']);
+
+  // The blocks that set `requiresCorrectTool: true` also need their vanilla
+  // mineable tag (`data/minecraft/tags/block/mineable/{pickaxe,axe}.json`).
+  registry.tag(TagKind.block, 'minecraft:mineable/pickaxe', const [
+    OffroadIds.boreheadBearing,
+    OffroadIds.rockCuttingWheel,
+    OffroadIds.wheelMount,
+  ]);
+  registry.tag(TagKind.block, 'minecraft:mineable/axe', const [OffroadIds.wheelMount]);
 
   // -- Id order -------------------------------------------------------------------
   registry.useOrder(RegistryKind.blocks, OffroadIds.blocks);

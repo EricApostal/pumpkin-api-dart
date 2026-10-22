@@ -217,6 +217,105 @@ void main() {
     });
   });
 
+  group('SimAssemblyException', () {
+    // The keys of the Java exceptions, verbatim. The client resolves them against the
+    // mods' own lang, so a key Java does not use (or a made-up one) is shown as-is.
+    test('the message keys are the Java ones', () {
+      expect(
+        SimAssemblyException.structureTooLarge(100).translationKey,
+        'create.gui.assembly.exception.structureTooLarge',
+      );
+      expect(
+        SimAssemblyException.unmovableBlock((1, 2, 3), 'create:andesite_casing').translationKey,
+        'create.gui.assembly.exception.unmovableBlock',
+      );
+      expect(
+        SimAssemblyException.unloadedChunk((1, 2, 3)).translationKey,
+        'create.gui.assembly.exception.chunkNotLoaded',
+      );
+      expect(
+        SimAssemblyException.couldNotAlign().translationKey,
+        'simulated.gui.assembly.exception.couldNotAlign',
+      );
+      expect(
+        SimAssemblyException.outOfWorld().translationKey,
+        'simulated.gui.assembly.exception.outOfWorld',
+      );
+      expect(
+        SimAssemblyException.tooFarFromGround().translationKey,
+        'simulated.gui.assembly.exception.tooFarFromGround',
+      );
+      expect(
+        SimAssemblyException.tooFast().translationKey,
+        'simulated.gui.assembly.exception.tooFast',
+      );
+      expect(
+        SimAssemblyException.sameSubLevel().translationKey,
+        'simulated.gui.assembly.exception.sameSubLevel',
+      );
+      expect(
+        const SimAssemblyException.key('simulated.prevent_disassembly').translationKey,
+        'simulated.prevent_disassembly',
+      );
+    });
+
+    test('the component JSON carries the key and its arguments', () {
+      expect(
+        SimAssemblyException.structureTooLarge(100).toComponentJson(),
+        '{"translate":"create.gui.assembly.exception.structureTooLarge",'
+        '"with":[{"text":"100"}]}',
+      );
+      // `state.getBlock().getName()` is a component, not the block key.
+      expect(
+        SimAssemblyException.unmovableBlock((1, 2, 3), 'create:andesite_casing').toComponentJson(),
+        '{"translate":"create.gui.assembly.exception.unmovableBlock",'
+        '"with":[{"text":"1"},{"text":"2"},{"text":"3"},'
+        '{"translate":"block.create.andesite_casing"}]}',
+      );
+    });
+
+    test('a stored message reads back unchanged', () {
+      for (final exception in [
+        SimAssemblyException.tooFast(),
+        SimAssemblyException.structureTooLarge(7),
+        SimAssemblyException.unmovableBlock((1, 2, 3), 'create:andesite_casing'),
+        SimAssemblyException.noBackend(),
+      ]) {
+        final json = exception.toComponentJson();
+        final back = SimAssemblyException.fromComponentJson(json);
+        expect(back, isNotNull);
+        expect(back!.toComponentJson(), json);
+      }
+    });
+
+    test('a failure with no Java key carries text, never an invented key', () {
+      final exception = SimAssemblyException.noBackend();
+      expect(exception.translationKey, isNull);
+      expect(exception.toComponentJson(), contains('"text"'));
+    });
+
+    test('the assembler stores the message JSON, not the key', () {
+      PhysicsAssembler assembler() => PhysicsAssembler(
+        worldId: 'minecraft:overworld',
+        pos: (0, 0, 0),
+        state: const BState('simulated:physics_assembler'),
+      );
+      final saved = assembler()
+        ..logic.lastException = SimAssemblyException.tooFast();
+      final data = saved.write();
+      expect(
+        data['LastException'],
+        '{"translate":"simulated.gui.assembly.exception.tooFast"}',
+      );
+
+      final restored = assembler()..read(data);
+      expect(
+        restored.logic.lastException?.translationKey,
+        'simulated.gui.assembly.exception.tooFast',
+      );
+    });
+  });
+
   group('SimAssemblyHelper', () {
     test('rotationFrom90DegRots wraps negative and large values', () {
       expect(SimAssemblyHelper.rotationFrom90DegRots(0).quarterTurns, 0);

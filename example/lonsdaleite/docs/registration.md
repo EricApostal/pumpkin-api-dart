@@ -32,11 +32,14 @@ built server yet** (see [README.md](../README.md#what-is-verified)).
    `block-registry`, see [The wardframe](#the-wardframe): vanilla counts check,
    `register-block`, id and state checks, `set-block-item`, the block tags
    (`register-block-tag`), read back.
-4. `installNeoForge` (`lib/src/neoforge.dart`) builds the sync spec from the
-   manifest and the ids the host assigned to the items and the block (so the
-   snapshot is what the packets use) and installs `NeoForgeServer` (`pumpkin_neoforge`) with the library's
-   default **adhoc** negotiation and refusal of non-NeoForge clients. The spec
-   equals `lonsdaleiteSpec()` (`test/neoforge_spec_test.dart`).
+4. `_declareNeoForge` (`lib/src/plugin.dart`, `lonsdaleiteDeclaration` in
+   `lib/src/neoforge.dart`) declares the mod to the host's NeoForge handshake
+   (`Context.declareNeoForge`): the registries the plugin registered content into
+   (`minecraft:item`, `minecraft:block` — naming them is the vouch that makes the
+   host send the mod's entries, and a registry left out is dropped from the snapshot
+   for *every* plugin) and refusal of clients that are not NeoForge. The ids
+   themselves are the host's (`vanilla count + index`); `lonsdaleiteSpec()` and the
+   Python client's `mods/lonsdaleite.json` are what the tests hold them against.
 5. The `/lonsdaleite` command and the omnitool handler.
 
 Registration only works while the server loads; the host closes the registries
@@ -141,8 +144,10 @@ The plugin registers the block with the host's `block-registry`
    7. read back: `get-registered-blocks` again (item id 1658 now), `get-block-id`, and
       `get-state-id` for **all 64 states** and for the default state against the
       plugin's computation.
-4. **NeoForge** (`installNeoForge`): the sync spec lists the wardframe at index 1286 of
-   `minecraft:block` (`verifyBlocksAgainstSpec` checks id and first state id).
+4. **NeoForge** (`_declareNeoForge`): the declaration names `minecraft:item` and
+   `minecraft:block`, so the host sends the mod's entries in both (`vanilla count +
+   index`); the wardframe is block 1286 and its states start at 35723
+   (`test/block_install_test.dart` holds the ids against `lonsdaleiteSpec()`).
 5. `/lonsdaleite` and the omnitool handler.
 
 ### The definition

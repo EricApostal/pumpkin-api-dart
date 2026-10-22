@@ -271,8 +271,13 @@ The host runs the handshake now (`neoforge.wit`, pumpkin_api
 carries its own (`CcNeoForgeServer` and `pumpkin_neoforge`'s handshake are not
 used by it). With `"neoforge": true` it calls `Context.declareNeoForge` in
 `onLoad` (permission `neoforge`) with mod `computercraft` at the jar's version
-(1.120.3 when no jar is found), the 16 required play channels, the
-`computercraft:recipe_function` registry, the empty `computercraft-synced.toml`
+(1.120.3 when no jar is found), the 16 required play channels, the registries it
+registers content into — `minecraft:item`, `minecraft:block`,
+`minecraft:block_entity_type`, `minecraft:menu` and
+`minecraft:data_component_type` (naming them is the vouch that makes the host send
+them; without it the host drops the registry from the snapshot for *every* plugin,
+not just this one) — plus `computercraft:recipe_function`, the empty
+`computercraft-synced.toml`
 and the turtle/pocket upgrade datapack entries. The host runs the negotiation
 before the brand, numbers the items, blocks, block entity types, menus and data
 component types this plugin registers through the host registries (in
@@ -331,8 +336,9 @@ compiles on its own. The integration points:
   tick that runs the brains' commands, and `_HostTurtleWorld`, the
   `TurtleWorld` over the host's world API;
 * `ccNeoForgeDeclaration` (`plugin/cc_neoforge.dart`) + `plugin.dart`
-  `_declareNeoForge`: the declaration (channels, `recipe_function`, config file,
-  datapack entries) the host's handshake runs from;
+  `_declareNeoForge`: the declaration (channels, the registries the plugin
+  registers content into, `recipe_function`, config file, datapack entries) the
+  host's handshake runs from;
 * `CcRegistries`, `CcBlockCatalog`, `CcRegistryIds`: what the host must register
   and the ids the client will use;
 * `MonitorPeripheral.touch(x, y)` / `resizeBlocks()` for multiblock monitors.

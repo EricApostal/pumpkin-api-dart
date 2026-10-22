@@ -149,7 +149,21 @@ abstract interface class SubLevelTarget {
 /// two host-provided lookups.
 final class SubLevelTargetContext {
   final SubLevelContainer container;
+
+  /// Where the command ran, as it is (`source.getPosition()`).
   final Vector3d sourcePosition;
+
+  final Vector3d? _projected;
+
+  /// [sourcePosition] projected out of the sub-level containing it
+  /// (`ActiveSableCompanion.projectOutOfSubLevel`).
+  ///
+  /// `@n` (`NEAREST`) compares a sub-level's `logicalPose` against *this*, while
+  /// the modifiers keep the raw [sourcePosition] (`SubLevelTargetSelector`: the
+  /// projection happens inside the `NEAREST` branch, the modifier loop uses
+  /// `source.getPosition()`). Callers that do not project pass nothing and get
+  /// [sourcePosition] back.
+  Vector3d get projectedSourcePosition => _projected ?? sourcePosition;
 
   /// The sub-level the source is standing on, or `null`.
   final ServerSubLevel? trackingSubLevel;
@@ -167,10 +181,11 @@ final class SubLevelTargetContext {
     required this.container,
     required this.sourcePosition,
     required this.random,
+    Vector3d? projectedOutOfSubLevel,
     this.trackingSubLevel,
     this.viewedSubLevel,
     this.containingSubLevel,
-  });
+  }) : _projected = projectedOutOfSubLevel;
 }
 
 /// `SubLevelTargetNone`: selects nothing (`static_world`).
@@ -213,7 +228,7 @@ final class SubLevelTargetSelector implements SubLevelTarget {
 
     final collected = switch (type) {
       SubLevelSelectorType.all => [...bodies],
-      SubLevelSelectorType.nearest => _nearest(bodies, source.sourcePosition),
+      SubLevelSelectorType.nearest => _nearest(bodies, source.projectedSourcePosition),
       SubLevelSelectorType.random => [bodies[source.random.nextInt(bodies.length)]],
       SubLevelSelectorType.inside =>
         source.containingSubLevel == null ? <ServerSubLevel>[] : [source.containingSubLevel!],

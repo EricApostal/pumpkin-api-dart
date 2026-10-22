@@ -1,7 +1,7 @@
 // `dev.ryanhcode.sable.command.SableCommandHelper`'s Dart side: resolving the
 // sub-level selector arguments of a command from the sender's context.
 //
-// Pure: no host imports beyond the model.
+// The only host calls here are the sender's position and rotation.
 //
 // create's block states are not exported from its public barrel yet, so they are
 // imported from `src/` deliberately.
@@ -9,7 +9,7 @@
 import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart'
-    show BlockPos, CommandContext, CommandException, Uuid;
+    show BlockPos, CommandContext, CommandException;
 
 import 'package:create/src/api/block_state.dart' show BState;
 import '../host/sub_level_host.dart';
@@ -21,8 +21,56 @@ import '../math/vector.dart';
 import '../api/command/sable_command_helper.dart';
 import '../api/command/sable_command_state.dart';
 import '../api/command/sub_level_selector.dart';
+import '../api/sub_level_raycast.dart';
+
+/// The `@`-selectors the Java `SubLevelArgumentType` offers (`EXAMPLES` plus the
+/// seven selectors of `SubLevelSelectorType`), for tab completion.
+const List<String> subLevelSelectorSuggestions = [
+  '@e',
+  '@n',
+  '@r',
+  '@v',
+  '@l',
+  '@t',
+  '@i',
+];
 
 /// Builds the selector context for [ctx] in [container].
+///
+/// The three host-provided lookups of [SubLevelTargetContext] are Java
+/// `SubLevelTargetSelector.getSubLevels`, `SubLevelTargetSelector`'s `NEAREST`
+/// branch and `SubLevelTargetSelector`'s `VIEWED` branch:
+///
+///  * `containing` is `Sable.HELPER.getContaining(level, source.getPosition())`;
+///  * `projectedSourcePosition` is `Sable.HELPER.projectOutOfSubLevel`, which
+///    `@n` compares against while the modifiers keep the raw position;
+///  * `@v` picks 100 blocks along the sender's view
+///    (`source.getEntity().pick(100.0, 1.0f, true)`) and takes the sub-level
+///    containing the block that was hit. The plot's blocks are in memory, so
+///    that ray is `SubLevelRaycast.pick` over the container instead of the
+///    host's own block ray;
+///  * `@t` is `Sable.HELPER.getTrackingSubLevel(entity)` in Java, the sub-level
+///    the entity's collision was last resolved against
+///    (`EntityMixin#sable$collideRedirect`). The port has no entity-collision
+///    resolution yet (HOST GAP `entity-movement-sweep`), so the answer it can
+///    give is the sub-level whose plot holds the sender -- the same sub-level
+///    Java's tracking holds for an entity standing on a ship, and `null` for an
+///    entity outside every plot, where Java has `null` too.
+///
+/// The sender's rotation drives `@v`; a sender that is not a player has no view,
+/// so `@v` selects nothing for the console and for command blocks, as it does in
+/// Java (`source.getEntity() == null`).
+///
+/// `Entity.pick`'s reach, in blocks.
+const double _viewDistance = 100.0;
+
+/// `Player.getEyeHeight` for a standing player.
+///
+/// The host exposes a player's position and rotation, not its eye height
+/// (`player.wit` has no getter), and an eye inside the block it stands in is
+/// close enough for a selector.
+const double _playerEyeHeight = 1.62;
+
 SubLevelTargetContext selectorContext(
   CommandContext ctx,
   SableCommandState state,
@@ -32,21 +80,34 @@ SubLevelTargetContext selectorContext(
   final sourcePosition = position == null
       ? Vector3d()
       : Vector3d(position.$1, position.$2, position.$3);
+  final containing = containingSubLevelOf(container, sourcePosition);
   final player = ctx.playerOrNull;
-  final playerId = player == null ? null : uuidToString(player.getId());
 
-  final containing = container.getPlot(
-        sourcePosition.x.floor() >> 4,
-        sourcePosition.z.floor() >> 4,
-      )?.getSubLevel();
+  ServerSubLevel? viewed;
+  if (player != null) {
+    final hit = SubLevelRaycast.pick(
+      container,
+      Vector3d(
+        sourcePosition.x,
+        sourcePosition.y + _playerEyeHeight,
+        sourcePosition.z,
+      ),
+      SubLevelRaycast.lookVector(player.yaw, player.pitch),
+      _viewDistance,
+    );
+    viewed = hit?.subLevel;
+  }
 
   return SubLevelTargetContext(
     container: container,
     sourcePosition: sourcePosition,
+    projectedOutOfSubLevel: containing == null
+        ? sourcePosition
+        : containing.logicalPose.transformPosition(Vector3d.copy(sourcePosition)),
     random: math.Random(state.random.nextInt(1 << 31)),
-    trackingSubLevel: playerId == null ? null : state.trackingSubLevel?.call(playerId),
-    viewedSubLevel: playerId == null ? null : state.viewedSubLevel?.call(playerId),
-    containingSubLevel: containing is ServerSubLevel ? containing : null,
+    trackingSubLevel: containing,
+    viewedSubLevel: viewed,
+    containingSubLevel: containing,
   );
 }
 
@@ -119,14 +180,4 @@ void setPlotBlock(LevelPlot plot, (int, int, int) local, BState state) {
     plot.newEmptyChunk(chunk);
   }
   plot.chunkHost.setBlock(global.$1, global.$2, global.$3, state.key);
-}
-
-/// Formats a host [Uuid] the way Minecraft's `UUID.toString` does.
-String uuidToString(Uuid uuid) {
-  String hex(int value, int digits) =>
-      value.toUnsigned(64).toRadixString(16).padLeft(digits, '0').substring(16 - digits);
-  final high = hex(uuid.high, 16);
-  final low = hex(uuid.low, 16);
-  return '${high.substring(0, 8)}-${high.substring(8, 12)}-${high.substring(12, 16)}-'
-      '${low.substring(0, 4)}-${low.substring(4, 16)}';
 }

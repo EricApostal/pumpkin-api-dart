@@ -35,6 +35,14 @@ final class BuoyancyForce {
   String toString() => 'BuoyancyForce($point, $force)';
 }
 
+/// The `strength` every `do_drag` call passes (`buoyancy.rs:63,88`).
+///
+/// It is a constant: the Rust passes `1.0` to both the single-sample and the
+/// eight-sample `do_drag`, and only `do_float` gets a volume
+/// (`buoyancy.rs:127,135`). A sub-level block whose collider carries the
+/// default volume `0.0` therefore still drags.
+const double dragStrength = 1.0;
+
 /// `compute_buoyancy` (`buoyancy.rs:16-131`).
 ///
 /// [bodyBlocks] are the sub-level's solid blocks in plot coordinates, [pose] is
@@ -167,11 +175,14 @@ void _accumulateBlock({
     }
 
     // Drag: `-velo * 1.7 * volume * strength` at the point
-    // (`buoyancy.rs:150-152`).
+    // (`buoyancy.rs:150-152`), with [dragStrength] as the strength (`1.0`).
     final velocity = velocityAt(point);
-    final drag = velocity.mul(-1.7 * volume);
+    final drag = velocity.mul(-1.7 * volume * dragStrength);
 
-    // Lift: `10.5 * volume * strength` along +Y (`buoyancy.rs:187-189`).
+    // Lift: `10.5 * volume * strength` along +Y (`buoyancy.rs:187-189`), where
+    // the strength is the sub-level block's own collider volume
+    // (`do_float(..., voxel_collider_data.volume)`, `buoyancy.rs:127,135`), not
+    // the fluid's.
     final lift = Vector3d(0.0, 10.5 * volume * liftStrength, 0.0);
 
     forces.add(

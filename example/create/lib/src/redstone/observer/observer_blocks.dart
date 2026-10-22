@@ -16,6 +16,8 @@ import '../../conveyance/runtime.dart' show ConveyanceRuntime;
 import '../../conveyance/transport/transport_inventory_api.dart' show ItemInventoryProvider;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
+import '../../processing/common/capabilities.dart' show ItemStorageProvider;
+import '../../processing/common/storage.dart' show ItemStorage;
 import '../display/display_core.dart' show ObservedFluid, ObservedItem, ObserverView;
 import '../display/display_link_block.dart';
 import '../power_face.dart';
@@ -102,16 +104,31 @@ String? _packageAddress(ItemStack stack) {
 
 /// The container at [pos] of world [worldId] (`Capabilities.ItemHandler.BLOCK` of the block the
 /// observer or the switch faces): the item inventory of a plugin block entity of this plugin
-/// (a vault, ...) when it owns one — the host does not see those — else a container of the host.
-/// `null` when the block has neither.
+/// (a vault, ...) when it owns one, the item storage of a plugin machine (a basin, a millstone,
+/// a crafter, ...) when it has one — the host does not see either — else a container of the host.
+/// `null` when the block has none.
 ObservedContainer? observedContainerAt(World world, String worldId, Pos pos) {
   final provider = _pluginInventoryProviderAt(worldId, pos);
   if (provider != null) {
     final inventory = provider.itemInventory(null);
     if (inventory != null) return PluginInventoryContainer(inventory);
   }
+  final storage = _pluginStorageAt(worldId, pos);
+  if (storage != null) return MachineStorageContainer(storage);
   final handler = ItemHandlers.at(world, pos.toBlockPos());
   return handler == null ? null : HostObservedContainer(handler);
+}
+
+/// The item storage of the plugin machine at [pos] (`ItemStorageProvider`: a basin, a millstone,
+/// a crafter, a deployer, ...). Java's `InvManipulationBehaviour` (`Capabilities.Item.BLOCK`,
+/// `bypassSidedness`) reaches the machines through the capability they register; the host's
+/// `ItemHandlers` only knows the vanilla containers, and the machines are not
+/// [ItemInventoryProvider]s, so without this lookup a basin reads as "no inventory". The
+/// logistics side bridges the two the same way (`logistics/host/host_inventory.dart`).
+ItemStorage? _pluginStorageAt(String worldId, Pos pos) {
+  final be = Rs.i.store.at(worldId, pos.toBlockPos());
+  // An interface of the processing module, so no type promotion: the test makes the cast sound.
+  return be is ItemStorageProvider ? (be as ItemStorageProvider).itemStorage(null) : null;
 }
 
 /// The plugin block entity at [pos] when it owns an item inventory; the conveyance module owns
@@ -502,7 +519,6 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
     final prevLevel = currentLevel;
     final dir = targetDirectionOf(props);
     final target = _pos.relative(dir);
-    final tbp = target.toBlockPos();
 
     final probes = Rs.i.ctx.services.find<ObservableRegistry>()?.probes ?? const <ObservableProbe>[];
     ThresholdObservation? observed;
@@ -610,7 +626,6 @@ final class ThresholdSwitchBlockEntity extends CreateBlockEntity {
     final props = lvl.info(_pos)?.properties;
     if (props == null) return ThresholdType.unsupported;
     final target = _pos.relative(targetDirectionOf(props));
-    final targetPos = target.toBlockPos();
     final supported = thresholdTargetSupported(lvl.blockKey(target));
     if (supported && observedContainerAt(w, worldId, target) != null) return ThresholdType.item;
     if (supported && observedTankAt(w, target) != null) return ThresholdType.fluid;

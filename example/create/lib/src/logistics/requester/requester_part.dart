@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart';
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
@@ -25,6 +26,7 @@ final BlockProperty requesterAxis = BlockProperty.enumeration('axis', [
 /// `RedstoneRequesterBlock`.
 CreateBlock redstoneRequesterBlock() => CreateBlock(
   key: 'create:redstone_requester',
+  mapColor: manifestMapColor('redstone_requester'),
   properties: [requesterAxis, CreateProps.powered],
   hardness: 1.5,
   blastResistance: 6,

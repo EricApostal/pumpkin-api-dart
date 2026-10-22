@@ -35,8 +35,22 @@ final class SubLevelTicketLoadingSystem with SubLevelObserver {
         info.pointer = subLevel.getLastSerializationPointer();
       }
     } else if (reason == SubLevelRemovalReason.removed) {
-      container.allTickets.remove(uuid);
       container.activeTickets.remove(subLevel);
+      // Java drops the ticket here. The port keeps it unless the removal was an
+      // explicit delete (`ServerSubLevelContainer.forgetTickets`, called by
+      // `/sable remove`), because a ticket is the *only* pointer that can bring
+      // the sub-level back: a transient failure on restore (a tracker that reads
+      // empty for one tick, a plot whose chunks have not come back yet) would
+      // otherwise delete the last way to load the ship, and leave nothing in the
+      // log to say why. A kept ticket re-arms the force-load on the next start;
+      // an explicitly deleted sub-level must not come back, so the delete path
+      // clears it.
+      if (!container.forgottenTickets.remove(uuid)) {
+        final info = container.allTickets[uuid];
+        if (info != null) info.pointer = subLevel.getLastSerializationPointer();
+      } else {
+        container.allTickets.remove(uuid);
+      }
     }
   }
 }

@@ -10,8 +10,11 @@ real NeoForge client with the mod can join a Pumpkin server:
 * it registers the **wardframe block** (`block-registry`, permission
   `registry.blocks`): 64 states that connect to each other, hardness 5, needs a
   diamond pickaxe, drops itself, and links it to its item;
-* it answers NeoForge's **registry sync** (via `packages/pumpkin_neoforge`) so the
-  client learns the numeric ids of the mod's items and block and agrees to join;
+* it **declares** the mod to the host's NeoForge handshake
+  (`Context.declareNeoForge`, permission `neoforge`) with the two registries it
+  registers content into (`minecraft:item`, `minecraft:block`), so the client learns
+  the numeric ids of the mod's items and block from the host's registry sync and
+  agrees to join;
 * it keeps the mod's server behaviour that Pumpkin can run (see "What works").
 
 Everything about the content is in `data/manifest.json` (generated from the mod,
@@ -69,14 +72,17 @@ cp /path/to/pumpkin-api-dart/example/lonsdaleite/build/lonsdaleite.wasm plugins/
 ```
 
 The first start writes `pumpkin.toml` in the folder you ran it from. The plugin
-needs **two permissions, `registry.items` and `registry.blocks`** (register items
-and item tags, register blocks and block tags; nothing else: no files, no network).
-Pumpkin asks at the first load, in the console:
+needs **three permissions, `registry.items`, `registry.blocks` and `neoforge`**
+(register items and item tags, register blocks and block tags, and declare the mod
+to the host's NeoForge handshake — `Context.declareNeoForge`, which is what makes
+the host send the mod's entries to a client that has the mod; nothing else: no
+files, no network). Pumpkin asks at the first load, in the console:
 
 ```
 Plugin "lonsdaleite" (0.1.0) requests the following permissions:
   - registry.items: Allows the plugin to register custom items and item tags.
   - registry.blocks: Allows the plugin to register custom blocks and block tags.
+  - neoforge: Allows the plugin to declare its mod to the NeoForge handshake.
 Do you want to allow these permissions and load the plugin? [y/N]:
 ```
 
@@ -85,11 +91,11 @@ file). To skip the question put this in `pumpkin.toml` and restart:
 
 ```toml
 [plugins]
-allowed_permissions = ["registry.items", "registry.blocks"]
+allowed_permissions = ["registry.items", "registry.blocks", "neoforge"]
 ```
 
 `allow_unsigned` is `true` by default, so the unsigned `.wasm` loads. Do not list
-either permission in `blocked_permissions`.
+any of the three permissions in `blocked_permissions`.
 
 ### 4. Choose `online_mode`
 
@@ -125,32 +131,31 @@ plugin uses the library's default `NonNeoForgePolicy.reject`): it would break on
 first stack of a modded item. A vanilla client sees the refusal after about 3
 seconds (the wait for the client to announce itself).
 
-### Only one NeoForge plugin per server
+### The host owns the handshake; the plugin only declares
 
-This plugin installs the NeoForge handshake (`NeoForgeServer.install`), and
-**only one plugin per server may do that**: a client answers every registry sync
-and every `neoforge:register` query it receives, so two plugins would talk to the
-same client at once, and the second registry sync replaces the id tables of the
-first (the snapshot of a registry must contain *every* mod's entries). A server
-that runs Lonsdaleite **and** another NeoForge mod's plugin (for example
-`example/cc_tweaked` with `"neoforge": true`) needs **one** plugin that owns the
-NeoForge spec with both mods' registries. Until that exists, run only one of the
-two with its handshake on (CC's is off by default). How the spec could be shared
-between plugins is proposed in
-[packages/pumpkin_neoforge/README.md](../../packages/pumpkin_neoforge/README.md#one-neoforge-plugin-per-server).
+The plugin no longer speaks to the client itself (no `NeoForgeServer.install`): the
+host runs the NeoForge handshake (`neoforge.wit`, pumpkin_api
+[docs/neoforge-host.md](../../docs/neoforge-host.md)) and merges the declarations of
+all plugins, so Lonsdaleite can run next to another NeoForge mod's plugin (for
+example `example/cc_tweaked` with `"neoforge": true`) without them fighting over the
+client. What the declaration has to carry is the **vouch**: the registries the plugin
+registered content into (`minecraft:item`, `minecraft:block`, `lib/src/neoforge.dart`).
+Naming a registry is what makes the host send the mod's entries in it; a registry the
+plugin registered into but did not name is dropped from the snapshot for *every*
+plugin, and the client resolves the ids the host keeps writing against its own order —
+a different item or block, silently.
 
-### `adhoc` or `full` negotiation
+A client without the mod is refused (`NonNeoForgeClientPolicy.reject`), the way the
+plugin's own handshake refused it before.
 
-The plugin uses the library's **`adhoc`** negotiation (`lonsdaleiteNegotiation` in
-`lib/src/neoforge.dart`, a constant: the plugin has no config file). The mod has
-no payloads of its own, so nothing needs negotiating, and the registry sync with
-its acknowledgement proves that the client has all of the mod. `full` (the real
-NeoForge order, with the host's pre-brand hold) makes the client treat the connection
-as NeoForge for good, which needs the plugin to send the elytra attribute and
-`neoforge:recipe_content` and relies on host and client agreeing on more details
-(see `packages/pumpkin_neoforge/README.md`, "Full mode"). Change the constant to
-`NeoForgeNegotiation.full` to try it with a live client; the plugin then also
-installs the play helpers.
+### The negotiation is the host's
+
+There is no `adhoc`/`full` choice in the plugin any more: the host runs the whole
+handshake (the pre-brand query, the channel negotiation, the brand, the registry
+sync, the config files and the data map checks) for every client, and the plugin's
+declaration only says what the mod has. Lonsdaleite has no payloads of its own, so
+its declaration carries no channels — only the two registries and the policy for
+clients that are not NeoForge (`reject`, with a message that names the mod).
 
 ## What to expect
 
@@ -164,7 +169,7 @@ Skipped component, minecraft:interact_animation on 32 item(s): the host has no r
 Plugin lonsdaleite registered block lonsdaleite:lonsdaleite_wardframe with id 1286 and 64 states from state id 35723   (host)
 Plugin lonsdaleite linked item lonsdaleite:lonsdaleite_wardframe to block lonsdaleite:lonsdaleite_wardframe            (host)
 Registered block lonsdaleite:lonsdaleite_wardframe: id 1286, 64 states from state id 35723 (default state 35786), item id 1658, 2 block tags (minecraft:mineable/pickaxe, minecraft:needs_diamond_tool).
-NeoForge registry sync installed: Lonsdaleite Tools 2.3.0, 32 items (ids 1658 to 1689), block lonsdaleite:lonsdaleite_wardframe (id 1286, 64 states from state id 35723), negotiation adhoc.
+Declared Lonsdaleite Tools 2.3.0 to the NeoForge handshake: minecraft:item, minecraft:block with 32 items (ids 1658 to 1689) and block lonsdaleite:lonsdaleite_wardframe (id 1286, 64 states from state id 35723); clients without the mod are refused.
 ```
 
 If the item ids are not what the client will be told, the plugin **stops loading with
@@ -189,14 +194,18 @@ connect"* or *"... is a vanilla item, only custom items can place custom blocks"
 **When your client joins:**
 
 ```
-[neoforge] <name> joined with NeoForge (2 registries synced)
+INFO NeoForge handshake of <name> (0): sent 2 registry snapshot(s)
+INFO NeoForge handshake of <name> (0): registry sync acknowledged
+INFO NeoForge handshake of <name> (0): complete
 ```
 
 and in the client: a *Lonsdaleite* creative tab and the mod's items in the vanilla
 creative tabs (these come from the client's own mod code, not from the server). A
 client that fails the sync is disconnected with the message of the failed step and the
-server logs `[neoforge] <name> was refused: ...`. `/lonsdaleite` (permission
-`lonsdaleite:command.lonsdaleite`) lists who joined with the handshake.
+server logs `NeoForge handshake of <name> (0): refused: ...` (the host runs the
+handshake now, not the plugin). A client without the mod is refused with the
+declaration's message. `/lonsdaleite` (permission `lonsdaleite:command.lonsdaleite`)
+lists the online players and who of them is a NeoForge client.
 
 **In the game**
 
@@ -251,10 +260,11 @@ in Python for all 32 items; the registration sequence (order, ids, tags, the che
 and their messages) against a fake host, for the items and for the block (a fake
 that numbers the 64 states the way Pumpkin's Rust code does, independently of the
 Dart computation); the wardframe's state numbering against the mod's own state
-table in the manifest; the NeoForge spec equals `lonsdaleiteSpec()` and the Python
-client's `mods/lonsdaleite.json`; the plugin compiles to a component that imports
+table in the manifest; the ids the host reports against `lonsdaleiteSpec()` and the
+Python client's `mods/lonsdaleite.json`; the declaration carries both registries
+(`test/declaration_test.dart`); the plugin compiles to a component that imports
 `pumpkin:plugin/item-registry@0.2.0` and `pumpkin:plugin/block-registry@0.2.0` and
-declares both permissions.
+declares all three permissions.
 
 ```sh
 cd example/lonsdaleite && dart test && dart analyze
@@ -334,7 +344,7 @@ block).
 | `lib/src/block_install.dart` | register the block, link its item, register the block tags, verify ids and states (binding-free) |
 | `lib/src/component_codec.dart` | manifest item -> encoded components, skipped log |
 | `lib/src/host_adapter.dart` | the host-facing glue (`HostItemRegistrar`, the missing transformer call); the block registry is `BlockRegistries.host` from `pumpkin_api` |
-| `lib/src/neoforge.dart`, `neoforge_spec.dart` | `NeoForgeServer` and the sync spec from the manifest |
+| `lib/src/neoforge.dart`, `lib/src/declared_registries.dart` | the NeoForge declaration (the mod and the registries it vouches for) |
 | `lib/src/omnitool.dart` | right click decision logic (needs the missing host call) |
 | `tool/golden_components.py`, `test/fixtures/component_bytes.json` | second encoder and its golden bytes |
 | `docs/` | content, registration, server logic |

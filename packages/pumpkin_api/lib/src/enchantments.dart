@@ -174,7 +174,9 @@ extension EnchantmentManagerEffects on EnchantmentManager {
 
   /// Registers an enchantment effect component type and returns its id, after
   /// the vanilla ones. NeoForge clients get it in
-  /// `minecraft:enchantment_effect_component_type`.
+  /// `minecraft:enchantment_effect_component_type` once the plugin declares that
+  /// registry (`Context.declareNeoForge`, `NeoForgeRegistryAddition`) — like every
+  /// other host-numbered registry, naming is the vouch.
   Future<int> registerEffectType(String key) => unwrapHostAsync(
     registerEnchantmentEffectType(key: key),
     'Registering the enchantment effect type $key',

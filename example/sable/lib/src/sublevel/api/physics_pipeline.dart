@@ -14,7 +14,25 @@ import '../math/bounding_box.dart';
 import '../math/pose.dart';
 import '../math/vector.dart';
 import '../model/server_sub_level.dart';
+import '../system/sable_server_config.dart';
 import 'physics.dart';
+
+/// A pipeline that takes the solver settings of the level
+/// (`SubLevelPhysicsSystem.pipeline.updateConfigFrom`).
+///
+/// `PhysicsPipeline.updateConfigFrom(PhysicsConfigData)` is a member of the Java
+/// interface; here it is a separate interface so that a pipeline without a solver
+/// (the `impl/none` fallback, and every pipeline a test defines) does not have to
+/// implement it. A solver implements this and is handed [PhysicsConfigData] at
+/// `initialize()` and on every config reload.
+abstract interface class ConfigurablePhysicsPipeline {
+  /// `updateConfigFrom(config)`: applies the solver settings.
+  ///
+  /// Callers get the config from `SubLevelPhysicsSystem.physicsConfig`; a
+  /// pipeline that maps a setting onto one of its own knobs should say which
+  /// (`JoltPhysicsPipeline.setSolverIterations` is the Jolt one).
+  void updateConfigFrom(PhysicsConfigData config);
+}
 
 /// `dev.ryanhcode.sable.api.physics.PhysicsPipeline`.
 ///
@@ -82,6 +100,12 @@ abstract interface class PhysicsPipeline {
   ///
   /// [global] selects the static level (the shared world) over a sub-level
   /// body; a non-global section belongs to [subLevelRuntimeId].
+  ///
+  /// A pipeline may resolve the owner itself when [subLevelRuntimeId] is
+  /// omitted: the Jolt pipeline routes a section inside a registered sub-level's
+  /// plot to that sub-level's body and everything else to the static level (the
+  /// rule `RapierPhysicsPipeline.java:358-365` applies), which is what Sable's
+  /// physics system relies on — it always passes `global: false` and no id.
   void handleChunkSectionAddition(
     int x,
     int y,

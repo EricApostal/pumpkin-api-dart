@@ -21,17 +21,27 @@ import 'vec3_argument_absolute.dart';
 void registerJointCommands(CommandBuilder debug, SableCommandState state) {
   debug.sub('joint', description: 'Creates joints between sub-levels', build: (joint) {
     joint.sub('add', build: (add) {
-      add.arg('subLevel1', ArgumentTypes.word, build: (first) {
-        first.arg('subLevel2', ArgumentTypes.word, build: (second) {
-          second.sub('rotary', build: (rotary) {
-            rotary.arg(
-              'vectors',
-              ArgumentTypes.greedyString,
-              runs: (ctx) => _addRotary(ctx, state),
-            );
-          });
-        });
-      });
+      add.arg(
+        'subLevel1',
+        ArgumentTypes.token,
+        suggests: subLevelSelectorSuggestions,
+        build: (first) {
+          first.arg(
+            'subLevel2',
+            ArgumentTypes.token,
+            suggests: subLevelSelectorSuggestions,
+            build: (second) {
+              second.sub('rotary', build: (rotary) {
+                rotary.arg(
+                  'vectors',
+                  ArgumentTypes.greedyString,
+                  runs: (ctx) => _addRotary(ctx, state),
+                );
+              });
+            },
+          );
+        },
+      );
     });
   });
 }

@@ -25,7 +25,7 @@ import 'actuators_registration.dart';
 import 'blocks/actuator_contract.dart';
 import 'blocks/actuator_runtime.dart';
 import 'core/contraption_type.dart';
-import 'core/entity_type_keys.dart' show reportedEntityTypeKey;
+import 'entity/contraption_entity_ticking.dart' show ContraptionEntityTicking;
 import 'core/structure_info.dart';
 import 'entity/carriage_contraption_host.dart';
 import 'entity/contraption_collider.dart';
@@ -183,22 +183,9 @@ final class ContraptionsModule extends CreateModule {
     // `AbstractContraptionEntity.tick()` is the entity's own tick: the host only fires
     // `Events.entityTick` for a plugin type that opted in (`entity_tick_interval` is 0 otherwise,
     // `crates/pumpkin-core/src/world/mod.rs:1708-1734`). Without this every contraption exists,
-    // is sent to the client and then never moves: no actor ticks, no passenger placement.
-    // The host reports the type with a `minecraft:` prefix even for a plugin key
-    // (`minecraft:create:contraption`), so the key is normalized before it is matched
-    // ([reportedEntityTypeKey]).
-    ctx.listen(Events.entityTick, (server, e) async {
-      final type = reportedEntityTypeKey(e.entityType);
-      if (!_contraptionEntityKeys.contains(type)) return;
-      await host.onEntityTick(e.entityId);
-    });
-    for (final key in _contraptionEntityKeys) {
-      try {
-        ctx.host.tickPluginEntities(key, interval: 1);
-      } on Object catch (error) {
-        ctx.log.warn('contraptions of $key are not ticked: $error');
-      }
-    }
+    // is sent to the client and then never moves: no actor ticks, no passenger placement. The
+    // other modules opt their own contraption entity types in through the same call.
+    ctx.tickContraptionEntityTypes(_contraptionEntityKeys);
     ctx.listen(Events.worldUnload, (server, e) {
       if (e.cancelled) return;
       host.forgetWorld(e.targetWorld.getId());

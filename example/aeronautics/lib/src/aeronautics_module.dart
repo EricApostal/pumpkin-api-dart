@@ -13,26 +13,27 @@ import 'package:create/create.dart';
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter;
 import 'package:create/src/common/pos.dart' show Pos, posFromLong;
+import 'package:create/src/contraptions/entity/contraption_entity_ticking.dart'
+    show ContraptionEntityTicking;
+import 'package:create/src/contraptions/entity/host_contraption_entities.dart'
+    show ContraptionHostHooks;
 import 'package:create/src/kinetics/geometry.dart' show KState;
 import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import 'aeronautics_hooks.dart';
+import 'aeronautics_runtime.dart';
 import 'config/aero_config.dart';
 import 'content/items/item_behaviour.dart';
+import 'content/blocks/propeller/propeller_bearing_contraption_entity.dart';
+import 'data/aeronautics_data.dart';
 import 'hot_air/balloon_map.dart';
+import 'hot_air/balloon_save.dart';
 import 'index/aero_java_order.dart';
+import 'index/aero_kinetics.dart' show registerAeroKinetics;
 import 'index/aero_registry.dart';
 import 'levitite/levitite_crystallization.dart';
 import 'simulated_bridge.dart';
-
-/// The saved data of the balloons that unloaded.
-final SavedDataType<BalloonSave> balloonSaveType = SavedDataType<BalloonSave>(
-  'aeronautics_unloaded_balloons',
-  create: BalloonSave.new,
-  fromMap: BalloonSave.fromMap,
-  toMap: (value) => value.toMap(),
-);
 
 /// The saved data of the crystallising blend (`aeronautics_levitite_data`,
 /// `api/levitite_blend_crystallization/CrystallizationWorldSaveData.java:16`).
@@ -42,27 +43,6 @@ final SavedDataType<LevititeSave> levititeSaveType = SavedDataType<LevititeSave>
   fromMap: LevititeSave.fromMap,
   toMap: (value) => value.toMap(),
 );
-
-/// `aeronautics_unloaded_balloons`: the gas of the balloons whose last heater
-/// unloaded.
-final class BalloonSave {
-  final List<SavedBalloon> balloons = [];
-
-  BalloonSave();
-
-  Map<String, dynamic> toMap() => {
-    'balloons': [for (final balloon in balloons) balloon.toMap()],
-  };
-
-  static BalloonSave fromMap(Map<String, dynamic> map) {
-    final save = BalloonSave();
-    final entries = (map['balloons'] as List?) ?? const [];
-    for (final entry in entries) {
-      save.balloons.add(SavedBalloon.fromMap((entry as Map).cast<String, Object?>()));
-    }
-    return save;
-  }
-}
 
 /// `CrystallizationWorldSaveData`: the blend tickers of one world, saved under
 /// `Levitite Manager Data`.
@@ -87,6 +67,12 @@ final class LevititeSave {
 final class AeronauticsModule extends CreateModule {
   @override
   String get name => 'aeronautics';
+
+  /// The mod's data pack and the recipe contribution to the host.
+  final AeronauticsData data = AeronauticsData();
+
+  @override
+  Future<void> onServerLoaded(CreateRuntime runtime) => data.onServerLoaded(runtime);
 
   @override
   void register(CreateRegistry registry) {
@@ -158,6 +144,21 @@ final class AeronauticsModule extends CreateModule {
     AeronauticsHooks.store = ctx.blockEntities;
     LevititeCrystallizationRules.breakBlocksOnCrystallize = AeroConfig.server.blocks.breakBlocksOnCrystallize;
 
+    // The mod's data pack (`data/aeronautics/**`, `data/minecraft/tags/**`) and its `create:*`
+    // recipes, which the host cannot read out of a pack.
+    data.onLoad(ctx);
+
+    // The kinetic rules of the propeller family (`IRotate`). A Pumpkin plugin
+    // owns its own `KineticsRuntime`, so they are registered on that instance;
+    // without them `defFor` is null for every aeronautics key, no shaft
+    // connects to a propeller bearing and its `speed` stays 0, so the sails
+    // never turn into thrust.
+    if (KineticsRuntime.isLoaded) {
+      registerAeroKinetics(KineticsRuntime.instance);
+    } else {
+      ctx.log.warn('The kinetic runtime is not loaded: the propellers will not turn.');
+    }
+
     // The balloon save data is written when a balloon unloads or merges.
     AeronauticsHooks.onBalloonsDirty = (worldId) => ctx.savedData.markDirty(worldId, balloonSaveType);
 
@@ -168,6 +169,22 @@ final class AeronauticsModule extends CreateModule {
     // The two item components (`mixin/levitite/ItemEntityMixin`,
     // `mixin/item_converter/ItemEntityMixin`).
     ItemBehaviour().install(ctx);
+
+    // The advancement ids (`Aeronautics.java`'s `AeroAdvancements.init`), the gust spawn hook and
+    // the `aeronautics:gust` tick. Without this call no gust is spawned and no aeronautics
+    // advancement exists — the code is in the artifact but unreachable.
+    AeroRuntime.install(ctx);
+
+    // `PropellerBearingBlockEntity.assemble` builds a `PropellerBearingContraptionEntity`
+    // (`PropellerBearingBlockEntity.java:350-355`), the subclass that carries the gyroscopic tilt:
+    // without the kind the client would receive a plain `create:stationary_contraption` and no tilt
+    // transform, and its entity type would never be ticked.
+    ContraptionHostHooks.registerControlledEntity(
+      key: propellerBearingContraptionEntityKey,
+      type: PropellerBearingContraptionEntity,
+      create: PropellerBearingContraptionEntity.new,
+    );
+    ctx.tickContraptionEntityTypes(const [propellerBearingContraptionEntityKey]);
 
     // The levitite crystallisation payload (`AeroPacketManager.java:11-13`).
     ctx.listen(Events.playerCustomPayload, (server, event) async {
@@ -182,7 +199,11 @@ final class AeronauticsModule extends CreateModule {
         if (world == null) continue;
         SimulatedBridge.install(AeronauticsHooks.of(world).balloonWorld);
         AeronauticsHooks.tickWorld(world, ctx.blockEntities);
-        _flushBalloonSave(ctx, world);
+        // `BalloonLevelSavedData.get` on every tick: reads the saved balloons back into the map
+        // once per world, then keeps the save's list in step (unloaded balloons *and* every live
+        // one — the old path wrote only the unloaded list, which is how balloon gas was lost on a
+        // restart).
+        AeroBalloonSave.pump(ctx, world);
       }
     });
 
@@ -275,22 +296,11 @@ final class AeronauticsModule extends CreateModule {
     return null;
   }
 
-  /// Writes the unloaded balloons of [world] into the world's saved data.
-  void _flushBalloonSave(CreateContext ctx, World world) {
-    final runtime = AeronauticsHooks.of(world);
-    final unloaded = runtime.balloons.unloadedBalloons;
-    if (unloaded.isEmpty) return;
-
-    final save = ctx.savedData.get(world, balloonSaveType);
-    save.balloons
-      ..clear()
-      ..addAll(unloaded);
-    ctx.savedData.markDirty(world.getId(), balloonSaveType);
-  }
-
   @override
   void onUnload() {
     SimulatedBridge.reset();
+    AeroRuntime.clear();
+    AeroBalloonSave.clear();
     AeronauticsHooks.clear();
     AeronauticsHooks.store = null;
     LevititeCrystallizerManager.clear();

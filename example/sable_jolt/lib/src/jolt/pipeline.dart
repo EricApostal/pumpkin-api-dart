@@ -23,16 +23,19 @@ import 'package:sable/sable.dart'
         ConstraintJointAxis,
         ConstraintJointAxisMask,
         ConstraintPipeline,
+        FeatureAwarePhysicsPipeline,
         FixedConstraintConfiguration,
         ForceTotal,
         FreeConstraintConfiguration,
         GenericConstraintConfiguration,
         GenericConstraintHandle,
         KinematicContraption,
+        LevelPlot,
         Matrix3d,
         PhysicsConstraintConfiguration,
         PhysicsConstraintHandle,
         PhysicsPipeline,
+        PhysicsPipelineFeature,
         Pose3d,
         Pose3dc,
         Quaterniond,
@@ -41,6 +44,8 @@ import 'package:sable/sable.dart'
         RopeHandle,
         RopePhysicsObject,
         ServerSubLevel,
+        SubLevelContainer,
+        UnsupportedPhysicsFeatureException,
         Vector3d;
 
 import '../physics/buoyancy.dart';
@@ -48,7 +53,16 @@ import 'abi.dart';
 import 'voxel.dart';
 
 /// The Jolt-backed physics pipeline.
-final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
+///
+/// Its capabilities are declared through [FeatureAwarePhysicsPipeline]: this
+/// module has no kinematic-body factory and no rope chain, so both
+/// [PhysicsPipelineFeature.contraption] and [PhysicsPipelineFeature.rope] are
+/// unsupported, which keeps Sable's call sites
+/// (`compat/create/contraption_physics.dart`,
+/// `command/sable_spawn_commands.dart`) from reaching the throwing methods
+/// below.
+final class JoltPhysicsPipeline
+    implements PhysicsPipeline, ConstraintPipeline, FeatureAwarePhysicsPipeline {
   /// The module's exported functions.
   final JoltAbi abi;
 
@@ -181,9 +195,18 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
 
   @override
   void postPhysicsTicks() {
-    // `RapierPhysicsPipeline.postPhysicsTicks` drains contact-force events
-    // (`RapierPhysicsPipeline.java:175-178`); contact events are not part of
-    // this milestone.
+    // `RapierPhysicsPipeline.postPhysicsTicks` finalizes the tick by draining
+    // the engine's contact-force events into `processCollisionEffects`
+    // (`RapierPhysicsPipeline.java:171-178`), which drives collision sounds,
+    // particles and fragile-block breaking through
+    // `BlockSubLevelCollisionCallback` (`RapierPhysicsPipeline.java:
+    // processCollisionEffects`). That is not implementable from here: the
+    // module's `ContactListenerImpl` only adjusts friction and restitution per
+    // manifold (`jolt_abi.cpp:244-296`) and the C ABI has no export to record or
+    // drain contacts (`jolt_joint_set_contacts_enabled` is the only
+    // contact-related entry point). It needs a new native listener plus a drain
+    // export before the Dart callback layer can consume anything, so this stays
+    // an empty finalisation rather than a fake.
   }
 
   @override
@@ -233,19 +256,21 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
 
   @override
   void addContraption(KinematicContraption contraption) {
-    throw UnimplementedError(
-      'JoltPhysicsPipeline.addContraption: kinematic contraption bodies '
-      '(`createKinematicContraption` / `addKinematicContraptionChunkSection`, '
-      '`Rapier3D.java:152-672`) are driven by the Create compat layer (W6) and '
-      'are not part of this milestone. The native module already exposes the '
-      'body primitives they need (`jolt_body_*`).',
+    throw UnsupportedPhysicsFeatureException(
+      PhysicsPipelineFeature.contraption,
+      'a kinematic body factory: `native/jolt/src/jolt_abi.cpp` only creates '
+          'static and dynamic bodies (`EMotionType::Static`/`Dynamic`), so a '
+          'contraption cannot be driven by a kinematic body plus its chunk '
+          'sections (`RapierPhysicsPipeline.createKinematicContraption`, '
+          '`RapierPhysicsPipeline.java:225-299`)',
     );
   }
 
   @override
   void removeContraption(KinematicContraption contraption) {
-    throw UnimplementedError(
-      'JoltPhysicsPipeline.removeContraption: see addContraption.',
+    throw UnsupportedPhysicsFeatureException(
+      PhysicsPipelineFeature.contraption,
+      'a kinematic body factory (see addContraption)',
     );
   }
 
@@ -309,19 +334,32 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
 
   @override
   RopeHandle addRope(RopePhysicsObject rope) {
-    throw UnimplementedError(
-      'JoltPhysicsPipeline.addRope: a Sable rope is a chain of dynamic bodies '
-      'joined by a distance limit plus a velocity-damping six-DOF joint '
-      '(`rope.rs:108-260`), which needs the rope tuning in `rope.rs` and the '
-      'joint layer to be validated together. The native module has the joint '
-      'primitives (`jolt_joint_create_sixdof`) but no rope chain yet.',
+    throw UnsupportedPhysicsFeatureException(
+      PhysicsPipelineFeature.rope,
+      'a rope chain: a Sable rope is a chain of dynamic bodies joined by a '
+          'distance limit plus a velocity-damping six-DOF joint '
+          '(`rope.rs:108-260`), and the checked-in module only exposes the bare '
+          'joint primitives (`jolt_joint_create_sixdof`), not the rope tuning '
+          'the Rust original carries',
     );
   }
 
   @override
   void removeRope(RopeHandle rope) {
-    throw UnimplementedError('JoltPhysicsPipeline.removeRope: see addRope.');
+    throw UnsupportedPhysicsFeatureException(
+      PhysicsPipelineFeature.rope,
+      'a rope chain (see addRope)',
+    );
   }
+
+  /// Neither contraptions nor ropes are implemented: [supportsFeature] answers
+  /// `false` for every [PhysicsPipelineFeature] of this module.
+  ///
+  /// Sable's call sites consult this before calling, so the four throwing
+  /// methods above are unreachable in normal operation and the failure mode is
+  /// a reported capability gap instead of an exception inside a tick.
+  @override
+  bool supportsFeature(PhysicsPipelineFeature feature) => false;
 
   @override
   void handleChunkSectionAddition(
@@ -344,35 +382,49 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
       memory.storeUint32(_chunkPtr + i * 4, blockStates[i]);
     }
 
-    final body = global ? null : _bodyForRuntimeId(subLevelRuntimeId);
-    abi.chunkAdd(
-      _world,
-      x,
-      y,
-      z,
-      _chunkPtr,
-      global,
-      body?.handle ?? 0,
-    );
+    // The owner is decided here, not by the caller:
+    // `RapierPhysicsPipeline.handleChunkSectionAddition` looks the plot up at
+    // the chunk position and uploads to that sub-level's body when the plot has
+    // one (`RapierPhysicsPipeline.java:358-365`), and Sable's physics system
+    // cannot make that decision for the engine
+    // (`physics_system.dart:419` always passes `global: false` and no runtime
+    // id). An explicit `subLevelRuntimeId` is honoured first — that is Java's
+    // `uploadDataIfGlobal` path — and a section that no plot covers is static
+    // level geometry.
+    final explicit = global ? null : _bodyForRuntimeId(subLevelRuntimeId);
+    final plot = (global || explicit != null) ? null : _plotAt(x, z);
+    final body = explicit ?? (plot == null ? null : _subLevels[plot.getSubLevel()]);
+    final toGlobal = global || (explicit == null && plot == null);
 
-    if (global) {
+    abi.chunkAdd(_world, x, y, z, _chunkPtr, toGlobal, body?.handle ?? 0);
+
+    if (toGlobal) {
       levelBlocks.setSection(x, y, z, blockStates);
-    } else {
-      body!.blocks.setSection(x, y, z, blockStates);
+    } else if (body != null) {
+      body.blocks.setSection(x, y, z, blockStates);
     }
+    // A section of a plot whose sub-level has no body yet is not uploaded:
+    // `chunkAdd` with body 0 is a native no-op, which is what Java's `id = -1`
+    // does (`RapierPhysicsPipeline.java:363`), and recording it in
+    // [levelBlocks] would claim static geometry the module never got.
   }
 
   @override
   void handleChunkSectionRemoval(int x, int y, int z, {bool global = false}) {
     _requireWorld();
-    if (global) {
+    // `RapierPhysicsPipeline.handleChunkSectionRemoval` removes a section as
+    // static level geometry exactly when it is outside the plot grid
+    // (`RapierPhysicsPipeline.java:371-373`: `!container.inBounds(x, z)`); a
+    // section inside the grid is removed from whichever body recorded it. The
+    // old code trusted the caller's `global: false` and never removed a static
+    // section's colliders, and `jolt_chunk_remove` with body 0 is a no-op
+    // (`jolt_abi.cpp:1399-1410`).
+    final container = _container;
+    if (global || container == null || !container.inBounds(x, z)) {
       abi.chunkRemove(_world, x, y, z, true, 0);
       levelBlocks.removeSection(x, y, z);
       return;
     }
-    // `jolt_chunk_remove` needs the owning body (`jolt_abi.cpp:1399-1410`);
-    // with body 0 it is a no-op, which would leave the blocks' colliders in the
-    // scene after the section's ticket expired.
     for (final body in _subLevels.values) {
       if (body.removed || !body.blocks.hasSection(x, y, z)) {
         continue;
@@ -859,6 +911,26 @@ final class JoltPhysicsPipeline implements PhysicsPipeline, ConstraintPipeline {
     }
     return null;
   }
+
+  /// The plot grid the pipeline's sub-levels are allocated in, or `null` when
+  /// none is registered.
+  ///
+  /// The pipeline has no level of its own and must stay free of host imports,
+  /// so the container comes from a registered body's plot; every registered
+  /// sub-level is allocated from the same container
+  /// (`RapierPhysicsPipeline` reads it from the level instead,
+  /// `RapierPhysicsPipeline.java:359`).
+  SubLevelContainer? get _container {
+    for (final body in _subLevels.values) {
+      return body.subLevel.getPlot().container;
+    }
+    return null;
+  }
+
+  /// The plot that owns the chunk section `(x, z)`, or `null` when the section
+  /// is not inside a sub-level's plot (`SubLevelContainer.getPlot`, the lookup
+  /// `RapierPhysicsPipeline.java:359` does).
+  LevelPlot? _plotAt(int x, int z) => _container?.getPlot(x, z);
 
   int _handleOf(RigidBodyHandle body) {
     if (body is _SubLevelBody) {

@@ -10,6 +10,7 @@ import '../core/structure_transform.dart';
 import '../minecart/capability/minecart_controller.dart' show OrientedCouplingId;
 import 'contraption_collider.dart' show OrientedLike;
 import 'contraption_entity.dart';
+import 'contraption_synced_data.dart' show ContraptionSyncedData;
 import 'oriented_contraption_nbt.dart';
 
 /// Hooks the mounted (minecart) and bearing modules install for the oriented entity.
@@ -390,7 +391,17 @@ class OrientedContraptionEntity extends AbstractContraptionEntity
   String? getCouplingId() => couplingId;
 
   /// `setCouplingId`.
-  void setCouplingId(String? id) => couplingId = id;
+  void setCouplingId(String? id) {
+    // `entityData.set` only sends on a change, and the default is `Optional.empty()`.
+    if (couplingId == id) return;
+    couplingId = id;
+    // `entityData.set(COUPLING, Optional.ofNullable(id))`: the client flips the coupled cart and
+    // applies its motion from the entry (`OrientedContraptionEntity.onSyncedDataUpdated`), so a
+    // coupling made at runtime by the minecart controller is otherwise invisible to that client.
+    final entry = ContraptionSyncedData.optionalUuidEntry(id);
+    if (entry == null) return;
+    host.setSyncedEntry(ContraptionSyncedData.couplingIndex, entry);
+  }
 
   /// `stopRiding`: a contraption that is dropped disassembles itself.
   Future<void> stopRiding() async {

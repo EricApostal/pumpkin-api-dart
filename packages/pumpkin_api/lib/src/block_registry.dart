@@ -131,8 +131,19 @@ final class HostBlockRegistry implements BlockRegistryBackend {
         requiresCorrectTool: b.requiresCorrectTool,
         soundType: b.soundType,
         luminance: b.luminance,
+        lightRules: [
+          for (final r in b.lightRules)
+            generated.LightRule(
+              when: [
+                for (final e in r.when.entries)
+                  generated.PropertyValue(name: e.key, value: e.value),
+              ],
+              level: r.level,
+            ),
+        ],
         canOcclude: b.canOcclude,
         replaceable: b.replaceable,
+        ignitedByLava: b.ignitedByLava,
         mapColor: b.mapColor,
         collisionShape: _shape(b.collisionShape),
         selectionShape: _shape(b.selectionShape),

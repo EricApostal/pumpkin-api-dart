@@ -20,6 +20,7 @@ export 'src/content/components/converter.dart';
 export 'src/content/components/levitating.dart';
 export 'src/content/items/aero_items.dart';
 export 'src/content/items/item_behaviour.dart';
+export 'src/data/aeronautics_data.dart';
 export 'src/host/host_propeller_push_world.dart';
 export 'src/host/world_balloon_world.dart';
 export 'src/index/aero_registry.dart';

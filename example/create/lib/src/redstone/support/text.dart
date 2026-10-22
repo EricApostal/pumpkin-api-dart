@@ -42,7 +42,6 @@ const Map<String, String> kCreateEnglish = {
   'create.display_target.page': 'Page %1\$s',
   'create.display_target.line': 'Line %1\$s',
   'create.tooltip.analogStrength': 'Analog Strength: %1\$s/15',
-  'create.gui.threshold_switch.fluid_amount': 'Fluid amount',
   'create.train.status': '<i> Information about Train: %1\$s',
   'create.train.status.back_on_track': 'Train is back on Track',
   'create.train.status.collision': 'Collision with other Train',

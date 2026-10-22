@@ -1,39 +1,66 @@
 // `GenericItemFilling`, `GenericItemEmptying`, `FillingBySpout` and the potion bottle conversions
-// (pure): what fluid goes into and comes out of items. Items are [FluidItemSpec]s (key and count); the
-// host exposes bucket contents and registered container items, which [ItemFluidRules] describes.
-// The potion contents of a bottle item cannot be read or written through the host, so a bottle's
-// potion is carried by the fluid data and the bottle item is chosen by its type
-// (`minecraft:potion`, `splash_potion`, `lingering_potion`).
+// (pure): what fluid goes into and comes out of items. Items are [FluidItemSpec]s (key, count and
+// the vanilla component bytes that matter here); the host exposes bucket contents and registered
+// container items, which [ItemFluidRules] describes.
+//
+// A bottle's potion travels in two places: the item's `minecraft:potion_contents` component
+// ([PotionContentsComponent], which the call sites read off the stack and write back) and the
+// fluid's own data (the bottle type included). `PotionFluidHandler.getFluidFromPotionItem` and
+// `fillBottle` are the two directions.
 import 'fluid_helper.dart';
 import 'fluid_stack.dart';
 import 'fluid_storage.dart';
 import 'potion_data.dart';
 
-/// A stack of items as the fluid code sees it: the registry key and the count.
+/// A stack of items as the fluid code sees it: the registry key, the count and the vanilla data
+/// component bytes of the stack (`PStack.comps`' shape: the component's wire name and its
+/// network bytes).
 final class FluidItemSpec {
   final String key;
   final int count;
 
-  const FluidItemSpec(this.key, [this.count = 1]);
+  /// The vanilla data components of the stack. Only the potion bottle path reads and writes them
+  /// (`minecraft:potion_contents`); a caller that has no stack leaves them out, and a spec
+  /// without components still names the same item.
+  final List<(String, List<int>)> comps;
+
+  const FluidItemSpec(this.key, [this.count = 1, this.comps = const []]);
 
   static const FluidItemSpec empty = FluidItemSpec('minecraft:air', 0);
 
   bool get isEmpty => key == 'minecraft:air' || count <= 0;
   bool get isNotEmpty => !isEmpty;
 
-  FluidItemSpec withCount(int c) => c <= 0 ? empty : FluidItemSpec(key, c);
+  FluidItemSpec withCount(int c) => c <= 0 ? empty : FluidItemSpec(key, c, comps);
 
   /// `ItemStack.shrink(n)`.
   FluidItemSpec shrink(int n) => withCount(count - n);
 
+  /// The bytes of the vanilla component [name], `null` when the stack has none.
+  List<int>? component(String name) {
+    for (final (n, bytes) in comps) {
+      if (n == name) return bytes;
+    }
+    return null;
+  }
+
+  /// A spec that carries [bytes] as the vanilla component [name].
+  FluidItemSpec withComponent(String name, List<int> bytes) =>
+      FluidItemSpec(key, count, [(name, bytes)]);
+
+  /// The key and the count only: the components are not part of it, so a spec built from a stack
+  /// and one built without one compare equal, as they did before components were carried.
   @override
-  bool operator ==(Object other) => other is FluidItemSpec && (isEmpty && other.isEmpty || other.key == key && other.count == count);
+  bool operator ==(Object other) =>
+      other is FluidItemSpec &&
+      (isEmpty && other.isEmpty || other.key == key && other.count == count);
 
   @override
   int get hashCode => isEmpty ? 0 : Object.hash(key, count);
 
   @override
-  String toString() => isEmpty ? 'FluidItemSpec.empty' : 'FluidItemSpec($key x$count)';
+  String toString() =>
+      isEmpty ? 'FluidItemSpec.empty' : 'FluidItemSpec($key x$count)';
 }
 
 /// A container item registered through the host (`FluidHandlers.registerContainerItem`).
@@ -252,7 +279,7 @@ class GenericItemEmptying {
   /// (empty for none) of one item of [stack]. The new stack is returned as `$3`.
   (FStack fluid, FluidItemSpec remainder, FluidItemSpec stack) emptyItem(FluidItemSpec stack, {required bool simulate}) {
     if (rules.isPotionItem(stack.key)) {
-      final fluid = potionItemFluid(stack.key);
+      final fluid = potionItemFluid(stack);
       return (fluid, const FluidItemSpec('minecraft:glass_bottle'), simulate ? stack : stack.shrink(1));
     }
 
@@ -265,10 +292,14 @@ class GenericItemEmptying {
     return (fluid, FluidItemSpec(handler.containerItem), simulate ? stack : stack.shrink(1));
   }
 
-  /// `PotionFluidHandler.getFluidFromPotionItem`: a bottle holds 250 mB of its fluid.
-  static FStack potionItemFluid(String itemKey) {
-    final bottle = BottleType.fromItem(itemKey);
-    final data = PotionFluidData('minecraft:water', bottle: bottle);
+  /// `PotionFluidHandler.getFluidFromPotionItem`: a bottle holds 250 mB of its fluid — plain
+  /// water for a regular water bottle, the potion's own fluid otherwise, read from the bottle's
+  /// `minecraft:potion_contents` (`PotionFluidHandler.java:63-71`).
+  static FStack potionItemFluid(FluidItemSpec stack) {
+    final data = PotionContentsComponent.read(
+      stack.component(PotionContentsComponent.key),
+      bottle: BottleType.fromItem(stack.key),
+    );
     return PotionFluids.fluidFromPotion(data, 250);
   }
 }
@@ -317,11 +348,23 @@ class GenericItemFilling {
     if (stack.key == 'minecraft:glass_bottle' && _canFillGlassBottleInternally(toFill)) {
       final FluidItemSpec bottle;
       if (FluidHelper.isWater(toFill.fluid)) {
-        bottle = const FluidItemSpec('minecraft:potion');
+        // `GenericItemFilling.java:119-121`: `PotionContents.createItemStack(POTION, WATER)`,
+        // i.e. the bottle carries the explicit water contents.
+        bottle = FluidItemSpec(
+          'minecraft:potion',
+          1,
+          PotionContentsComponent.componentsOf(const PotionFluidData('minecraft:water')),
+        );
       } else if (FluidKeys.still(toFill.fluid) == FluidKeys.tea) {
         bottle = const FluidItemSpec('create:builders_tea');
       } else {
-        bottle = FluidItemSpec(PotionFluids.bottleItemFor(toFill));
+        // `PotionFluidHandler.fillBottle`: the bottle type from the fluid and the fluid's own
+        // contents on the bottle (`PotionFluidHandler.java:84-92`).
+        bottle = FluidItemSpec(
+          PotionFluids.bottleItemFor(toFill),
+          1,
+          PotionContentsComponent.componentsOf(PotionFluidData.decode(toFill.data)),
+        );
       }
       return (bottle, stack.shrink(1), leftFluid);
     }

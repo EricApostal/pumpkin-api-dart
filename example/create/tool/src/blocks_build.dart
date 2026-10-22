@@ -219,10 +219,79 @@ class BlockBuilderStage {
   void _props(BlockRecord r) {
     final cls = r.def.cls;
     if (cls == null) return;
-    r.props = props.resolve(cls);
+    r.props = props.resolve(cls, ctor: _registrationCtor(r.def, cls));
     for (final n in r.props.notes) {
       r.notes.add('props: $n');
     }
+  }
+
+  /// The constructor the registration actually invokes, when the factory
+  /// expression names one unambiguously.
+  ///
+  /// A class with several constructors can register a different default state in
+  /// each (or in none), so the default cannot be folded from "some constructor
+  /// that happens to call `registerDefaultState`". `TableClothBlock` is the
+  /// example: the `DyeColor` constructor registers `HAS_BE=false`, the
+  /// `String type` constructor registers nothing, and the three metal cloths use
+  /// the latter. Returns `null` when it cannot tell (`Foo::new` with several
+  /// constructors, a factory method), which makes the resolver flag the class.
+  JavaMethod? _registrationCtor(BlockDef d, JavaClass cls) {
+    final ctors = cls.ctors;
+    if (ctors.isEmpty) return null;
+    if (ctors.length == 1) return ctors.first;
+    final args = _factoryCtorArgs(d);
+    if (args == null) return null;
+    final candidates = ctors.where((c) => splitArgs(c.params).length == args.length).toList();
+    if (candidates.isEmpty) return null;
+    final compatible = candidates.where((c) => _ctorMatches(c, args, d)).toList();
+    return compatible.length == 1 ? compatible.first : null;
+  }
+
+  /// The argument texts of the `new Foo(...)` in the registration's factory
+  /// expression, or `null` when the expression is not such a constructor call.
+  List<String>? _factoryCtorArgs(BlockDef d) {
+    final expr = d.factoryExpr;
+    if (expr == null || expr.contains('::')) return null;
+    final m = RegExp(r'\bnew\s+[\w.]+\s*(?:<[^>]*>)?\s*\(').firstMatch(expr);
+    if (m == null) return null;
+    final cl = matchClose(expr, m.end - 1);
+    if (cl < 0) return null;
+    return splitArgs(expr.substring(m.end, cl));
+  }
+
+  bool _ctorMatches(JavaMethod ctor, List<String> args, BlockDef d) {
+    final params = splitArgs(ctor.params);
+    for (var i = 0; i < params.length; i++) {
+      final want = _paramSimpleType(params[i]);
+      final have = _argSimpleType(args[i], d);
+      if (have == null || want == null) continue; // unknown: any type is fine
+      if (want != have) return false;
+    }
+    return true;
+  }
+
+  String? _paramSimpleType(String param) {
+    var p = param.replaceAll(RegExp(r'@\w+(\([^()]*\))?'), ' ');
+    p = p.replaceAll(RegExp(r'<[^<>]*>'), ' ');
+    final toks = p.split(RegExp(r'\s+')).where((t) => t.isNotEmpty && t != 'final').toList();
+    if (toks.length < 2) return null;
+    var t = toks[toks.length - 2];
+    t = t.substring(t.lastIndexOf('.') + 1);
+    return t.replaceAll('[]', '');
+  }
+
+  /// The simple Java type of a constructor argument, when it can be told.
+  String? _argSimpleType(String arg, BlockDef d) {
+    final a = arg.trim();
+    if (stringLiteral(a) != null) return 'String';
+    if (a == 'true' || a == 'false') return 'boolean';
+    if (RegExp(r'^-?\d+$').hasMatch(a)) return 'int';
+    final v = ip.evalText(a, d.factoryEnv, d.factoryCtx);
+    if (v is String) return 'String';
+    if (v is bool) return 'boolean';
+    if (v is int) return 'int';
+    if (v is EnumVal) return v.type;
+    return null;
   }
 
   // --------------------------------------------------------------- item

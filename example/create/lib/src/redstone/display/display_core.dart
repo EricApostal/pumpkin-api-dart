@@ -292,6 +292,11 @@ final class DisplayLinkContext {
   /// `flapDisplayContext`.
   Object? flapDisplayContext;
 
+  /// `context.blockEntity().award(advancement)`: awards [id] to the player that placed this
+  /// display link. The station summary gives the display board advancement through it, like
+  /// `StationSummaryDisplaySource.java:105-108`.
+  final void Function(String advancement)? award;
+
   DisplayLinkContext({
     required this.env,
     required this.linkPos,
@@ -301,6 +306,7 @@ final class DisplayLinkContext {
     required this.direction,
     this.activeTarget,
     this.linkedPanels = const [],
+    this.award,
   });
 
   /// The block at the source / target position.

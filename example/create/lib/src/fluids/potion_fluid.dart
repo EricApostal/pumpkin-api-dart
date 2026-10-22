@@ -1,7 +1,7 @@
-// `PotionFluidHandler` (the item side): which items are potion bottles, what
-// fluid they hold and what bottle a potion fluid fills. The potion contents of
-// a bottle cannot be read through the host, so a bottle's potion travels with
-// the fluid data and a plain water bottle is recognised by its item.
+/// `PotionFluidHandler` (the item side): which items are potion bottles, what fluid they hold and
+/// what bottle a potion fluid fills. A bottle's potion is read off the stack's
+/// `minecraft:potion_contents` component ([PotionContentsComponent]); the fluid carries it with
+/// its own data, so it survives the trip in both directions.
 import 'fluid_helper.dart';
 import 'fluid_stack.dart';
 import 'generic_item_fluid.dart';
@@ -23,7 +23,7 @@ abstract final class PotionFluidHandler {
 
   /// `getFluidFromPotionItem`: 250 mB of the bottle's fluid.
   static FStack getFluidFromPotionItem(FluidItemSpec item) =>
-      GenericItemEmptying.potionItemFluid(item.key);
+      GenericItemEmptying.potionItemFluid(item);
 
   /// `emptyPotion`: the fluid of one bottle and the empty glass bottle.
   static (FStack, FluidItemSpec) emptyPotion(
@@ -34,9 +34,12 @@ abstract final class PotionFluidHandler {
     const FluidItemSpec('minecraft:glass_bottle'),
   );
 
-  /// `fillBottle`: the bottle item a potion fluid fills.
-  static FluidItemSpec fillBottle(FStack fluid) =>
-      FluidItemSpec(PotionFluids.bottleItemFor(fluid));
+  /// `fillBottle`: the bottle item a potion fluid fills, with the fluid's contents on it.
+  static FluidItemSpec fillBottle(FStack fluid) => FluidItemSpec(
+    PotionFluids.bottleItemFor(fluid),
+    1,
+    PotionContentsComponent.componentsOf(PotionFluidData.decode(fluid.data)),
+  );
 
   /// The bottle type of an item (`bottleTypeFromItem`).
   static BottleType bottleTypeOf(String itemKey) =>

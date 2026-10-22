@@ -19,7 +19,13 @@ import '../saw/saw_spec.dart' show casing12Rules;
 import '../crafter/machine_support.dart';
 import 'deployer_block_entity.dart';
 
-/// `DirectionalAxisKineticBlock` with `KineticBlock.hasShaftTowards == false`.
+/// `DirectionalAxisKineticBlock`, which is what `DeployerBlock` extends.
+///
+/// `hasShaftTowards` is the inherited one — `face.getAxis() == getRotationAxis(state)`
+/// (`DirectionalAxisKineticBlock.java:143-145`), the same rule `DirectionalAxisBlockDef` uses.
+/// It used to return `false` for every face, which meant no shaft could ever connect to a
+/// deployer (`kinetics/propagator.dart` needs `hasShaftTowards` on both sides), so a deployer
+/// never turned and no `create:deploying` recipe could ever run.
 class DeployerKineticDef extends KineticBlockDef {
   const DeployerKineticDef();
 
@@ -35,7 +41,8 @@ class DeployerKineticDef extends KineticBlockDef {
   }
 
   @override
-  bool hasShaftTowards(KState state, Dir face) => false;
+  bool hasShaftTowards(KState state, Dir face) =>
+      face.axis == rotationAxis(state);
 }
 
 /// `DeployerBlock.getStateForPlacement` (`DirectionalAxisKineticBlock`).

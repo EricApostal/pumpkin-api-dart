@@ -2,7 +2,10 @@
 // amounts and the lift force. Runs on the VM: the world is a map of blocks.
 import 'dart:math' as math;
 
+import 'dart:typed_data';
+
 import 'package:aeronautics/aeronautics.dart';
+import 'package:aeronautics/src/hot_air/gust_hook.dart' show GustSpawnHooks, gustSpawnData;
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Axis, Direction;
 import 'package:sable/sable.dart'
@@ -476,6 +479,93 @@ void main() {
 
       expect(map.balloonAt((2, 2, 2)), same(balloon));
       expect(map.balloonAt((20, 2, 20)), isNull);
+    });
+
+    test('every live balloon is saved, not only the unloaded ones', () {
+      // Java's `BalloonLevelSavedData.save` writes the unloaded balloons *and* every live one;
+      // writing only the unloaded list is what lost a live balloon's gas across a restart.
+      final world = TestBalloonWorld();
+      world.shell((0, 0, 0), (4, 4, 4), 'aeronautics:white_envelope');
+
+      final graph = BalloonBuilder.buildBalloon(world, (2, 2, 2))!;
+      final balloon = ServerBalloon(world, (2, 2, 2), graph, const [])
+        ..gasAmounts[const DefaultLiftingGas()] = LiftingGasData(4, 4, 0);
+
+      final map = BalloonMap(world)..addBalloon(balloon);
+      final saved = map.savedBalloons();
+
+      expect(saved, hasLength(1));
+      expect(saved.single.controllerPos, (2, 2, 2));
+      expect(saved.single.gasData.single.data.amount, 4);
+    });
+
+    test('a saved balloon is read back, and the heater takes its gas', () {
+      final world = TestBalloonWorld();
+      world.shell((0, 0, 0), (4, 4, 4), 'aeronautics:white_envelope');
+
+      final graph = BalloonBuilder.buildBalloon(world, (2, 2, 2))!;
+      final before = ServerBalloon(world, (2, 2, 2), graph, const [])
+        ..gasAmounts[const DefaultLiftingGas()] = LiftingGasData(4, 4, 0);
+      final saved = (BalloonMap(world)..addBalloon(before)).savedBalloons();
+
+      // `BalloonLevelSavedData.create` adds the saved list to the map of the loaded world, and a
+      // heater that builds the structure again takes the gas back
+      // (`BlockEntityLiftingGasProvider.tryCreateBalloon`).
+      BalloonMap.clear();
+      final map = BalloonMap.of(world)..loadUnloaded(saved);
+      expect(map.unloaded.length, 1);
+
+      final heater = TestHeater(world, (2, 1, 2), (2, 2, 2));
+      heater.tickBalloonLogic();
+
+      final balloon = heater.balloon;
+      expect(balloon, isNotNull);
+      expect(map.unloaded, isEmpty);
+      expect((balloon! as ServerBalloon).liftingGasHolders.single.data.amount, 4);
+      expect(before.liftingGasHolders.single.data.amount, 4);
+    });
+
+    test('a gust is spawned when gas escapes, and it takes a share of the gas', () {
+      // `ServerBalloon.spawnGust`: every gas contributes `1 / contributingGases`, a gust forms
+      // only when every gas had its share, and the base class spawns the entity
+      // (`GustEntity.addGust`).
+      final spawned = <(String, (int, int, int), Direction)>[];
+      GustSpawnHooks.spawn = (worldId, pos, direction) => spawned.add((worldId, pos, direction));
+      addTearDown(() => GustSpawnHooks.spawn = null);
+
+      final world = TestBalloonWorld();
+      world.shell((0, 0, 0), (4, 4, 4), 'aeronautics:white_envelope');
+
+      final graph = BalloonBuilder.buildBalloon(world, (2, 2, 2))!;
+      final balloon = ServerBalloon(world, (2, 2, 2), graph, const [])
+        ..gasAmounts[const DefaultLiftingGas()] = LiftingGasData(4, 4, 0);
+
+      balloon.spawnGust(2, 4, 3, Direction.up);
+
+      expect(spawned, hasLength(1));
+      expect(spawned.single.$1, 'world');
+      expect(spawned.single.$2, (2, 4, 3));
+      expect(spawned.single.$3, Direction.up);
+      expect(balloon.liftingGasHolders.single.data.amount, 3);
+
+      // A gas that cannot pay its share stops the gust entirely.
+      spawned.clear();
+      balloon.gasAmounts[const DefaultLiftingGas()] = LiftingGasData(0.1, 0, 0);
+      balloon.spawnGust(2, 4, 3, Direction.up);
+      expect(spawned, isEmpty);
+    });
+
+    test('the gust spawn payload is the direction rotation as four floats', () {
+      // `SableBufferUtils.write(Quaterniondc)`: x, y, z, w, big-endian float32.
+      final data = ByteData.sublistView(gustSpawnData(Direction.up));
+      expect(data.getFloat32(0, Endian.big), closeTo(0, 1e-6));
+      expect(data.getFloat32(4, Endian.big), closeTo(0, 1e-6));
+      expect(data.getFloat32(8, Endian.big), closeTo(0, 1e-6));
+      expect(data.getFloat32(12, Endian.big), closeTo(1, 1e-6));
+
+      final down = ByteData.sublistView(gustSpawnData(Direction.down));
+      expect(down.getFloat32(0, Endian.big), closeTo(1, 1e-6));
+      expect(down.getFloat32(12, Endian.big), closeTo(0, 1e-6));
     });
 
     test('unloading keeps the gas', () {

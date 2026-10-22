@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart';
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
@@ -31,8 +32,12 @@ final BlockProperty packagerFacing = BlockProperty.enumeration('facing', [
 /// `PackagerBlock`.
 CreateBlock packagerBlock() => CreateBlock(
   key: 'create:packager',
+  mapColor: manifestMapColor('packager'),
   properties: [packagerFacing, CreateProps.flag('linked'), CreateProps.powered],
-  defaultState: const {'linked': 'true'},
+  // `PackagerBlock.java:51-54` sets `LINKED=false` on the default state before
+  // `registerDefaultState`; the `linked=true` state is `stateDefinition.any()`
+  // and is only reached by a block placed without the link.
+  defaultState: const {'linked': 'false'},
   hardness: 3,
   blastResistance: 6,
   requiresCorrectTool: true,
@@ -42,6 +47,7 @@ CreateBlock packagerBlock() => CreateBlock(
   placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
   behavior: BlockBehavior(
     onNeighborUpdate: _onNeighborUpdate,
+    onPlaced: _onPlaced,
     onUse: _onUse,
     onComparatorOutput: _comparator,
   ),
@@ -50,6 +56,7 @@ CreateBlock packagerBlock() => CreateBlock(
 /// `RepackagerBlock`: a packager without the `linked` state.
 CreateBlock repackagerBlock() => CreateBlock(
   key: 'create:repackager',
+  mapColor: manifestMapColor('repackager'),
   properties: [packagerFacing, CreateProps.powered],
   hardness: 3,
   blastResistance: 6,
@@ -60,10 +67,23 @@ CreateBlock repackagerBlock() => CreateBlock(
   placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
   behavior: BlockBehavior(
     onNeighborUpdate: _onNeighborUpdate,
+    onPlaced: _onPlaced,
     onUse: _onUse,
     onComparatorOutput: _comparator,
   ),
 );
+
+/// `PackagerBlock.setPlacedBy`: the packager remembers who placed it, so it can give them the
+/// packager advancement when it sends its first package (`AdvancementBehaviour.setPlacedBy`).
+Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
+  final uuid = e.player?.asString;
+  if (uuid == null) return;
+  final be = Lg.i.store.typed<PackagerBlockEntity>(
+    e.targetWorld.getId(),
+    e.pos,
+  );
+  be?.advancements.setPlayer(uuid);
+}
 
 Future<void> _onNeighborUpdate(
   Server server,

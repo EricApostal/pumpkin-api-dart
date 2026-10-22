@@ -168,12 +168,12 @@ void main() {
     });
 
     test('blocks: the rest of the Java list is the content this port lacks', () {
-      expect(SimPorted.blocks.length, 23);
+      expect(SimPorted.blocks.length, 39);
       final missing = [
         for (final key in SimJavaOrder.blocks)
           if (!SimPorted.blocks.contains(key)) key,
       ];
-      expect(missing, hasLength(72));
+      expect(missing, hasLength(56));
       expect(
         missing,
         containsAll(const [
@@ -220,7 +220,10 @@ void main() {
         registeredItemKeys().where((k) => k.endsWith('_symmetric_sail')).toList(),
         ['simulated:white_symmetric_sail'],
       );
-      expect(registeredItemKeys(), hasLength(9));
+      // 3 standalone items plus the block item of every ported block that has
+      // one: 6 before the portable engines, which register an item per colour
+      // (`SimBlocks.java:341-351`).
+      expect(registeredItemKeys(), hasLength(25));
     });
 
     test('block entity types', () {
@@ -230,7 +233,7 @@ void main() {
         for (final key in SimJavaOrder.blockEntityTypes)
           if (SimPorted.blockEntityTypes.contains(key)) key,
       ]);
-      expect(blockEntityTypes.report.missing, hasLength(23));
+      expect(blockEntityTypes.report.missing, hasLength(22));
       expect(blockEntityTypes.report.missing, contains('simulated:simple'));
     });
   });

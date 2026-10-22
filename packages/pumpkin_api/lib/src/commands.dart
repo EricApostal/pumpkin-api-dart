@@ -75,6 +75,26 @@ abstract final class ArgumentTypes {
 
   static const boolean = CommandArgumentTypeBool();
 
+  /// A block state: the namespaced block key, e.g. `minecraft:stone`. Read it
+  /// with `CommandContext.blockState`.
+  ///
+  /// The host parses the same grammar as the vanilla command argument: a block
+  /// id, namespaced or not (`stone` becomes `minecraft:stone`), optionally
+  /// followed by a property list (`minecraft:oak_stairs[facing=north]`). The
+  /// list is validated against the block's own properties, so an unknown
+  /// property or value fails the command before the handler runs. Only the
+  /// block key reaches the plugin (`ArgBlock`), so the properties are checked
+  /// and then dropped: parse them yourself with [ArgumentTypes.token] if the
+  /// handler needs the values.
+  static const blockState = CommandArgumentTypeBlockState();
+
+  /// One whitespace-delimited token, handed to the plugin unchanged: `@e`,
+  /// `@n[limit=2,sort=nearest]`, `static_world`, `minecraft:stone`. `[...]` and
+  /// `{...}` groups stay together, so a space inside them does not end the
+  /// token, which is what lets a selector with modifiers sit in front of more
+  /// arguments. Read it with `CommandContext.string` and parse it yourself.
+  static const token = CommandArgumentTypeToken();
+
   /// One or more online players, matched by name or selector.
   static const players = CommandArgumentTypePlayers();
 
@@ -192,6 +212,13 @@ extension ConsumedArgsApi on ConsumedArgs {
     _ => throw _wrongType(key, 'a block position'),
   };
 
+  /// A block-state argument ([ArgumentTypes.blockState]): the namespaced block
+  /// key the host parsed, e.g. `minecraft:stone`.
+  String blockState(String key) => switch (this[key]) {
+    ArgBlock(:final value) => value,
+    _ => throw _wrongType(key, 'a block'),
+  };
+
   /// Like [string], or `null` when the argument wasn't typed. (The host
   /// reports an argument that is missing as empty text.)
   String? stringOrNull(String key) => switch (this[key]) {
@@ -228,9 +255,15 @@ extension ConsumedArgsApi on ConsumedArgs {
     _ => null,
   };
 
-  /// Like [blockPos], or `null` when it wasn't typed.
+/// Like [blockPos], or `null` when the argument wasn't typed.
   BlockPos? blockPosOrNull(String key) => switch (this[key]) {
     ArgBlockPos(:final value) => value,
+    _ => null,
+  };
+
+  /// Like [blockState], or `null` when the argument wasn't typed.
+  String? blockStateOrNull(String key) => switch (this[key]) {
+    ArgBlock(:final value) => value.isEmpty ? null : value,
     _ => null,
   };
 

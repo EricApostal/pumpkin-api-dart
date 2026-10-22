@@ -14,7 +14,15 @@ trap 'rm -rf "$OUT"' EXIT
 (cd tool/runtime_check && $DART run pumpkin_tools build bin/runtime_check.dart -o "$OUT/runtime_check.wasm")
 
 CHECKS=$(grep -oE "^  '[A-Za-z_0-9]+':" tool/runtime_check/bin/runtime_check.dart | tr -d " ':")
+
+# The probe declares the console commands its checks need first: `// PRE: <cmd>`
+# lines, typed in file order before the `t` checks (a check that asserts on how a
+# host argument parsed needs that command to have run).
 set --
+grep -oE '^// PRE: .*' tool/runtime_check/bin/runtime_check.dart | sed 's|^// PRE: ||' > "$OUT/pre"
+while IFS= read -r pre; do
+  [ -n "$pre" ] && set -- "$@" "$pre"
+done < "$OUT/pre"
 for check in $CHECKS; do set -- "$@" "t $check"; done
 
 ALLOW_PERMISSIONS="fs.write.data" tool/smoke_test.sh "$OUT/runtime_check.wasm" "$@" > "$OUT/log" 2>&1 || true

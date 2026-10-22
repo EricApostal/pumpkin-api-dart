@@ -9,29 +9,24 @@
 import 'dart:math' as math;
 
 import '../../host/sub_level_host.dart';
-import '../../model/server_sub_level.dart';
 
 /// The level resolver: a host world handle to the model's level view.
 typedef SableLevelResolver = SableLevel Function(Object? world);
 
 /// The runtime state of the `/sable` commands.
+///
+/// The selector's `@t`/`@v` lookups are not here: the command layer resolves
+/// them from the sender it already has (see `command_support.dart`), which is
+/// all the port can do while it has no entity-collision tracking.
 final class SableCommandState {
   /// Resolves a host world to the model's level view.
   final SableLevelResolver levelOf;
-
-  /// The sub-level [playerId] is standing on (`getTrackingSubLevel`).
-  final ServerSubLevel? Function(String playerId)? trackingSubLevel;
-
-  /// The sub-level [playerId] is looking at (`@v`).
-  final ServerSubLevel? Function(String playerId)? viewedSubLevel;
 
   /// The random source for `@r`.
   final math.Random random;
 
   SableCommandState({
     required this.levelOf,
-    this.trackingSubLevel,
-    this.viewedSubLevel,
     math.Random? random,
   }) : random = random ?? math.Random();
 

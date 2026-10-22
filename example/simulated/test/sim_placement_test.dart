@@ -177,9 +177,11 @@ void main() {
       const placed = (0, 0, 0);
       final inFront = _step(placed, looking);
 
-      test('looking ${looking.serializedName}: the wheel faces the player and stands on the floor', () {
-        // A wall click leaves `on_floor` to the first vertical look direction, which
-        // at pitch 0 is DOWN (a level look stands the wheel on the floor).
+      test('looking ${looking.serializedName}: a side click faces the clicked face', () {
+        // `getNearestLookingDirection()` is the *promoted* front of the look list —
+        // the opposite of the clicked face — so the first horizontal entry is the
+        // clicked face and FACING is that, not the look. `on_floor` reads the first
+        // vertical entry, which at pitch 0 is DOWN.
         final state = _Placement(placed, inFront, view, looking.opposite).steeringWheel('simulated:steering_wheel');
         expect(state.dir('facing'), looking.opposite);
         expect(state.flag('on_floor'), isTrue);
@@ -187,10 +189,20 @@ void main() {
 
       test('looking ${looking.serializedName}: a click on the bottom face puts the wheel on the ceiling', () {
         final state = _Placement(placed, inFront, view, Direction.down).steeringWheel('simulated:steering_wheel');
-        expect(state.dir('facing'), looking.opposite);
-        expect(state.flag('on_floor'), isFalse);
+        final state2 = state;
+        expect(state2.dir('facing'), looking.opposite);
+        expect(state2.flag('on_floor'), isFalse);
       });
     }
+
+    test('a vertical click keeps the horizontal look', () {
+      // Clicking the bottom face while looking north: the promoted front is vertical,
+      // so the first horizontal entry is the dominant horizontal look (north) and
+      // FACING is its opposite.
+      final state = _Placement((0, 0, 0), _step((0, 0, 0), Direction.north), _view(180, 0), Direction.down)
+          .steeringWheel('simulated:steering_wheel');
+      expect(state.dir('facing'), Direction.south);
+    });
 
     test('looking up does not stand the wheel on the floor', () {
       // Pitch -90: the first vertical look direction is UP, so a wall click gives

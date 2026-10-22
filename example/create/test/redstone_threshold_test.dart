@@ -1,6 +1,9 @@
 import 'package:create/src/common/common.dart';
 import 'package:create/src/conveyance/items/inventory.dart';
 import 'package:create/src/conveyance/items/item_data.dart';
+import 'package:create/src/conveyance/items/stack_bridge.dart' show toPStack;
+import 'package:create/src/processing/common/stack.dart' show PStack;
+import 'package:create/src/processing/common/storage.dart' show SmartInventory;
 import 'package:create/src/redstone/link/frequency.dart';
 import 'package:create/src/redstone/link/link_network.dart';
 import 'package:create/src/redstone/observer/observed_container.dart';
@@ -218,6 +221,70 @@ void main() {
         isNull,
         reason: 'a plain item carries no address',
       );
+    });
+  });
+
+  group('machine storage containers', () {
+    // A basin's storage: 18 slots (6 input, 6 output, 6 extra; `BasinBlockEntity.itemStorage`),
+    // answered by `ItemStorageProvider` and not by `ItemInventoryProvider`, so the observer and
+    // the switch only see it through [MachineStorageContainer].
+    SmartInventory basin() => SmartInventory(18);
+
+    test('a machine storage is read slot by slot like the item handler capability', () async {
+      final storage = basin()
+        ..setStack(0, const PStack('minecraft:iron_ingot', 3))
+        ..setStack(17, const PStack('minecraft:gold_ingot', 12));
+      final container = MachineStorageContainer(storage);
+
+      expect(container.slots, 18);
+      final first = await container.slot(0, detail: true);
+      expect(first.key, 'minecraft:iron_ingot');
+      expect(first.count, 3);
+      expect(first.limit, 64);
+      expect(first.isEmpty, isFalse);
+      final empty = await container.slot(1);
+      expect(empty.isEmpty, isTrue);
+      expect(empty.key, 'minecraft:air');
+      expect((await container.slot(1, detail: true)).limit, 64);
+      expect((await container.slot(17, detail: true)).count, 12);
+    });
+
+    test('the threshold switch counts the stock and the capacity of a basin', () async {
+      final container = MachineStorageContainer(
+        basin()
+          ..setStack(0, const PStack('minecraft:iron_ingot', 3))
+          ..setStack(4, const PStack('minecraft:iron_ingot', 2))
+          ..setStack(17, const PStack('minecraft:gold_ingot', 12)),
+      );
+
+      final filtered = await thresholdItemLevels(container, test: (key) => key == 'minecraft:iron_ingot');
+      expect(filtered.current, 5, reason: 'a basin holds a stack across its slots');
+      expect(filtered.max, 18 * 64);
+
+      final unfiltered = await thresholdItemLevels(container, test: (_) => true);
+      expect(unfiltered.current, 17);
+    });
+
+    test('the address of a package in a machine storage is read', () async {
+      final container = MachineStorageContainer(
+        basin()
+          ..setStack(
+            0,
+            PStack(
+              'create:cardboard_package_12x12',
+              1,
+              comps: toPStack(
+                ItemValue(
+                  'create:cardboard_package_12x12',
+                  1,
+                  comps: [(packageAddressComponent, encodePackageAddress('Upstairs'))],
+                ),
+              ).comps,
+            ),
+          ),
+      );
+      expect((await container.slot(0, detail: true)).address, 'Upstairs');
+      expect((await container.slot(1, detail: true)).address, isNull);
     });
   });
 

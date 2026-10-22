@@ -82,6 +82,14 @@ final class CreateRegistry {
   final OrderedRegistry<bool> recipeTypes = OrderedRegistry('recipeTypes');
   final OrderedRegistry<SyncedRegistrySpec> syncedRegistries = OrderedRegistry('syncedRegistries');
 
+  /// The map decorations to register (`ExtraRegistries.registerMapDecoration`), in
+  /// the order of the ids the client numbers them.
+  final List<MapDecorationSpec> mapDecorations = [];
+
+  /// The entity data serializers to register (`EntityRegistries.registerDataSerializer`),
+  /// in the order of the ids the client numbers them.
+  final List<String> entityDataSerializers = [];
+
   /// Tags by kind; entries of the same tag from several modules merge.
   final Map<TagKind, OrderedRegistry<List<String>>> tags = {
     for (final k in TagKind.values) k: OrderedRegistry('tags.${k.name}'),
@@ -163,6 +171,12 @@ final class CreateRegistry {
   /// numbered by the host through `ExtraRegistries` and synced to NeoForge clients.
   void syncedRegistry(String key, List<String> entries) =>
       syncedRegistries.add(key, SyncedRegistrySpec(key, entries));
+
+  /// A map decoration (`minecraft:map_decoration_type`).
+  void mapDecoration(MapDecorationSpec decoration) => mapDecorations.add(decoration);
+
+  /// An entity data serializer (`neoforge:entity_data_serializers`).
+  void entityDataSerializer(String key) => entityDataSerializers.add(key);
 
   void datapackRegistry(String key) => datapackRegistries.add(key);
 

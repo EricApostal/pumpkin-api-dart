@@ -17,6 +17,7 @@ import 'depot/depot_part.dart';
 import 'deployer/deployer_part.dart';
 import 'drill/drill_part.dart';
 import 'fan/fan_part.dart';
+import 'host/host_recipes.dart';
 import 'host/recipe_host.dart';
 import 'host/storage_lookup.dart';
 import 'host/tags_host.dart';
@@ -100,6 +101,10 @@ final class ProcessingModule extends CreateModule {
     ctx.listen(Events.datapackReload, (server, e) {
       _tags.clear();
       _loadCraftingRecipes(server);
+      // The plugin recipe table of the host is append only and survives the reload, so the
+      // recipes other components contributed are still there; this picks up a component that
+      // registered them after this one loaded.
+      _loadHostRecipes(server);
     });
 
     for (final p in parts) {
@@ -223,6 +228,10 @@ final class ProcessingModule extends CreateModule {
     if (rt == null) return;
     // The press and the mixer also run vanilla crafting recipes (`matchStaticFilters`).
     _loadCraftingRecipes(runtime.server);
+    // The `create:*` recipes other components contributed (Aeronautics' envelopes, Simulated's
+    // machines): their own data pack is invisible to this component, so they come back out of
+    // the host's plugin recipe table. Every plugin has finished loading by now.
+    _loadHostRecipes(runtime.server);
     for (final p in parts) {
       try {
         p.onServerLoaded(runtime, rt);
@@ -233,6 +242,29 @@ final class ProcessingModule extends CreateModule {
           stackTrace: s,
         );
       }
+    }
+  }
+
+  /// The ids of the recipes [_loadHostRecipes] added, so a second call does not duplicate them.
+  final Set<String> _hostRecipeIds = {};
+
+  /// Merges the `create:*` recipes other components registered with the host into the book.
+  ///
+  /// The host's table is query only for the plugin that registered a recipe, and it carries the
+  /// source JSON in `extra` — see `loadHostRecipes`.
+  void _loadHostRecipes(Server server) {
+    final rt = _runtime;
+    if (rt == null) return;
+    try {
+      final report = loadHostRecipes(server.getRecipeManager(), rt.recipes, _hostRecipeIds);
+      if (report.added > 0 || report.errors.isNotEmpty) {
+        rt.log.info('Recipes contributed by other plugins: $report');
+      }
+      for (final e in report.errors.take(20)) {
+        rt.log.warn('Recipe from another plugin not loaded: $e');
+      }
+    } on Object catch (e) {
+      rt.log.warn('Could not read the recipes of the other plugins: $e');
     }
   }
 

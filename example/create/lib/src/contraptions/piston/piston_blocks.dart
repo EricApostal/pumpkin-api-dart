@@ -19,19 +19,30 @@ const String stickyMechanicalPistonKey = 'create:sticky_mechanical_piston';
 const String pistonExtensionPoleKey = 'create:piston_extension_pole';
 const String pistonHeadKey = 'create:mechanical_piston_head';
 
+/// `DirectionalAxisKineticBlock.getFacingForPlacement`: the clicked face when the
+/// player does not sneak, its opposite when they do.
+const List<PlacementRule> pistonFacingPlacementRules = [
+  PlacementRule.clickedFace('facing', whenSneaking: false),
+  PlacementRule.clickedFace('facing', opposite: true, whenSneaking: true),
+];
+
 /// The piston family block definitions.
 List<CreateBlock> buildPistonBlocks() => [
   manifestBlock(
     'mechanical_piston',
-    // `DirectionalAxisKineticBlock.getFacingForPlacement`: the nearest looking direction,
-    // opposite (a sneaking player flips it; the host rule cannot see sneaking).
-    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
+    // `DirectionalAxisKineticBlock.getFacingForPlacement` (bytecode of the client's
+    // jar): `facing = getNearestLookingDirection().getOpposite()`, flipped once more
+    // when the player sneaks. `getNearestLookingDirection()` is the promoted front of
+    // `getNearestLookingDirections()`, i.e. the clicked face's opposite, so the two
+    // branches are the clicked face and its opposite — the `looking-direction` source
+    // is the raw dominant look, which is only right when the click is aligned with it.
+    placement: pistonFacingPlacementRules,
     behavior: pistonBehavior(sticky: false),
     blockEntityType: mechanicalPistonKey,
   ),
   manifestBlock(
     'sticky_mechanical_piston',
-    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
+    placement: pistonFacingPlacementRules,
     behavior: pistonBehavior(sticky: true),
     blockEntityType: mechanicalPistonKey,
   ),

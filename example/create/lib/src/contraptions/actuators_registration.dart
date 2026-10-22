@@ -30,6 +30,7 @@ import '../kinetics/api.dart'
         KState,
         KAxis,
         Dir;
+import '../manifest/manifest.dart' show kEntityTypes;
 import 'bearing/bearing_block_entities.dart';
 import 'bearing/bearing_blocks.dart';
 import 'bearing/bearing_contraptions.dart';
@@ -143,39 +144,37 @@ void registerActuatorContent(CreateRegistry registry) {
     registry.item(item);
   }
 
-  // Entities.
-  void entity(
-    String key,
-    double width,
-    double height, {
-    bool saveable = true,
-    String? spawnDataChannel,
-  }) {
+  // Entities. The sizes, the tracking and the spawn payload are the manifest's numbers, which are
+  // the ones `AllEntityTypes` gives the Java builder.
+  void entity(String key) {
     if (registry.entityTypes.contains('create:$key')) return;
+    final def = kEntityTypes.firstWhere((e) => e.key == key);
     registry.entityType(
       EntityTypeSpec(
         key: 'create:$key',
-        width: width,
-        height: height,
+        width: def.width,
+        height: def.height,
+        eyeHeight: def.eyeHeight,
         category: EntityCategory.misc,
-        trackingRange: 10,
-        updateInterval: 3,
-        fireImmune: true,
-        saveable: saveable,
-        spawnDataChannel: spawnDataChannel,
+        trackingRange: def.trackingRange,
+        updateInterval: def.updateInterval,
+        trackDeltas: def.sendVelocity,
+        fireImmune: def.fireImmune,
+        // `AllEntityTypes.register` never calls `noSave()`: a glue box and a seat are saved with
+        // the chunk, and a reload that drops them drops the glue it enumerated from them and the
+        // rider on the seat.
+        saveable: true,
+        // `IEntityWithComplexSpawn`: the client rebuilds the entity from the spawn payload
+        // (`writeSpawnData`), without which a super glue draws no glue overlay, carried in
+        // `neoforge:advanced_add_entity` (`defineSynchedData` sets no channel of its own).
+        spawnDataChannel: def.complexSpawnData
+            ? 'neoforge:advanced_add_entity'
+            : null,
       ),
     );
   }
 
-  // `SuperGlueEntity implements IEntityWithComplexSpawn`: the client rebuilds the glue box from
-  // the spawn payload (`writeSpawnData`), without which it draws no glue overlay.
-  entity(
-    'super_glue',
-    0.6,
-    1.8,
-    saveable: false,
-    spawnDataChannel: 'neoforge:advanced_add_entity',
-  );
+  entity('super_glue');
 
   // Contraption kinds, so a saved contraption is read back as the right subclass.
   ContraptionTypes.registerAll({

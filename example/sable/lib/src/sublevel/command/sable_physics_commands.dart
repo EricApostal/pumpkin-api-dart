@@ -18,7 +18,6 @@ import '../api/command/sable_command_helper.dart';
 import '../api/physics.dart';
 import '../api/command/sable_command_state.dart';
 import '../math/vector.dart';
-import '../model/server_sub_level.dart';
 import '../system/physics_system.dart';
 import 'command_support.dart';
 
@@ -32,7 +31,8 @@ void registerPhysicsCommands(CommandBuilder sable, SableCommandState state) {
         'impulse',
         build: (impulse) => impulse.arg(
           'sub_level',
-          ArgumentTypes.word,
+          ArgumentTypes.token,
+          suggests: subLevelSelectorSuggestions,
           build: (sub) => sub
             ..sub(
               'linear',
@@ -54,11 +54,19 @@ void registerPhysicsCommands(CommandBuilder sable, SableCommandState state) {
       physics.sub(
         'rotation',
         build: (rotation) {
-          rotation.arg('sub_level', ArgumentTypes.word, build: (sub) {
-            for (final add in [true, false]) {
-              sub.sub(add ? 'add' : 'set', build: (mode) => _rotationMode(mode, state, add));
-            }
-          });
+          rotation.arg(
+            'sub_level',
+            ArgumentTypes.token,
+            suggests: subLevelSelectorSuggestions,
+            build: (sub) {
+              for (final add in [true, false]) {
+                sub.sub(
+                  add ? 'add' : 'set',
+                  build: (mode) => _rotationMode(mode, state, add),
+                );
+              }
+            },
+          );
         },
       );
 
@@ -66,7 +74,8 @@ void registerPhysicsCommands(CommandBuilder sable, SableCommandState state) {
         'translation',
         build: (translation) => translation.arg(
           'sub_level',
-          ArgumentTypes.word,
+          ArgumentTypes.token,
+          suggests: subLevelSelectorSuggestions,
           build: (sub) => sub
             ..sub(
               'add',
@@ -77,27 +86,47 @@ void registerPhysicsCommands(CommandBuilder sable, SableCommandState state) {
             )
             ..sub(
               'set',
-              build: (set) => set
-                ..arg('x', ArgumentTypes.number(), build: (x) => x
-                  ..arg('y', ArgumentTypes.number(), build: (y) => y
-                    ..arg('z', ArgumentTypes.number(), runs: (ctx) {
-                      final target = _single(ctx, state, 'sub_level');
-                      final destination = Vector3d(ctx.number('x'), ctx.number('y'), ctx.number('z'));
-                      final physics = _physics(ctx, state);
-                      physics.getPipeline().teleport(
-                        physics.getPhysicsHandle(target),
-                        destination,
-                        target.logicalPose.orientation(),
-                      );
-                      ctx.reply(
-                        'Set the position of ${SableCommandHelper.describeSubLevels([target])} to '
-                        '${_fmt(destination.x)}, ${_fmt(destination.y)}, ${_fmt(destination.z)}.',
-                      );
-                    })))),
+              build: (set) => set.arg(
+                'x',
+                ArgumentTypes.number(),
+                build: (x) => x.arg(
+                  'y',
+                  ArgumentTypes.number(),
+                  build: (y) => y.arg(
+                    'z',
+                    ArgumentTypes.number(),
+                    runs: (ctx) => _setTranslation(ctx, state),
+                  ),
+                ),
+              ),
+            ),
         ),
       );
     },
   );
+}
+
+/// `SablePhysicsCommands.executeSetTranslationCommand`: every selected sub-level
+/// is moved to the position, keeping its own orientation.
+int _setTranslation(CommandContext ctx, SableCommandState state) {
+  final physics = _physics(ctx, state);
+  final subLevels = selectedSubLevels(ctx, state, 'sub_level', multiple: true);
+  if (subLevels.isEmpty) throw CommandException(SableCommandError.noSubLevels.message);
+
+  final destination = Vector3d(ctx.number('x'), ctx.number('y'), ctx.number('z'));
+  for (final subLevel in subLevels) {
+    physics.getPipeline().teleport(
+      physics.getPhysicsHandle(subLevel),
+      Vector3d.copy(destination),
+      subLevel.logicalPose.orientation(),
+    );
+  }
+
+  ctx.reply(
+    'Set the position of ${SableCommandHelper.describeSubLevels(subLevels)} to '
+    '${_fmt(destination.x)}, ${_fmt(destination.y)}, ${_fmt(destination.z)}.',
+  );
+  return 0;
 }
 
 /// `x y z [global|local]` for the impulse and translation commands.
@@ -138,16 +167,20 @@ void _rotationMode(CommandBuilder mode, SableCommandState state, bool add) {
         y.arg('z', ArgumentTypes.number(), build: (z) {
           z.arg('angle', ArgumentTypes.number(), build: (angle) {
             void run(CommandContext ctx, bool global) {
-              final target = _single(ctx, state, 'sub_level');
+              final axisVector = Vector3d(
+                ctx.number('x'),
+                ctx.number('y'),
+                ctx.number('z'),
+              );
+              // `SablePhysicsCommands.java:194`: a zero axis cannot be turned
+              // into an orientation.
+              if (axisVector.lengthSquared == 0.0) {
+                throw CommandException(SableCommandError.noAxisForRotation.message);
+              }
               _rotate(
                 ctx,
                 state,
-                target,
-                Quaterniond()
-                  ..fromAxisAngleDeg(
-                    Vector3d(ctx.number('x'), ctx.number('y'), ctx.number('z')),
-                    ctx.number('angle'),
-                  ),
+                Quaterniond()..fromAxisAngleDeg(axisVector, ctx.number('angle')),
                 add: add,
                 global: global,
                 describe: 'axis ${ctx.number('x')}, ${ctx.number('y')}, ${ctx.number('z')} '
@@ -169,11 +202,9 @@ void _rotationMode(CommandBuilder mode, SableCommandState state, bool add) {
     entity.arg('yaw', ArgumentTypes.number(), build: (yaw) {
       yaw.arg('pitch', ArgumentTypes.number(), build: (pitch) {
         void run(CommandContext ctx, bool global) {
-          final target = _single(ctx, state, 'sub_level');
           _rotate(
             ctx,
             state,
-            target,
             _rotationFromLook(ctx.number('yaw'), ctx.number('pitch')),
             add: add,
             global: global,
@@ -189,9 +220,6 @@ void _rotationMode(CommandBuilder mode, SableCommandState state, bool add) {
     });
   });
 }
-
-ServerSubLevel _single(CommandContext ctx, SableCommandState state, String key) =>
-    selectedSubLevel(ctx, state, key);
 
 SubLevelPhysicsSystem _physics(CommandContext ctx, SableCommandState state) {
   try {
@@ -261,38 +289,45 @@ Quaterniond _rotationFromLook(double yaw, double pitch) => Quaterniond()
   ..rotateY(-yaw * math.pi / 180.0)
   ..rotateX(pitch * math.pi / 180.0);
 
+/// `SablePhysicsCommands.executeRotationCommand`: `add` premultiplies the
+/// orientation in the global frame (multiplies it in the local one), `set`
+/// replaces it, and every selected sub-level is reached.
 int _rotate(
   CommandContext ctx,
   SableCommandState state,
-  ServerSubLevel subLevel,
   Quaterniond orientation, {
   required bool add,
   required bool global,
   required String describe,
 }) {
   final physics = _physics(ctx, state);
-  final pose = subLevel.logicalPose;
-  final mutable = subLevel.pose;
+  final subLevels = selectedSubLevels(ctx, state, 'sub_level', multiple: true);
+  if (subLevels.isEmpty) throw CommandException(SableCommandError.noSubLevels.message);
 
-  if (add) {
-    if (global) {
-      mutable.orientation().premul(orientation);
+  for (final subLevel in subLevels) {
+    final pose = subLevel.logicalPose;
+    final mutable = subLevel.pose;
+
+    if (add) {
+      if (global) {
+        mutable.orientation().premul(orientation);
+      } else {
+        mutable.orientation().mul(orientation);
+      }
     } else {
-      mutable.orientation().mul(orientation);
+      mutable.orientation().setFrom(orientation);
     }
-  } else {
-    mutable.orientation().setFrom(orientation);
-  }
 
-  physics.getPipeline().teleport(
-    physics.getPhysicsHandle(subLevel),
-    pose.position(),
-    pose.orientation(),
-  );
+    physics.getPipeline().teleport(
+      physics.getPhysicsHandle(subLevel),
+      pose.position(),
+      pose.orientation(),
+    );
+  }
 
   ctx.reply(
     '${add ? 'Added' : 'Set'} a ${global ? 'global' : 'local'} rotation of $describe to '
-    '${SableCommandHelper.describeSubLevels([subLevel])}.',
+    '${SableCommandHelper.describeSubLevels(subLevels)}.',
   );
   return 0;
 }

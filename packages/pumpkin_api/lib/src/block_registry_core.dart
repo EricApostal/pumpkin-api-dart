@@ -286,6 +286,19 @@ final class ShapeRule {
   });
 }
 
+/// The light level of the states that have all of [when]
+/// (`light-rule` in `block-registry.wit`).
+final class LightRule {
+  /// Property values a state needs (`{'powering': 'true'}`); empty matches
+  /// every state. Unknown properties and values fail the registration.
+  final Map<String, String> when;
+
+  /// The light level 0 to 15 of matching states.
+  final int level;
+
+  const LightRule({this.when = const {}, required this.level});
+}
+
 /// How pistons treat a block (`piston-behavior` in `block-registry.wit`).
 enum PistonBehavior {
   /// Can be pushed and pulled.
@@ -331,14 +344,26 @@ final class BlockDefinition {
   /// sounds, the server keeps the name.
   final String soundType;
 
-  /// Light level 0 to 15 that every state emits.
+  /// Light level 0 to 15 that every state emits, unless a [lightRules] entry
+  /// matches.
   final int luminance;
+
+  /// Light levels per state (at most 64 rules), evaluated in order: the first
+  /// rule that matches the state wins, else [luminance] applies. Vanilla
+  /// `lightLevel(state -> ...)`, for example a rose quartz lamp that only
+  /// lights up while `powering` is true.
+  final List<LightRule> lightRules;
 
   /// Vanilla `canOcclude`, false for `noOcclusion()`.
   final bool canOcclude;
 
   /// Whether a block placed against it replaces it, like grass does.
   final bool replaceable;
+
+  /// Vanilla `ignitedByLava()`: lava sets fire to the block. Whether *fire*
+  /// spreads onto it is a separate question, see
+  /// [BlockBehavior.onFireSpread].
+  final bool ignitedByLava;
 
   /// Map colour id, 0 for none.
   final int mapColor;
@@ -369,8 +394,10 @@ final class BlockDefinition {
     this.requiresCorrectTool = false,
     this.soundType = 'stone',
     this.luminance = 0,
+    this.lightRules = const [],
     this.canOcclude = true,
     this.replaceable = false,
+    this.ignitedByLava = false,
     this.mapColor = 0,
     this.collisionShape = BlockShape.fullCube,
     this.selectionShape = BlockShape.fullCube,
@@ -609,6 +636,7 @@ abstract final class BlockRegistryChecks {
   static const maxProperties = 32;
   static const maxEnumValues = 256;
   static const maxBoxes = 64;
+  static const maxLightRules = 64;
   static const maxLuminance = 15;
 
   /// The limit of the host's block ids (`u16`).
@@ -746,6 +774,32 @@ abstract final class BlockRegistryChecks {
         issues.add(
           '`${entry.value}` is not a value of property `${property.name}`.',
         );
+      }
+    }
+
+    if (definition.lightRules.length > maxLightRules) {
+      issues.add(
+        'more than $maxLightRules light rules (${definition.lightRules.length}).',
+      );
+    }
+    for (final rule in definition.lightRules.take(maxLightRules)) {
+      if (rule.level < 0 || rule.level > maxLuminance) {
+        issues.add('a light rule is 0 to 15 (was ${rule.level}).');
+      }
+      final seen = <String>{};
+      for (final entry in rule.when.entries) {
+        final property = byName[entry.key];
+        if (property == null) {
+          issues.add('light rule names unknown property `${entry.key}`.');
+        } else if (property.valueIndex(entry.value) == null) {
+          issues.add(
+            '`${entry.value}` is not a value of property `${property.name}` '
+            'in a light rule.',
+          );
+        }
+        if (!seen.add(entry.key)) {
+          issues.add('a light rule lists property `${entry.key}` twice.');
+        }
       }
     }
 

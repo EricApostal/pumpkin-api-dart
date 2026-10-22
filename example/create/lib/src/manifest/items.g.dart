@@ -2537,7 +2537,7 @@ const List<ManifestItem> kItems = [
     source: 'AllItems.BUILDERS_TEA',
     maxStack: 16,
     food: true,
-    components: ['food(new FoodProperties.Builder() .nutrition(1) .saturationModifier(.6F) .alwaysEdible() .effect(() -> new MobEffectInstance(MobEffects.DIG_SPEED, 3 * 60 * 20, 0, false, false, false), 1F) .build() )'],
+    components: ['food(new FoodProperties.Builder() .nutrition(1) .saturationModifier(.6F) .alwaysEdible() .build(), Consumable.builder() .onConsume(new ApplyStatusEffectsConsumeEffect( new MobEffectInstance(MobEffects.HASTE, 3 * 60 * 20, 0, false, false, false), 1F)) .build() )'],
   ),
   ManifestItem(
     key: 'cardboard_sword',
@@ -2733,6 +2733,7 @@ const List<ManifestItem> kItems = [
     index: 350,
     javaClass: 'com.simibubi.create.content.kinetics.gearbox.VerticalGearboxItem',
     source: 'AllItems.VERTICAL_GEARBOX',
+    components: ['overrideDescription("item.create.vertical_gearbox")'],
   ),
   ManifestItem(
     key: 'empty_blaze_burner',

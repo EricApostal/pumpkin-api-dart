@@ -269,10 +269,12 @@ final class SubLevelHeatMapManager implements SubLevelHeatMap {
       final newSubLevel = SubLevelAssemblyHelper.assembleBlocks(level, blocks.first, blocks, bounds);
 
       // Protect against split sub-levels with zero mass.
-      final tracker = newSubLevel.massTracker;
-      final centerOfMass = tracker?.getCenterOfMass();
-      final mass = tracker == null ? 0.0 : 1.0 / tracker.getInverseMass();
-      if (centerOfMass == null || mass <= 0.0) {
+      // Java reads the **self** tracker and null-checks its centre
+      // (`SubLevelHeatMapManager.java:243-247`); the merged tracker here would be
+      // stale (this runs right after the assembly) and its getter *throws* for an
+      // empty tracker, which made the guard an exception instead of a cleanup.
+      final self = newSubLevel.getSelfMassTracker();
+      if (self.isInvalid()) {
         newSubLevel.getPlot().destroyAllBlocks();
 
         final container = SubLevelContainer.of(level);

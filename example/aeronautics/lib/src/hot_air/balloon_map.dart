@@ -240,6 +240,17 @@ final class BalloonMap {
   /// The gas of the balloons that unloaded.
   Iterable<SavedBalloon> get unloaded => unloadedBalloons;
 
+  /// `BalloonLevelSavedData.save`: the unloaded balloons first, then every live one.
+  ///
+  /// Saving the live balloons is what keeps their gas across a restart: they go back into
+  /// [unloadedBalloons] when the world loads, and the heater that rebuilds the balloon takes the
+  /// gas from there ([loadUnloaded]).
+  List<SavedBalloon> savedBalloons() => [
+    ...unloadedBalloons,
+    for (final balloon in balloons)
+      if (balloon is ServerBalloon) saveBalloon(balloon),
+  ];
+
   /// Restores the unloaded balloons from save data.
   void loadUnloaded(List<SavedBalloon> saved) => unloadedBalloons.addAll(saved);
 

@@ -11,7 +11,7 @@ import '../../common/vec_helper.dart';
 import '../../core/module.dart';
 import '../manager/create.dart';
 import '../manager/global_railway_manager.dart' show RailwayHooks;
-import '../station/host_ops.dart' show plainTrainsText, sendOverlay;
+import '../station/host_ops.dart' show plainTrainsText, sendOverlay, trainsLang;
 import '../support/runtime.dart';
 import '../track/bezier_track_point_location.dart';
 import '../track/track_host.dart';
@@ -91,7 +91,7 @@ void installTrainRelocationPacket(CreateContext ctx) {
       return;
     }
 
-    sendOverlay(player, 'Train relocated', color: 'a');
+    sendOverlay(player, trainsLang('create.train.relocate.success'), color: 'a');
     for (final carriage in train.carriages) {
       carriage.forEachPresentEntity((e) {
         e.nonDamageTicks = 10;

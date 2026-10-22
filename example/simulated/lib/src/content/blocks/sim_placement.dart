@@ -35,6 +35,9 @@
 // ignore_for_file: implementation_imports
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/direction.dart' show Direction;
+import 'package:create/src/contraptions/bearing/bearing_placement.dart'
+    show bearingShaftNeighbours;
+import 'package:pumpkin_api/pumpkin_api_core.dart' show PlacementRule;
 
 /// `BlockPlaceContext.getNearestLookingDirections()`: the player's ordering by
 /// nearest look, with the opposite of the clicked face moved to the front.
@@ -179,6 +182,12 @@ Direction faceAttachedConnectedDirection(Direction looking) {
 /// look directions, which [firstVerticalLooking] and [firstHorizontalLooking] give
 /// directly from the view vector (the ordered list itself is only needed for the
 /// face-attached loop, where the support check picks the winner).
+///
+/// `getNearestLookingDirection()` is the *promoted* front of that list, i.e.
+/// `clickedFace.getOpposite()` while the clicked block is not replaceable, so the
+/// first horizontal entry is the clicked face itself for a click on a side face and
+/// not the dominant look. Using the look there is what put the wheel the wrong way
+/// round whenever the click was not aligned with it.
 BState steeringWheelStateForPlacement({
   required BState defaultState,
   required (double, double, double) view,
@@ -189,7 +198,41 @@ BState steeringWheelStateForPlacement({
     Direction.down => false,
     _ => firstVerticalLooking(view) == Direction.down,
   };
-  return defaultState
-      .setDir('facing', firstHorizontalLooking(view).opposite)
-      .setFlag('on_floor', onFloor);
+  final facing = clickedFace.isHorizontal
+      ? clickedFace
+      : firstHorizontalLooking(view).opposite;
+  return defaultState.setDir('facing', facing).setFlag('on_floor', onFloor);
 }
+
+/// The placement rules of the Simulated blocks that extend Create's
+/// `DirectionalKineticBlock` (the swivel bearing and the torsion spring), the same
+/// method the bearing family uses:
+///
+/// ```java
+/// Direction preferred = getPreferredFacing(context);
+/// if (preferred == null || (player != null && player.isShiftKeyDown())) {
+///     Direction nearest = context.getNearestLookingDirection();
+///     return defaultBlockState().setValue(FACING, sneaking ? nearest : nearest.getOpposite());
+/// }
+/// return defaultBlockState().setValue(FACING, preferred.getOpposite());
+/// ```
+///
+/// `getNearestLookingDirection()` is `getNearestLookingDirections()[0]`, and vanilla
+/// moves the opposite of the clicked face to the front of that list while the clicked
+/// block is not replaceable, so the fallback is `clickedFace`, not the look:
+/// `nearest.getOpposite() == clickedFace`. The port's `looking-direction` source is
+/// the raw dominant look, which is the right answer only when the click happens to be
+/// aligned with it (the `LookDirection` sweep reports the same mistake in the other
+/// plugins' rules).
+///
+/// Limitation: for a *replaceable* clicked block Java skips that promotion and the
+/// fallback is the raw dominant look, which `clicked-face` cannot express; a bearing
+/// placed into grass or water keeps the clicked-face answer instead.
+const List<PlacementRule> simDirectionalPlacement = [
+  // A neighbouring shaft decides, unless the player sneaks: `preferred.getOpposite()`.
+  PlacementRule.neighbourShaft('facing', bearingShaftNeighbours, opposite: true, whenSneaking: false),
+  // No shaft, not sneaking: `nearest.getOpposite()`, and `nearest` is the clicked face's opposite.
+  PlacementRule.clickedFace('facing', whenSneaking: false),
+  // Sneaking keeps `nearest` itself, whatever the neighbours are.
+  PlacementRule.clickedFace('facing', opposite: true, whenSneaking: true),
+];

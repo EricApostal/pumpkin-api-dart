@@ -16,6 +16,9 @@ import '../model/manager.dart';
 import '../model/orders.dart';
 import '../model/stack.dart';
 
+/// `SeatEntity` of the contraptions module; only its type key is needed here (`create:seat`).
+const String seatEntityKey = 'create:seat';
+
 /// `StockCheckingBlockEntity`: a block that is linked to a network without joining the global
 /// saved data (stock ticker, redstone requester).
 abstract class StockCheckingBlockEntity extends LgBlockEntity {
@@ -263,14 +266,35 @@ class StockTickerBlockEntity extends StockCheckingBlockEntity {
 
   void notifyUpdate() => sendData();
 
-  /// `isKeeperPresent()`: a heater or a seat next to the ticker. The seat entity belongs to the
-  /// contraptions module, which is not a dependency here; a heater is checked.
+  /// `isKeeperPresent()`: a heater or a seat with a passenger next to the ticker, at the
+  /// ticker's own height or one below it.
   bool get isKeeperPresent {
+    final w = world;
+    if (w == null) return false;
+    final base = pos.toPos();
     for (final yOffset in [0, 1]) {
       for (final side in Direction.planeHorizontal) {
-        final seatPos = pos.toPos().belowBy(yOffset).relative(side);
+        final seatPos = base.belowBy(yOffset).relative(side);
+        for (final entity in w.getEntitiesInBox(
+          min: (
+            seatPos.$1.toDouble(),
+            seatPos.$2.toDouble(),
+            seatPos.$3.toDouble(),
+          ),
+          max: (
+            seatPos.$1 + 1.0,
+            seatPos.$2 + 1.0,
+            seatPos.$3 + 1.0,
+          ),
+          filter: const EntityFilterAll(),
+        )) {
+          if (entity.entityTypeKey != seatEntityKey) continue;
+          // `seatEntity.isVehicle()`: a seat is only a keeper while someone rides it.
+          if (w.getEntityById(id: entity.id)?.getPassengers().isNotEmpty ?? false)
+            return true;
+        }
         if (yOffset == 0) {
-          final info = world == null ? null : LvlInfo.of(world!, seatPos);
+          final info = LvlInfo.of(w, seatPos);
           if (info == 'create:heater') return true;
         }
       }

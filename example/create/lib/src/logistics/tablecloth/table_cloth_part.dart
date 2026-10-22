@@ -292,13 +292,30 @@ class TableClothBlockEntity extends LgBlockEntity {
   }
 }
 
-/// `TableClothBlock`.
-CreateBlock tableClothBlock(String key) => CreateBlock(
-  key: 'create:$key',
-  properties: [CreateProps.flag('entity')],
-  hardness: 0.8,
-  blastResistance: 0.8,
-  soundType: 'wool',
+/// `AllShapes.TABLE_CLOTH`: `box(-1, -9, -1, 17, 1, 17)`, the outline and the
+/// interaction shape (`getShape`/`getInteractionShape`).
+final BlockShape _tableClothOutline = BlockShape.boxes(const [
+  BlockBox(-1 / 16, -9 / 16, -1 / 16, 17 / 16, 1 / 16, 17 / 16),
+]);
+
+/// `AllShapes.TABLE_CLOTH_OCCLUSION`: `box(0, 0, 0, 16, 1, 16)`, the collision and
+/// occlusion shape (`getCollisionShape`/`getOcclusionShape`).
+final BlockShape _tableClothCollision = BlockShape.boxes(const [
+  BlockBox(0, 0, 0, 1, 1 / 16, 1),
+]);
+
+/// `TableClothBlock`: hardness, blast resistance, tool, sound, map colour and
+/// `ignitedByLava` come from the manifest (0.1/0.1 wool for the 16 dyed cloths,
+/// 1.5/6.0 stone + pickaxe for andesite, 3.0/6.0 metal + pickaxe for brass and
+/// copper), so the family cannot drift from Java again.
+CreateBlock tableClothBlock(String key) => manifestBlock(
+  key,
+  // The manifest carries the default state too: `HAS_BE=false` for the 16 dye
+  // cloths (the `DyeColor` constructor registers it), `entity=true` for the
+  // three metal ones (the `String type` constructor registers nothing, so
+  // `StateDefinition.any()` leaves the first value, true).
+  collisionShape: _tableClothCollision,
+  selectionShape: _tableClothOutline,
   blockEntityType: TableClothBlockEntity.type,
   behavior: BlockBehavior(onUse: _onUse, onPlaced: _onPlaced),
 );
@@ -381,6 +398,61 @@ final class TableClothPart extends LogisticsPart {
 
   @override
   void onLoad(CreateContext ctx, LgRuntime rt) {
-    unawaited(Future<void>.value());
+    // `ShoppingListItem.use` (`ShoppingListItem.java:141-151`): a shift-right-click with a
+    // shopping list in the main hand, in the air.
+    ctx.host.intercept(Events.playerUseItem, (server, e) async {
+      if (e.cancelled) return e;
+      final discarded = await _discardShoppingList(e.player, e.hand);
+      // `InteractionResult.SUCCESS`: the click is used up.
+      return discarded ? e.cancel() : e;
+    });
+    // `ShoppingListItem.useOn` (`:153-164`): the same on a clicked block. Java's `useOn` runs
+    // before the block handles the click (`ServerPlayerGameMode.useItemOn`), so the block never
+    // sees it and the host's `itemUseFirst` is that ordering; its `playerUseItem` fires only after
+    // the block declined the click ("if that was not cancelled and the block did not handle the
+    // click itself", `pumpkin-plugin-wit/v0.2/event.wit:2004-2012`), which a block that handles a
+    // shift-right-click never does.
+    ctx.host.intercept(Events.itemUseFirst, (server, e) async {
+      if (e.useResult != ItemUseFirstResult.pass) return e;
+      final discarded = await _discardShoppingList(e.player, e.hand);
+      // `InteractionResult.SUCCESS`: the click is used up, the block is not used.
+      return discarded ? e.copyWith(useResult: ItemUseFirstResult.success) : e;
+    });
+  }
+
+  /// `ShoppingListItem.use` / `useOn`: throws the shopping list in the main hand of [player] away
+  /// when they are sneaking, with the status message and the page turn; returns whether one was
+  /// discarded.
+  Future<bool> _discardShoppingList(Player player, Hand hand) async {
+    if (hand != Hand.right || !player.asEntity().isSneaking()) return false;
+    final inventory = player.getInventory();
+    try {
+      final held = inventory.getItemInHand(hand: hand);
+      if (held == null || await held.getRegistryKey() != 'create:shopping_list') {
+        return false;
+      }
+      // `player.setItemInHand(pUsedHand, ItemStack.EMPTY)`.
+      await inventory.setItemInHand(hand: hand, item: null);
+    } finally {
+      inventory.dispose();
+    }
+    // `CreateLang.translate("table_cloth.shopping_list_discarded").sendStatus(player)`:
+    // `LangBuilder.sendStatus` is `Player.sendOverlayMessage`, the action bar; the key in the
+    // shipped language file is `create.table_cloth.shopping_list_discarded`.
+    player.showActionbar(
+      text: TextComponent.translate(
+        key: 'create.table_cloth.shopping_list_discarded',
+        with_: const [],
+      ),
+    );
+    // `player.playSound(SoundEvents.BOOK_PAGE_TURN)`: `Entity.playSound(SoundEvent)` plays it at
+    // the player for them alone, in their own `players` category.
+    player.playSound(
+      sound: Sound.itemBookPageTurn,
+      category: SoundCategory.players,
+      volume: 1,
+      pitch: 1,
+    );
+    return true;
   }
 }

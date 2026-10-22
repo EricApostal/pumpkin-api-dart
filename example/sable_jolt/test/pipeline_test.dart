@@ -330,6 +330,58 @@ void main() {
     expect(fallen.position().y, lessThan(resting.position().y - 0.5));
   }, skip: skip);
 
+  test('a section in a plot reaches the sub-level body without a runtime id', () {
+    // The call `SubLevelPhysicsSystem.handleChunkSectionAddition` makes
+    // (`physics_system.dart:419`): `global: false`, no `subLevelRuntimeId`. The
+    // pipeline has to find the owning body through the plot grid
+    // (`RapierPhysicsPipeline.java:358-365`), and the module has to receive that
+    // body's handle — before the fix this threw, and with body 0 the native call
+    // is a no-op (`jolt_abi.cpp:1372-1376`).
+    final level = TestLevel();
+    final container = TestServerContainer(level, TestChunkHost());
+    SubLevelContainer.register(container);
+    addTearDown(() => SubLevelContainer.unregister(level));
+
+    final subLevel =
+        container.allocateSubLevel(
+              'uuid',
+              0,
+              0,
+              Pose3d()..position().set(0.0, 3.0, 0.0),
+            )
+            as ServerSubLevel;
+    pipeline.addSubLevel(subLevel, subLevel.pose);
+    final collider = pipeline.registerVoxelCollider(const BlockColliderData());
+
+    // The first chunk of the first plot: the grid starts at
+    // `SubLevelContainer.defaultOrigin` plots, and a plot is
+    // `1 << SubLevelContainer.defaultLogPlotSize` (= 7) chunks wide.
+    const plotChunk = SubLevelContainer.defaultOrigin * (1 << 7);
+
+    expect(
+      () => pipeline.handleChunkSectionAddition(
+        plotChunk,
+        0,
+        plotChunk,
+        _singleBlockSection(collider),
+        global: false,
+      ),
+      returnsNormally,
+    );
+    expect(pipeline.blocksOf(subLevel)!.hasSection(plotChunk, 0, plotChunk), isTrue);
+    expect(
+      pipeline.levelBlocks.hasSection(plotChunk, 0, plotChunk),
+      isFalse,
+      reason: 'a plot section is not static level geometry',
+    );
+
+    expect(
+      () => pipeline.handleChunkSectionRemoval(plotChunk, 0, plotChunk),
+      returnsNormally,
+    );
+    expect(pipeline.blocksOf(subLevel)!.hasSection(plotChunk, 0, plotChunk), isFalse);
+  }, skip: skip);
+
   test('a hinge holds a box to the world', () {
     final pose = Pose3d()..position().set(0.0, 2.0, 0.0);
     final box = pipeline.addBox(

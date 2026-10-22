@@ -96,7 +96,7 @@ void registerAssembleCommands(CommandBuilder sable, SableCommandState state) {
         'sub_level',
         build: (sub) => sub.arg(
           'sub_level',
-          ArgumentTypes.greedyString,
+          ArgumentTypes.token,
           runs: (ctx) => _shatterSubLevel(ctx, state),
         ),
       );
@@ -189,8 +189,13 @@ int _assembleArea(CommandContext ctx, SableCommandState state) {
     math.max(from.$3, to.$3) + 1,
   );
 
+  if (!_hasAssembledMass(container, blocks)) {
+    throw CommandException('No blocks to assemble.');
+  }
+
+  final assembled = _countAssembledBlocks(container, blocks);
   final subLevel = SubLevelAssemblyHelper.assembleBlocks(container.getLevel(), from, blocks, bounds);
-  _reportAssembly(ctx, subLevel, blocks.length);
+  _reportAssembly(ctx, subLevel, assembled);
   return 1;
 }
 
@@ -207,13 +212,18 @@ int _assembleConnected(CommandContext ctx, SableCommandState state, (int, int, i
     throw CommandException(_gatherFailure(result.assemblyState, capacity));
   }
 
+  if (!_hasAssembledMass(container, result.blocks!)) {
+    throw CommandException('No blocks to assemble.');
+  }
+
+  final assembled = _countAssembledBlocks(container, result.blocks!);
   final subLevel = SubLevelAssemblyHelper.assembleBlocks(
     container.getLevel(),
     origin,
     result.blocks!,
     result.boundingBox!,
   );
-  _reportAssembly(ctx, subLevel, result.blocks!.length);
+  _reportAssembly(ctx, subLevel, assembled);
   return 1;
 }
 
@@ -245,13 +255,13 @@ int _assembleSphere(CommandContext ctx, SableCommandState state, (int, int, int)
 
   if (blocks.isEmpty) throw CommandException('No blocks to assemble.');
 
-  SubLevelAssemblyHelper.assembleBlocks(
+  final subLevel = SubLevelAssemblyHelper.assembleBlocks(
     container.getLevel(),
     origin,
     blocks,
     BoundingBox3i.values(minX, minY, minZ, maxX, maxY, maxZ),
   );
-  ctx.reply('Assembled ${blocks.length} blocks.');
+  _reportAssembly(ctx, subLevel, blocks.length);
   return 1;
 }
 
@@ -270,13 +280,18 @@ int _assembleCube(CommandContext ctx, SableCommandState state, (int, int, int) o
     to.$3 + 1,
   );
 
+  if (!_hasAssembledMass(container, blocks)) {
+    throw CommandException('No blocks to assemble.');
+  }
+
+  final assembled = _countAssembledBlocks(container, blocks);
   final subLevel = SubLevelAssemblyHelper.assembleBlocks(
     container.getLevel(),
     blocks.first,
     blocks,
     bounds,
   );
-  _reportAssembly(ctx, subLevel, blocks.length);
+  _reportAssembly(ctx, subLevel, assembled);
   return 1;
 }
 
@@ -421,21 +436,26 @@ BState _stateAt(SubLevelContainer container, (int, int, int) pos) =>
     SubLevelAssemblyHelper.blockHostOf(container.getLevel())
         .blockStateAt(pos.$1, pos.$2, pos.$3);
 
-/// Shatters [blocks] into one sub-level per block.
+/// Shatters [blocks] into one sub-level per block
+/// (`SableAssembleCommands.shatterBlocks`).
+///
+/// Java destroys the blocks that are **not** solid ("remove fragile blocks") and
+/// then turns each remaining block into its own sub-level. The port had that
+/// condition inverted — it destroyed every non-air block first and then found
+/// nothing to assemble, so a shatter deleted the build and produced no
+/// sub-levels at all.
 int _shatterBlocks(SubLevelContainer container, Iterable<(int, int, int)> blocks) {
   final host = container.chunkHost;
   final list = blocks.toList();
 
-  // Remove the fragile blocks first.
   for (final pos in list) {
-    if (_stateAt(container, pos).isAir) continue;
-    host.setBlock(pos.$1, pos.$2, pos.$3, 'minecraft:air');
+    final state = _stateAt(container, pos);
+    if (!_isSolid(state)) host.setBlock(pos.$1, pos.$2, pos.$3, 'minecraft:air');
   }
 
   var shattered = 0;
   for (final anchor in list) {
-    final state = _stateAt(container, anchor);
-    if (state.isAir) continue;
+    if (!_hasAssembledMass(container, [anchor])) continue;
 
     final bounds = BoundingBox3i.values(
       anchor.$1 - 1,
@@ -450,3 +470,28 @@ int _shatterBlocks(SubLevelContainer container, Iterable<(int, int, int)> blocks
   }
   return shattered;
 }
+
+/// `VoxelNeighborhoodState.isSolid`: whether the state takes part in physics.
+///
+/// The port's stand-in is the model's own default (`MassTracker.isSolid`, "not
+/// air") until the plugin installs the block-property table.
+bool _isSolid(BState state) => !state.isAir;
+
+/// `hasAssembledMass` (`SableAssembleCommands.java:302-310`): whether a
+/// selection holds at least one block that gives the assembled sub-level mass.
+///
+/// Java asks `PhysicsBlockPropertyHelper.getMass(level, pos, state) > 0.0`; the
+/// port's default hooks are "not air" and mass 1.0 (`MassTracker.isSolid` /
+/// `blockMass`), so a non-air block is a mass-bearing one until the plugin
+/// installs the block-property table. Checking **before** the assembly is what
+/// keeps an empty selection from moving blocks into a plot and leaving a
+/// mass-less sub-level behind.
+bool _hasAssembledMass(SubLevelContainer container, Iterable<(int, int, int)> blocks) =>
+    blocks.any((pos) => _isSolid(_stateAt(container, pos)));
+
+/// `countAssembledBlocks` (`SableAssembleCommands.java:284-292`): the blocks a
+/// selection will actually move. The raw argument list is the whole selection
+/// volume *including air*, so reporting its size claims far more was assembled
+/// than really was.
+int _countAssembledBlocks(SubLevelContainer container, Iterable<(int, int, int)> blocks) =>
+    blocks.where((pos) => _isSolid(_stateAt(container, pos))).length;

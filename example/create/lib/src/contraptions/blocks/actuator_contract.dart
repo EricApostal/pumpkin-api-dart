@@ -22,11 +22,19 @@ import '../entity/controlled_contraption_entity.dart';
 abstract interface class ContraptionEntityFactory {
   /// `ControlledContraptionEntity.create(world, controller, contraption)`: the entity is not in
   /// the world yet.
+  ///
+  /// [entityKey] is the entity type of a `ControlledContraptionEntity` *subclass* the controller
+  /// builds — `aeronautics:propeller_bearing_contraption` of a propeller bearing,
+  /// `offroad:borehead_contraption_entity` of a borehead (Java's block entities construct their own
+  /// subclass, so a client that only ever sees `create:stationary_contraption` loses the subclass'
+  /// transforms). `null` builds the plain entity. The kind must be registered
+  /// (`ContraptionHostHooks.registerControlledEntity`).
   ControlledContraptionEntity createControlled(
     String worldId,
     Pos controllerPos,
-    Contraption contraption,
-  );
+    Contraption contraption, {
+    String? entityKey,
+  });
 
   /// `OrientedContraptionEntity.create(world, contraption, facing)` for stabilised bearing
   /// sub-contraptions. The returned entity is the core's oriented entity.

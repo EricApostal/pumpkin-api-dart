@@ -4,7 +4,9 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/payloads.dart' show ItemStackData;
+import '../../api/blocks.dart';
 import '../../api/util.dart' hide pos;
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
@@ -26,6 +28,7 @@ import 'stock_ticker_block_entity.dart';
 /// `StockTickerBlock`.
 CreateBlock stockTickerBlock() => CreateBlock(
   key: 'create:stock_ticker',
+  mapColor: manifestMapColor('stock_ticker'),
   properties: [horizontalFacingProperty],
   hardness: 3,
   blastResistance: 6,
@@ -77,9 +80,6 @@ Future<BlockUseResult> _onUse(Server server, CustomBlockUseEventData e) async {
   await StockKeeperMenus.openCategory(e.player, be);
   return BlockUseResult.success;
 }
-
-/// `SeatEntity` of the contraptions module (only its type key is needed here).
-const String _seatEntityKey = 'create:seat';
 
 /// `BlockEntityConfigurationPacket.handle`: no spectator or adventure player, the position
 /// loaded, and the player within [maxRange] blocks of the block.
@@ -144,6 +144,13 @@ final class StockPart extends LogisticsPart {
         return;
       }
       if (!order.isEmpty) {
+        // `AllAdvancements.STOCK_TICKER.awardTo(player)`. The handler's player handle is only
+        // valid until the first yield, so the award resolves the roster's handle by uuid.
+        final advancements = rt.advancements;
+        final keeper = rt.player(player.getId().asString);
+        if (advancements != null && keeper != null) {
+          unawaited(advancements.award(keeper, AllAdvancements.stockTicker));
+        }
         // `WiFiEffectPacket.send(player.level(), pos)`: the keeper's link flashes.
         final world = be.world;
         if (world != null) {
@@ -174,7 +181,7 @@ final class StockPart extends LogisticsPart {
           (vehicleType == null
               ? null
               : 'minecraft:${vehicleType.wireName.replaceAll('-', '_')}');
-      if (vehicleKey != _seatEntityKey) return e;
+      if (vehicleKey != seatEntityKey) return e;
       if (target.asLiving() == null) return e;
       // `getStockTickerPosition`: the seat's block, the four horizontal sides and the two heights.
       final (px, py, pz) = target.getPosition();

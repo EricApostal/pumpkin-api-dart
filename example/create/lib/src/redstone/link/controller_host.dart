@@ -13,12 +13,14 @@ import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 import '../../api/payloads.dart' show ItemIdResolver, ItemComponentPatch, ItemStackData;
 import '../../api/util.dart' hide pos;
 import '../../common/ghost_menu_layout.dart';
+import '../../common/ghost_quick_move.dart';
 import '../../common/menu_mirror.dart';
 import '../../core/block_entity.dart';
 import '../../core/blocks.dart';
 import '../../core/module.dart';
 import '../../core/registry.dart' show RegistryKind;
 import '../../core/registry_apply.dart' show AppliedIds;
+import '../../logistics/model/stack.dart';
 import '../power_face.dart';
 import '../support/level.dart';
 import '../support/manifest_block.dart';
@@ -27,6 +29,7 @@ import '../support/rs_runtime.dart';
 import 'controller_items.dart';
 import 'controller_server.dart';
 import 'frequency.dart';
+import 'frequency_stacks.dart';
 import 'link_behaviour.dart';
 
 /// The component key.
@@ -81,7 +84,7 @@ List<Object> controllerItemsToNbt(ControllerItems items, ItemIdResolver ids) {
       ..putString('id', key)
       ..putInt('count', t.count);
     final color = _colorOf(t);
-    if (color != -1) item.putCompound('components', NbtCompound()..putInt('minecraft:dyed_color', color));
+    if (color != -1) item.putCompound('components', dyedComponents(color));
     list.add(
       NbtCompound()
         ..putInt('slot', i)
@@ -124,7 +127,7 @@ ControllerItems controllerItemsFromNbt(List<Object>? list, ItemIdResolver ids) {
 
 Frequency frequencyFromNbtLike(NbtCompound item, String key) {
   final components = item.getCompound('components');
-  return Frequency.of(key, color: components?.getInt('minecraft:dyed_color') ?? -1);
+  return Frequency.of(key, color: components == null ? -1 : colorOfComponent(components) ?? -1);
 }
 
 // -- Lectern controller ---------------------------------------------------------------------
@@ -578,6 +581,44 @@ abstract final class LinkedControllerMenus {
 
   static void install(CreateContext ctx) {
     _ids = ctx.ids;
+    // The host applies the vanilla clicks (the player inventory mirror and the frequency slots; a
+    // frequency slot takes one item off the cursor). The shift-clicks follow
+    // `GhostItemMenu.quickMoveStack` and are applied here: one item of a mirror slot goes into the
+    // first empty frequency slot, one item leaves a frequency slot.
+    ctx.host.intercept(Events.menuClick, (server, e) async {
+      if (e.menuType != linkedControllerMenuType) return e;
+      final session = _byPlayer[e.player.getId().asString];
+      if (session == null || session.containerId != e.containerId) return e;
+      if (e.mode != MenuClickMode.quickMove) return e;
+      final sourceHost = await playerStackAt(e.player, e.slot);
+      final sourceKey = sourceHost == null ? null : await sourceHost.getRegistryKey();
+      final sourceCount = sourceHost == null ? 0 : await sourceHost.getCount();
+      final move = ghostQuickMove(
+        menuSlot: e.slot,
+        source: sourceKey == null ? LStack.empty : LStack.of(sourceKey, sourceCount),
+        ghostSlots: controllerLayout.ghostSlots,
+        ghostEmpty: (i) => session.items.slot(i) == null,
+      );
+      if (!move.isNone) {
+        if (move.take) {
+          final current = session.items.slot(move.ghost);
+          final count = current == null ? 0 : current.count - 1;
+          session.items = session.items.withSlot(
+            move.ghost,
+            current == null || count <= 0 ? null : ItemTemplate(current.itemId, count, current.patch),
+          );
+        } else {
+          final template = await _template(sourceHost);
+          if (template != null) {
+            session.items = session.items.withSlot(move.ghost, ItemTemplate(template.itemId, 1, template.patch));
+          }
+        }
+        session.dirty = true;
+        await _sendGhosts(e.player, session.items);
+      }
+      return e.copyWith(cancelled: true);
+    });
+
     ctx.listen(Events.menuSlotChanged, (server, e) async {
       if (e.menuType != linkedControllerMenuType) return;
       final session = _byPlayer[e.player.getId().asString];

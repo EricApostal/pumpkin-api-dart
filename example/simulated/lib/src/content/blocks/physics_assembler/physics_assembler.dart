@@ -302,18 +302,20 @@ final class PhysicsAssembler {
     logic.stopDisassembling();
   }
 
-  /// The saved data (`write`).
+  /// The saved data (`write`). `LastException` is the message's component JSON, the
+  /// value `AssemblyException.write` stores, so the client resolves it against its
+  /// own lang instead of reading a key it may not know.
   Map<String, Object?> write() => {
     'IsPrimary': logic.primaryAssembler,
-    if (logic.lastException != null) 'LastException': logic.lastException!.translationKey,
+    if (logic.lastException != null) 'LastException': logic.lastException!.toComponentJson(),
     if (assembledSubLevelId != null) 'SubLevel': assembledSubLevelId,
   };
 
   /// `read`.
   void read(Map<String, Object?> tag) {
     logic.primaryAssembler = tag['IsPrimary'] == true;
-    final key = tag['LastException'];
-    logic.lastException = key is String ? SimAssemblyException(key) : null;
+    final message = tag['LastException'];
+    logic.lastException = message is String ? SimAssemblyException.fromComponentJson(message) : null;
     final id = tag['SubLevel'];
     assembledSubLevelId = id is String ? id : null;
   }

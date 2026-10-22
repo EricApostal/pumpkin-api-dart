@@ -90,6 +90,32 @@ void main() {
       expect(pipeline.calls, isNot(contains('addContraption')));
     });
 
+    test('a pipeline that declares contraptions unsupported is never asked', () {
+      // The Jolt pipeline has no kinematic body factory and declares
+      // `PhysicsPipelineFeature.contraption` unsupported, which makes
+      // `addContraption` throw. The binding must consult the capability instead
+      // of calling it (`compat/create/contraption_physics.dart:579-585`).
+      final gated = _RecordingPipeline(const {PhysicsPipelineFeature.contraption});
+      SubLevelPhysicsSystem(
+        container: container,
+        pipeline: gated,
+        config: SableConfig(),
+        serverConfig: SableServerConfig(subLevelSubstepsPerTick: 1),
+      );
+
+      final binding = ContraptionPhysicsBinding.attach(entity, ship)!;
+
+      expect(gated.calls, isNot(contains('addContraption')));
+      // The contraption still belongs to the plot: its lift providers keep
+      // acting on the sub-level even though nothing simulates its body.
+      expect(ship.getPlot().contraptions, contains(binding.body));
+      expect(binding.body.mass, isNotNull);
+
+      expect(() => binding.release(), returnsNormally);
+      expect(gated.calls, isNot(contains('removeContraption')));
+      expect(ship.getPlot().contraptions, isEmpty);
+    });
+
     test('the passenger save pass moves non-players onto the contraption', () {
       // The test host has no passengers, so the pass is a no-op that must not
       // throw; the real behaviour is covered by the host interface.
@@ -450,8 +476,17 @@ final class _FakeMassTracker implements MassData {
 }
 
 /// A pipeline that records the contraption calls.
-final class _RecordingPipeline implements PhysicsPipeline {
+final class _RecordingPipeline implements PhysicsPipeline, FeatureAwarePhysicsPipeline {
+  /// The features this pipeline declares unsupported, empty by default so the
+  /// existing cases keep the Java behaviour (every feature available).
+  final Set<PhysicsPipelineFeature> unsupported;
+
+  _RecordingPipeline([this.unsupported = const {}]);
+
   final List<String> calls = [];
+
+  @override
+  bool supportsFeature(PhysicsPipelineFeature feature) => !unsupported.contains(feature);
 
   @override
   void init(Vector3d gravity, double universalDrag) {}
@@ -612,6 +647,9 @@ final class _TestHost implements ContraptionEntityHost {
   _TestHost(this._position);
 
   Vec3 _position;
+
+  @override
+  void setSyncedEntry(int index, List<int> data) {}
 
   @override
   int get entityId => 1;

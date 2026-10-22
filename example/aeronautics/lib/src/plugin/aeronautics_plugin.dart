@@ -49,6 +49,7 @@ final class AeronauticsPlugin extends Plugin {
       Permissions.registryComponents,
       Permissions.registryEntities,
       Permissions.registryFluids,
+      Permissions.registryRecipes,
       Permissions.registryExtra,
       Permissions.neoforge,
     ],
@@ -133,9 +134,22 @@ final class AeronauticsPlugin extends Plugin {
 
     module.onLoad(CreateContext(core, () => this.context, module.name));
 
+    // Phase 4: the server is loaded, so the host's recipe manager and data pack manager exist.
+    // The module enables the mod's data pack and merges the recipes of other components.
+    context.listen(Events.serverLoad, (server, event) async {
+      if (event.loadType != ServerLoadType.startup) return;
+      try {
+        await module.onServerLoaded(CreateRuntime(core, server, module.name));
+      } on Object catch (e, s) {
+        log.error('The aeronautics module failed in onServerLoaded', error: e, stackTrace: s);
+      }
+    });
+
     log.info(
       'Aeronautics loaded: ${core.registry.blocks.length} blocks, '
-      '${core.registry.blockEntityTypes.length} block entity types.',
+      '${core.registry.blockEntityTypes.length} block entity types, '
+      '${core.registry.sounds.length} sound events, '
+      '${core.registry.particles.length} particle types.',
     );
   }
 

@@ -27,7 +27,7 @@ import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter, setBlockState;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
-import '../sublevel/api/sub_level_assembly_helper.dart' show AssemblyBlockHost;
+import '../sublevel/api/sub_level_assembly_helper.dart' show AssemblyBlockHost, BatchingBlockHost;
 import '../sublevel/host/sub_level_host.dart';
 import '../sublevel/model/server_sub_level.dart';
 import '../sublevel/model/sub_level_container.dart';
@@ -219,7 +219,7 @@ final class WorldPlotChunk implements PlotChunk {
 /// Implements [AssemblyBlockHost] as well, so assembly moves block states with
 /// their properties instead of falling back to the key-only adapter (which
 /// refuses block-entity moves).
-final class PumpkinPlotChunkHost implements PlotChunkHost, AssemblyBlockHost {
+final class PumpkinPlotChunkHost implements PlotChunkHost, AssemblyBlockHost, BatchingBlockHost {
   PumpkinPlotChunkHost(this.level);
 
   @override
@@ -272,14 +272,62 @@ final class PumpkinPlotChunkHost implements PlotChunkHost, AssemblyBlockHost {
   @override
   void setChunkLoaded(int x, int z, bool loaded) {}
 
-  /// HOST GAP: `chunk-tickets.wit` has no "keep this position loaded" call for
-  /// a plugin-owned position; plot chunks never need one because they are in
-  /// memory (see the `chunk-source` gap).
+  /// The tickets this host holds, by `(chunkX, chunkZ, type)`.
+  final Map<(int, int, String), Future<int?>> _chunkTickets = {};
+
+  /// Force-loads a **world** chunk for the level (`PhysicsChunkTicketManager
+  /// .inhabitChunk` -> `level.getChunk(x, z, FULL, true)`).
+  ///
+  /// Only world chunks: a plot-yard position has no host chunk to load (the plot
+  /// blocks live in [MemoryPlotChunk]), and asking the host for a chunk 20M
+  /// blocks out just makes worldgen write terrain into the yard — the
+  /// `chunk-source` gap. The yard's own "kept loaded" state is the entry in
+  /// [_plotChunks].
+  ///
+  /// The host call is asynchronous, so the ticket handle is stored as a future;
+  /// [removeChunkTicket] releases it once it exists.
   @override
-  void addChunkTicket(int x, int z, String ticketType, int level) {}
+  void addChunkTicket(int x, int z, String ticketType, int level) {
+    if (_inYard(x, z)) return;
+    final key = (x, z, ticketType);
+    if (_chunkTickets.containsKey(key)) return;
+    _chunkTickets[key] = chunkTickets.forceLoadChunk(worldRef: this.level.world, x: x, z: z).then(
+      (result) => switch (result) {
+        OkResult(value: final handle) => handle,
+        ErrorResult(value: final error) => () {
+          diagTicketError('force-load ($x, $z) failed: $error');
+          _chunkTickets.remove(key);
+          return null;
+        }(),
+      },
+      onError: (Object error) {
+        diagTicketError('force-load ($x, $z) threw: $error');
+        _chunkTickets.remove(key);
+        return null;
+      },
+    );
+  }
 
   @override
-  void removeChunkTicket(int x, int z, String ticketType, int level) {}
+  void removeChunkTicket(int x, int z, String ticketType, int level) {
+    final ticket = _chunkTickets.remove((x, z, ticketType));
+    if (ticket == null) return;
+    unawaited(ticket.then((handle) {
+      if (handle != null) chunkTickets.releaseChunkTicket(ticket: handle);
+    }));
+  }
+
+  /// Releases every ticket this host holds (level unload).
+  void releaseChunkTickets() {
+    for (final key in _chunkTickets.keys.toList()) {
+      removeChunkTicket(key.$1, key.$2, key.$3, 0);
+    }
+  }
+
+  /// Where a failed ticket is reported; set by the plugin's logger.
+  static void Function(String message)? onTicketError;
+
+  static void diagTicketError(String message) => onTicketError?.call(message);
 
   @override
   bool isChunkLoadedEnough(int x, int z) {
@@ -408,6 +456,17 @@ final class PumpkinPlotChunkHost implements PlotChunkHost, AssemblyBlockHost {
     if (physics == null) return;
     physics.handleBlockChange(x, y, z, oldState.key, newState.key);
   }
+
+  /// Caches world-block reads for one batch of queries.
+  ///
+  /// The structure search re-reads the same positions constantly (18 neighbours
+  /// per visited block) and every read is a host call here; `HostBlockGetter`
+  /// already caches within a batch. Plot reads are in memory and need nothing.
+  @override
+  void beginBatch() => _worldBlocks.beginBatch();
+
+  @override
+  void endBatch() => _worldBlocks.endBatch();
 
   @override
   Map<String, Object?>? blockEntityDataAt(int x, int y, int z) {

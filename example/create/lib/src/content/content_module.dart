@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/advancements.dart';
+import '../api/payloads.dart';
 import '../api/sounds.dart';
 import '../core/module.dart';
 import '../core/registry.dart';
@@ -14,6 +15,7 @@ import 'advancement_data.dart';
 import 'content_registrations.dart';
 import 'content_services.dart';
 import 'enchantments.dart';
+import 'experience_nugget_host.dart';
 import 'material_blocks.dart';
 import 'material_content.dart';
 
@@ -46,6 +48,27 @@ final class ContentModule extends CreateModule {
     for (final e in CreateEnchantments.definitions()) {
       registry.enchantment(e);
     }
+    // The station's map decoration and the entity data serializers: id-bearing
+    // registries the host numbers (`applyRegistry` registers them, `contentRegistries`
+    // names `minecraft:map_decoration_type` and `neoforge:entity_data_serializers` for
+    // them). Only the station decoration is registered; the ids after it resolve to the
+    // client's own entries, which are the same ones in the same order.
+    if (kMapDecorations.isNotEmpty) {
+      final station = kMapDecorations.first;
+      registry.mapDecoration(
+        MapDecorationSpec(
+          'create:${station.key}',
+          assetName: station.assetId,
+          showOnItemFrame: station.showOnItemFrame,
+          mapColor: station.mapColor,
+          explorationMapElement: station.explorationMapElement,
+          trackCount: station.trackCount,
+        ),
+      );
+    }
+    for (final s in kEntityDataSerializers) {
+      registry.entityDataSerializer('create:${s.key}');
+    }
     // The synced server config as NeoForge clients get it with the handshake (defaults; the
     // infrastructure module pushes the configured values when they differ).
     registry.neoForgeConfigFile(
@@ -57,40 +80,21 @@ final class ContentModule extends CreateModule {
   @override
   void onLoad(CreateContext ctx) {
     final log = ctx.log;
-    ctx.services.provide<CreateAdvancements>(CreateAdvancementsImpl(_tree));
+    ctx.services.provide<CreateAdvancements>(
+      CreateAdvancementsImpl(
+        _tree,
+        () => ctx.services.find<PayloadBus>()?.roster.players ?? const <Player>[],
+      ),
+    );
     ctx.services.provide<CreateSounds>(CreateSoundsImpl());
-
-    final station = kMapDecorations.first;
-    try {
-      ExtraRegistries.registerMapDecoration(
-        MapDecorationSpec(
-          'create:${station.key}',
-          assetName: station.assetId,
-          showOnItemFrame: station.showOnItemFrame,
-          mapColor: station.mapColor,
-          explorationMapElement: station.explorationMapElement,
-          trackCount: station.trackCount,
-        ),
-      );
-    } on HostException catch (e) {
-      log.error('Could not register the station map decoration: ${e.message}');
-    }
-
-    for (final s in kEntityDataSerializers) {
-      try {
-        EntityRegistries.registerDataSerializer('create:${s.key}');
-      } on HostException catch (e) {
-        log.error(
-          'Could not register the entity data serializer ${s.key}: ${e.message}',
-        );
-      }
-    }
 
     CreateEnchantments.configure(ctx.host).catchError((Object e, StackTrace s) {
       log.error('Could not configure the enchantments: $e');
     });
 
     InventoryAdvancementWatcher(_tree, log).install(ctx.host);
+    // `ExperienceNuggetItem.use`: a right click in the air with an experience nugget.
+    ExperienceNuggetHost().install(ctx.host);
   }
 }
 

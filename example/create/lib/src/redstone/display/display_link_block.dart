@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/panel_support.dart';
 import '../../api/payloads.dart' show NbtValue;
 import '../../api/util.dart' hide pos;
@@ -43,6 +44,10 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity
 
   late final PanelSupportBehaviour factoryPanelSupport;
 
+  /// `registerAwardables(behaviours, DISPLAY_LINK, DISPLAY_BOARD)`: the player that placed the
+  /// link gets both when the link sends its gathered data.
+  late final AdvancementBehaviour advancements;
+
   DisplayLinkBlockEntity(super.worldId, super.pos) {
     factoryPanelSupport = addBehaviour(
       PanelSupportBehaviour.of(
@@ -50,6 +55,12 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity
         isOutput: () => false,
         outputPower: () => false,
         onNotify: _notifyPanelChange,
+      ),
+    );
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.displayLink, AllAdvancements.displayBoard],
+        () => Rs.i.ctx.services.find<CreateAdvancements>(),
       ),
     );
   }
@@ -134,6 +145,7 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity
       sourceConfig: _sourceConfig,
       direction: direction,
       activeTarget: activeTarget,
+      award: (id) => unawaited(advancements.awardPlayer(id)),
       linkedPanels: [
         for (final p in factoryPanelSupport.linkedPanels)
           (p.pos, p.slot.serializedName),
@@ -188,6 +200,9 @@ final class DisplayLinkBlockEntity extends LinkWithBulbBlockEntity
     await source.transferData(ctx, tgt, targetLine);
     sendPulseNextSync();
     sendData();
+
+    // `award(AllAdvancements.DISPLAY_LINK)`.
+    unawaited(advancements.awardPlayer(AllAdvancements.displayLink));
   }
 
   @override
@@ -298,6 +313,13 @@ final class DisplayLinkBlock {
     final powered = await shouldBePowered(lvl, pos, _facing(props));
     if (powered != (props['powered'] == 'true'))
       await lvl.setProps(pos, {'powered': '$powered'});
+    // `AdvancementBehaviour.setPlacedBy(pLevel, pPos, pPlacer)`.
+    final uuid = e.player?.asString;
+    if (uuid != null)
+      Rs.i
+          .be<DisplayLinkBlockEntity>(e.targetWorld, e.pos)
+          ?.advancements
+          .setPlayer(uuid);
   }
 
   Future<void> _onNeighborUpdate(

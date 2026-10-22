@@ -19,6 +19,7 @@ import '../api/block/block_entity_sub_level_actor.dart';
 import '../api/block/block_entity_sub_level_reaction_wheel.dart';
 import '../api/physics.dart';
 import '../host/sub_level_host.dart';
+import '../network/wire.dart' show SableBufferUtils;
 import 'level_plot.dart';
 import 'plot_chunk_holder.dart';
 import 'server_sub_level.dart';
@@ -172,7 +173,11 @@ final class ServerLevelPlot extends LevelPlot {
     for (final holder in loadedChunks) {
       final global = holder.pos;
       final local = toLocal(global);
-      chunks['${local.$1},${local.$2}'] = chunkHost.serializeChunk(holder.chunk);
+      // `ServerLevelPlot.java:420`: the key is `ChunkPos.pack(localX, localZ)`
+      // as a decimal string, not the port's old `"x,z"`: Java cannot parse that,
+      // and the port must read Java's keys.
+      chunks['${SableBufferUtils.packChunk(local.$1, local.$2)}'] =
+          chunkHost.serializeChunk(holder.chunk);
     }
     tag['chunks'] = chunks;
     return tag;
@@ -203,12 +208,31 @@ final class ServerLevelPlot extends LevelPlot {
 
     for (final entry in chunks.entries) {
       final key = entry.key as String;
-      final parts = key.split(',');
-      if (parts.length != 2) continue;
-      final local = (int.tryParse(parts[0]) ?? 0, int.tryParse(parts[1]) ?? 0);
+      // `ServerLevelPlot.java:453`: the key is `Long.parseLong`, i.e. a packed
+      // `ChunkPos`. A key that is neither packed nor the port's old `"x,z"` is
+      // reported rather than skipped: silently dropping it loses the blocks.
+      final packed = int.tryParse(key);
+      final int localX;
+      final int localZ;
+      if (packed != null) {
+        localX = SableBufferUtils.unpackChunkX(packed);
+        localZ = SableBufferUtils.unpackChunkZ(packed);
+      } else {
+        final parts = key.split(',');
+        if (parts.length != 2 || int.tryParse(parts[0]) == null || int.tryParse(parts[1]) == null) {
+          onChunkKeyError?.call(key);
+          continue;
+        }
+        localX = int.parse(parts[0]);
+        localZ = int.parse(parts[1]);
+      }
+      final local = (localX, localZ);
       final global = toGlobal(local);
       final chunkTag = entry.value;
-      if (chunkTag is! Map) continue;
+      if (chunkTag is! Map) {
+        onChunkKeyError?.call(key);
+        continue;
+      }
 
       final chunk = chunkHost.deserializeChunk(global.$1, global.$2, Map<String, Object?>.from(chunkTag));
       addChunkHolder(local, PlotChunkHolder.create(chunk, global), false);
@@ -236,6 +260,14 @@ final class ServerLevelPlot extends LevelPlot {
   /// `BlockSubLevelLiftProvider` itself; the compat layer registers a lookup by
   /// block key instead and installs it here.
   static LiftProviderContext? Function(Pos pos, String state)? liftProviderLookup;
+
+  /// Reports a `chunks` key of a loaded plot that is neither a packed `ChunkPos`
+  /// (what Java writes) nor the port's legacy `"x,z"`.
+  ///
+  /// Java's `Long.parseLong` throws and the whole sub-level fails to load; the
+  /// port skips the one chunk, but only after reporting it — a skipped chunk is
+  /// missing blocks. Installed by the host.
+  static void Function(String key)? onChunkKeyError;
 
   /// The lift provider context of the block at [pos], when the block is a lift
   /// provider.

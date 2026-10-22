@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/blocks.dart';
 import '../../api/util.dart' hide pos;
 import '../../conveyance/transport/hatch/item_hatch_logic.dart';
 import '../model/package.dart';
@@ -72,6 +73,7 @@ class ItemHatchBlockEntity extends LgBlockEntity {
 /// `ItemHatchBlock`.
 CreateBlock itemHatchBlock() => CreateBlock(
   key: 'create:item_hatch',
+  mapColor: manifestMapColor('item_hatch'),
   properties: [
     horizontalFacingProperty,
     CreateProps.open,

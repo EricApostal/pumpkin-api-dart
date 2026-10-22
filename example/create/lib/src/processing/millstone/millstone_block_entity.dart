@@ -9,6 +9,7 @@ import '../../api/kinetics.dart';
 import '../common/capabilities.dart';
 import '../common/stack.dart';
 import '../common/storage.dart';
+import '../deployer/deployer_items.dart';
 import '../host/stack_host.dart';
 import '../processing_runtime.dart';
 import '../recipe/recipe_book.dart';
@@ -122,10 +123,16 @@ class MillstoneBlockEntity extends KineticBlockEntity
     if (match == null) return;
     lastMatch = match;
 
+    // `MillstoneBlockEntity.java:164-167`: the remainder is read from the input before it is
+    // shrunk; `:170-172`: it is inserted after the rolled results, when it is not empty.
+    final remainder = craftingRemainderOf(stack);
     inputInv.setStack(0, stack.shrink(1));
     final random = ProcessingRuntime.instance.random;
     for (final result in match.rollResults(random)) {
       ItemStorages.insertStacked(outputInv, result);
+    }
+    if (remainder != null && !remainder.isEmpty) {
+      ItemStorages.insertStacked(outputInv, remainder);
     }
     markDirty();
     sendData();

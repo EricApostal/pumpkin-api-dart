@@ -111,10 +111,20 @@ final class MapDecorationSpec {
 ///
 /// All of them are append only and close when the server accepts connections.
 /// The n-th entry registered gets the id `vanilla count + n` in registries that
-/// clients synchronise; NeoForge clients get the ids through the handshake
-/// (without a `declareNeoForge` call too), other clients do not know the
-/// entries. Needs [Permissions.registryExtra]. Failures throw a
-/// [HostException].
+/// clients synchronise; other clients do not know the entries.
+///
+/// The registries a NeoForge client synchronises — `minecraft:sound_event`,
+/// `minecraft:particle_type`, `minecraft:mob_effect`,
+/// `minecraft:map_decoration_type` and the registry a mod owns
+/// (`mymod:thing`, `declareSyncedRegistry`) — are sent only to a client whose
+/// server **declares** them: name the registry in `Context.declareNeoForge`
+/// (`NeoForgeRegistryAddition`), the same as for a block or an item. Declaring a
+/// mod is not enough: an entry no declaration vouches for keeps the registry out
+/// of the snapshot for everybody (the host's ids are positions, so a host-numbered
+/// registry is sent whole or not at all). A plugin that registers a sound but
+/// names nothing keeps it server-side.
+///
+/// Needs [Permissions.registryExtra]. Failures throw a [HostException].
 ///
 /// ```dart
 /// ExtraRegistries.registerSound(const SoundSpec('my_plugin:whirr'));
@@ -211,7 +221,12 @@ abstract final class ExtraRegistries {
   );
 
   /// Declares a registry the plugin owns (`create:fan_processing_type` style)
-  /// that is synced to NeoForge clients with all its entries in id order.
+  /// that is synced to NeoForge clients with all its entries in id order —
+  /// **once the declaration names it** (`Context.declareNeoForge`,
+  /// `NeoForgeRegistryAddition`, `entries` the ones [addSyncedEntry] added): the
+  /// key only exists on a client whose mod creates it, so the host sends the
+  /// registry only when a declaration vouches for it, and an unvouched one is
+  /// refused by the client with "unknown keys".
   static void declareSyncedRegistry(String key) => unwrapHost(
     generated.extraRegistries.registerSyncedRegistry(key: key),
     'Declaring the synced registry $key',

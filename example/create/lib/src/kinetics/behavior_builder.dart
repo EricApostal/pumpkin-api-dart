@@ -102,6 +102,7 @@ BlockBehavior buildKineticBehavior(
   FutureOr<void> Function(HookCtx c)? scheduledTick,
   int? Function(HookCtx c, CustomBlockUpdateShapeEventData e)? updateShape,
   FutureOr<BlockUseResult> Function(HookCtx c, CustomBlockUseEventData e)? use,
+  FutureOr<BlockUseResult> Function(HookCtx c, CustomBlockUseEventData e)? useWithItem,
   FutureOr<bool> Function(HookCtx c, CustomBlockCanPlaceEventData e)? canPlace,
   int? Function(HookCtx c)? comparator,
   FutureOr<void> Function(HookCtx c, CustomBlockEntityStepEventData e)?
@@ -163,6 +164,12 @@ BlockBehavior buildKineticBehavior(
     onUse: use == null
         ? null
         : (server, e) => use(
+            makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
+            e,
+          ),
+    onUseWithItem: useWithItem == null
+        ? null
+        : (server, e) => useWithItem(
             makeCtx(server, blockRef(), e.targetWorld, e.pos, e.stateIndex),
             e,
           ),

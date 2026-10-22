@@ -106,7 +106,7 @@ abstract final class BasinBlock {
       final filling = GenericItemFilling(runtime.rules);
       final held = await HostStacks.read(e.item);
       if (held.isEmpty) return BlockUseResult.tryEmptyHand;
-      final item = FluidItemSpec(held.key, held.count);
+      final item = FluidItemSpec(held.key, held.count, held.comps);
 
       if (await _emptyItemIntoBasin(
         e,
@@ -181,7 +181,7 @@ abstract final class BasinBlock {
           e.player,
           e.targetWorld,
           posContaining(e.player.getPosition()),
-          PStack(remainder.key, remainder.count),
+          PStack(remainder.key, remainder.count, comps: remainder.comps),
         );
       }
     }
@@ -218,7 +218,7 @@ abstract final class BasinBlock {
           e.player,
           e.targetWorld,
           posContaining(e.player.getPosition()),
-          PStack(result.key, result.count),
+          PStack(result.key, result.count, comps: result.comps),
         );
       }
       be.sendData();
@@ -237,7 +237,9 @@ abstract final class BasinBlock {
       await player.setItemInHand(hand: hand, stack: null);
       return;
     }
-    final stack = await HostStacks.write(PStack(spec.key, spec.count));
+    final stack = await HostStacks.write(
+      PStack(spec.key, spec.count, comps: spec.comps),
+    );
     if (stack == null) return;
     await player.setItemInHand(hand: hand, stack: stack);
   }

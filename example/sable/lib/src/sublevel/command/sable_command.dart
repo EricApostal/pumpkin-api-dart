@@ -85,7 +85,7 @@ void registerSableCommands(CommandBuilder root, SableCommandState state) {
         'add',
         build: (add) => add.arg(
           'sub_level',
-          ArgumentTypes.greedyString,
+          ArgumentTypes.token,
           runs: (ctx) => _forceload(ctx, state, true),
         ),
       );
@@ -94,7 +94,7 @@ void registerSableCommands(CommandBuilder root, SableCommandState state) {
         'remove',
         build: (remove) => remove.arg(
           'sub_level',
-          ArgumentTypes.greedyString,
+          ArgumentTypes.token,
           runs: (ctx) => _forceload(ctx, state, false),
         ),
       );
@@ -106,7 +106,7 @@ void registerSableCommands(CommandBuilder root, SableCommandState state) {
     description: 'Prints the pose, mass and velocity of sub-levels',
     build: (info) => info.arg(
       'sub_level',
-      ArgumentTypes.greedyString,
+      ArgumentTypes.token,
       runs: (ctx) => _info(ctx, state),
     ),
   );

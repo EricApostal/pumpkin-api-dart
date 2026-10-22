@@ -20,15 +20,23 @@ import 'honey_glue_logic.dart';
 /// The entity type key.
 const String honeyGlueEntityKey = 'simulated:honey_glue';
 
-/// The entity type: no hitbox of its own, never saved by the chunk (it is
-/// spawned again from its bounds), and not summonable.
+/// The entity type: an invisible box, saved with the chunk (its spawn data *is*
+/// its box) and not summonable.
+///
+/// The numbers are the Java's (`SimEntityTypes.java:17-21`:
+/// `EntityLoaderData(10, Integer.MAX_VALUE, 0.1f, 0.1f, 0, false, true, false)`),
+/// which the client's own registration must match.
 const EntityTypeSpec honeyGlueEntityType = EntityTypeSpec(
   key: honeyGlueEntityKey,
-  width: 0.5,
-  height: 0.5,
+  width: 0.1,
+  height: 0.1,
+  eyeHeight: 0,
   category: EntityCategory.misc,
   trackingRange: 10,
-  updateInterval: 20,
+  // `setUpdateInterval(Integer.MAX_VALUE)`: the position is never streamed, the
+  // box travels in the spawn data and in `simulated:honey_glue_sync`.
+  updateInterval: 2147483647,
+  trackDeltas: false,
   summonable: false,
   saveable: true,
   pickable: false,

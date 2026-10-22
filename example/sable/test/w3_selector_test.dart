@@ -288,4 +288,81 @@ void main() {
       expect(DoubleRange.parse('3..').max, isNull);
     });
   });
+
+  group('the source the command provides', () {
+    /// Resolves [selector] against the context [context] builds.
+    List<ServerSubLevel> select(String selector, SubLevelTargetContext context) =>
+        SubLevelArgumentType.subLevels.parse(selector).resolve(context);
+
+    test('@i, @t and @v read the containing, tracking and viewed sub-level', () {
+      final inside = spawn('inside', Vector3d(0, 0, 0));
+      final lookedAt = spawn('looked_at', Vector3d(10, 0, 0));
+      final context = SubLevelTargetContext(
+        container: container,
+        sourcePosition: Vector3d(5, 0, 0),
+        random: math.Random(1),
+        containingSubLevel: inside,
+        trackingSubLevel: inside,
+        viewedSubLevel: lookedAt,
+      );
+
+      expect(select('@i', context).single.uniqueId, inside.uniqueId);
+      expect(select('@t', context).single.uniqueId, inside.uniqueId);
+      expect(select('@v', context).single.uniqueId, lookedAt.uniqueId);
+    });
+
+    test('@i, @t and @v select nothing when the source has no sub-level', () {
+      spawn('a', Vector3d(0, 0, 0));
+      final context = contextAt(Vector3d());
+
+      expect(select('@i', context), isEmpty);
+      expect(select('@t', context), isEmpty);
+      expect(select('@v', context), isEmpty);
+    });
+
+    test('@n compares against the projected position, not the raw one', () {
+      final projected = spawn('projected', Vector3d(0, 0, 0));
+      spawn('raw', Vector3d(10, 0, 0));
+
+      // `@n`'s neighbours are what `projectOutOfSubLevel` gives, so a raw
+      // position next to the second sub-level must not win.
+      final resolved = select(
+        '@n',
+        SubLevelTargetContext(
+          container: container,
+          sourcePosition: Vector3d(10, 0, 0),
+          projectedOutOfSubLevel: Vector3d(-1000, 0, 0),
+          random: math.Random(1),
+        ),
+      );
+
+      expect(resolved.single.uniqueId, projected.uniqueId);
+    });
+
+    test('the projection defaults to the raw position', () {
+      spawn('a', Vector3d(0, 0, 0));
+      final raw = spawn('raw', Vector3d(10, 0, 0));
+
+      final context = contextAt(Vector3d(10, 0, 0));
+
+      expect(context.projectedSourcePosition.x, 10.0);
+      expect(select('@n', context).single.uniqueId, raw.uniqueId);
+    });
+
+    test('the containing lookup finds the plot a position is in', () {
+      final a = spawn('a', Vector3d(0, 0, 0));
+      final center = a.getPlot().getCenterBlock();
+      final inside = Vector3d(
+        center.$1.toDouble(),
+        center.$2.toDouble(),
+        center.$3.toDouble(),
+      );
+
+      expect(containingSubLevelOf(container, inside)?.uniqueId, a.uniqueId);
+      expect(
+        containingSubLevelOf(container, Vector3d(inside.x + 10_000, inside.y, inside.z)),
+        isNull,
+      );
+    });
+  });
 }

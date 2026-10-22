@@ -28,6 +28,7 @@ import 'factory_panel_set_item_menu.dart';
 /// `FactoryPanelBlock`.
 CreateBlock factoryPanelBlock() => CreateBlock(
   key: 'create:factory_gauge',
+  mapColor: manifestMapColor('factory_gauge'),
   properties: [
     attachFaceProperty,
     horizontalFacingProperty,
@@ -120,6 +121,11 @@ Future<void> _onPlaced(Server server, CustomBlockPlacedEventData e) async {
   if (e.player == null) return;
   final world = e.targetWorld;
   final pos = e.pos.toPos();
+  // `AdvancementBehaviour.setPlacedBy(pLevel, pPos, pPlacer)`.
+  Lg.i.store
+      .typed<FactoryPanelBlockEntity>(world.getId(), e.pos)
+      ?.advancements
+      .setPlayer(e.player!.asString);
   final key = _gaugePlacementKey(world, pos);
   final pending = _pendingGaugePlacements.remove(key);
   // A placement the host did not announce (or a state change of an existing gauge): leave it.

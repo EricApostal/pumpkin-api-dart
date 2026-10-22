@@ -127,11 +127,12 @@ final class SubLevelPhysicsSystem with SubLevelObserver implements PartialPhysic
   void initialize() {
     final levelRef = container.level;
     final gravity = Vector3d();
-    final drag = 0.09;
+    // Java reads both from `DimensionPhysicsData` (`SubLevelPhysicsSystem.java:168-170`):
+    // the drag is the dimension's universal drag, not a constant.
     // DimensionPhysicsData is imported lazily through the helper below so this
     // file does not depend on the physics config package's host lookups.
     _applyDimensionDefaults(levelRef, gravity);
-    pipeline.init(gravity, drag);
+    pipeline.init(gravity, dimensionDrag(levelRef));
     _updatePipelineConfig();
   }
 
@@ -143,16 +144,26 @@ final class SubLevelPhysicsSystem with SubLevelObserver implements PartialPhysic
     dest.set(0.0, -11.0, 0.0);
   };
 
-  /// Overridable dimension lookup: the universal drag of [level].
+  /// Overridable dimension lookup: the universal drag of [level]
+  /// (`DimensionPhysicsData.getUniversalDrag`).
   static double Function(Object level) dimensionDrag = (level) => 0.09;
 
   void _applyDimensionDefaults(Object levelRef, Vector3d gravity) {
     dimensionGravity(levelRef, gravity);
   }
 
+  /// Hands the solver settings to the pipeline (`SubLevelPhysicsSystem.java:171-172`
+  /// calls `pipeline.updateConfigFrom(this.config)`).
+  ///
+  /// The settings are a pipeline contract of their own ([ConfigurablePhysicsPipeline])
+  /// rather than a member of [PhysicsPipeline] itself: only a solver reads them,
+  /// and adding a member to the base interface would touch every pipeline the
+  /// tests define. A pipeline that does not implement it keeps its own defaults,
+  /// which is what the port did for every pipeline before this.
   void _updatePipelineConfig() {
-    // The pipeline reads the solver settings through `init`; a pipeline that
-    // wants them again after a config reload calls `onConfigUpdated`.
+    if (pipeline case final ConfigurablePhysicsPipeline configurable) {
+      configurable.updateConfigFrom(physicsConfig);
+    }
   }
 
   /// `onConfigUpdated()`: the physics config changed.
@@ -223,12 +234,19 @@ final class SubLevelPhysicsSystem with SubLevelObserver implements PartialPhysic
       for (final subLevel in subLevels) {
         if (subLevel.isRemoved()) continue;
         final changed = subLevel.updateMergedMassData(getPartialPhysicsTick());
-        if (!changed) continue;
         final tracker = subLevel.massTracker;
         if (tracker != null && !tracker.isInvalid()) {
-          // Java's `MergedMassTracker.uploadData` moves the rotation point and
-          // pushes the new properties to the pipeline (`MergedMassTracker.java:105-126`).
+          // The rotation point is the centre of mass for every transform of the
+          // pose (Java's `uploadData` writes it whenever the stats change); it is
+          // kept in step here even when nothing changed, so a sub-level that was
+          // just loaded or rotated still transforms about its own centre.
           (subLevel.logicalPose as Pose3d).rotationPoint().setFrom(tracker.getCenterOfMass());
+        }
+        if (!changed) continue;
+        if (tracker != null && !tracker.isInvalid()) {
+          // Java's `MergedMassTracker.uploadData` pushes the new properties to the
+          // pipeline (`MergedMassTracker.java:105-126`); the rotation point was
+          // already written above.
           pipeline.onStatsChanged(subLevel);
         }
       }
@@ -345,8 +363,12 @@ final class SubLevelPhysicsSystem with SubLevelObserver implements PartialPhysic
     serverSubLevel.physicsBody = pipeline.addSubLevel(serverSubLevel, serverSubLevel.logicalPose);
 
     final tracker = serverSubLevel.massTracker;
-    if (tracker == null || tracker.getCenterOfMass().x.isNaN) {
-      // No centre of mass means the body is effectively gone.
+    // Java null-checks the centre of mass here (`SubLevelPhysicsSystem.java:376-381`)
+    // and treats "no centre of mass" as "the body is effectively gone". Reading
+    // the getter would *throw* in this port instead (the Dart contract throws
+    // where Java returns null), which turned a handled state into an exception
+    // on the NaN path.
+    if (tracker == null || tracker.isInvalid()) {
       container.removeSubLevelAt(serverSubLevel, SubLevelRemovalReason.removed);
       return false;
     }

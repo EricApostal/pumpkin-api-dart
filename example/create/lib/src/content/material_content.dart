@@ -1,6 +1,9 @@
 // The plain materials of Create (`AllBlocks` ores and storage blocks, `AllItems` ingredients):
-// the blocks and items no content package owns. They carry no behaviour; the data pack ships
-// their loot tables and recipes. Pure: the module builds the blocks from the manifest.
+// the blocks and items no content package owns. They carry no behaviour, apart from the experience
+// nugget's use (`experience_nugget_host.dart`); the data pack ships their loot tables and recipes.
+// Pure: the module builds the blocks from the manifest.
+import 'dart:math' as math;
+
 import 'package:pumpkin_api/pumpkin_api_core.dart';
 
 import '../manifest/manifest.dart';
@@ -88,7 +91,8 @@ const Set<String> materialItemKeys = {
 ///
 /// The four food items get the `minecraft:food` component of their `AllItems` entry and the
 /// `minecraft:consumable` that `Item.Properties#food` adds beside it; the blaze cakes'
-/// `minecraft:cooking_fuel` is skipped (the host has no reader for it).
+/// `minecraft:cooking_fuel` is skipped (the host has no reader for it). The experience nugget gets
+/// its foil (`minecraft:enchantment_glint_override`); its `use` is in `experience_nugget_host.dart`.
 List<ItemRegistration> createMaterialItems() => [
   for (final m in kItems)
     if (materialItemKeys.contains(m.key)) materialItem(m),
@@ -129,9 +133,57 @@ ItemRegistration materialItem(ManifestItem m) {
     components['minecraft:consumable'] = _defaultFoodConsumable;
   }
   final encoded = DataComponentCodec.encodeAll(components);
+  final all = [...encoded.encoded];
+  if (m.key == 'experience_nugget') {
+    // `ExperienceNuggetItem.isFoil` returns true (`ExperienceNuggetItem.java:23-26`); in 1.21+ that
+    // is the `minecraft:enchantment_glint_override` component. `DataComponentCodec` has no encoder
+    // for it, but the host decodes it as one `bool`
+    // (`crates/pumpkin-protocol/src/codec/data_component.rs:2078-2081`), the same byte
+    // `ItemSpec.glint` writes (`item_builder.dart:238-239`), so it is added raw.
+    all.add(
+      EncodedComponent(
+        'minecraft:enchantment_glint_override',
+        PacketBuffer.encode((w) => w.writeBool(true)),
+      ),
+    );
+  }
   return ItemRegistration(
     key: 'create:${m.key}',
-    components: encoded.encoded,
+    components: all,
     maxStackSize: m.maxStack,
   );
+}
+
+/// `ExperienceNuggetItem.use` (ExperienceNuggetItem.java:38): `Mth.ceil(3f * amountUsed)`.
+///
+/// `3f * amountUsed` is exact for every count a stack can have, so the ceiling is the integer
+/// product; the port awards this many points for one activation (see [experienceNuggetOrbs]).
+int experienceNuggetXp(int amountUsed) => 3 * amountUsed;
+
+/// The values of the `ExperienceOrb`s `ExperienceNuggetItem.use` spawns for [amountUsed] nuggets
+/// (ExperienceNuggetItem.java:37-48).
+///
+/// `total = ceil(3f * amountUsed)`, `maxOrbs` is 1 for a single nugget and 5 otherwise and
+/// `valuePer = max(1, 1 + total ~/ maxOrbs)`; orb `i` is worth `min(valuePer, total - i * valuePer)`,
+/// a value of zero meaning that no orb is spawned.
+///
+/// Java's loop only skips exact zeros, so when `total < maxOrbs * valuePer` its last term is
+/// negative (two nuggets: `2, 2, 2, -2`); an orb of a non-positive value awards nothing when it is
+/// picked up (`ExperienceOrb.playerTouch` gives the points only `if (remaining > 0)`,
+/// `ExperienceOrb.java:288`, which the host mirrors at
+/// `crates/pumpkin-core/src/entity/experience_orb.rs:121`). The values therefore stop at the first
+/// non-positive one, and their sum is exactly [experienceNuggetXp] — the experience the player
+/// gains in Java.
+List<int> experienceNuggetOrbs(int amountUsed) {
+  if (amountUsed < 1) return const [];
+  final total = experienceNuggetXp(amountUsed);
+  final maxOrbs = amountUsed == 1 ? 1 : 5;
+  final valuePer = math.max(1, 1 + total ~/ maxOrbs);
+  final values = <int>[];
+  for (var i = 0; i < maxOrbs; i++) {
+    final value = math.min(valuePer, total - i * valuePer);
+    if (value <= 0) break;
+    values.add(value);
+  }
+  return values;
 }

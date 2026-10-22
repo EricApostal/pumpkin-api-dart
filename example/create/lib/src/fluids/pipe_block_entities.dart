@@ -257,20 +257,26 @@ class PumpBlockEntity extends KineticBlockEntity implements PumpPeer {
   void tick() {
     super.tick();
 
+    var flipped = false;
     if (scheduleFlip) {
       scheduleFlip = false;
+      flipped = true;
       unawaited(
         switchToState(
           blockState.set('facing', toKineticDir(facing.opposite).name),
         ),
       );
-      return;
     }
 
-    for (final front in const [true, false]) {
-      if (!sidesToUpdate[front ? 0 : 1]) continue;
-      sidesToUpdate[front ? 0 : 1] = false;
-      distributePressureTo(front ? facing : facing.opposite);
+    // `PumpBlockEntity.tick` does not return after the flip: the pressure round of this tick
+    // still runs, against the flipped front. Java's `setBlockAndUpdate` is synchronous, so its
+    // `getFront()` inside the loop reads the new state; the port's write is asynchronous, so the
+    // flipped direction is carried in `front` instead.
+    final front = flipped ? facing.opposite : facing;
+    for (final isFront in const [true, false]) {
+      if (!sidesToUpdate[isFront ? 0 : 1]) continue;
+      sidesToUpdate[isFront ? 0 : 1] = false;
+      distributePressureTo(isFront ? front : front.opposite);
     }
   }
 

@@ -29,6 +29,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../../config/offroad_config.dart';
 import '../../../handlers/multi_mining.dart';
 import '../../../host/offroad_hooks.dart';
+import '../../../host/placement.dart' show applyDirectionalAxisPlacement;
 import '../../../index/offroad_ids.dart';
 import '../../contraptions/borehead_contraption.dart';
 import '../rock_cutting_wheel/rock_cutting_wheel_block.dart' show rockCuttingWheelKey;
@@ -163,10 +164,23 @@ final class BoreheadBearingBlockEntity extends MechanicalBearingBlockEntity
       return;
     }
 
-    // TODO(parity): the contraption does not move its blocks out of the world yet
-    // (`BoreheadBearingContraption` inherits `removeBlocksFromWorld` from the
-    // Create port, which no ported bearing calls during assembly either).
-    final entity = factory.createControlled(worldId, localPos, contraption);
+    // `contraption.removeBlocksFromWorld(level, BlockPos.ZERO)`
+    // (`BoreheadBearingBlockEntity.java:414`): the structure leaves the world as it is
+    // assembled — without this the blocks stay behind *and* the contraption renders and
+    // collides with them (`MechanicalBearingBlockEntity.assemble` does the same,
+    // `bearing_block_entities.dart`).
+    await contraption.removeBlocksFromWorld(level, posZero);
+
+    // `BoreheadContraptionEntity.create(level, this, contraption)`: the kind the bearing
+    // registers (`offroad:borehead_contraption_entity`), not a plain controlled one --
+    // it switches off every actor but the rock cutting wheel and disassembles without a
+    // rotation.
+    final entity = factory.createControlled(
+      worldId,
+      localPos,
+      contraption,
+      entityKey: OffroadIds.boreheadContraptionEntity,
+    );
     final anchor = blockPos.relative(facing);
     entity.setPos(anchor.toVec3());
     entity.setRotationAxis(facing.axis);
@@ -385,8 +399,13 @@ CreateBlock buildBoreheadBearingBlock() => CreateBlock(
   requiresCorrectTool: true,
   soundType: 'copper',
   canOcclude: false,
+  // `DirectionalAxisKineticBlock`/`AbstractDirectionalAxisBlock`: `facing` is the clicked
+  // face (`getFacingForPlacement`), `axis_along_first` follows in `onPlaced` (see
+  // `host/placement.dart` — no placement rule can combine the clicked axis with the look).
+  placement: const [PlacementRule.clickedFace('facing')],
   blockEntityType: boreheadBearingKey,
   behavior: BlockBehavior(
+    onPlaced: (server, e) => applyDirectionalAxisPlacement(server, e),
     onUseWithoutItem: (server, e) async {
       // `BoreheadBearingBlock.useItemOn` with an empty hand (`:56-68`): start the
       // slowdown of a running bearing, or assemble it on the next tick.

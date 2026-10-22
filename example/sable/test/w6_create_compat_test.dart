@@ -750,6 +750,9 @@ final class _TestHost implements ContraptionEntityHost {
   Vec3 _position;
 
   @override
+  void setSyncedEntry(int index, List<int> data) {}
+
+  @override
   int get entityId => 1;
 
   @override

@@ -59,6 +59,15 @@ final class SubLevelHoldingChunkMap {
   /// Whether verbose logging is on (`SableConfig.verboseSerializationLogging`).
   bool verboseLogging = false;
 
+  /// Where a sub-level that could not be loaded back is reported.
+  ///
+  /// Java logs `Failed to load holding sub-level {} with pointer {}. This is a
+  /// problem.` and toasts the player (`SubLevelHoldingChunkMap.java:570-584`).
+  /// The port has no logger of its own, so the host installs one; without it the
+  /// failure is silent — which is how a force-loaded ship can vanish on restart
+  /// while everything looks fine.
+  void Function(String message, Object? error)? onLoadFailure;
+
   SubLevelHoldingChunkMap(this.container, this.level, this.storage);
 
   /// Packs a chunk position into a map key.
@@ -234,6 +243,12 @@ final class SubLevelHoldingChunkMap {
 
     storage.flush();
     storage.pruneCache();
+
+    // `SubLevelHoldingChunkMap.java:331`: the force-load tickets are written
+    // with every level save, so a ticket whose sub-level just moved to another
+    // chunk keeps a pointer that exists on disk.
+    final owner = container;
+    if (owner is ServerSubLevelContainer) owner.markTicketsDirty();
   }
 
   void _moveAndSaveSubLevel(ServerSubLevel subLevel, (int, int) moveToChunk, List<String> uuids) {
@@ -345,10 +360,28 @@ final class SubLevelHoldingChunkMap {
   /// dependencies.
   void snatchAndLoad(GlobalSavedSubLevelPointer pointer, String subLevelId) {
     final holdingChunk = _getOrLoadHoldingChunk(pointer.chunkX, pointer.chunkZ, false);
-    if (holdingChunk == null) return;
+    if (holdingChunk == null) {
+      onLoadFailure?.call(
+        'Cannot force-load sub-level $subLevelId: it points at chunk '
+        '(${pointer.chunkX}, ${pointer.chunkZ}), which has no holding chunk on disk',
+        null,
+      );
+      return;
+    }
 
     final holdingSubLevels = holdingChunk.snatch(subLevelId);
-    if (holdingSubLevels == null) return;
+    if (holdingSubLevels == null) {
+      onLoadFailure?.call(
+        'Cannot force-load sub-level $subLevelId: the holding chunk at '
+        '(${pointer.chunkX}, ${pointer.chunkZ}) does not hold it '
+        '(its pointers are ${holdingChunk.getSubLevelPointers()})',
+        null,
+      );
+      return;
+    }
+
+    final key = '${pointer.chunkX},${pointer.chunkZ}';
+    snatchLog[key] = (snatchLog[key] ?? 0) + holdingSubLevels.length;
 
     _setDirty(pointer.chunkX, pointer.chunkZ);
     for (final holdingSubLevel in holdingSubLevels) {
@@ -375,9 +408,22 @@ final class SubLevelHoldingChunkMap {
 
   /// Fully loads a holding sub-level.
   void loadHoldingSubLevel(HoldingSubLevel holdingSubLevel) {
-    final subLevel = SubLevelSerializer.fullyLoad(container, holdingSubLevel.data);
+    final subLevel = SubLevelSerializer.fullyLoad(
+      container,
+      holdingSubLevel.data,
+      onFailure: (message, error) => onLoadFailure?.call(
+        '$message (pointer ${holdingSubLevel.pointer})',
+        error,
+      ),
+    );
     if (subLevel != null) {
       subLevel.setLastSerializationPointer(holdingSubLevel.pointer);
+    } else {
+      onLoadFailure?.call(
+        'Failed to load holding sub-level ${holdingSubLevel.data.uuid} with pointer '
+        '${holdingSubLevel.pointer}. This is a problem.',
+        null,
+      );
     }
     allHoldingSubLevels.remove(holdingSubLevel.data.uuid);
   }
@@ -434,6 +480,12 @@ final class SubLevelHoldingChunkMap {
     }
     queuedDeletion.add(pointer);
   }
+
+  /// How many sub-levels the last force-load pass snatched out of each
+  /// holding chunk, by `"chunkX,chunkZ"`. The second half of the acceptance log
+  /// (proves `snatchAndLoad` found data on disk rather than silently keeping
+  /// nothing).
+  final Map<String, int> snatchLog = {};
 
   /// The storage of this map.
   SubLevelStorage getStorage() => storage;

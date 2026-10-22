@@ -1,6 +1,13 @@
 // Exercises the parts of the Dart core libraries that standalone dart2wasm
 // needs host support for, as `/t <name>` commands. Run it with
 // `tool/runtime_check.sh`.
+//
+// A check that asserts on how a *host* argument parsed needs that command to run
+// first: `tool/runtime_check.sh` types every `PRE:` line below into the console
+// before the `t` checks, so the assertions read what the dispatcher handed the
+// handler.
+//
+// PRE: rtargs @e[limit=2,sort=nearest] 3 minecraft:stone
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -19,6 +26,11 @@ class Thing {
 late DataFolder _data;
 late CommandSender _sender;
 late Server _server;
+
+/// What `/rtargs` read from the host, asserted by the `args_*` checks.
+String? _capturedSelector;
+int? _capturedX;
+String? _capturedMaterial;
 
 final Map<String, FutureOr<Object?> Function()> tests = {
   'fs_text': () {
@@ -185,6 +197,22 @@ final Map<String, FutureOr<Object?> Function()> tests = {
       return e.message;
     }
   },
+  // `/rtargs` (the `PRE:` line) handed these to the handler.
+  'args_token': () {
+    if (_capturedSelector != '@e[limit=2,sort=nearest]') {
+      throw StateError('the token argument parsed as $_capturedSelector');
+    }
+    if (_capturedX != 3) {
+      throw StateError('the token swallowed the argument after it: x=$_capturedX');
+    }
+    return '$_capturedSelector x=$_capturedX';
+  },
+  'args_block': () {
+    if (_capturedMaterial != 'minecraft:stone') {
+      throw StateError('the block-state argument parsed as $_capturedMaterial');
+    }
+    return _capturedMaterial!;
+  },
 };
 
 void main() => runPlugin(RuntimeCheck());
@@ -215,5 +243,36 @@ final class RuntimeCheck extends Plugin {
       });
     command.then(node: name);
     context.registerCommand(command: command, permission: 'runtime_check:t');
+
+    // The argument-parsing capture: `rtargs <token> <integer> <block-state>`,
+    // typed by the driver before the checks (see the `PRE:` line above).
+    final capture = Command.create(
+      names: ['rtargs'],
+      description: 'Captures arguments for the args_* checks',
+    );
+    final selector = CommandNode.argument(
+      name: 'selector',
+      type: ArgumentTypes.token,
+    );
+    final x = CommandNode.argument(
+      name: 'x',
+      type: ArgumentTypes.integer(),
+    );
+    final material = CommandNode.argument(
+      name: 'material',
+      type: ArgumentTypes.blockState,
+    )..execute((sender, server, args) {
+        _capturedSelector = args.string('selector');
+        _capturedX = args.integer('x');
+        _capturedMaterial = args.blockState('material');
+        return 1;
+      });
+    x.then(node: material);
+    selector.then(node: x);
+    capture.then(node: selector);
+    context.registerCommand(
+      command: capture,
+      permission: 'runtime_check:rtargs',
+    );
   }
 }

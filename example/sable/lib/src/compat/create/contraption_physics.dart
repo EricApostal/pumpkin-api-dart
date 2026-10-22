@@ -49,6 +49,7 @@ import '../../sublevel/model/sub_level.dart';
 import '../../sublevel/model/sub_level_container.dart';
 import '../../sublevel/physics/physics_block_properties.dart';
 import '../../sublevel/api/physics.dart' show KinematicContraption, MassData;
+import '../../sublevel/api/physics_capabilities.dart';
 import '../../sublevel/api/sub_level_helper.dart';
 import '../../sublevel/system/physics_system.dart';
 import 'create_blocks.dart';
@@ -576,7 +577,18 @@ final class ContraptionPhysicsBinding {
     final container = SubLevelContainer.of(level);
     if (container is ServerSubLevelContainer) {
       final physics = container.physics;
-      if (physics is SubLevelPhysicsSystem) physics.pipeline.addContraption(body);
+      if (physics is SubLevelPhysicsSystem) {
+        // An engine that cannot build a kinematic contraption body (`Jolt`)
+        // declares the feature unsupported (`api/physics_capabilities.dart`)
+        // instead of throwing from this call, which the Create binding makes
+        // for every contraption bound to a sub-level. The contraption then
+        // lives only in the plot: its lift providers still act on the
+        // sub-level (`ServerSubLevel.prePhysicsTick`) and nothing moves it.
+        final pipeline = physics.pipeline;
+        if (pipeline.supportsFeature(PhysicsPipelineFeature.contraption)) {
+          pipeline.addContraption(body);
+        }
+      }
     }
   }
 
@@ -590,7 +602,14 @@ final class ContraptionPhysicsBinding {
     final container = SubLevelContainer.of(level);
     if (container is ServerSubLevelContainer) {
       final physics = container.physics;
-      if (physics is SubLevelPhysicsSystem) physics.pipeline.removeContraption(body);
+      if (physics is SubLevelPhysicsSystem) {
+        // Same guard as `_register`: a pipeline without contraption support was
+        // never given the body, so it must not be asked to remove it either.
+        final pipeline = physics.pipeline;
+        if (pipeline.supportsFeature(PhysicsPipelineFeature.contraption)) {
+          pipeline.removeContraption(body);
+        }
+      }
     }
   }
 

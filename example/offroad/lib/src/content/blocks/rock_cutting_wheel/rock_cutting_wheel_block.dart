@@ -15,14 +15,18 @@ import 'package:create/create.dart';
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/common/common.dart' show Pos, Vec3, vec3Zero;
 import 'package:create/src/common/direction.dart' show Direction;
+import 'package:create/src/contraptions/core/level.dart' show ContraptionLevel;
 import 'package:create/src/contraptions/core/movement.dart' show MovementBehaviour, MovementContext;
+import 'package:create/src/contraptions/core/movement_checks.dart' show CheckResult;
 import 'package:create/src/kinetics/block_defs.dart' show DirectionalAxisBlockDef;
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' show SubLevelHelper, Vector3d;
 
 import '../../../host/offroad_hooks.dart';
+import '../../../host/placement.dart' show applyDirectionalAxisPlacement;
 import '../../../index/offroad_ids.dart';
 import 'rock_cutting_wheel_rotation.dart';
+import 'wheel_assembly_rules.dart';
 
 /// The block and block entity key (`offroad:rockcutting_wheel`).
 const String rockCuttingWheelKey = OffroadIds.rockCuttingWheel;
@@ -82,8 +86,38 @@ CreateBlock buildRockCuttingWheelBlock() => CreateBlock(
   requiresCorrectTool: true,
   soundType: 'copper',
   canOcclude: false,
+  // `getFacingForPlacement` is `context.getClickedFace()`; `axis_along_first` needs the
+  // clicked face's axis *and* the player's look, which no `PlacementRule` source can
+  // combine, so it is applied in `onPlaced` (see `host/placement.dart`).
+  placement: const [PlacementRule.clickedFace('facing')],
   blockEntityType: rockCuttingWheelKey,
+  behavior: BlockBehavior(
+    onPlaced: (server, e) => applyDirectionalAxisPlacement(server, e),
+  ),
 );
+
+/// `RockCuttingWheelBlock`'s static block (`RockCuttingWheelBlock.java:12-23`): a wheel
+/// attaches towards every direction except its own face.
+///
+/// A contraption captures the neighbour a wheel points at only when that neighbour is
+/// itself attached towards the wheel; the wheel is not, so its face stops the search and
+/// a contraption does not swallow the blocks in front of it through the wheel.
+CheckResult rockCuttingWheelAttachedCheck(
+  BState state,
+  ContraptionLevel level,
+  Pos pos,
+  Direction direction,
+) {
+  if (!isRockCuttingWheel(state)) return CheckResult.pass;
+  return CheckResult.of(!rockCuttingWheelFacesDirection(state, direction));
+}
+
+/// `RockCuttingWheelBlock`'s static block (`RockCuttingWheelBlock.java:25-31`): the
+/// wheel does not support what is in front of it.
+CheckResult rockCuttingWheelNotSupportiveCheck(BState state, Direction direction) {
+  if (!isRockCuttingWheel(state)) return CheckResult.pass;
+  return rockCuttingWheelFacesDirection(state, direction) ? CheckResult.fail : CheckResult.pass;
+}
 
 /// `AbstractDirectionalAxisBlock`: `facing` + `axis_along_first`, the shaft on
 /// the rotation axis those two give (`DirectionalAxisKineticBlock`).

@@ -5,11 +5,13 @@
 // Java: `content/blocks/mounted_potato_cannon/MountedPotatoCannonBlockEntity`
 // (`State`, `resetAndUpdate`, `tick`, `getBarrelPos`, the `inventory` tag).
 // ignore_for_file: implementation_imports
+import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:create/src/conveyance/nbt_names.dart'
     show enumFromNbtName, enumNbtName;
 import 'package:create/src/equipment/potato/potato_model.dart'
     show PotatoType, PotatoTypes;
+import 'package:sable/sable.dart' show Vector3d;
 
 import '../../../config/aero_config.dart';
 
@@ -145,6 +147,23 @@ final class MountedPotatoCannonLogic {
         (split / 2) * AeroConfig.server.physics.mountedPotatoCannonMagnitude;
   }
 
+  /// `RECOIL_DIR` of one physics tick into [out]: the facing's opposite unit vector scaled by
+  /// [recoilMagnitude] (`MountedPotatoCannonBlockEntity.java:250-258`). Returns whether there is a
+  /// recoil left to apply — the magnitude is halved every game tick by [tick], so a shot's recoil
+  /// is a handful of physics ticks long.
+  ///
+  /// [out] is the caller's scratch vector, as Java's `RECOIL_DIR` is the block entity's.
+  bool recoilDirection(Direction facing, Vector3d out) {
+    if (recoilMagnitude <= 0) return false;
+    final dir = facing.opposite;
+    out.set(
+      dir.stepX * recoilMagnitude,
+      dir.stepY * recoilMagnitude,
+      dir.stepZ * recoilMagnitude,
+    );
+    return true;
+  }
+
   /// `write`: `State` is `state.name()`, the Java constant name
   /// (`MountedPotatoCannonBlockEntity.java:297`).
   Map<String, Object?> toMap() => {
@@ -233,6 +252,16 @@ final class MountedPotatoCannonInventory {
     } else {
       count -= amount;
     }
+  }
+
+  /// `updateCachedType(registryAccess, slot.getStack())`: refreshes [projectileType] from the
+  /// item in the slot.
+  ///
+  /// `MountedPotatoCannonBlockEntity.initialize` does exactly this and no more: the slot itself is
+  /// restored by `read`, so a load must not touch [item] or [count].
+  void updateCachedType(PotatoTypes types, {bool Function(String tag, String key)? inTag}) {
+    final key = item;
+    projectileType = key == null ? null : types.forItem(key, inTag: inTag);
   }
 
   /// `clearContent`.

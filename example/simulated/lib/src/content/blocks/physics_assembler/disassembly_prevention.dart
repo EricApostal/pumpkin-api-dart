@@ -38,7 +38,7 @@ abstract final class DisassemblyPrevention {
     if (primary == null) return;
     if (primary == toCheck) return;
 
-    throw const SimAssemblyException('simulated:gui.assembly.prevent_disassembly');
+    throw const SimAssemblyException.key('simulated.prevent_disassembly');
   }
 
   /// Records [pos] as the primary assembler of [subLevelId].

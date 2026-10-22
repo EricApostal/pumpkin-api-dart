@@ -10,8 +10,11 @@
 import 'dart:async';
 
 import 'package:create/create.dart';
+import 'package:create/src/api/blocks.dart' show HostBlockGetter;
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:create/src/kinetics/behaviours.dart' show ScrollValueBehaviour;
+import 'package:create/src/kinetics/geometry.dart' show KState;
+import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' show Vector3d;
 import '../../../config/aero_config.dart';
@@ -42,6 +45,24 @@ enum HotAirBurnerVariant {
 
   static HotAirBurnerVariant byName(String? name) =>
       name == soulFire.serializedName ? soulFire : fire;
+
+  /// `Variant.getConversionFromItem` (`HotAirBurnerBlock.java:179-183`): an item
+  /// of the `aeronautics:burner_fire` tag (today just `minecraft:coal_block`)
+  /// makes the burner burn [fire]; a vanilla soul fire base block
+  /// (`minecraft:soul_fire_base_blocks`) makes it burn [soulFire]. `null` when
+  /// the item converts nothing.
+  static HotAirBurnerVariant? getConversionFromItem(bool burnerFire, bool soulFireBase) {
+    if (burnerFire) return fire;
+    if (soulFireBase) return soulFire;
+    return null;
+  }
+
+  /// `Variant.sound` (`HotAirBurnerBlock.java:169-170`): the place sound the
+  /// burner plays when an item converts it.
+  Sound get placeSound => switch (this) {
+    fire => Sound.blockNetherrackPlace,
+    soulFire => Sound.blockSoulSandPlace,
+  };
 }
 
 /// `HotAirBurnerBlockEntity`.
@@ -244,4 +265,40 @@ CreateBlock buildHotAirBurnerBlock() => CreateBlock(
   // lights a powered burner from its copy of the class.
   luminance: 0,
   blockEntityType: hotAirBurnerKey,
+  // `useItemOn` (`HotAirBurnerBlock.java:111-124`): an item that converts the
+  // variant sets the state and plays the variant's sound; anything else (and a
+  // matching current variant) falls through to
+  // `InteractionResult.TRY_WITH_EMPTY_HAND`.
+  behavior: BlockBehavior(
+    onUseWithItem: (server, e) async {
+      final key = await e.item.getRegistryKey();
+      final conversion = HotAirBurnerVariant.getConversionFromItem(
+        Tags.item(key, 'aeronautics:burner_fire'),
+        Tags.item(key, 'minecraft:soul_fire_base_blocks'),
+      );
+      if (conversion == null) return BlockUseResult.tryEmptyHand;
+
+      final current = HostBlockGetter.stateOfId(e.targetWorld.getBlockStateId(pos: e.pos));
+      if (current['variant'] == conversion.serializedName) return BlockUseResult.tryEmptyHand;
+
+      final id = KineticsRuntime.instance.states.idOf(
+        KState(current.key, {...current.props, 'variant': conversion.serializedName}),
+      );
+      if (id != null) {
+        unawaited(
+          e.targetWorld.setBlockState(pos: e.pos, state: id, updateFlags: BlockUpdateFlags.normal),
+        );
+        // Java's `playLocalSound` reaches players within earshot; the host's
+        // `World.playSound` broadcasts to the world. Same sound, wider reach.
+        e.targetWorld.playSound(
+          sound: conversion.placeSound,
+          category: SoundCategory.blocks,
+          pos: e.pos.center,
+          volume: 1,
+          pitch: 1,
+        );
+      }
+      return BlockUseResult.success;
+    },
+  ),
 );

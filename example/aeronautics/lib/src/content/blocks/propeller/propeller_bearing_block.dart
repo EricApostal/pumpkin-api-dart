@@ -13,8 +13,10 @@ import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/pos.dart' show Pos;
 import 'package:create/src/contraptions/core/nbt_map.dart' show NbtMap;
 import 'package:create/src/contraptions/bearing/bearing_blocks.dart' show bearingBehavior;
+import 'package:create/src/contraptions/bearing/bearing_contraptions.dart' show BearingContraption;
 import 'package:create/src/contraptions/bearing/bearing_placement.dart' show bearingPlacementRules;
 import 'package:create/src/contraptions/bearing/bearing_block_entities.dart' show MechanicalBearingBlockEntity;
+import 'package:create/src/contraptions/core/structure_info.dart' show AssemblyException;
 import 'package:create/src/kinetics/behaviours.dart' show ScrollValueBehaviour;
 import 'package:create/src/kinetics/block_data.dart' show facingShaftTag;
 import 'package:pumpkin_api/pumpkin_api.dart';
@@ -25,10 +27,15 @@ import '../../../host/host_propeller_push_world.dart';
 import '../../../host/world_balloon_world.dart';
 import '../../../propeller/propeller_actor_behaviour.dart';
 import '../../../propeller/propeller_bearing.dart';
+import 'propeller_bearing_contraption_entity.dart' show propellerBearingContraptionEntityKey;
 import 'propeller_block_entity_mixin.dart';
 
 /// The block and block entity key.
 const String propellerBearingKey = 'aeronautics:propeller_bearing';
+
+/// `BearingContraptionMixin.aeronautics$tryFailAssembly` (`BearingContraptionMixin.java:46`): a
+/// propeller bearing refuses to assemble with fewer sails than this.
+const int propellerMinimumSails = 2;
 
 /// `PropellerBearingBlockEntity`.
 class PropellerBearingBlockEntity extends MechanicalBearingBlockEntity
@@ -94,6 +101,33 @@ class PropellerBearingBlockEntity extends MechanicalBearingBlockEntity
   BlockEntityPropeller getPropeller() => this;
 
   // -- PropellerActorView ---------------------------------------------------------
+
+  /// `PropellerBearingContraptionEntity.create(level, this, contraption)` goes through the generic
+  /// factory with this key (`PropellerBearingBlockEntity.java:350-355`): the bearing's contraption
+  /// carries the gyroscopic tilt, which only this entity class applies.
+  @override
+  String? get contraptionEntityKey => propellerBearingContraptionEntityKey;
+
+  /// `PropellerBearingBlock extends BearingBlock` (`PropellerBearingBlock.java:23`): Java's
+  /// `assemble` guard (`block instanceof BearingBlock`) accepts it, the Create key list does not.
+  @override
+  bool isBearingBlock(String blockKey) =>
+      blockKey == propellerBearingKey || super.isBearingBlock(blockKey);
+
+  /// `PropellerBearingBlock.useItemOn` (`PropellerBearingBlock.java:43-58`): a click on a running
+  /// bearing winds the sails down (`startDisassemblySlowdown`) instead of dropping the contraption
+  /// where it stands; the ticking bearing then disassembles when the slowdown finishes.
+  @override
+  void onUseWhileRunning() => startDisassemblySlowdown();
+
+  /// `BearingContraptionMixin.aeronautics$tryFailAssembly` (`BearingContraptionMixin.java:45-49`):
+  /// a propeller with fewer than two sails is refused, with the `not_enough_sails` message.
+  @override
+  void validateAssembledContraption(BearingContraption contraption) {
+    if (contraption.sailBlocks < propellerMinimumSails) {
+      throw AssemblyException.notEnoughSails(contraption.sailBlocks, propellerMinimumSails);
+    }
+  }
 
   @override
   Direction get blockDirection => bState.dir('facing') ?? Direction.north;

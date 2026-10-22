@@ -95,7 +95,13 @@ abstract class CrystalPropagationContext {
   /// `onCrystallize`.
   void onCrystallize(LevititeWorld world, Pos pos) {
     onDefaultCrystallize(world, pos);
-    world.playSound('aeronautics:levitite_blend_crystallize', pos);
+    // `LevititeCrystallizerManager.playSound(..., AeroSoundEvents.LEVITITE_BLEND_CRYSTALLIZE, ...)`
+    // (`LevititeCrystalPropagationContext.java:34`): the event id is
+    // `aeronautics:fluid.levitite_blend.crystallize`
+    // (`index/AeroSoundEvents.java:38`), not the `aeronautics:levitite_blend_crystallize`
+    // packet name (`aeronautics_channels.dart` / `LevititeCatalystCrystallizationPacket.java:22`)
+    // this used to play.
+    world.playSound('aeronautics:fluid.levitite_blend.crystallize', pos);
     world.spawnParticles(flameParticle, pos, 30);
     world.awardAdvancementNearby(advancement, pos);
   }

@@ -11,8 +11,19 @@ import 'block_entity.dart';
 abstract final class CreateProps {
   static final BlockProperty axis = BlockProperty.enumeration('axis', ['x', 'y', 'z']);
 
-  /// `BlockStateProperties.FACING`: all six directions.
-  static final BlockProperty facing = BlockProperty.enumeration('facing', ['down', 'up', 'north', 'south', 'west', 'east']);
+  /// `BlockStateProperties.FACING`: all six directions, in Java's value order.
+  ///
+  /// Java is `DirectionProperty.of("facing", NORTH, EAST, SOUTH, WEST, UP, DOWN)` —
+  /// read straight out of the client jar the user runs
+  /// (`BlockStateProperties.FACING.getPossibleValues()` -> `[north, east, south, west,
+  /// up, down]`), and the same list is in the port's own extractor
+  /// (`tool/REPORT_blocks.md`) and its generated manifest (`manifest/blocks.g.dart`).
+  /// This list used to be `Direction.values()` order (`down, up, north, south, west,
+  /// east`), which the host numbered as declared and the client then read with Java's
+  /// order: index *i* meant a different direction on both sides, so every block with
+  /// this 6-valued property was placed rotated (north -> south, up -> east) even
+  /// though the placement rules chose the right direction.
+  static final BlockProperty facing = BlockProperty.enumeration('facing', ['north', 'east', 'south', 'west', 'up', 'down']);
 
   /// `HORIZONTAL_FACING` (also named `facing`).
   static final BlockProperty horizontalFacing = BlockProperty.enumeration('facing', ['north', 'south', 'west', 'east']);
@@ -45,9 +56,21 @@ class CreateBlock {
   final double blastResistance;
   final bool requiresCorrectTool;
   final String soundType;
+
+  /// Light level every state emits unless [lightRules] matches.
   final int luminance;
+
+  /// Light levels per state (the host's `light-rules`), the first matching rule
+  /// wins. Vanilla `lightLevel(state -> ...)`: a rose quartz lamp only lights up
+  /// while `powering` is true.
+  final List<LightRule> lightRules;
+
   final bool canOcclude;
   final bool replaceable;
+
+  /// Vanilla `ignitedByLava()`: lava sets fire to the block. Whether *fire*
+  /// spreads onto it is a separate question ([BlockBehavior.onFireSpread]).
+  final bool ignitedByLava;
   final int mapColor;
   final BlockShape collisionShape;
   final BlockShape selectionShape;
@@ -81,8 +104,10 @@ class CreateBlock {
     this.requiresCorrectTool = false,
     this.soundType = 'stone',
     this.luminance = 0,
+    this.lightRules = const [],
     this.canOcclude = true,
     this.replaceable = false,
+    this.ignitedByLava = false,
     this.mapColor = 0,
     this.collisionShape = BlockShape.fullCube,
     this.selectionShape = BlockShape.fullCube,
@@ -119,8 +144,10 @@ class CreateBlock {
     requiresCorrectTool: requiresCorrectTool,
     soundType: soundType,
     luminance: luminance,
+    lightRules: lightRules,
     canOcclude: canOcclude,
     replaceable: replaceable,
+    ignitedByLava: ignitedByLava,
     mapColor: mapColor,
     collisionShape: collisionShape,
     selectionShape: selectionShape,

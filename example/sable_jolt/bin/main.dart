@@ -10,6 +10,7 @@ import 'dart:_wasm';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart';
+import 'package:sable/sable_plugin.dart' show SablePlugin;
 import 'package:sable_jolt/sable_jolt_native.dart';
 
 /// The trampoline the core module's `host.call` import is routed to.
@@ -25,17 +26,49 @@ final class SableJoltPlugin extends Plugin {
     version: '0.1.0',
     description: 'Jolt Physics as the Sable backend: a freestanding wasm core '
         'module behind a C ABI, driven by JoltPhysicsPipeline.',
+    // The Sable server half runs in this component (it owns the sub-level
+    // containers, see [_server]): it writes the data pack and the sub-level
+    // storage, and declares nothing — the `sable` plugin keeps the NeoForge
+    // declaration, so the mod is announced exactly once.
+    permissions: [Permissions.fsWriteData],
   );
 
   late final JoltPhysicsPipeline pipeline = createJoltPipeline();
 
+  /// The Sable server, running in this component.
+  ///
+  /// **This plugin owns the sub-level containers.** A `PhysicsPipeline` is a Dart
+  /// object and cannot cross a wasm component boundary, and `sable_jolt` depends
+  /// on `sable` (its pipeline implements `sable`'s contract), so `sable` cannot
+  /// depend on `sable_jolt` to get one: the two would form a package cycle. The
+  /// containers therefore live here, next to the solver, and the `sable` plugin
+  /// stands down once this one answers the ownership probe. Everything a caller
+  /// needs is reached over the operation channel
+  /// (`package:sable/src/plugin/sable_sub_level_api.dart`), which this component
+  /// installs by running the server half below — so there is one owner and one
+  /// door. See "Cross-plugin ownership" in `example/sable/docs/sable-core-port.md`.
+  late final SablePlugin _server = SablePlugin(pipelineOf: _pipelineFor);
+
+  /// One pipeline per level, the way `PhysicsPipelineProvider.createPipeline`
+  /// builds them for the fallback.
+  JoltPhysicsPipeline _pipelineFor(SableLevel level) => createJoltPipeline();
+
   @override
-  void onLoad(Context context) {
+  Future<void> onLoad(Context context) async {
+    // Answer the ownership probe before the worlds are opened: the `sable`
+    // plugin asks on the first tick and stands down when this says yes.
+    SablePlugin.ownershipChannel.handle((sender, message) {
+      if (message['op'] != 'owns') return null;
+      return {'owns': true, 'plugin': info.name};
+    });
+
     pipeline.init(Vector3d(0.0, -9.81, 0.0), 0.0);
     logger.info(
       'Jolt module: ABI ${pipeline.moduleAbiVersion}, version id '
       '${pipeline.moduleVersion}.',
     );
+
+    await _server.startServer(context);
 
     context.command(
       'sablejolt',
@@ -56,7 +89,10 @@ final class SableJoltPlugin extends Plugin {
   }
 
   @override
-  void onUnload(Context context) => pipeline.dispose();
+  void onUnload(Context context) {
+    _server.stopServer();
+    pipeline.dispose();
+  }
 
   /// Drops a 1x1x1 box onto a voxel floor and returns where it came to rest.
   ///

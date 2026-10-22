@@ -406,8 +406,8 @@ CreateBlock buildSteamVentBlock() => CreateBlock(
     onUseWithItem: (server, e) async {
       final key = await e.item.getRegistryKey();
       final variant = SteamVentVariant.fromItemTags(
-        Tags.item(key, 'aeronautics:gold_sheet'),
-        Tags.item(key, 'aeronautics:iron_sheet'),
+        Tags.item(key, 'c:plates/gold'),
+        Tags.item(key, 'c:plates/iron'),
       );
       if (variant == null) return BlockUseResult.tryEmptyHand;
 

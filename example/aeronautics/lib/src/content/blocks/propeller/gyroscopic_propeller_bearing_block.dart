@@ -19,6 +19,7 @@ import 'package:sable/sable.dart';
 
 import '../../../propeller/gyroscopic_tilt.dart';
 import 'propeller_bearing_block.dart';
+import 'propeller_bearing_contraption_entity.dart' show PropellerBearingContraptionEntity;
 
 /// The block key.
 const String gyroscopicPropellerBearingKey = 'aeronautics:gyroscopic_propeller_bearing';
@@ -26,6 +27,11 @@ const String gyroscopicPropellerBearingKey = 'aeronautics:gyroscopic_propeller_b
 /// `GyroscopicPropellerBearingBlockEntity`.
 final class GyroscopicPropellerBearingBlockEntity extends PropellerBearingBlockEntity {
   GyroscopicPropellerBearingBlockEntity(super.worldId, super.pos);
+
+  /// `GyroscopicPropellerBearingBlock extends BearingBlock` (`GyroscopicPropellerBearingBlock.java:24`).
+  @override
+  bool isBearingBlock(String blockKey) =>
+      blockKey == gyroscopicPropellerBearingKey || super.isBearingBlock(blockKey);
 
   /// The pendulum state.
   final GyroscopicTilt tilt = GyroscopicTilt();
@@ -58,6 +64,18 @@ final class GyroscopicPropellerBearingBlockEntity extends PropellerBearingBlockE
     // The bearing pushes along the tilt, not along its facing.
     thrustDirection.setFrom(tilt.thrustDirection);
     super.tick();
+    _pushTiltToContraption();
+  }
+
+  /// `GyroscopicPropellerBearingBlockEntity.tick` (`:93-101`): the tilt goes into the contraption
+  /// entity, whose `applyRotation` uses it. Without it the pendulum is computed every tick and
+  /// thrown away, so the contraption never swings.
+  void _pushTiltToContraption() {
+    final contraption = movedContraption;
+    if (contraption is! PropellerBearingContraptionEntity) return;
+    contraption.tiltQuat.setFrom(tilt.tiltQuat);
+    contraption.previousTiltQuat.setFrom(tilt.previousTiltQuat);
+    contraption.direction = blockDirection;
   }
 
   Future<void> _refreshSignal() async {

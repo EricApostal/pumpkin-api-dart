@@ -25,6 +25,21 @@ import 'fluid_world.dart';
 import 'open_pipe_effects.dart';
 import 'potion_data.dart';
 
+/// The vanilla component bytes of a host stack that the fluid code reads: the
+/// `minecraft:potion_contents` of a bottle.
+///
+/// The tank interaction reads the held stack as a key and a count and needs the bottle's potion
+/// to turn it into the right fluid (`PotionFluidHandler.getFluidFromPotionItem`); a full
+/// `HostStacks.read` would also copy every other component of the stack.
+Future<List<(String, List<int>)>> fluidItemComponents(ItemStack stack) async {
+  for (final c in await stack.getComponents()) {
+    if (c.component.wireName == PotionContentsComponent.key) {
+      return [(PotionContentsComponent.key, List<int>.of(c.value))];
+    }
+  }
+  return const [];
+}
+
 /// A block entity of this module that exposes a fluid handler to the pipe logic
 /// (`Capabilities.Fluid.BLOCK` of the Create block entity). The host world's
 /// [HostFluidWorld.fluidCapability] asks for this before it falls back to the
@@ -362,6 +377,20 @@ final class HostFluidWorld extends BlockGetter implements FluidWorld {
   @override
   void scheduleFluidTick(Pos p, String fluid, int delay) =>
       world.scheduleFluidTick(pos: p.toBlockPos(), delay: delay.clamp(0, 255));
+
+  /// The flow step of a plugin-registered fluid (`create:honey`, `create:chocolate`).
+  ///
+  /// The host has no flow physics for those fluids: `World::schedule_fluid_tick` only ever
+  /// reaches `FlowingWater`/`FlowingLava` (`pumpkin-core/src/world/mod.rs:2095-2108`,
+  /// `block_registry.get_pumpkin_fluid`), so a fluid tick scheduled for honey is dropped. The
+  /// fluid block therefore runs [FlowingFluidLogic] from a scheduled block tick of its own, and
+  /// this is that tick (`TickPriority.HIGH`, like `LiquidBlock.onPlace`'s `scheduleTick`).
+  @override
+  void scheduleFlowTick(Pos p, String fluid, int delay) => world.scheduleBlockTick(
+    pos: p.toBlockPos(),
+    delayTicks: delay.clamp(1, 255),
+    priority: TickPriority.high,
+  );
 
   @override
   void placeFluidSource(Pos p, String fluid) =>

@@ -17,8 +17,11 @@ import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter;
 import 'package:create/src/common/host_bridge.dart' show PosToHost;
 import 'package:create/src/common/pos.dart' show Pos;
+import 'package:create/src/kinetics/behavior_builder.dart' show buildKineticBehavior;
+import 'package:create/src/kinetics/block_factory.dart' show KineticBlockSpec;
 import 'package:create/src/kinetics/geometry.dart' show KState;
 import 'package:create/src/kinetics/kinetic_block_entity.dart';
+import 'package:create/src/kinetics/placement.dart' show encasedShaftAxis;
 import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
@@ -107,20 +110,46 @@ CreateBlock _envelopeBlock(String color) => CreateBlock(
   behavior: envelopeBehavior,
 );
 
-CreateBlock _encasedEnvelopeBlock(String color) => CreateBlock(
-  key: encasedEnvelopeKey(color),
-  properties: [CreateProps.axis],
-  // `RotatedPillarKineticBlock`'s default axis is `y`.
-  defaultState: const {'axis': 'y'},
-  hardness: 1,
-  blastResistance: 1,
-  soundType: 'scaffolding',
-  canOcclude: false,
-  mapColor: _mapColor(color),
-  tags: const ['aeronautics:airtight', 'create:shafts'],
-  blockEntityType: 'aeronautics:envelope_encased_shaft',
-  behavior: envelopeBehavior,
-);
+/// `EnvelopeEncasedShaftBlock extends AbstractEncasedShaftBlock`: a `RotatedPillarKineticBlock`
+/// whose axis comes from the placement, not from the default state.
+///
+/// ```java
+/// Axis preferredAxis = getPreferredAxis(context);
+/// return defaultBlockState().setValue(AXIS, preferredAxis == null
+///     ? context.getNearestLookingDirection().getAxis() : preferredAxis);
+/// ```
+///
+/// The host writes the default (`axis=y`); `encasedShaftAxis` corrects it once the placing player
+/// is known, the same way Create's own encased shafts correct theirs. Without it a shaft clicked
+/// onto the top of a block stays vertical while Java makes it run along the player's look.
+CreateBlock _encasedEnvelopeBlock(String color) {
+  late final CreateBlock block;
+  late final KineticBlockSpec spec;
+  block = CreateBlock(
+    key: encasedEnvelopeKey(color),
+    properties: [CreateProps.axis],
+    // `RotatedPillarKineticBlock`'s default axis is `y`.
+    defaultState: const {'axis': 'y'},
+    hardness: 1,
+    blastResistance: 1,
+    soundType: 'scaffolding',
+    canOcclude: false,
+    mapColor: _mapColor(color),
+    tags: const ['aeronautics:airtight', 'create:shafts'],
+    blockEntityType: 'aeronautics:envelope_encased_shaft',
+    behavior: buildKineticBehavior(
+      () => block,
+      specRef: () => spec,
+      useWithItem: (c, e) => envelopeUseWithItem(c.server, e),
+    ),
+  );
+  spec = KineticBlockSpec(
+    block,
+    placement: (ctx, placed, use, world) =>
+        placed.set('axis', encasedShaftAxis(ctx).name),
+  );
+  return block;
+}
 
 /// `DyeColor`'s map colour per dye, as the host's palette index. The host takes
 /// an int; the values are vanilla's `MapColor` ids, in `DyeColor` order.
@@ -145,17 +174,23 @@ int _mapColor(String color) => const {
 
 /// `EnvelopeBlock.useItemOn` / `EnvelopeEncasedShaftBlock.useItemOn`: a dye
 /// recolours the envelope.
-final BlockBehavior envelopeBehavior = BlockBehavior(
-  onUseWithItem: (server, e) async {
-    final key = await e.item.getRegistryKey();
-    final color = dyeColorOf(key);
-    if (color == null) return BlockUseResult.tryEmptyHand;
+Future<BlockUseResult> envelopeUseWithItem(
+  Server server,
+  CustomBlockUseEventData e,
+) async {
+  final key = await e.item.getRegistryKey();
+  final color = dyeColorOf(key);
+  if (color == null) return BlockUseResult.tryEmptyHand;
 
-    final world = e.targetWorld;
-    final dyeWorld = _HostEnvelopeWorld(world);
-    EnvelopeDye.apply(dyeWorld, (e.pos.x, e.pos.y, e.pos.z), color, envelopeKeys);
-    return BlockUseResult.success;
-  },
+  final world = e.targetWorld;
+  final dyeWorld = _HostEnvelopeWorld(world);
+  EnvelopeDye.apply(dyeWorld, (e.pos.x, e.pos.y, e.pos.z), color, envelopeKeys);
+  return BlockUseResult.success;
+}
+
+/// The plain envelope's behaviour: the dye, and nothing else.
+final BlockBehavior envelopeBehavior = BlockBehavior(
+  onUseWithItem: envelopeUseWithItem,
 );
 
 /// `EnvelopeEncasedShaftBlock`: a plain kinetic block entity.

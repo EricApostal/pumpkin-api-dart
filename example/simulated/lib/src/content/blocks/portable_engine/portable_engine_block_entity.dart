@@ -135,14 +135,14 @@ final class PortableEngineBlockEntity extends GeneratingKineticBlockEntity {
   void tick() {
     super.tick();
     if (removed) return;
-    final w = world;
-    if (w == null) return;
     _ticks++;
 
-    // `if (getGeneratedSpeed() != 0 && getSpeed() == 0) updateGeneratedRotation();`
-    if (generatedSpeed != 0 && speed == 0) updateGeneratedRotation();
-
     // -- Fuel --
+    //
+    // The burn counter and the slot are the entity's own state, so this half runs
+    // whether or not the world handle resolves this tick (a tick that cannot reach
+    // the level must not stall the fuel). Everything that reads or writes the level
+    // is below the guard.
     final stack = slot;
     final nextTicks = stack.isEmpty ? 0 : SimServices.instance.host.burnTime(stack.key);
     final nextSuperheated =
@@ -154,6 +154,13 @@ final class PortableEngineBlockEntity extends GeneratingKineticBlockEntity {
       nextSuperHeated: nextSuperheated,
       consumeOne: () => inventory.setStack(0, stack.shrink(1)),
     );
+
+    // `if (getGeneratedSpeed() != 0 && getSpeed() == 0) updateGeneratedRotation();`
+    if (generatedSpeed != 0 && speed == 0) updateGeneratedRotation();
+
+    final w = world;
+    if (w == null) return;
+
     if (neighbours) {
       // `level.updateNeighborsAt(pos, block)`: the comparators around the engine.
       unawaited(w.setBlockState(

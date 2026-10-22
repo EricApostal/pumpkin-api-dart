@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:pumpkin_api/src/bindings.g.dart' as raw show menus;
 
 import '../../common/ghost_menu_layout.dart';
+import '../../common/ghost_quick_move.dart';
 import '../../common/host_bridge.dart';
 import '../../common/menu_mirror.dart';
 import '../../common/pos.dart';
@@ -91,6 +92,30 @@ abstract final class FactoryPanelSetItemMenus {
   }
 
   static void install(CreateContext ctx, LgRuntime rt) {
+    // The host applies the vanilla clicks (the player inventory mirror and the ghost slot; the
+    // ghost slot takes one item off the cursor). The shift-clicks follow
+    // `GhostItemMenu.quickMoveStack` and are applied here: one item of a mirror slot goes into the
+    // gauge filter, one item leaves it.
+    ctx.host.intercept(Events.menuClick, (server, e) async {
+      if (e.menuType != factoryPanelSetItemMenuType) return e;
+      final session = _byPlayer[e.player.getId().asString];
+      if (session == null || session.containerId != e.containerId) return e;
+      if (e.mode != MenuClickMode.quickMove) return e;
+      final move = ghostQuickMove(
+        menuSlot: e.slot,
+        source: await rt.read(await playerStackAt(e.player, e.slot)),
+        ghostSlots: factoryPanelLayout.ghostSlots,
+        ghostEmpty: (i) => session.stack.isEmpty,
+      );
+      if (!move.isNone) {
+        session.stack = move.take
+            ? (session.stack.count > 1 ? session.stack.withCount(session.stack.count - 1) : LStack.empty)
+            : move.stack;
+        await setMenuSlot(e.player, factoryPanelGhostSlot, await rt.write(session.stack));
+      }
+      return e.copyWith(cancelled: true);
+    });
+
     ctx.listen(Events.menuSlotChanged, (server, e) async {
       if (e.menuType != factoryPanelSetItemMenuType) return;
       final session = _byPlayer[e.player.getId().asString];

@@ -34,14 +34,15 @@ const Map<String, String> kTrainsEnglish = {
   'create.train_assembly.single_bogey_carriage':
       'This Bogey type cannot support a carriage on its own',
   'create.train_assembly.too_many_bogeys': 'Too many Bogeys attached: %1\$s',
-  'create.track_target.clear': 'Target position cleared',
-  'create.track_target.set': 'Target position set',
-  'create.track_target.occupied': 'Another target is already at this position',
-  'create.track_target.no_junctions': 'Cannot target a junction',
-  'create.track_target.invalid': 'Not a valid track',
-  'create.track_target.too_far': 'Too far from the selected position',
-  'create.track_target.success': 'Target applied',
-  'create.train.relocate.success': 'Train relocated',
+  'create.track_target.clear': 'Cleared track selection',
+  'create.track_target.missing': 'Right-click the targeted train track first',
+  'create.track_target.set': 'Targeted track selected',
+  'create.track_target.occupied': 'Targeted track is occupied',
+  'create.track_target.no_junctions': 'Targeted track cannot be an intersection',
+  'create.track_target.invalid': 'Cannot target this track here',
+  'create.track_target.too_far': 'Targeted track is too far from here',
+  'create.track_target.success': 'Successfully bound to targeted track',
+  'create.train.relocate.success': 'Relocation successful',
 };
 
 /// `CreateLang.translateDirect(key, args)` rendered with the English texts (`Component.getString`).

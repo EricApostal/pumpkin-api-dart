@@ -28,6 +28,10 @@ export 'src/bindings.g.dart'
         ItemDefinition, ItemEntry, ItemRegistry, itemRegistry,
         // The raw `block-registry` interface; use `BlockRegistries.host`.
         BlockBox, BlockDefinition, BlockDrops, BlockDropsNothing, BlockDropsLootTable, BlockDropsSelfItem, BlockEntry, BlockProperty, BlockRegistry, BlockShape, BlockShapeBoxes, BlockShapeEmpty, BlockShapeFullCube, ConnectDirection, ConnectRule, ConnectTarget, ConnectTargetBlock, ConnectTargetSameBlock, ConnectTargetTag, IntBounds, PropertyKind, PropertyKindBoolean, PropertyKindEnumeration, PropertyKindIntRange, PropertyValue, blockRegistry,
+        // The generated `LightRule` wire shape; ours is the hand-written one in
+        // `block_registry_core.dart` (same fields, but `when` defaults to empty and it is the
+        // type the block-definition API takes).
+        LightRule,
         // The raw `block-placement`, `plugin-block-entity`, `menus` and `custom-components`
         // interfaces; use `BlockPlacements.host`, `BlockEntityRegistries.host` and the
         // `PluginBlockEntities`, `PluginMenus` and `CustomItemComponents` extensions.

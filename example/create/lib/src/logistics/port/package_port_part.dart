@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/trains.dart'
     show GlobalStation, SchedulePortInventories, StationPackagePorts;
+import '../../api/blocks.dart';
 import '../../api/util.dart' hide pos;
 import '../../conveyance/chain/chain_conveyor_block_entity.dart';
 import '../../core/block_entity.dart';
@@ -46,6 +47,7 @@ const List<String> postboxColors = [
 /// `FrogportBlock`.
 CreateBlock frogportBlock() => CreateBlock(
   key: 'create:package_frogport',
+  mapColor: manifestMapColor('package_frogport'),
   hardness: 3,
   blastResistance: 6,
   requiresCorrectTool: true,
@@ -69,6 +71,10 @@ CreateBlock postboxBlock(String color) => CreateBlock(
   ],
   hardness: 2,
   blastResistance: 2,
+  // `BuilderTransformers.wooden` copies `Blocks.OAK_PLANKS`' properties, which are
+  // `ignitedByLava()`: lava sets a postbox on fire.
+  ignitedByLava: true,
+  mapColor: manifestMapColor('${color}_postbox'),
   soundType: 'wood',
   blockEntityType: PostboxBlockEntity.type,
   placement: const [PlacementRule.horizontalFacing('facing', opposite: true)],
@@ -101,13 +107,15 @@ Future<void> _onFrogportPlaced(
   _requestPortTarget(e);
   final uuid = e.player?.asString;
   if (uuid == null) return;
-  final player = Lg.i.player(uuid);
-  if (player == null) return;
   final be = Lg.i.store.typed<FrogportBlockEntity>(
     e.targetWorld.getId(),
     e.pos,
   );
   if (be == null) return;
+  // `AdvancementBehaviour.setPlacedBy(pLevel, pPos, pPlacer)`.
+  be.advancements.setPlayer(uuid);
+  final player = Lg.i.player(uuid);
+  if (player == null) return;
   final (px, _, pz) = player.getPosition();
   final dx = e.pos.x + 0.5 - px;
   final dz = e.pos.z + 0.5 - pz;

@@ -28,16 +28,19 @@ Quaterniond directionRotation(Direction direction) => switch (direction) {
 };
 
 /// `SimMathUtils.clampIntoCone`: [v] clamped into the cone of [coneAngle]
-/// radians around [coneAxis], normalized.
+/// radians around [coneAxis], normalized in place.
 ///
 /// The `1.01` keeps the discriminant positive when [v] is the axis or almost
-/// its opposite.
+/// its opposite. The offset is the quadratic root `(-vn + sqrt(disc)/tan(cone))
+/// / nn` (`SimMathUtils.java:111-124`); dividing only the `sqrt` by the tangent
+/// and then by `nn` reproduces Java, and any other grouping changes which
+/// targets are considered inside the cone.
 Vector3d clampIntoCone(Vector3d v, Vector3d coneAxis, double coneAngle) {
   final vv = v.dot(v);
   final vn = v.dot(coneAxis);
   final nn = coneAxis.dot(coneAxis);
   final disc = nn * vv * 1.01 - vn * vn;
-  final offsetDistance = (-vn + math.sqrt(math.max(disc, 0))) / math.tan(coneAngle);
+  final offsetDistance = (-vn + math.sqrt(math.max(disc, 0)) / math.tan(coneAngle)) / nn;
 
   if ((offsetDistance < 0) != (coneAngle < 0)) return v;
 

@@ -9,6 +9,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../api/equipment.dart';
 import '../../api/util.dart';
 import '../../core/module.dart';
+import '../../processing/common/stack.dart';
+import '../../processing/deployer/deployer_items.dart' show craftingRemainderOf;
 import '../../protocol/item_stack.dart';
 import '../armor/armor_host.dart';
 import '../armor/backtank_host.dart';
@@ -18,6 +20,7 @@ import '../host/inventory_util.dart';
 import '../host/stack_data.dart';
 import '../model/knockback.dart';
 import 'copper_stages.dart';
+import 'sand_paper_use.dart';
 
 final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
   final EquipmentEnv env;
@@ -28,15 +31,12 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
 
   // -- shared ----------------------------------------------------------------------------
 
-  int _tick = 0;
-
   void install(CreateContext ctx) {
-    ctx.onWorldTick((t) => _tick = t.tick);
     ctx.listen(Events.playerItemHeld, _onItemHeld);
     ctx.listen(Events.blockBreak, _onBlockBreak);
     ctx.listen(Events.blockPlace, _onBlockPlace);
     ctx.listen(Events.playerJoin, (server, e) => unawaited(_refreshReach(e.player)));
-    ctx.listen(Events.playerLeave, (server, e) => _reach.remove(e.player.getId().asString));
+    ctx.listen(Events.playerLeave, (server, e) => _onLeave(e.player));
     ctx.listen(Events.livingEquipmentChange, _onEquipmentChange);
     ctx.host.intercept(Events.entityKnockbackByEntity, _onKnockback);
     ctx.listen(Events.entityDamageByEntity, _onDamageByEntity);
@@ -62,6 +62,14 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
 
   /// 0 none, 1 single, 2 dual: what the reach attribute currently holds per player.
   final Map<String, int> _reach = {};
+
+  /// Drops the per-player state of the two maps that outlive the player (a rejoin starts over,
+  /// as in Java: the reach attribute is recomputed and an unfinished polish is gone).
+  void _onLeave(Player player) {
+    final uuid = player.getId().asString;
+    _reach.remove(uuid);
+    _polishUses.remove(uuid);
+  }
 
   Future<void> _onItemHeld(Server server, PlayerItemHeldEventData e) async {
     final player = e.player;
@@ -205,12 +213,20 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
   @override
   String? polishResult(String inputKey) => _polishing[inputKey];
 
-  /// Per player: tick when the polishing started and the last `itemUseTick`.
-  final Map<String, (int, int)> _polishUse = {};
+  /// Per player: the polishing use, counted down on the player tick.
+  final Map<String, SandPaperUse> _polishUses = {};
 
+  /// `useOn` of the items of this file: the sand paper and the tree fertilizer.
   Future<ItemUseFirstEventData> _onUseFirst(Server server, ItemUseFirstEventData e) async {
     final key = await stackKey(e.stack);
-    if (!EqItems.isSandPaper(key)) return e;
+    if (EqItems.isSandPaper(key)) return _onSandPaperUseOn(e);
+    if (key == EqItems.treeFertilizer) return _onTreeFertilizerUseOn(e);
+    return e;
+  }
+
+  /// `SandPaperItem.useOn` (`SandPaperItem.java:163`): scraping oxidation off copper and wax off
+  /// waxed blocks (`useOn`'s polishing paths are not here, they are the starts of [_onUseItem]).
+  Future<ItemUseFirstEventData> _onSandPaperUseOn(ItemUseFirstEventData e) async {
     final player = e.player;
     final world = player.getWorld();
     final bs = world.getBlockState(pos: e.blockPos);
@@ -246,7 +262,7 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     if (paper == null) return e;
     final uuid = player.getId().asString;
     if (StackData.has(paper, EquipmentComponents.sandPaperPolishing)) {
-      _polishUse[uuid] = (_tick, _tick);
+      _polishUses[uuid] = SandPaperUse();
       return e;
     }
     // The item in the other hand
@@ -283,13 +299,16 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
         await item.setStack(stack: stack);
       }
       await inv.setItemInHand(hand: e.hand, item: paper);
-      _polishUse[uuid] = (_tick, _tick);
+      _polishUses[uuid] = SandPaperUse();
       return e;
     }
     return e;
   }
 
   Future<void> _startPolishing(Player player, ItemStack paper, Hand paperHand, ItemStack other, Hand otherHand) async {
+    // `SandPaperItem.use` (`SandPaperItem.java:48-105`): the item of the other hand is split into
+    // one item and stored in the paper's `create:sand_paper_polishing` component, and the use
+    // starts.
     final key = await other.getRegistryKey();
     final count = await other.getCount();
     await _setPolishing(paper, key);
@@ -300,7 +319,7 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
       await other.setCount(count: count - 1);
     }
     await inv.setItemInHand(hand: paperHand, item: paper);
-    _polishUse[player.getId().asString] = (_tick, _tick);
+    _polishUses[player.getId().asString] = SandPaperUse();
   }
 
   Future<void> _setPolishing(ItemStack paper, String itemKey) async {
@@ -319,23 +338,21 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     }
   }
 
-  /// Every tick of use; the use ends after 32 ticks (`getUseDuration`).
+  /// The use ticks of the items that do start a use on the host: the builder's tea.
   ///
-  /// The host never fires this for sand paper: it starts a use only for an item with a
+  /// The sand paper never gets here: the host starts a use only for an item with a
   /// `minecraft:consumable` or `minecraft:blocks_attacks` component
-  /// (`pumpkin-core/src/net/java/play/use_item.rs:113-131` through `ItemStack::get_max_use_time`,
+  /// (`pumpkin-core/src/net/java/play/use_item.rs:115-116` through `ItemStack::get_max_use_time`,
   /// `pumpkin-data/src/item_stack/mod.rs:428`), and the sand paper has neither, so `item_use_time`
-  /// stays 0 and `pumpkin-core/src/entity/living.rs:3643` never reaches the `ItemUseTickEvent`
-  /// it fires. Polishing therefore ends through [_onPlayerTick] once the (never arriving) ticks
-  /// stop, which returns the item unpolished.
-  ///
-  /// Declaring the item `minecraft:consumable` would start the use, but the host consumes one item
-  /// of the stack when a use finishes, and Java's non-edible `SandPaperItem.finishUsingItem` only
-  /// hurts the paper. What the host needs is `use-duration: option<u32>` on
-  /// `item-registry`'s `item-definition` (Java `getUseDuration`, 32 here) for
-  /// `ItemStack::get_max_use_time` to count down without a component, plus `use-animation:
-  /// option<consume-animation>` (Java `UseAnimation.EAT`) and a finish that does not shrink the
-  /// stack.
+  /// stays 0 and `pumpkin-core/src/entity/living.rs:3630-3640` never reaches the `ItemUseTickEvent`
+  /// it fires. Declaring the item `minecraft:consumable` would start the use, but the host consumes
+  /// one item of the stack when a use finishes (`living.rs:3727-3735`), and Java's non-edible
+  /// `SandPaperItem.finishUsingItem` only hurts the paper. What the host needs for a faithful
+  /// sand paper is `use-duration: option<u32>` on `item-registry`'s `item-definition` (Java
+  /// `getUseDuration`, 32 here) for `ItemStack::get_max_use_time` to count down without a
+  /// component, plus `use-animation: option<consume-animation>` (Java `UseAnimation.EAT`, the
+  /// drinking animation) and a finish that does not shrink the stack. Until then the polish is
+  /// counted by the module ([_onPlayerTick]).
   Future<void> _onUseTick(Server server, ItemUseTickEventData e) async {
     final key = await stackKey(e.stack);
     if (key == EqItems.buildersTea) {
@@ -343,25 +360,29 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
       // bottle. The item's haste is not here: it is the `on_consume_effects` of its
       // `minecraft:consumable` component, which the host applies itself.
       if (e.remainingTicks <= 1) await _leaveGlassBottle(server, e.player);
-      return;
     }
-    if (!EqItems.isSandPaper(key)) return;
-    final player = e.player;
-    final uuid = player.getId().asString;
-    final started = _polishUse[uuid]?.$1 ?? _tick;
-    _polishUse[uuid] = (started, _tick);
-    if (e.remainingTicks <= 1) await _finishPolishing(player);
   }
 
-  /// A release is noticed by the missing use ticks: the polished item goes back to the player.
+  /// The polishing use of the sand paper, counted down on the player tick.
+  ///
+  /// `SandPaperItem.getUseDuration` is 32 ticks; the polish finishes on the tick the count reaches
+  /// zero, like Java's normal end of the use (`finishUsingItem`, `SandPaperItem.java:108-135`).
+  ///
+  /// Divergence: Java returns the *unpolished* input when the player releases the mouse early
+  /// (`releaseUsing`, `SandPaperItem.java:149-160`). With no use started the host exposes no
+  /// release event -- `Status::ReleaseItemInUse` clears the active hand with no plugin event
+  /// (`pumpkin-core/src/net/java/play/player_action.rs:269-280`, only the item registry's
+  /// `on_stopped_using` hook) -- so an early release cannot be observed and the polish always
+  /// completes after the full 32 ticks. A `stop-using-item`-style event on the player (or the
+  /// `use-duration` support above, which brings the host's own use lifecycle) would close the gap;
+  /// a player who drops or swaps the paper meanwhile is caught by [_heldPaperWithPolish].
   Future<void> _onPlayerTick(Server server, PlayerTickEventData e) async {
     final uuid = e.player.getId().asString;
-    final use = _polishUse[uuid];
+    final use = _polishUses[uuid];
     if (use == null) return;
-    if (_tick - use.$2 > 3 && _tick - use.$1 > 5) {
-      _polishUse.remove(uuid);
-      await _releasePolishing(e.player);
-    }
+    if (!use.tick()) return;
+    _polishUses.remove(uuid);
+    await _finishPolishing(e.player);
   }
 
   Future<(ItemStack, Hand)?> _heldPaperWithPolish(Player player) async {
@@ -375,9 +396,10 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     return null;
   }
 
-  /// `finishUsingItem`.
+  /// `finishUsingItem` (`SandPaperItem.java:108-135`): the polished result and the input's
+  /// crafting remainder go back to the inventory, the `create:sand_paper_polishing` component is
+  /// removed and the paper is hurt by one.
   Future<void> _finishPolishing(Player player) async {
-    _polishUse.remove(player.getId().asString);
     final held = await _heldPaperWithPolish(player);
     if (held == null) return;
     final (paper, hand) = held;
@@ -386,28 +408,22 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     final world = player.getWorld();
     if (data != null) {
       final inKey = env.itemIds.keyOf(data.itemId);
-      final outKey = inKey == null ? null : polishResult(inKey);
-      final result = ItemStack.create(registryKey: outKey ?? inKey ?? 'minecraft:air', count: 1);
-      if (outKey != null || inKey != null) await giveToPlayer(player, world, result);
+      if (inKey != null) {
+        // `SandPaperPolishingRecipe.applyPolish`, then `placeItemBackInInventory`.
+        final outKey = polishResult(inKey);
+        await giveToPlayer(player, world, ItemStack.create(registryKey: outKey ?? inKey, count: 1));
+        // `SandPaperItem.java:127-131`: the remainder of the item that was polished follows it.
+        // The host has no item API for a crafting remainder, so the shared pure table of the
+        // deployer is used - the one the press, the saw and the fan already consume.
+        final remainder = craftingRemainderOf(PStack(inKey, 1));
+        if (remainder != null && remainder.isNotEmpty) {
+          await giveToPlayer(player, world, ItemStack.create(registryKey: remainder.key, count: remainder.count));
+        }
+      }
     }
+    // `stack.hurtAndBreak(1, ...)` in the hand the use was started in ([_heldPaperWithPolish]
+    // finds it); the write of `hurtHeld` is also what syncs the component removal to the client.
     await hurtHeld(player, hand, 1);
-    final inv = player.getInventory();
-    final still = inv.getItemInHand(hand: hand);
-    if (still != null) await inv.setItemInHand(hand: hand, item: still);
-  }
-
-  /// `releaseUsing`: the polished item returns to the inventory.
-  Future<void> _releasePolishing(Player player) async {
-    final held = await _heldPaperWithPolish(player);
-    if (held == null) return;
-    final (paper, hand) = held;
-    final data = _polishedItem(paper);
-    StackData.remove(paper, EquipmentComponents.sandPaperPolishing);
-    if (data != null) {
-      final k = env.itemIds.keyOf(data.itemId);
-      if (k != null) await giveToPlayer(player, player.getWorld(), ItemStack.create(registryKey: k, count: 1));
-    }
-    await player.getInventory().setItemInHand(hand: hand, item: paper);
   }
 
   // ===================================================================================
@@ -447,6 +463,15 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     final attackerLiving = attacker.asEntity().asLiving();
     var strength = (attackerLiving?.getAttributeValue(attr: Attribute.attackKnockback) ?? 0) + 2;
     strength += (await stack.enchantmentLevel(Enchantment.knockback)).toDouble();
+    // `CardboardSwordItem.java:83`: `attacker.isSprinting() &&
+    // attacker.getAttackStrengthScale(0.5f) > 0.9f`. The host computes the same charge internally
+    // (`Player::get_attack_cooldown_progress`, `pumpkin-core/src/entity/player.rs:3197-3203`, the
+    // `LivingEntity.getAttackStrengthScale` formula `(attackStrengthTicker + partialTicks) /
+    // attackSpeed` clamped to 0..1), but exposes it nowhere: no function of `player.wit` or
+    // `entity.wit` returns the attack cooldown or its ticker (`player.wit:1058-1063`'s
+    // `get-cooldown` is the *item group* cooldown). `player.get-attack-strength-scale:
+    // func(partial-ticks: f32) -> f32` over that function would let the gate be reproduced; until
+    // then the sprint bonus is applied without it.
     if (attacker.asEntity().isSprinting()) strength += 1;
     if (strength <= 0) return e.cancel();
     final yRot = attacker.getYaw();
@@ -508,6 +533,76 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
         await giveToPlayer(p, p.getWorld(), bottle);
       }
     });
+  }
+
+  // ===================================================================================
+  // Tree fertilizer
+  // ===================================================================================
+
+  /// How often the bone meal is applied: the host's sapling only advances its `stage` on the
+  /// first use and grows the tree on a later one, and its `is_bonemeal_success` is a 45% roll,
+  /// so one use is not enough (`pumpkin-core/src/block/blocks/plant/sapling.rs:32-43`, `:112-114`).
+  /// Java applies the equivalent of a single bone meal to the sapling at `stage` 1
+  /// (`TreeFertilizerItem.java:47-53`).
+  static const int _treeFertilizerAttempts = 10;
+
+  /// Makes every fake player of the tree fertilizer unique (a duplicate uuid is refused).
+  int _treeFertilizerSerial = 0;
+
+  /// `TreeFertilizerItem.useOn` (`TreeFertilizerItem.java:27-86`): a click on a sapling grows the
+  /// whole tree at once.
+  ///
+  /// Divergence: Java grows the tree in a *simulated* level (`TreesDreamWorld`) and then copies the
+  /// blocks it added into the real level with its own rules (`:56-77`: bedrock is never replaced,
+  /// leaves are not placed into solid blocks, blocks are destroyed with drops only when they are
+  /// neither the sapling, the new block, nor in `#minecraft:replaceable_by_trees` /
+  /// `#minecraft:mangrove_roots_can_grow_through` / `#minecraft:mangrove_logs_can_grow_through`).
+  /// The host exposes no simulated level and no tree/feature function, so this uses the host's own
+  /// vanilla bone meal path through a fake player: the tree is grown by the vanilla grower, which
+  /// refuses an obstructed spot, and nothing is copied, destroyed or dropped, so no item is
+  /// conserved that Java would have conserved. A host `grow-tree` / `bonemeal-block` function, or a
+  /// placement-simulation level like Java's `PlacementSimulationServerLevel`, would be the exact
+  /// reproduction.
+  Future<ItemUseFirstEventData> _onTreeFertilizerUseOn(ItemUseFirstEventData e) async {
+    final player = e.player;
+    final world = player.getWorld();
+    final state = world.getBlockState(pos: e.blockPos);
+    // `state.is(BlockTags.SAPLINGS)` (`:31`); `BonemealableBlock` is the host's own
+    // `minecraft:saplings` block behaviour, which refuses a block it cannot grow.
+    if (!Tags.blockState(state.id, 'minecraft:saplings')) return e;
+    // `MangrovePropaguleBlock.HANGING` (`:33-35`): a hanging propagule is the block's business.
+    if (namespacedBlockKey(state.blockName) == 'minecraft:mangrove_propagule' &&
+        BlockStates.value(state.id, 'hanging') == 'true') {
+      return e;
+    }
+    final sapling = namespacedBlockKey(state.blockName);
+    final (x, y, z) = e.blockPos.p3;
+    // `BonemealableBlock.performBonemeal` on the level (`:52`).
+    final bot = FakePlayers.create(world, 'TreeFertilizer${_treeFertilizerSerial++}');
+    try {
+      FakePlayerActions(bot).moveTo(world, (x + .5, y + .5, z + .5));
+      await bot.getInventory().setItemInHand(
+        hand: Hand.right,
+        item: ItemStack.create(registryKey: 'minecraft:bone_meal', count: _treeFertilizerAttempts),
+      );
+      for (var i = 0; i < _treeFertilizerAttempts; i++) {
+        if (namespacedBlockKey(world.getBlockState(pos: e.blockPos).blockName) != sapling) break;
+        try {
+          await bot.useItemOnBlock(e.blockPos, BlockDirection.up, hand: Hand.right, cursor: (0.5, 0.5, 0.5));
+        } on Object {
+          break; // out of reach, or the host refused the use
+        }
+      }
+    } finally {
+      FakePlayers.remove(bot);
+    }
+    // `:81-85`: one fertilizer is used up unless the player is creative. `shrinkHeld` is the
+    // helper of this file's inventory utilities and is the `ItemStack.shrink(1)` Java does
+    // (`logistics/host/player_items.dart`'s `consumeOneInHand` is the same for the hand of
+    // another module's player API).
+    if (!player.isCreative) await shrinkHeld(player, e.hand, 1);
+    // `return InteractionResult.SUCCESS` (`:86`): the click is consumed and the arm swings.
+    return e.copyWith(useResult: ItemUseFirstResult.success);
   }
 }
 

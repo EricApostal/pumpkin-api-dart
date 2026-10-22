@@ -16,6 +16,7 @@ import 'package:create/src/common/host_bridge.dart';
 import 'package:create/src/core/block_entity.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../util/assembly/sim_assembly_exception.dart';
 import 'physics_assembler.dart';
 
 /// `PhysicsAssemblerBlockEntity`.
@@ -64,9 +65,10 @@ final class PhysicsAssemblerBlockEntity extends CreateBlockEntity {
   void read(NbtCompound tag, {required bool clientPacket}) {
     super.read(tag, clientPacket: clientPacket);
     if (clientPacket) return;
+    final exception = tag.getCompound('LastException')?.getString('Component');
     assembler.read({
       'IsPrimary': tag.getBool('IsPrimary') ?? false,
-      if (tag.getString('LastException') != null) 'LastException': tag.getString('LastException'),
+      'LastException': ?exception,
       if (tag.getString('SubLevel') != null) 'SubLevel': tag.getString('SubLevel'),
     });
   }
@@ -77,7 +79,11 @@ final class PhysicsAssemblerBlockEntity extends CreateBlockEntity {
     final data = assembler.write();
     tag.putBool('IsPrimary', data['IsPrimary'] == true);
     final exception = data['LastException'];
-    if (exception is String) tag.putString('LastException', exception);
+    // `AssemblyException.write`: `LastException {Component}` - the message's component
+    // JSON, which is what the client reads and the goggles overlay shows.
+    if (exception is String) {
+      tag.putCompound('LastException', NbtCompound()..putString('Component', exception));
+    }
     final subLevel = data['SubLevel'];
     if (subLevel is String) tag.putString('SubLevel', subLevel);
     if (clientPacket) tag.putFloat('Angle', assembler.clientAngle());
@@ -107,6 +113,6 @@ final class PhysicsAssemblerBlockEntity extends CreateBlockEntity {
   /// `isPrimaryAssembler()`.
   bool get isPrimaryAssembler => assembler.logic.primaryAssembler;
 
-  /// `getLastAssemblyException()`: the translation key, or `null`.
-  String? get lastAssemblyException => assembler.logic.lastException?.translationKey;
+  /// `getLastAssemblyException()`.
+  SimAssemblyException? get lastAssemblyException => assembler.logic.lastException;
 }

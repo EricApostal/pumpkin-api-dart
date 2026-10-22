@@ -17,11 +17,13 @@ import 'dart:async';
 
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show removeBlock, setBlockState, stateExists;
+import 'package:create/src/common/bounds.dart' show Aabb;
 import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/common/host_bridge.dart';
 import 'package:create/src/common/pos.dart';
 import 'package:create/src/core/block_entity.dart' show BlockEntityStore;
 import 'package:create/src/core/network.dart' show CreateNetwork;
+import 'package:create/src/core/payload.dart' show ClientboundChannel;
 import 'package:create/src/core/registry.dart' show CreateRegistry;
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' show SubLevelHelper, Vector3d;
@@ -33,7 +35,8 @@ import '../content/blocks/spring/spring_placement.dart';
 import '../content/blocks/steering_wheel/steering_wheel_block_entity.dart';
 import '../content/blocks/throttle_lever/throttle_lever_block_entity.dart';
 import '../content/entities/honey_glue/honey_glue_entity.dart';
-import '../content/entities/honey_glue/honey_glue_logic.dart' show HoneyGlueVolumeLogic;
+import '../content/entities/honey_glue/honey_glue_logic.dart'
+    show HoneyGlueVolumeLogic, honeyGlueSpawnData;
 import '../content/entities/honey_glue/honey_glue_packet_logic.dart';
 import '../host/simulated_host.dart';
 import '../index/sim_blocks.dart';
@@ -63,15 +66,25 @@ final class SimPayloadHandlers {
 
   final Logger log;
 
+  /// The clientbound `simulated:honey_glue_sync` channel, attached to the host by
+  /// `CreateNetwork.install`; `null` before the plugin is loaded.
+  ClientboundChannel<SimPacket, Player>? _glueSync;
+
+  /// The plugin context, for the sends that need the online players. The
+  /// `Server` handle is taken per send (`Context.getServer`), never stored.
+  Context? _context;
+
   /// Registers the handled serverbound channels on [registry] (version `0.1`,
   /// required, like every Veil channel of the mod) and installs the dispatcher.
   ///
   /// `SimPacketManager.init` registers every channel with a handler; this is the
-  /// subset whose block entity or entity is ported.
+  /// subset whose block entity or entity is ported. `simulated:honey_glue_sync`
+  /// is registered as a clientbound channel so the resize of a live volume has a
+  /// send site (`HoneyGlueEntity.syncBounds`).
   void install(CreateRegistry registry, Context context) {
     // The list is the single source of truth: every id in it is registered with
-    // a handler, and `SimulatedAddon` declares exactly the others.
-    for (final id in SimHandledPayloads.ids) {
+    // a handler or a sender, and `SimulatedAddon` declares exactly the others.
+    for (final id in SimHandledPayloads.serverboundIds) {
       final codec = SimPayloads.byId[id];
       if (codec == null) {
         throw StateError('`$id` is in SimHandledPayloads but has no codec');
@@ -83,6 +96,12 @@ final class SimPayloadHandlers {
         version: SimChannel.version,
       );
     }
+    _glueSync = registry.clientbound<SimPacket>(
+      HoneyGlueSyncBoundsPacket.type,
+      _wire(HoneyGlueSyncBoundsPacket.codec),
+      version: SimChannel.version,
+    );
+    _context = context;
 
     CreateNetwork(registry.payloads, log.child('network')).install(context);
   }
@@ -244,7 +263,15 @@ final class SimPayloadHandlers {
 
     final world = player.getWorld();
     final position = HoneyGlueVolumeLogic.positionForBounds(bounds);
-    final entity = await world.spawnPlugin(honeyGlueEntityKey, position);
+    // `HoneyGlueEntity.setBounds(newBounds)` + `addFreshEntity`: the box is the
+    // entity's spawn data (`writeSpawnData`), the client's only source of it and
+    // the thing it draws. Without it a NeoForge client keeps the entity, draws
+    // nothing and discards it on its first tick.
+    final entity = await world.spawnPlugin(
+      honeyGlueEntityKey,
+      position,
+      spawnData: honeyGlueSpawnData(bounds, position),
+    );
     honeyGlueTrackerOf(world.getId()).put(HoneyGlue(entity.getId(), bounds));
     entity.dispose();
 
@@ -291,6 +318,15 @@ final class SimPayloadHandlers {
       case HoneyGlueAction.resize:
         glue.setBounds(packet.bounds);
         tracker.put(glue);
+        // `HoneyGlueEntity.setBoundsAndSync(bounds, player)`: every client that
+        // tracks the volume gets the new box, and the one that caused it ignores
+        // the update because it already applied the resize locally.
+        await _syncHoneyGlueBounds(
+          player,
+          entity.getId(),
+          glue.box,
+          world.getId(),
+        );
       case HoneyGlueAction.discard:
         tracker.remove(glue.id);
         entity.remove();
@@ -299,6 +335,52 @@ final class SimPayloadHandlers {
         break;
     }
     entity.dispose();
+  }
+
+  /// `HoneyGlueEntity.syncBounds(player)`: `simulated:honey_glue_sync` to the
+  /// players that can see the volume.
+  ///
+  /// Java sends to the entity's tracked players (`VeilPacketManager.tracking`);
+  /// the host API has no such query, so the recipients are the online players in
+  /// the same world within the entity type's tracking range (10 chunks).
+  Future<void> _syncHoneyGlueBounds(
+    Player player,
+    int entityId,
+    Aabb bounds,
+    String worldId,
+  ) async {
+    final channel = _glueSync;
+    final context = _context;
+    if (channel == null || context == null) return;
+    final server = context.getServer();
+    final center = bounds.center;
+    final recipients = server.playersNear(
+      center,
+      honeyGlueEntityType.trackingRange * 16.0,
+      worldName: worldId,
+    );
+    if (recipients.isEmpty) {
+      server.dispose();
+      return;
+    }
+    try {
+      await channel.sendAll(
+        recipients,
+        HoneyGlueSyncBoundsPacket(bounds, entityId, player.getId().asString),
+      );
+    } on Object catch (error) {
+      log.warn('Could not sync the bounds of honey glue $entityId: $error');
+    } finally {
+      // The handles came from `Server.getAllPlayers`, so the plugin owns them.
+      for (final recipient in recipients) {
+        try {
+          recipient.dispose();
+        } on Object {
+          // already invalid
+        }
+      }
+      server.dispose();
+    }
   }
 
   /// `HoneyGlueSpawnPacket.getHoneyGlueHand`: the main hand first.

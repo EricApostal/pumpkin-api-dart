@@ -30,6 +30,7 @@ import '../bearing/bearing_contraptions.dart' show StabilizedContraption;
 import '../blocks/actuator_contract.dart';
 import '../entity/contraption_entity.dart';
 import '../entity/contraption_handler.dart';
+import '../entity/contraption_synced_data.dart' show ContraptionSyncedData;
 import '../entity/controlled_contraption_entity.dart';
 import '../entity/i_control_contraption.dart';
 import '../entity/oriented_contraption_entity.dart';
@@ -56,6 +57,39 @@ abstract final class ContraptionHostHooks {
 
   /// Called after a contraption entity was spawned.
   static void Function(AbstractContraptionEntity entity)? spawned;
+
+  /// The contraption entity kinds the modules own, by entity type key: the
+  /// `ControlledContraptionEntity` *subclass* of a controller that builds its own
+  /// (`aeronautics:propeller_bearing_contraption`, `offroad:borehead_contraption_entity`).
+  static final Map<String, ControlledContraptionEntity Function(HostContraptionEntity host)>
+  controlledEntityTypes = {};
+
+  /// [controlledEntityTypes] backwards, by the entity class.
+  static final Map<Type, String> _entityTypeKeys = {};
+
+  /// Registers the contraption entity kind [key] with the entity class [type] and [create], so a
+  /// controller can ask for it (`createControlled(..., entityKey: key)`) and the spawn sends the
+  /// entity to the client as [key] instead of `create:stationary_contraption`.
+  static void registerControlledEntity({
+    required String key,
+    required Type type,
+    required ControlledContraptionEntity Function(HostContraptionEntity host) create,
+  }) {
+    controlledEntityTypes[key] = create;
+    _entityTypeKeys[type] = key;
+  }
+
+  /// Forgets every registered kind (plugin unload).
+  static void clearControlledEntities() {
+    controlledEntityTypes.clear();
+    _entityTypeKeys.clear();
+  }
+
+  /// The entity type key of [entity]: the kinds of other modules first (a subclass of
+  /// `ControlledContraptionEntity` would otherwise be sent as `create:stationary_contraption`),
+  /// then the core kinds of [entityTypeOf].
+  static String? entityTypeKeyOf(AbstractContraptionEntity entity) =>
+      _entityTypeKeys[entity.runtimeType] ?? entityTypeOf?.call(entity);
 }
 
 /// The `namespace:path` key of a host entity (`minecraft:minecart`, `minecraft:chest_minecart`).
@@ -768,6 +802,12 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   String? _controllingPlayer;
   final Map<String, NbtValue> _persistentData = {};
 
+  /// The values the clients were last sent. `entityData.set` only sends an entry when the value
+  /// changed; without this the `STALLED` entry of every running contraption would be re-sent every
+  /// tick.
+  bool? _syncedStalled;
+  String? _syncedControllingPlayer;
+
   HostContraptionEntity(this.world, this.level, Vec3 position, this._entityById)
     : _position = position,
       _prevPosition = position;
@@ -1043,13 +1083,37 @@ final class HostContraptionEntity implements ContraptionEntityHost {
   }
 
   @override
-  void setStalled(bool stalled) => _stalled = stalled;
+  void setStalled(bool stalled) {
+    _stalled = stalled;
+    // `entityData.set(STALLED, stalled)`: the Java client reads `isStalled()` in the bearing,
+    // pulley and piston interpolation, in `GantryContraptionEntity.tick` and in the carriage
+    // sounds and particles, so a stall that never reaches the client leaves the machine animating.
+    if (_syncedStalled == stalled) return;
+    _syncedStalled = stalled;
+    _handle?.setSyncedEntry(
+      ContraptionSyncedData.stalledIndex,
+      ContraptionSyncedData.booleanEntry(stalled),
+    );
+  }
+
+  @override
+  void setSyncedEntry(int index, List<int> data) =>
+      _handle?.setSyncedEntry(index, data);
 
   @override
   String? get controllingPlayer => _controllingPlayer;
 
   @override
-  void setControllingPlayer(String? uuid) => _controllingPlayer = uuid;
+  void setControllingPlayer(String? uuid) {
+    _controllingPlayer = uuid;
+    // `entityData.set(CONTROLLED_BY, Optional.ofNullable(uuid))`: the client's train controls
+    // (`ControlsMovement`) read it.
+    if (_syncedControllingPlayer == uuid) return;
+    _syncedControllingPlayer = uuid;
+    final entry = ContraptionSyncedData.optionalUuidEntry(uuid);
+    if (entry == null) return;
+    _handle?.setSyncedEntry(ContraptionSyncedData.controlledByIndex, entry);
+  }
 
   @override
   NbtValue? getPersistentData(String key) => _persistentData[key];
@@ -1172,8 +1236,9 @@ final class ContraptionHost {
   ControlledContraptionEntity createControlled(
     String worldId,
     Pos controllerPos,
-    Contraption contraption,
-  ) {
+    Contraption contraption, {
+    String? entityKey,
+  }) {
     final world =
         worldOf(worldId) ?? (throw StateError('Unknown world $worldId'));
     final level = HostContraptionLevel(world, blockEntities, settings);
@@ -1183,7 +1248,12 @@ final class ContraptionHost {
       controllerPos.center,
       (id) => entityById(worldId, id),
     );
-    final entity = ControlledContraptionEntity(host);
+    // The controller's own entity class, when it registered one (a propeller bearing's contraption
+    // carries a tilt transform the plain `ControlledContraptionEntity` does not).
+    final create = entityKey == null
+        ? null
+        : ContraptionHostHooks.controlledEntityTypes[entityKey];
+    final entity = create?.call(host) ?? ControlledContraptionEntity(host);
     host.attachEntity(entity);
     entity.controllerPos = controllerPos;
     entity.setContraption(contraption);
@@ -1263,7 +1333,7 @@ final class ContraptionHost {
     final host = entity.host;
     if (host is! HostContraptionEntity) return;
     final typeKey =
-        ContraptionHostHooks.entityTypeOf?.call(entity) ??
+        ContraptionHostHooks.entityTypeKeyOf(entity) ??
         (entity is ControlledContraptionEntity
             ? 'create:stationary_contraption'
             : entity is GantryContraptionEntity
@@ -1470,8 +1540,9 @@ final class HostContraptionEntityFactory implements ContraptionEntityFactory {
   ControlledContraptionEntity createControlled(
     String worldId,
     Pos controllerPos,
-    Contraption contraption,
-  ) => host.createControlled(worldId, controllerPos, contraption);
+    Contraption contraption, {
+    String? entityKey,
+  }) => host.createControlled(worldId, controllerPos, contraption, entityKey: entityKey);
 
   @override
   AbstractContraptionEntity createOriented(

@@ -6,10 +6,13 @@
 // same sector format (`StorageFileImage`), only the sector size differs
 // (4096 vs 128 bytes).
 //
-// The payload codec is injected: the Java mod writes gzip-compressed NBT, and
-// the port must use an NBT codec to read existing worlds. `JsonSubLevelCodec`
-// exists for tests and for a fresh world; it is deliberately not the default,
-// so a wrong codec can never silently produce unreadable saves.
+// The payload codec is injected: the Java mod writes gzip-compressed NBT
+// (`NbtSubLevelCodec`, what the plugin installs), so an existing Sable world
+// reads. `JsonSubLevelCodec` exists for tests only; it is deliberately not the
+// default, so a wrong codec can never silently produce unreadable saves.
+//
+// A payload that does not decode throws [SubLevelPayloadException] rather than
+// reading as "nothing here": see `SubLevelStorage.onError`.
 //
 // Pure: no host imports (the file store is an interface).
 import 'dart:convert';
@@ -17,6 +20,29 @@ import 'dart:typed_data';
 
 import '../../host/sub_level_host.dart';
 import 'storage_file_image.dart';
+
+/// A payload that is present in a storage file but does not decode with the
+/// file's codec.
+///
+/// This is never "the slot is empty": the bytes are there and the codec refused
+/// them (a Java-written payload read with the JSON codec, a truncated span, a
+/// corrupt gzip stream). Callers must surface it.
+final class SubLevelPayloadException implements Exception {
+  SubLevelPayloadException(this.path, this.index, this.cause);
+
+  /// The storage file (or region file) the payload came from.
+  final String path;
+
+  /// The payload index inside that file.
+  final int index;
+
+  /// What the codec threw.
+  final Object cause;
+
+  @override
+  String toString() =>
+      'Sub-level payload #$index of $path did not decode with this file\'s codec: $cause';
+}
 
 /// Encodes and decodes the payload of one sub-level or holding chunk.
 abstract interface class SubLevelCodec {
@@ -115,14 +141,29 @@ final class SubLevelStorageFile {
       clear(index);
       return;
     }
-    _image.write(index, codec.encode(tag));
+    final Uint8List encoded;
+    try {
+      encoded = codec.encode(tag);
+    } on Object catch (error) {
+      throw SubLevelPayloadException(path, index, error);
+    }
+    _image.write(index, encoded);
     _persistExternal(index);
   }
 
-  /// Reads the tag at [index], or `null` when empty.
+  /// Reads the tag at [index], or `null` when the slot is empty.
+  ///
+  /// Throws [SubLevelPayloadException] when the slot holds bytes the codec
+  /// cannot decode: an empty slot and an undecodable payload must not look
+  /// alike, or a sub-level silently disappears.
   Map<String, Object?>? read(int index) {
     final bytes = _image.read(index);
-    return bytes == null ? null : codec.decode(bytes);
+    if (bytes == null) return null;
+    try {
+      return codec.decode(bytes);
+    } on Object catch (error) {
+      throw SubLevelPayloadException(path, index, error);
+    }
   }
 
   /// Clears the tag at [index].
@@ -231,4 +272,7 @@ final class SubLevelRegionFile {
 
   /// Deletes the file.
   void delete() => file.delete();
+
+  /// The path of the region file, for logging.
+  String get filePath => file.filePath;
 }

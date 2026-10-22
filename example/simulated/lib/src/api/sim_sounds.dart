@@ -51,11 +51,17 @@ abstract final class SimSoundEvents {
   static SimSoundEntry _entry(
     String path, {
     String? subtitle,
+    String? defaultSubtitle,
     SimSoundSource source = SimSoundSource.block,
     List<String> files = const [],
   }) => SimSoundEntry(
     '$_namespace:$path',
-    subtitle: subtitle == null ? null : 'subtitles.simulated.$subtitle',
+    // `DefinitionBuilder.subtitle(name)` keys the lang entry as
+    // `<modId>.subtitle.<name>` (`SoundEventRegistry.java:69-72`), and
+    // `defaultSubtitle(key)` takes a ready-made key (vanilla's own).
+    subtitle: subtitle != null
+        ? '$_namespace.subtitle.$subtitle'
+        : defaultSubtitle,
     source: source,
     files: [for (final f in files) SimSoundFile(f)],
   );
@@ -71,7 +77,7 @@ abstract final class SimSoundEvents {
 
   static final SimSoundEntry plungerPlace = _entry(
     'block.plunger.place',
-    subtitle: 'block.generic.place',
+    defaultSubtitle: 'subtitles.block.generic.place',
     files: _variants('block/plunger/place', 3),
   );
 

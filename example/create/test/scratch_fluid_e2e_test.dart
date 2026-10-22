@@ -58,6 +58,9 @@ final class W extends BlockGetter implements FluidWorld {
   bool canSurvive(Pos p) => true;
   @override
   void scheduleFluidTick(Pos p, String fluid, int delay) {}
+
+  void scheduleFlowTick(Pos p, String fluid, int delay) =>
+      scheduleFluidTick(p, fluid, delay);
   @override
   void placeFluidSource(Pos p, String fluid) {}
   @override

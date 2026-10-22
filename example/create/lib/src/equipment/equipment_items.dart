@@ -133,6 +133,30 @@ ItemRegistration equipmentItem(String path) {
     components['minecraft:enchantments'] = {'levels': intrinsic, 'show_in_tooltip': true};
   }
   if (path == 'sand_paper' || path == 'red_sand_paper' || path == 'cardboard_sword') {
+    // `CardboardSwordItem.java:43-45` restricts the sword to Knockback:
+    // `supportsEnchantment` returns true only for `Enchantments.KNOCKBACK`. The host has no
+    // per-item enchant gate (`minecraft:enchantable` is only the enchantability *value*, the
+    // offers come from the enchantment's own `supported_items` tag), and the one hook the host
+    // does offer is not enough to reproduce it:
+    // - `cardboard_sword` is in no `minecraft:enchantable/*` tag - not in this port's tag
+    //   manifest (only `minecraft:enchantable/bow` and `/durability` name Create items) nor in
+    //   Create's Java datagen - so the host's offer generation
+    //   (`pumpkin-inventory/src/enchanting/enchanting_screen_handler.rs:100-160`, which filters
+    //   with `enchantment.can_enchant(item)`, i.e. the `supported_items` tag) offers the sword
+    //   *nothing*; there is no offer to filter down to Knockback.
+    // - `PrepareItemEnchantEventData.offers` (`events.g.dart`) carries three positional
+    //   `EnchantmentOffer`s whose `enchantmentId` is a raw registry number (no `Enchantment`
+    //   handle, `-1` meaning none), and the host writes the list back into its three slots
+    //   (`pumpkin-wasm-host-v0_1/src/events/enchantment.rs:55-75`), so a handler could clear
+    //   offers but not grant the Knockback offer Java grants - its level comes from the vanilla
+    //   enchantability roll, which the host does not expose.
+    // - The other half of `supportsEnchantment` (the anvil's book combining, per the comment at
+    //   `CardboardSwordItem.java:47-48`) has no hook either: `prepare-anvil-event-data` carries
+    //   only the rename text and the repair cost, and the host's `use_anvil` has no enchantment
+    //   logic.
+    // A host `ItemStack.supports-enchantment`-style check (or a per-item enchantment gate on
+    // `item-definition`) would be the reproduction; until then the sword keeps the generic
+    // enchantability of its Java properties and gets no table offers at all.
     components['minecraft:enchantable'] = {'value': 1};
   }
   if (path == 'builders_tea') {

@@ -11,6 +11,7 @@ import '../api/decoration.dart' show WhistleBoilerHooks;
 import '../api/observable.dart' show RedstoneObservables;
 import '../api/kinetics.dart' show KineticNetworkService;
 import '../api/wrenchable.dart' show WrenchRegistry;
+import '../common/block_entity_item_data_host.dart' show ItemDataStamps;
 import '../common/pos.dart';
 import '../contraptions/core/movement.dart' show MovementBehaviours;
 import '../core/block_entity.dart' show BlockEntityStore;
@@ -65,6 +66,9 @@ final class FluidsModule extends CreateModule {
   @override
   void onLoad(CreateContext ctx) {
     _hooksRegistered = false;
+    // The tanks' and the schematicannon's item data (one shared mechanism): the drop and
+    // pick-block stamping and the placement apply.
+    ItemDataStamps.install(ctx);
     BoilerHeaters.registerDefaults();
     OpenPipeEffects.registerDefaults();
     AllBlockSpoutingBehaviours.registerDefaults();

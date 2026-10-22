@@ -1,6 +1,7 @@
 // Applies a CreateRegistry to the host in the fixed order of ARCHITECTURE.md.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../content/entity_data_serializers.dart' show EntityDataSerializerIds;
 import 'block_entity.dart';
 import 'perf.dart';
 import 'registry.dart';
@@ -13,8 +14,16 @@ final class AppliedIds {
     for (final k in RegistryKind.values) k: {},
   };
 
+  /// The ids of the entries outside the [RegistryKind] buckets (map decorations,
+  /// entity data serializers), by key.
+  final Map<String, int> _extras = {};
+
   /// The host id of [key] in [kind], or `null`.
   int? of(RegistryKind kind, String key) => _ids[kind]![key];
+
+  /// The host id of a registry entry that is not in a [RegistryKind] bucket — a map
+  /// decoration or an entity data serializer — or `null`.
+  int? extra(String key) => _extras[key];
 
   Map<String, int> all(RegistryKind kind) => Map.unmodifiable(_ids[kind]!);
 }
@@ -248,6 +257,30 @@ Future<AppliedIds> applyRegistry(
   for (final e in registry.datapackEntries) {
     ExtraRegistries.addDatapackEntry(e.registry, e.id, e.data);
   }
+
+  // The map decorations and the entity data serializers: the host numbers their
+  // registries too (`vanilla count + index`), and a registry the plugin registered
+  // content into but did not name in its declaration is dropped from the sync for
+  // every plugin, so they are applied here with the rest and named in the
+  // declaration (`contentRegistries`, `plugin/create_neoforge.dart`).
+  Perf.measure('applyRegistry.extras', () {
+    for (final decoration in registry.mapDecorations) {
+      try {
+        ids._extras[decoration.key] = ExtraRegistries.registerMapDecoration(decoration);
+      } on HostException catch (e) {
+        log.error('Could not register the map decoration ${decoration.key}: ${e.message}');
+      }
+    }
+    for (final key in registry.entityDataSerializers) {
+      try {
+        final id = EntityRegistries.registerDataSerializer(key);
+        ids._extras[key] = id;
+        EntityDataSerializerIds.record(key, id);
+      } on HostException catch (e) {
+        log.error('Could not register the entity data serializer $key: ${e.message}');
+      }
+    }
+  });
 
   // The rest is not id bearing: a failure is logged, the plugin keeps loading.
   Future<void> soft(String what, Future<void> Function() body) async {

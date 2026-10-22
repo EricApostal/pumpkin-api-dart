@@ -47,6 +47,10 @@ List<CreateBlock> buildElevatorBlocks() => [
   manifestBlock(
     'elevator_contact',
     blockEntityType: elevatorContactKey,
+    // `ElevatorContactBlock.getLight`: `POWERING ? 10 : 0`.
+    lightRules: const [
+      LightRule(when: {'powering': 'true'}, level: 10),
+    ],
     // `ElevatorContactBlock extends WrenchableDirectionalBlock`: `getNearestLookingDirection()`.
     placement: const [PlacementRule.lookingDirection('facing')],
     behavior: elevatorContactBehavior(),

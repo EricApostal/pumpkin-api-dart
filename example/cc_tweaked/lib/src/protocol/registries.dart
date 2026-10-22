@@ -7,7 +7,6 @@
 // order the lists below are in. The client takes these ids from the
 // `neoforge:frozen_registry` payloads, so the host must put exactly these ids
 // on the wire for CC's blocks, items and menus.
-import 'package:pumpkin_api/pumpkin_api.dart' show NeoForgeRegistryAddition;
 import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart' show VanillaRegistries;
 
 
@@ -199,14 +198,34 @@ abstract final class CcRegistries {
       if (VanillaRegistries.entries(entry.key) != null) entry.key: entry.value,
   };
 
-  /// The registries the host does not know and so needs whole in the NeoForge
-  /// declaration: `computercraft:recipe_function`, a mod registry created with
-  /// `sync(true)`. The registries the plugin fills through the host (items, blocks,
-  /// block entity types, menus, data component types) are not listed: the host
-  /// numbers them itself, in registration order (`plugin.dart`).
-  static List<NeoForgeRegistryAddition> get declaredRegistries => [
-    NeoForgeRegistryAddition('$modId:recipe_function', recipeFunctions),
+  /// The keys the NeoForge declaration names, in declaration order: every registry
+  /// the plugin puts content in that the host numbers, plus
+  /// `computercraft:recipe_function`.
+  ///
+  /// **Naming a registry is the vouch that its content may be sent** (see
+  /// `docs/neoforge-host.md`). The host numbers the plugin entries of the
+  /// host-numbered registries itself, in registration order, and writes those ids
+  /// (`vanilla count + index`) in chunk data and packets — so a registry whose
+  /// content the plugin registered has to be named, or the host leaves it out of the
+  /// snapshot *for every plugin at once* (`registries::syncable`: a host-numbered
+  /// registry is sent whole or not at all, because a client that numbers the entries
+  /// its own way resolves the host's ids to different entries). That is the "adding
+  /// an item to my inventory gives a different item" bug.
+  ///
+  /// The two registries without a vanilla list are not named — the host does not know
+  /// their ids and writes none of them (see [synchronised]).
+  ///
+  /// This file has no host imports, so `test/declared_registries_test.dart` can hold
+  /// the list against what the plugin registers on the plain VM;
+  /// `plugin/cc_declared_registries.dart` turns it into the declaration.
+  static List<String> get declaredRegistryKeys => [
+    ...synchronised.keys,
+    recipeFunctionRegistry,
   ];
+
+  /// The key of the mod registry the plugin owns (`sync(true)`), the one registry
+  /// in the declaration the host does not know.
+  static const String recipeFunctionRegistry = '$modId:recipe_function';
 }
 
 /// Numeric ids of CC's entries, as the registry sync defines them: the number

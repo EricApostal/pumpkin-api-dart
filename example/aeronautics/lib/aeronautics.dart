@@ -8,6 +8,7 @@ library;
 
 export 'aeronautics_channels.dart';
 export 'src/config/aero_config.dart';
+export 'src/config/aero_synced_config.dart';
 export 'src/content/components/converter.dart';
 export 'src/content/components/levitating.dart';
 export 'src/levitite/levitite_crystallization.dart';

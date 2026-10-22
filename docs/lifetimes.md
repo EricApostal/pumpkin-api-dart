@@ -87,6 +87,44 @@ Borrowed resources (`server`, `sender`, `context`) can't be kept, because the
 server only lends them for the duration of the call. Look the object up again
 when you need it, or use the scheduler APIs that hand you a fresh `server`.
 
+## Per-world adapters
+
+A cached object that wraps a world — a level view, a physics adapter, a
+per-world runtime — is the place this rule is easiest to break: the cache is
+keyed by world id, but the object it stores is built from the *first* world
+handle it saw, and that handle usually came from an event. The next event then
+finds the cached object and uses a handle that was released a tick ago:
+
+```dart
+// Wrong: the first caller's handle is cached forever.
+final _adapters = <String, Adapter>{};
+Adapter adapterOf(World world) =>
+    _adapters.putIfAbsent(world.getId(), () => Adapter(world));
+```
+
+Create's `WorldRef` (in `package:create`, `src/core/worlds.dart`) stores the id
+and the last handle that was still valid. Bind it in the callback that has a
+live world; after that it resolves the id through the plugin's kept `Worlds`
+table, whose entries do outlive callbacks:
+
+```dart
+final _adapters = <String, Adapter>{};
+
+Adapter adapterOf(World world) {
+  final adapter = _adapters[world.getId()] ??= Adapter(WorldRef(worlds, world.getId()));
+  adapter.ref.bind(world);   // no host call: just remembers the live handle
+  return adapter;
+}
+
+// Later, from any callback or timer:
+adapter.ref.world.getBlockStateId(pos: pos);
+```
+
+`WorldRef.world` returns the bound handle while it is valid, so a tick that
+already has one costs no host call; once it is gone it asks `Worlds` for a kept
+one, which is a map lookup on the common path and a `Server.getWorldByName`
+only after the world unloaded.
+
 ## Giving a resource away
 
 Some host functions take ownership of an argument, for instance

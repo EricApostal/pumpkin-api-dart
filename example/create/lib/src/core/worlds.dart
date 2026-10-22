@@ -154,3 +154,59 @@ final class Worlds {
     _host = null;
   }
 }
+
+/// A world that an adapter keeps across callbacks.
+///
+/// A `World` received from an event (`event.targetWorld`, `player.getWorld()`) is
+/// released when the callback that received it returns; a wrapper stored in a
+/// field is dead from then on and every use throws `This World is no longer
+/// valid`. Storing the wrapper is the mistake: [WorldRef] stores the id and, at
+/// most, the last handle that was still valid. [world] hands that one back while
+/// it lives (a tick that already has a live world makes no host call) and
+/// otherwise resolves the id through [worlds], whose handles are kept, so the
+/// adapter works again after the callback that created it has returned.
+///
+/// ```dart
+/// // Wrong: `world` is released when this callback returns.
+/// final _adapters = <String, Adapter>{};
+/// Adapter adapterOf(World world) =>
+///     _adapters.putIfAbsent(world.getId(), () => Adapter(world));
+///
+/// // Right: bind the live handle, resolve the id afterwards.
+/// Adapter adapterOf(World world) {
+///   final adapter = _adapters[world.getId()] ??= Adapter(WorldRef(worlds, world.getId()));
+///   adapter.ref.bind(world);
+///   return adapter;
+/// }
+/// ```
+final class WorldRef {
+  WorldRef(this.worlds, this.id, [World? current]) : _current = current;
+
+  /// The table the id is resolved through once the bound handle is gone. Its
+  /// entries are kept handles, so they stay valid across callbacks.
+  final Worlds? worlds;
+
+  /// The world id (`World.getId()`, the folder name — not the dimension key).
+  final String id;
+
+  World? _current;
+
+  /// Points the ref at [world], a handle that is valid for the rest of the
+  /// callback that passed it in.
+  World bind(World world) => _current = world;
+
+  /// A handle that can be used now.
+  ///
+  /// Throws when the bound handle was released and [worlds] cannot resolve [id]
+  /// (the world unloaded, or the table was never installed).
+  World get world {
+    final current = _current;
+    if (current != null && current.isValid) return current;
+    final resolved = worlds?.byId(id);
+    if (resolved != null) return _current = resolved;
+    throw StateError(
+      'The world $id is not loaded, so this adapter cannot reach it. Bind a '
+      'live world (WorldRef.bind) before using it again.',
+    );
+  }
+}

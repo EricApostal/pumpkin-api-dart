@@ -35,6 +35,11 @@ final class AeroWorldRuntime {
 abstract final class AeronauticsHooks {
   static final Map<String, AeroWorldRuntime> _runtimes = {};
 
+  /// The plugin's kept worlds (installed `Worlds`). The world adapters resolve a
+  /// world through it once the handle of the callback that created them is
+  /// gone; set by the plugin in `onLoad`.
+  static Worlds? worlds;
+
   /// Called when a world's unloaded balloons changed and must be saved.
   static void Function(String worldId)? onBalloonsDirty;
 
@@ -43,17 +48,28 @@ abstract final class AeronauticsHooks {
   static BlockEntityStore? store;
 
   /// The runtime of [world], created on first use.
-  static AeroWorldRuntime of(World world) => _runtimes.putIfAbsent(world.getId(), () {
-    final runtime = AeroWorldRuntime(balloonWorldOf(world));
+  ///
+  /// The runtime keeps the world by id, not by the handle [world] carries: the
+  /// adapter is bound to that live handle for the rest of the callback, and
+  /// resolves the id afterwards (see `WorldRef`). A runtime cached with an
+  /// event's handle used to be the cause of `This World is no longer valid
+  /// (disposed)` on the next block placement.
+  static AeroWorldRuntime of(World world) {
+    final balloonWorld = balloonWorldOf(world);
+    final existing = _runtimes[balloonWorld.id];
+    if (existing != null) return existing;
+    final runtime = AeroWorldRuntime(balloonWorld);
     runtime.balloons.onDirty = () => onBalloonsDirty?.call(runtime.balloonWorld.id);
+    _runtimes[balloonWorld.id] = runtime;
     return runtime;
-  });
+  }
 
   /// Forgets every runtime (plugin unload).
   static void clear() {
     _runtimes.clear();
     BalloonMap.clear();
     clearBalloonWorlds();
+    worlds = null;
   }
 
   /// One server tick of [world]: advances the balloons and re-registers the

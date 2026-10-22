@@ -173,7 +173,7 @@ WasmI32 spawnAsyncExport(
   _tasks[task._id] = task;
   _contextSet(WasmI32.fromInt(task._id));
   // Tasks interleave, so the scope is only the current one while the task runs.
-  task._scope = ResourceScope.detached();
+  task._scope = ResourceScope.detached(debugName);
 
   return _runIteration(task, () {
     _taskZone.run(() {

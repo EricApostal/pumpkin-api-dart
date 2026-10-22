@@ -33,6 +33,7 @@ export 'src/compat/computercraft/wired/docking_connector_wired_element.dart';
 export 'src/compat/computercraft/wired/noop_docking_connector_wired_element.dart';
 export 'src/config/sim_config.dart';
 export 'src/config/sim_config_service.dart';
+export 'src/config/sim_synced_config.dart';
 export 'src/content/blocks/physics_assembler/disassembly_prevention.dart';
 export 'src/content/blocks/physics_assembler/physics_assembler.dart';
 export 'src/content/blocks/physics_assembler/physics_assembler_logic.dart';

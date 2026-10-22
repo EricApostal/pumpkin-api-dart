@@ -2,7 +2,7 @@ import 'command_builder.dart' show commandNamespace;
 import 'dart:async';
 
 import 'package:wasm_components/wasm_components.dart'
-    show ResourceKeep, Result, printHandler;
+    show Resource, ResourceKeep, ResourceScope, Result, printHandler;
 
 import 'src_exports.dart';
 
@@ -90,6 +90,9 @@ void runPlugin(Plugin plugin) {
   // `print` writes to the server log.
   printHandler = logger.info;
   commandNamespace = plugin.info.name;
+  // One plugin per component: name it in lifetime errors, so a handle used
+  // after the callback that received it returned says where it came from.
+  Resource.pluginName = plugin.info.name;
   definePlugin(
     exports: _Exports(plugin),
     metadata: _Metadata(plugin),
@@ -176,6 +179,22 @@ final class _Exports implements PluginExports {
 
   @override
   Future<Event> handleEvent(int eventId, Server server, Event event) async {
+    // Names the event in lifetime errors: a resource received here and used
+    // after this dispatch returned reports this event and the one that used it.
+    // The value is the constant from the label table, so nothing is allocated
+    // per dispatch.
+    final label = eventHandlerLabels[eventId];
+    final previous = Resource.receivingDuring;
+    Resource.receivingDuring = label;
+    if (label != null) ResourceScope.labelCurrent(label);
+    try {
+      return await _handleEvent(eventId, server, event);
+    } finally {
+      Resource.receivingDuring = previous;
+    }
+  }
+
+  Future<Event> _handleEvent(int eventId, Server server, Event event) async {
     final group = eventGroups[eventId];
     if (group != null) {
       // One host handler for the whole group: run every member that wants the event, in
@@ -395,6 +414,6 @@ final class _Exports implements PluginExports {
   }
 
   void _logFailure(String what, Object error, StackTrace stack) {
-    logger.error('Uncaught error in $what: $error\n$stack');
+    logger.error('Uncaught error in $what of ${_plugin.info.name}: $error\n$stack');
   }
 }

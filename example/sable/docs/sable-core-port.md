@@ -125,6 +125,52 @@ These were stubs or missing before:
 | `test/lifecycle_state_test.dart` | `SubLevelTicketLoadingSystem` add/unload/remove, `SubLevelHoldingChunkMap` pack/unpack/status/dependency-chain unload, `SubLevelDataAccessor`, `SableCommandState` |
 | `test/pure_helpers_test.dart` | `SableMathUtils.getAngularVelocity` and `GridQuats`/`clampQuaternionToGrid`, `HeatDataChunkSection`, `WaterOcclusionContainer` (with and without a pose), the schematic context and its restore-on-throw, `NbtFields`, `EntitySubLevelUtil` |
 
+## The plugin wire-up (`lib/src/plugin/`)
+
+Java attaches a `ServerSubLevelContainer` to every `ServerLevel` from a
+level-load mixin, so `SubLevelContainer.getContainer(level)` always finds one.
+The model cannot do that itself: `SubLevelContainer.of(level)` reads a static map
+that only a plugin can fill, and until it is filled every assembly throws
+`Level <dimension> has no sub-level container`.
+
+`SablePlugin` now owns that:
+
+* **One container per loaded level.** The host loads plugins on the first tick,
+  *after* the worlds are loaded and `worldLoad` has fired, so `onLoad`
+  enumerates `Server.getAllWorlds()` (`_openLoadedWorlds`) and keeps the
+  `worldLoad` subscription for worlds created later. The kept `World` handles
+  back `PumpkinSableLevel`, whose `dimensionId` is the dimension key the
+  container map is keyed by.
+* **Geometry** comes from the model's constants
+  (`SubLevelContainer.defaultLogSizeLength` 7, `defaultLogPlotSize` 7,
+  `defaultOrigin` 10000); the Sable config has no keys for them.
+* **Storage.** `SubLevelStorage` is rooted at `<plugin data>/<world id>/sublevels`
+  (`PumpkinFileStore` over `DataFolder`, hence `fs.write.data`), and the
+  container is initialized with it (`initializeWithStorage`), which installs the
+  ticket loading system and the holding chunk map.
+* **Registration and announcement**: `SubLevelContainer.register(container)`,
+  then `fireSubLevelContainerReady(level, container)`
+  (`api/event/sable_sub_level_container_ready_event.dart`, which also calls
+  `SablePlatform.onSubLevelContainerReady`).
+* **Ticking**: one `worldTick` handler ticks the container of the world that
+  ticked; a container whose tick throws is left un-ticked with one error log
+  instead of failing on every tick.
+* **Unload**: `worldUnload` (and plugin unload) closes the container, unregisters
+  it, closes the storage and releases the kept world handle.
+* `/sable` is registered over a `SableCommandState` whose `levelOf` resolves a
+  command's `World` to the container's level view.
+
+`plugin/pumpkin_level.dart` holds the host seams: `PumpkinSableLevel`,
+`MemoryPlotChunk` + `PumpkinPlotChunkHost` (world chunks through the plugin API,
+plot chunks in memory) and `PumpkinFileStore`.
+
+Still missing on the plugin side (each a `HOST GAP`, not a container bug): the
+physics system and tracking system are never attached to the container, so a
+sub-level has no mass tracker and `/sable assemble` reports "No blocks to
+assemble." after a successful assembly; `AssemblyEntityHost` is not implemented,
+so entities on the assembled blocks stay where they are; world-chunk block
+entities are not moved (the host exposes only raw NBT bytes).
+
 ## Deliberately left
 
 * **Client half** — `ClientSubLevel`, `ClientLevelPlot`, `render/**`,
@@ -175,8 +221,11 @@ These were stubs or missing before:
 * The light engine (`ServerLevelPlot.initializeLight` / `correctLight` /
   `lightChunk`): Pumpkin exposes no per-plot light engine, so these throw a
   named `HOST GAP` rather than silently no-op.
-* Real chunk storage: `PlotChunkHost` is faked in tests; the region-file
-  round trip is tested against an in-memory image.
+* Real chunk storage: `PlotChunkHost` is faked in the unit tests; the
+  region-file round trip is tested against an in-memory image. The production
+  implementation is `plugin/pumpkin_level.dart`: world chunks go through the
+  plugin API, plot chunks are `MemoryPlotChunk`s in the plugin's map (Pumpkin
+  cannot create a `LevelChunk` at the plot yard, see the `chunk-source` gap).
 * The physics solver itself: `PhysicsPipeline` is a recording fake, so the
   tests assert call order and impulses, not simulation results.
 * Tick timing (`msSinceLastSend` from the wall clock) is injected.

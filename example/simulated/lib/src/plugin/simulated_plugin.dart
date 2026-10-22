@@ -18,6 +18,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../config/sim_config.dart';
 import '../config/sim_config_service.dart';
+import '../config/sim_synced_config.dart';
 import '../host/pumpkin_host.dart';
 import '../host/simulated_host.dart';
 import '../index/sim_channels.dart';
@@ -98,6 +99,18 @@ final class SimulatedPlugin extends Plugin {
     // Create's generic addon hook: Create itself never names Simulated. The six
     // channels registered above are already in the registry, so the addon
     // declares only the other 31.
+    //
+    // The mod's SYNCED server config goes with the declaration. A client that has
+    // Simulated parses it into the mod's `ModConfigSpec` and reads it while
+    // building item tooltips (Create's `KineticStats` -> `BlockStressValues
+    // .getImpact` -> `SimStress::getImpact`), so a client the server never sent it
+    // to crashes on the first hover with "Cannot get config value before config
+    // is loaded" -- exactly as it would against a Java server whose `ConfigSync`
+    // skipped the file.
+    _registry.neoForgeConfigFile(
+      simSyncedConfigFile,
+      utf8.encode(simSyncedToml(SimConfigService.instance.server)),
+    );
     context.declareNeoForge(
       createAddonNeoForgeDeclaration(
         SimulatedAddon(handled: SimHandledPayloads.idSet),

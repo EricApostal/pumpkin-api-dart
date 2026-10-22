@@ -8,6 +8,7 @@
 library;
 
 export 'src/config/offroad_config.dart';
+export 'src/config/offroad_synced_config.dart';
 export 'src/content/blocks/borehead_bearing/borehead_bearing_logic.dart';
 export 'src/content/blocks/rock_cutting_wheel/rock_cutting_wheel_rotation.dart';
 export 'src/content/blocks/wheel_mount/wheel_mount_logic.dart';

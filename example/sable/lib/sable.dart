@@ -5,4 +5,5 @@
 library;
 
 export 'sable_channels.dart';
+export 'src/config/sable_synced_config.dart';
 export 'src/sublevel/sublevel.dart';

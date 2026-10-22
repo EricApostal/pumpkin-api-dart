@@ -105,6 +105,37 @@ mod. `packages/pumpkin_neoforge` stays in the repository for plugins that still 
 the handshake in Dart (`example/lonsdaleite`, `example/modbridge`); a server must
 not run both ways at once.
 
+## Synced config files: declare them, or the client crashes
+
+A NeoForge server sends **every** `SYNCED` config of every installed mod
+(`ConfigSync.syncAllConfigs`, `ConfigFilePayload`); a Java server has no opt-out.
+The client parses each body into that mod's `ModConfigSpec` and *replaces* its
+config with it. Until the body arrives the spec is not loaded, and every
+`ConfigValue.get()` of it throws
+`IllegalStateException: Cannot get config value before config is loaded`
+(`ModConfigSpec.ConfigValue.getRaw`).
+
+That is not a server-side detail. A mod's synced config is read on the **client**,
+and some of those reads happen in code no client author expects to be fatal:
+Create's item tooltip asks `BlockStressValues.getImpact(block)`, which calls the
+provider each addon registered, which is `CStress.getImpact` — a supplier over a
+`ConfigValue` of the addon's synced config. Hovering one of that addon's kinetic
+blocks in the creative inventory then throws on the render thread and the game
+crashes. `create-server.toml` was declared from the start, so Create's own blocks
+were fine; Simulated, Aeronautics, Offroad and Sable were not, and hovering their
+blocks crashed the client against Pumpkin but not against a Java server.
+
+So: **a plugin that ports a mod with a `SYNCED` config must declare that file**
+with the same name FML gives it (`<modid>-synced.toml`, or the explicit name the
+mod passes to `registerConfig`), and the body must use the mod's own config paths
+— not the plugin's JSON layout. A path that is left out falls back to the client's
+default for that spec (`ConfigValue.getRaw` → `Config.getOrElse`), so a partial
+body is safe and an empty one is legal. `SyncedToml`
+(`package:create/src/infrastructure/config/synced_toml.dart`) writes the body in
+`ModConfigSpec`'s layout; `example/simulated`, `example/aeronautics`,
+`example/offroad` and `example/sable` each render their own file that way, and
+`example/cc_tweaked` declares an empty one.
+
 ## Usage
 
 Needs `Permissions.neoforge` in `PluginInfo.permissions`. Declare in

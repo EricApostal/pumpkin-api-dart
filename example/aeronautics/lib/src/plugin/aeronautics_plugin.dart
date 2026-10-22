@@ -14,11 +14,12 @@ import 'package:create/src/plugin/create_addon.dart' show createAddonNeoForgeDec
 import 'package:create/src/core/config.dart';
 import 'package:create/src/core/module.dart';
 import 'package:create/src/core/registry_apply.dart';
-import 'package:create/src/core/worlds.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../aeronautics_plugin.dart';
 import '../aeronautics_module.dart';
 import '../config/aero_config.dart';
+import '../config/aero_synced_config.dart';
 import 'aeronautics_addon.dart';
 
 /// The plugin of Aeronautics.
@@ -26,7 +27,6 @@ final class AeronauticsPlugin extends Plugin {
   /// The config file inside the plugin's data folder.
   static const String configFile = 'config.json';
 
-  final Worlds _worlds = Worlds();
   late final BlockEntityStore _blockEntities;
   CreateCore? _core;
 
@@ -55,8 +55,14 @@ final class AeronauticsPlugin extends Plugin {
     // The physics scalars and the per-block limits of `AeroConfig`.
     _loadConfig(context);
 
-    final blockEntities = _blockEntities = BlockEntityStore(_worlds, log.child('blockentities'));
     final core = _core = CreateCore(CreateConfig.parse(null), log);
+    // The world adapters resolve a world by id through this table once the
+    // handle of the callback that created them is gone.
+    AeronauticsHooks.worlds = core.worlds;
+    // The store resolves worlds through the table the core installs below. A
+    // second, never-installed `Worlds` used to be handed to it, so every
+    // `CreateBlockEntity.world` was `null`.
+    final blockEntities = _blockEntities = BlockEntityStore(core.worlds, log.child('blockentities'));
     final module = AeronauticsModule();
 
     // Phase 1: declare.
@@ -70,7 +76,15 @@ final class AeronauticsPlugin extends Plugin {
 
     // Phase 3: declare the mod and its payload channels, so a client that has
     // Aeronautics installed completes the NeoForge negotiation. This goes
-    // through Create's generic addon hook: Create never names Aeronautics.
+    // through Create's generic addon hook: Create never names Aeronautics. The
+    // mod's SYNCED server config goes with the declaration: the client parses it
+    // into the mod's `ModConfigSpec` and reads it from `BlockStressValues
+    // .getImpact` while building a kinetic block's tooltip, so a client that
+    // never received it crashes on the first hover.
+    core.registry.neoForgeConfigFile(
+      aeroSyncedConfigFile,
+      utf8.encode(aeroSyncedToml(AeroConfig.server)),
+    );
     context.declareNeoForge(createAddonNeoForgeDeclaration(const AeronauticsAddon(), registry: core.registry));
 
     module.onLoad(CreateContext(core, () => this.context, module.name));

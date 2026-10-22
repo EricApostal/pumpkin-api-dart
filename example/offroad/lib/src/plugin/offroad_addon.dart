@@ -21,6 +21,12 @@ final class OffroadAddon extends CreateAddon {
   @override
   String get displayName => 'Offroad';
 
+  /// The registries Offroad registers content in are the client's: the ids are positions in the
+  /// host's dynamic registry, and a client that is not sent the host's order resolves every id
+  /// past the vanilla entries to a different entry. See `AeronauticsAddon.contentVerified`.
+  @override
+  bool get contentVerified => true;
+
   @override
   Iterable<DeclaredPayload> get channels => offroadChannels;
 }

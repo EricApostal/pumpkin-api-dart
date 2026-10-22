@@ -18,6 +18,8 @@ import 'package:create/src/core/registry_apply.dart' show applyRegistry;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../config/offroad_config.dart';
+import '../config/offroad_synced_config.dart';
+import '../host/offroad_hooks.dart';
 import '../offroad_module.dart';
 import 'offroad_addon.dart';
 
@@ -26,7 +28,6 @@ final class OffroadPlugin extends Plugin {
   /// The config file inside the plugin's data folder.
   static const String configFile = 'config.json';
 
-  final Worlds _worlds = Worlds();
   late final BlockEntityStore _blockEntities;
   CreateCore? _core;
 
@@ -52,8 +53,14 @@ final class OffroadPlugin extends Plugin {
     final log = logger;
     _loadConfig(context);
 
-    final blockEntities = _blockEntities = BlockEntityStore(_worlds, log.child('blockentities'));
     final core = _core = CreateCore(CreateConfig.parse(null), log);
+    // The per-world adapters resolve a world by id through this table once the
+    // handle of the callback that created them is gone.
+    OffroadHooks.worlds = core.worlds;
+    // The store resolves worlds through the table the core installs below. A
+    // second, never-installed `Worlds` used to be handed to it, so every
+    // `CreateBlockEntity.world` was `null`.
+    final blockEntities = _blockEntities = BlockEntityStore(core.worlds, log.child('blockentities'));
     final module = OffroadModule();
 
     // Phase 1: declare.
@@ -69,7 +76,15 @@ final class OffroadPlugin extends Plugin {
 
     // Phase 3: declare the mod and its payload channel, so a client that has
     // Offroad installed completes the NeoForge negotiation instead of being
-    // refused.
+    // refused. The mod's SYNCED server config goes with the declaration: the
+    // client parses it into the mod's `ModConfigSpec`, and Create's `KineticStats`
+    // reads it through `BlockStressValues.getImpact` (Offroad's borehead bearing
+    // is an `IRotate`), so a client the server never sent it to crashes on the
+    // first hover of that item.
+    core.registry.neoForgeConfigFile(
+      offroadSyncedConfigFile,
+      utf8.encode(offroadSyncedToml(OffroadConfig.server)),
+    );
     context.declareNeoForge(createAddonNeoForgeDeclaration(const OffroadAddon(), registry: core.registry));
 
     log.info(

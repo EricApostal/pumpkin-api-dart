@@ -47,9 +47,13 @@ abstract interface class BoreheadMiningController {
 
 /// `MultiMiningServerManager` over one host world.
 final class HostMultiMiningLevel implements MultiMiningLevel {
-  HostMultiMiningLevel(this.world);
+  HostMultiMiningLevel(this._world);
 
-  final World world;
+  /// The world id and a handle that survives its callback (see `WorldRef`).
+  final WorldRef _world;
+
+  /// A handle that is valid right now.
+  World get world => _world.world;
 
   /// `state.getDestroySpeed(level, pos)`; -1 for a block that cannot be broken.
   @override
@@ -105,9 +109,12 @@ final class HostMultiMiningLevel implements MultiMiningLevel {
 /// `SableLevel` over a host world (the same adapter Simulated and Aeronautics
 /// use; the host does not expose the build height, so the vanilla limits stand).
 final class OffroadSableLevel implements SableLevel {
-  OffroadSableLevel(this.world);
+  OffroadSableLevel(this._world);
 
-  final World world;
+  final WorldRef _world;
+
+  /// A handle that is valid right now.
+  World get world => _world.world;
 
   /// `Level.dimension().identifier().toString()`: the dimension key (`minecraft:overworld`), not
   /// the world id (`World.getId()`, the folder name `world`). See `SableLevel.dimensionId`.
@@ -135,12 +142,22 @@ final class OffroadSableLevel implements SableLevel {
 
 /// The Offroad state of one world.
 final class OffroadWorldRuntime {
-  OffroadWorldRuntime(this.world, {required int Function() breakerIds, math.Random? random})
-    : level = HostMultiMiningLevel(world),
-      sableLevel = OffroadSableLevel(world),
+  OffroadWorldRuntime(this._world, {required int Function() breakerIds, math.Random? random})
+    : level = HostMultiMiningLevel(_world),
+      sableLevel = OffroadSableLevel(_world),
       manager = MultiMiningServerManager(breakerIds, random: random);
 
-  final World world;
+  /// The world id and a handle that survives its callback (see `WorldRef`).
+  final WorldRef _world;
+
+  /// The world id (`World.getId()`).
+  String get id => _world.id;
+
+  /// A handle that is valid right now.
+  World get world => _world.world;
+
+  /// Points the runtime at the live handle of the callback that is using it.
+  void bind(World world) => _world.bind(world);
 
   /// The level the manager reads.
   final HostMultiMiningLevel level;
@@ -169,9 +186,28 @@ abstract final class OffroadHooks {
   /// The next id for a multi-mining breaking id; Create's `NEXT_BREAKER_ID`.
   static int Function() breakerIds = () => 0;
 
+  /// The plugin's kept worlds (installed `Worlds`). The per-world adapters
+  /// resolve a world through it once the handle of the callback that created
+  /// them is gone; set by the plugin in `onLoad`.
+  static Worlds? worlds;
+
   /// The runtime of [world], created on first use.
-  static OffroadWorldRuntime of(World world) =>
-      _runtimes.putIfAbsent(world.getId(), () => OffroadWorldRuntime(world, breakerIds: breakerIds));
+  ///
+  /// The runtime keeps the world by id, not by the handle [world] carries: it is
+  /// bound to that live handle for the rest of the callback and resolves the id
+  /// afterwards (see `WorldRef`). Caching the handle itself made the next block
+  /// break or placement throw `This World is no longer valid (disposed)`.
+  static OffroadWorldRuntime of(World world) {
+    final id = world.getId();
+    final existing = _runtimes[id];
+    if (existing != null) {
+      existing.bind(world);
+      return existing;
+    }
+    final created = OffroadWorldRuntime(WorldRef(worlds, id, world), breakerIds: breakerIds);
+    _runtimes[id] = created;
+    return created;
+  }
 
   /// The runtime of the world with [worldId], `null` when it never ticked.
   static OffroadWorldRuntime? byId(String worldId) => _runtimes[worldId];
@@ -186,6 +222,7 @@ abstract final class OffroadHooks {
   static void clear() {
     _runtimes.clear();
     breakerIds = () => 0;
+    worlds = null;
   }
 
   /// Puts every wheel mount into the plot that contains it, so the physics

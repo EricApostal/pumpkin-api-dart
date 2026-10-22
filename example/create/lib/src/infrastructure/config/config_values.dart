@@ -132,10 +132,12 @@ final class ConfigDouble extends ConfigValue<double> {
   static String _fmt(double d) => d.abs() > 1e30 ? (d < 0 ? '-3.4028234663852886E38' : '3.4028234663852886E38') : '$d';
 
   @override
-  String toToml(double v) => _tomlDouble(v);
+  String toToml(double v) => tomlDouble(v);
 }
 
-String _tomlDouble(double v) {
+/// The TOML literal of [v]: always a float literal, so a reader that types the
+/// value (`ModConfigSpec.DoubleValue`) never sees an integer.
+String tomlDouble(double v) {
   if (v.isNaN) return 'nan';
   if (v.isInfinite) return v < 0 ? '-inf' : 'inf';
   final s = '$v';

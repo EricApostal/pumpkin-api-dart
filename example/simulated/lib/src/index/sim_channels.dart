@@ -49,4 +49,15 @@ final class SimulatedAddon extends CreateAddon {
 
   @override
   Iterable<DeclaredPayload> get channels => simChannels.where((c) => !handled.contains(c.id));
+
+  /// The registries Simulated registers content in are the client's.
+  ///
+  /// The host numbers what a plugin registers by position (`vanilla count + index`) and writes
+  /// that id on the wire, so a client that is not sent the host's order resolves every id past
+  /// the vanilla entries to a different entry. The names here are pinned against the Java mod's
+  /// own tables (`SimPorted`, `SimJavaOrder`, checked at load by `SimRegistry`); entries the port
+  /// has not translated yet are absent from the host's list, which is a *missing* entry on the
+  /// host, never a renamed one on the client.
+  @override
+  bool get contentVerified => true;
 }

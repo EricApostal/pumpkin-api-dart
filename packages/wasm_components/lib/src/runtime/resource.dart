@@ -24,12 +24,28 @@ import 'package:meta/meta.dart';
 base class Resource {
   static int _nextId = 0;
 
+  /// The plugin the component belongs to, for lifetime errors. Set once by
+  /// `runPlugin`.
+  static String? pluginName;
+
+  /// The callback the host is running right now (an event's name, when the API
+  /// knows it), for lifetime errors: a resource that is used after its callback
+  /// returned reports the callback it was received in and the one that used it,
+  /// which is what tells a stored handle from a re-resolved one.
+  ///
+  /// Set around a dispatch by the API. Assigning it is a plain reference store:
+  /// the value is a constant string, and nothing is formatted until a resource
+  /// is actually misused.
+  static String? receivingDuring;
+
   final int _id = _nextId++;
   final int _handle;
   final void Function(int handle)? _drop;
   ResourceScope? _scope;
   bool _valid = true;
   String _invalidatedBy = 'no reason recorded';
+  final String? _receivedDuring = receivingDuring;
+  final ResourceScope? _receivedIn = ResourceScope._current;
 
   /// Wraps an `own` handle that this program is now responsible for dropping.
   @protected
@@ -55,11 +71,25 @@ base class Resource {
     if (!_valid) {
       throw StateError(
         'This $runtimeType is no longer valid ($_invalidatedBy). Resources are '
-        'released when the callback that received them returns; call keep() to '
-        'hold on to one.',
+        'released when the callback that received them returns: store the '
+        'id, not the handle, and look the object up again (for a world, '
+        'Worlds.byId). keep() only preserves a resource a host call returned; '
+        'it cannot preserve one an event carried, because the host takes the '
+        "event's handles back when the dispatch returns. "
+        '[received during: ${_describe(_receivedDuring)}, '
+        'in: ${_receivedIn?._description ?? '<no scope>'}, used during: '
+        '${_describe(receivingDuring)}]',
       );
     }
     return _handle;
+  }
+
+  /// Names a callback in a lifetime error. Only ever runs while the error is
+  /// being built.
+  static String _describe(String? callback) {
+    final plugin = pluginName;
+    final name = callback == null ? 'an unknown callback' : 'event handler $callback';
+    return plugin == null ? name : '$name of $plugin';
   }
 
   /// Gives the handle away, to pass to the host as an `own`. The wrapper
@@ -79,11 +109,17 @@ base class Resource {
 
   /// Drops the handle, releasing the host resource. Does nothing if the
   /// resource is already invalid or only borrowed.
-  void dispose() {
+  void dispose() => _release('disposed by the plugin');
+
+  /// Releases the handle on behalf of the [ResourceScope] it was received in,
+  /// when that scope ends without the plugin keeping it.
+  void _releaseByScope() => _release('released when the callback that received it returned');
+
+  void _release(String reason) {
     final drop = _drop;
     if (!_valid || drop == null) return;
     _valid = false;
-    _invalidatedBy = 'disposed';
+    _invalidatedBy = reason;
     _scope?._unregister(this);
     _scope = null;
     drop(_handle);
@@ -104,7 +140,10 @@ extension ResourceKeep<T extends Resource> on T {
   /// kept.
   T keep() {
     if (!isValid) {
-      throw StateError('Cannot keep a resource that is no longer valid.');
+      throw StateError(
+        'Cannot keep this $runtimeType: it is no longer valid '
+        '($_invalidatedBy).',
+      );
     }
     if (!isOwned) {
       throw StateError(
@@ -130,7 +169,16 @@ final class ResourceScope {
   bool _held = false;
   bool _exited = false;
 
-  ResourceScope._(this._parent);
+  /// What the scope belongs to (the export or task name), for lifetime errors.
+  /// The API names a scope once it knows which callback the export is running
+  /// (see [labelCurrent]); the export itself only knows the host function.
+  String? label;
+
+  ResourceScope._(this._parent, [this.label]);
+
+  /// The scope in a lifetime error. Only read while the error is being built,
+  /// so a label the API set after the resources were received is included.
+  String get _description => label ?? '<unnamed scope>';
 
   /// Opens a scope that becomes the current one until it is [exit]ed. Scopes
   /// nest, as the host may call back into the component while a call is
@@ -141,9 +189,14 @@ final class ResourceScope {
     return scope;
   }
 
+  /// Names the scope the host is currently in, so a lifetime error can say
+  /// which callback received the resource. Called by the API, which knows the
+  /// event's name; the export that opened the scope does not.
+  static void labelCurrent(String label) => _current?.label = label;
+
   /// Creates a scope without making it the current one. Work is done in it with
   /// [run], which is how tasks that interleave with others use their scope.
-  static ResourceScope detached() => ResourceScope._(null);
+  static ResourceScope detached([String? label]) => ResourceScope._(null, label);
 
   /// Runs [body] with this scope as the current one, for code that continues
   /// work started inside the scope after the original call returned.
@@ -189,7 +242,7 @@ final class ResourceScope {
   /// Drops all owned resources still tracked by this scope.
   void release() {
     for (final resource in _resources.values.toList()) {
-      resource.dispose();
+      resource._releaseByScope();
     }
     _resources.clear();
   }

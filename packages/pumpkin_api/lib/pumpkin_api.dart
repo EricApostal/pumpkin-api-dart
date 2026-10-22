@@ -12,7 +12,7 @@
 library;
 
 export 'package:wasm_components/wasm_components.dart'
-    show Option, Result, OkResult, ErrorResult;
+    show Option, Result, OkResult, ErrorResult, Resource, ResourceKeep;
 
 export 'src/bindings.g.dart'
     hide definePlugin, PluginExports, Metadata, PluginMetadata,

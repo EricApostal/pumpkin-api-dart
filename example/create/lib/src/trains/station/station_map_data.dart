@@ -2,6 +2,13 @@
 // itself and its decorations belong to the host; the markers and the rules of when a station is
 // toggled, checked and added are here, with the map's geometry and its decorations behind
 // [StationMapSink].
+//
+// The map side of this is a host gap: nothing here is reachable from wasm yet -- a plugin can read
+// neither the filled map's `minecraft:map_id` nor the `MapData` behind it
+// (`pumpkin-core/src/world/map.rs` holds the center, the scale and the decorations, kept entirely
+// host-side), so [StationMapMarkers] has no [StationMapSink] implementation and is driven by
+// nobody. The named primitives are in `docs/host-gaps.md` ("Map saved data"). The rules themselves
+// are complete and testable against a fake sink.
 import '../../common/common.dart';
 import '../../redstone/support/text.dart' show Txt;
 import '../util/ctag.dart';

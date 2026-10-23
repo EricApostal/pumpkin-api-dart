@@ -232,6 +232,38 @@ extension BlockEntityUnloadData on generated.BlockEntityUnloadEventData {
   NbtCompound get save => NbtCompound.fromTree(saveData);
 }
 
+// -- Vanilla block entities ---------------------------------------------------------
+
+/// The block entity of any type (`world.wit`) at a position of a [generated.World].
+///
+/// Unlike the plugin-type accessors (`PluginBlockEntities`), this serves every
+/// block entity, vanilla ones included: the saved data goes in as an [NbtCompound]
+/// and comes out as one, so no binary NBT codec is involved. A contraption that
+/// moves a chest reads its data with [vanillaBlockEntityAt] and restores it with
+/// [setVanillaBlockEntity] once the block is in place; [clearVanillaBlockEntity]
+/// removes the entity the move leaves behind (the block itself is untouched).
+extension VanillaBlockEntities on generated.World {
+  /// The saved data of the block entity at [pos] as a compound, `null` when
+  /// there is none (also when the chunk is not loaded).
+  NbtCompound? vanillaBlockEntityAt(generated.BlockPos pos) {
+    final tree = getBlockEntityData(pos: pos);
+    return tree == null ? null : NbtCompound.fromTree(tree);
+  }
+
+  /// Restores the block entity at [pos] from [save], the inverse of
+  /// [vanillaBlockEntityAt]. Throws a [PluginRegistryException] for an invalid
+  /// tree or an unknown block entity id. Does nothing when the chunk is not
+  /// loaded.
+  void setVanillaBlockEntity(generated.BlockPos pos, NbtCompound save) => _unwrap<void>(
+    setBlockEntityData(pos: pos, data: save.toTree()),
+    'Setting the block entity data at (${pos.x}, ${pos.y}, ${pos.z})',
+  );
+
+  /// Removes the block entity at [pos] with its saved data; whether there was
+  /// one. The block itself is left alone.
+  bool clearVanillaBlockEntity(generated.BlockPos pos) => clearBlockEntity(pos: pos);
+}
+
 // -- Menus ------------------------------------------------------------------------
 
 /// The plugin menu a player has open.

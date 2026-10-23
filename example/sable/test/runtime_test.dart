@@ -250,17 +250,30 @@ final class RecordingSink implements SablePayloadSink, SableChunkViewSender {
   final List<(String, String)> payloads = [];
   final List<(String, int, int)> chunks = [];
 
-  @override
-  void sendPayload(String playerId, String payloadId, Uint8List body) =>
-      payloads.add((playerId, payloadId));
+  /// Every call in the order the model made it: `payload:<id>` or
+  /// `chunk:<x>,<z>`. The order is the contract — Java sends the plot's chunks
+  /// *inside* the same bundle as `start_tracking_sublevel` and
+  /// `finalize_sub_level`, and the client fills the plot in place with them, so
+  /// a chunk that arrives after the finalize payload renders as nothing.
+  final List<String> order = [];
 
   @override
-  void sendChunkAt(String playerId, int blockX, int blockZ) =>
-      chunks.add((playerId, blockX, blockZ));
+  void sendPayload(String playerId, String payloadId, Uint8List body) {
+    payloads.add((playerId, payloadId));
+    order.add('payload:$payloadId');
+  }
 
   @override
-  void unloadChunkAt(String playerId, int blockX, int blockZ) =>
-      chunks.add((playerId, -blockX, -blockZ));
+  void sendChunkAt(String playerId, int blockX, int blockZ) {
+    chunks.add((playerId, blockX, blockZ));
+    order.add('chunk:$blockX,$blockZ');
+  }
+
+  @override
+  void unloadChunkAt(String playerId, int blockX, int blockZ) {
+    chunks.add((playerId, -blockX, -blockZ));
+    order.add('unchunk:$blockX,$blockZ');
+  }
 
   List<String> get ids => [for (final payload in payloads) payload.$2];
 }
@@ -515,6 +528,37 @@ void main() {
       expect(finalize, greaterThan(start));
       expect(sink.chunks.length, 1);
       expect(subLevel.trackingPlayers, {'p1'});
+    });
+
+    test('the plot chunks are sent between start_tracking and finalize', () {
+      // The client builds the plot's render data on the finalize payload and
+      // files each chunk packet it receives at the yard coordinates into that
+      // plot, so a chunk that arrives after the finalize payload is a plot that
+      // renders empty. The order is the whole contract of the broken-up bundle;
+      // the sender keeps it by chaining its sends per player.
+      final subLevel = addSubLevel(container, 0, 0, '00000000-0000-0000-0000-000000000001');
+      subLevel.logicalPose.position().set(1, 2, 3);
+      final plot = subLevel.getPlot();
+      plot.newEmptyChunk(plot.toGlobal((0, 0)));
+      plot.newEmptyChunk(plot.toGlobal((1, 0)));
+
+      tracking.tick(container);
+
+      final startIndex = sink.order.indexOf(
+        'payload:${ClientboundStartTrackingSubLevelPacket.payloadId}',
+      );
+      final finalizeIndex = sink.order.indexOf(
+        'payload:${ClientboundFinalizeSubLevelPacket.payloadId}',
+      );
+      final chunkIndexes = [
+        for (var i = 0; i < sink.order.length; i++)
+          if (sink.order[i].startsWith('chunk:')) i,
+      ];
+
+      expect(startIndex, 0);
+      expect(chunkIndexes, hasLength(2));
+      expect(finalizeIndex, greaterThan(chunkIndexes.last));
+      expect(chunkIndexes.first, greaterThan(startIndex));
     });
 
     test('a sub-level out of range is never sent', () {

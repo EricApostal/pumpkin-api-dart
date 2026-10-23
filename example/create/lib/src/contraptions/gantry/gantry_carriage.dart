@@ -10,6 +10,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../../api/block_state.dart';
 import '../../api/blocks.dart'
     show HostBlockGetter, manifestBlock, setBlockState, toDirection;
+import '../../api/advancements.dart';
 import '../../common/common.dart';
 import '../../core/blocks.dart';
 import '../../kinetics/api.dart';
@@ -94,7 +95,19 @@ List<CreateBlock> buildGantryBlocks() {
 /// `GantryCarriageBlockEntity`.
 class GantryCarriageBlockEntity extends KineticBlockEntity
     implements AssemblyExceptionHolding {
-  GantryCarriageBlockEntity(super.worldId, super.pos);
+  GantryCarriageBlockEntity(super.worldId, super.pos) {
+    // `GantryCarriageBlockEntity.addBehaviours` registers `CONTRAPTION_ACTORS`
+    // (`GantryCarriageBlockEntity.java:38`).
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.contraptionActors],
+        () => ActuatorRuntime.maybe?.advancements,
+      ),
+    );
+  }
+
+  /// `AdvancementBehaviour(this, AllAdvancements.CONTRAPTION_ACTORS)`.
+  late final AdvancementBehaviour advancements;
 
   bool assembleNextTick = false;
   AssemblyException? lastException;
@@ -177,6 +190,11 @@ class GantryCarriageBlockEntity extends KineticBlockEntity
         ) ??
         false) {
       return;
+    }
+
+    // `GantryCarriageBlockEntity.java:117`: `award(AllAdvancements.CONTRAPTION_ACTORS)`.
+    if (contraption.containsBlockBreakers()) {
+      unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
     }
 
     await contraption.removeBlocksFromWorld(level, posZero);

@@ -72,6 +72,10 @@ class AdvancementBehaviour extends BlockEntityBehaviour {
   @override
   void initialize() {
     super.initialize();
+    // `AdvancementBehaviour.setPlacedBy`: the store remembers the player that placed the block
+    // (`CreateBlockEntity.placedBy`), the way Java's `setPlacedBy` hook does. Read before
+    // `removeAwarded()`, which drops the owner once every advancement is granted.
+    if (playerId == null) playerId = owner.placedBy;
     removeAwarded();
   }
 
@@ -90,6 +94,24 @@ class AdvancementBehaviour extends BlockEntityBehaviour {
       }
     }
     removeAwarded();
+  }
+
+  /// `awardPlayerIfNear(advancement, maxDistance)`: like [awardPlayer], only while the owner is
+  /// within [maxDistance] of the block (Java `AdvancementBehaviour.awardPlayerIfNear`).
+  Future<void> awardPlayerIfNear(String advancement, int maxDistance) async {
+    final player = _player;
+    if (player == null) return;
+    try {
+      final (x, y, z) = player.getPosition();
+      final dx = x - (owner.pos.x + 0.5);
+      final dy = y - (owner.pos.y + 0.5);
+      final dz = z - (owner.pos.z + 0.5);
+      if (dx * dx + dy * dy + dz * dz > maxDistance * maxDistance) return;
+    } on Object {
+      // a handle that went invalid
+      return;
+    }
+    await awardPlayer(advancement);
   }
 
   /// `removeAwarded()`: forget the advancements of [advancements] the owner already has; once

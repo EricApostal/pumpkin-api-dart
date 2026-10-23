@@ -75,6 +75,31 @@ final class BlockPlacementChange {
   );
 }
 
+/// Bulk block **reads** of a [World] (`world.wit`): the read side of
+/// [WorldBulkBlocks], for multi-block walks that would otherwise cost one host
+/// call per position (a structure search, a region scan, a schematic capture).
+extension WorldBulkReads on World {
+  /// The block state ids at [positions] in one host call.
+  ///
+  /// The result has one entry per position, in the same order: `result[i]` is
+  /// the state at `positions[i]`. A position that is not loaded (outside the
+  /// build height, or in a chunk that is not loaded) reads as air, like
+  /// [getBlockStateId]; [isLoaded] tells the two apart. No chunk is loaded by
+  /// the call, so it is safe to scan a region that is only partly loaded.
+  ///
+  /// One call for the whole list is what makes a bulk walk affordable: a
+  /// per-position call costs a wasm boundary crossing (~4 us measured on a live
+  /// server), and a structure search reads every neighbour of every position it
+  /// visits. Decoding a state id into a `BlockState` is a separate cached
+  /// lookup, so keep the list to the positions a walk actually needs.
+  ///
+  /// ```dart
+  /// final ids = world.readBlockStates([for (final p in region.blocks) p]);
+  /// ```
+  List<int> readBlockStates(List<BlockPos> positions) =>
+      getBlockStates(positions: positions);
+}
+
 /// Bulk block changes and block events of a [World] (`world.wit`), for
 /// contraptions, schematics and area tools.
 extension WorldBulkBlocks on World {

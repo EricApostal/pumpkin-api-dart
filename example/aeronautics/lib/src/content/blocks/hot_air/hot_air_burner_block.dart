@@ -17,6 +17,7 @@ import 'package:create/src/kinetics/geometry.dart' show KState;
 import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' show Vector3d;
+import '../../../aeronautics_runtime.dart';
 import '../../../config/aero_config.dart';
 import '../../../host/world_balloon_world.dart';
 import '../../../propeller/geometry.dart' show segmentBlocked;
@@ -130,7 +131,17 @@ final class HotAirBurnerBlockEntity extends CreateBlockEntity with BlockEntityLi
     _hotAirAmount = maxCapacity.toDouble();
     super.onLoad();
     unawaited(_refreshSignal());
-    if (canOutputGas) tickBalloonLogic();
+    if (canOutputGas) tickBalloonLogicAndAward(_awardHeadInTheClouds);
+  }
+
+  /// Fires `AeroAdvancements.HEAD_IN_THE_CLOUDS.awardToNearby` on the host world (the mixin
+  /// itself is pure): the players near the burner are awarded when the balloon it fills holds more
+  /// than one block of hot air (`BlockEntityLiftingGasProvider.tickBalloonLogic`,
+  /// `BlockEntityLiftingGasProvider.java:261`).
+  void _awardHeadInTheClouds() {
+    final w = world;
+    if (w == null) return;
+    AeroRuntime.awardNearby(w, blockPos, AeroAdvancementIds.headInTheClouds);
   }
 
   /// `updateSignal`: re-reads the redstone signal.
@@ -191,7 +202,7 @@ final class HotAirBurnerBlockEntity extends CreateBlockEntity with BlockEntityLi
   @override
   void lazyTick() {
     super.lazyTick();
-    if (canOutputGas) tickBalloonLogic();
+    if (canOutputGas) tickBalloonLogicAndAward(_awardHeadInTheClouds);
   }
 
   @override

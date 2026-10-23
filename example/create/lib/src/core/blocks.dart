@@ -172,7 +172,12 @@ class CreateBlock {
     final user = behavior;
     if (type == null) return user;
     FutureOr<void> placed(Server server, CustomBlockPlacedEventData e) {
-      store.createAt(e.targetWorld, e.pos, type);
+      store.createAt(
+        e.targetWorld,
+        e.pos,
+        type,
+        placedBy: e.player?.asString,
+      );
       return user?.onPlaced?.call(server, e);
     }
 

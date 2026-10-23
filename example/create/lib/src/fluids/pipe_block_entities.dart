@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/block_state.dart';
 import '../api/blocks.dart' show HostBlockGetter;
+import '../content/advancement_ids.dart' show AllAdvancements;
 import '../common/direction.dart';
 import '../common/pos.dart';
 import '../core/block_entity.dart';
@@ -284,7 +285,7 @@ class PumpBlockEntity extends KineticBlockEntity implements PumpPeer {
   void onSpeedChanged(double previousSpeed) {
     super.onSpeedChanged(previousSpeed);
     if (previousSpeed.abs() == speed.abs()) return;
-    if (speed != 0) awardAdvancement('pump');
+    if (speed != 0) awardAdvancement(AllAdvancements.pump);
     updatePressureChange();
   }
 

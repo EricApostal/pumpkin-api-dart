@@ -19,3 +19,19 @@ dev_dependencies:
   dart_mappable_builder: ^4.10.0
   lints: ^6.1.0
   test: ^1.25.6
+
+# The Jolt core module (`native/jolt/jolt.wasm`, built from `native/jolt/src/`
+# by `native/jolt/build.sh`) is linked into this package's component by
+# `pumpkin_tools build`, which reads this block from the pubspec of the package
+# it compiles.
+#
+# This must not be a `hook/build.dart`: a build hook runs for every package
+# that depends on the package owning it, so the module would also be linked
+# into `offroad`, `aeronautics` and `simulated`'s components. Nothing imports
+# `jolt` there, so dart2wasm compiles the import away and the link fails with
+# `Expected compiled app to export {host_call}`. Declaring it here reaches only
+# this component.
+pumpkin:
+  core_modules:
+    - name: jolt
+      path: native/jolt/jolt.wasm

@@ -14,6 +14,9 @@ import '../contraptions/entity/contraption_collider.dart';
 import '../contraptions/entity/host_contraption_entities.dart';
 import '../contraptions/entity/translating_contraption.dart';
 import '../core/block_entity.dart';
+import '../core/module.dart' show NamedWorldTickHandler;
+import '../core/services.dart';
+import '../core/world_state.dart' show WorldSavedData;
 import '../core/worlds.dart';
 import '../kinetics/runtime.dart';
 import '../kinetics/settings.dart';
@@ -45,7 +48,12 @@ import '../kinetics/settings.dart';
 /// registered: this component holds none of Create's blocks. A plugin with
 /// kinetic content of its own registers a definition for each of its blocks in
 /// `KineticsRuntime.instance.blocks` (`blocks.register(key, def)`), which is
-/// also what the kinetic network resolves its neighbours through.
+/// also what *this* component's propagation resolves its neighbours through —
+/// and, so that Create's component's network sees the same blocks, it sends the
+/// same rules over `create.kinetics` (`installConsumerKinetics`; see
+/// `docs/kinetics-across-plugins.md`). That second call is what makes a Create
+/// shaft drive an addon's bearing at all: without it the addon's defs exist only
+/// in this component, and Create's network has no edge to them.
 ///
 /// Only kinetics and contraptions have the state Create's library reads: no
 /// class of the kinetics or contraptions library reaches `FluidsRuntime`, the
@@ -68,6 +76,7 @@ ContraptionHost installHostedModuleState({
     store: blockEntities,
     worlds: worlds,
     log: log,
+    services: CreateServices(),
   );
 
   // The contraption host and the factories the actuators build and spawn their
@@ -101,4 +110,59 @@ ContraptionHost installHostedModuleState({
       };
 
   return host;
+}
+
+/// Runs this component's per-world framework tick.
+///
+/// Create's own plugin wires this in its `onLoad` (`lib/src/plugin/create_plugin.dart`):
+/// one host `worldTick` listener that runs, in order, the block entity store's
+/// pending writes, the kept saved data, and whatever a module registered with
+/// `CreateContext.onWorldTick`.
+///
+/// A component that *hosts* Create's content must wire it too, and a component
+/// that is not Create's plugin very easily forgets: without it the block entities
+/// of that component are written to the host **once**, when they are created, and
+/// never again — `markChanged`/`sendData` only add them to a set nothing flushes,
+/// and `onWorldTick` handlers never run. Measured on
+/// `aeronautics:propeller_bearing`: the block entity in its own component was
+/// turning at 16 RPM (the component that runs the network read `speed 16`,
+/// `network 4034`, `members 3`) while `data get block` on the host still answered
+/// `Speed: 0f` and no `Network` — and that host data is what a client is sent, so
+/// the propeller's rotation (and thrust) never reached it. Same for the swivel
+/// bearing and every other client-visible field of an addon's block entity.
+///
+/// Call it from the plugin's `onLoad`, after [installHostedModuleState] and after
+/// the registry was applied (so the store's types exist).
+///
+/// [moduleHandlers] are the component's own per-world handlers: a module that
+/// registered one through `CreateContext.onWorldTick` put it in
+/// `CreateCore.worldTickHandlers`, so a component with a core passes that list.
+void installHostedWorldTick({
+  required Context context,
+  required Worlds worlds,
+  required BlockEntityStore blockEntities,
+  required Logger log,
+  WorldSavedData? savedData,
+  List<NamedWorldTickHandler> moduleHandlers = const [],
+}) {
+  final handlers = <NamedWorldTickHandler>[
+    (label: 'core.blockEntities', run: blockEntities.tickWorld),
+    if (savedData != null) (label: 'core.savedData', run: savedData.tickWorld),
+    ...moduleHandlers,
+  ];
+  context.listen(Events.worldTick, (server, event) async {
+    final tick = WorldTick(server, event, worlds);
+    for (final handler in handlers) {
+      try {
+        final result = handler.run(tick);
+        if (result is Future) await result;
+      } on Object catch (error, stack) {
+        log.error(
+          'World tick handler ${handler.label} failed',
+          error: error,
+          stackTrace: stack,
+        );
+      }
+    }
+  });
 }

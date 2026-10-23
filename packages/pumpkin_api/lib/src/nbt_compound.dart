@@ -148,6 +148,60 @@ final class NbtCompound {
     return NbtTree(root: root, tags: tags);
   }
 
+  /// This compound as a `Map<String, Object?>`, the shape the sub-level model
+  /// and the storage codecs keep block-entity (and plot) tags in.
+  ///
+  /// Values are plain Dart ones: `bool` for a byte, `int` for byte/short/int,
+  /// `double` for float/double, `String`, `List<int>` for the arrays, nested
+  /// [NbtCompound]s as `Map<String, Object?>` and lists as `List<Object?>`.
+  /// Longs stay `int`, which is what the NBT codec expects.
+  Map<String, Object?> toMap() => {
+    for (final entry in _values.entries) entry.key: _toMapValue(entry.value),
+  };
+
+  static Object? _toMapValue(Object value) => switch (value) {
+    NbtCompound() => value.toMap(),
+    List<Object>() => [for (final element in value) _toMapValue(element)],
+    NbtTagByte(:final value) => value != 0,
+    NbtTagShort(:final value) || NbtTagInt(:final value) || NbtTagLong(:final value) => value,
+    NbtTagFloat(:final value) || NbtTagDouble(:final value) => value,
+    NbtTagStringTag(:final value) => value,
+    NbtTagByteArray(:final value) || NbtTagIntArray(:final value) || NbtTagLongArray(:final value) => value,
+    _ => null,
+  };
+
+  /// The inverse of [toMap]: a compound from a map of plain Dart values.
+  ///
+  /// The tag type is inferred the way the NBT codec documents it: `bool` is a
+  /// byte, an `int` that fits in 32 bits is an int (a long otherwise), a
+  /// `double` is a double, and a `List<int>` is an int array (a long array when
+  /// a value does not fit in 32 bits). Throws an [ArgumentError] for a value
+  /// that cannot be an NBT tag.
+  factory NbtCompound.fromMap(Map<String, Object?> map) {
+    final compound = NbtCompound();
+    for (final entry in map.entries) {
+      compound._values[entry.key] = _fromMapValue(entry.key, entry.value);
+    }
+    return compound;
+  }
+
+  static Object _fromMapValue(String key, Object? value) => switch (value) {
+    NbtCompound() => value,
+    NbtTag() => value,
+    Map<String, Object?>() => NbtCompound.fromMap(value),
+    Map() => NbtCompound.fromMap({for (final e in value.entries) '${e.key}': e.value}),
+    bool() => NbtTagByte(value ? 1 : 0),
+    int() when value >= -0x80000000 && value <= 0x7FFFFFFF => NbtTagInt(value),
+    int() => NbtTagLong(value),
+    double() => NbtTagDouble(value),
+    String() => NbtTagStringTag(value),
+    List<int>() => value.any((v) => v < -0x80000000 || v > 0x7FFFFFFF)
+        ? NbtTagLongArray(List.of(value))
+        : NbtTagIntArray(List.of(value)),
+    List() => [for (final element in value) _fromMapValue(key, element)],
+    _ => throw ArgumentError.value(value, key, 'Cannot write $key as NBT'),
+  };
+
   static int _add(Object value, List<NbtTag> tags) {
     switch (value) {
       case NbtCompound(:final _values):

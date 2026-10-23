@@ -21,6 +21,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../components/converter.dart';
 import '../components/levitating.dart';
+import 'aero_items.dart' show musicDiscCloudSkipperKey;
 
 /// The entity type key of a dropped item.
 const String itemEntityType = 'minecraft:item';
@@ -98,7 +99,13 @@ final class ItemBehaviour {
     // `get_name` is `get_world_name()` (the folder name, `world`), so the comparison against a
     // dimension key would never match and the conversion would never start.
     if (world.getDimension() != overworldDimension) return;
-    if (!Tags.item(itemKey, convertsToCloudSkipperTag)) return;
+    // `data/aeronautics/tags/item/converts_to_cloud_skipper.json` also has a `remove` entry for
+    // the disc itself (its own tag resolves through `#c:music_discs`, so the tag lookup would hit);
+    // the tag API has no removal, so the check is folded into the predicate here.
+    if (itemKey == musicDiscCloudSkipperKey ||
+        !Tags.item(itemKey, convertsToCloudSkipperTag)) {
+      return;
+    }
 
     final pos = body.getPosition();
     if (pos.$2 < cloudSkipperMinY || pos.$2 > cloudSkipperMaxY) return;

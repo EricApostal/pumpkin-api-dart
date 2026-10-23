@@ -10,6 +10,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/block_state.dart';
 import '../../common/common.dart' hide pos;
 import '../../common/host_bridge.dart';
@@ -29,11 +30,33 @@ import 'machine_support.dart';
 final class MechanicalCrafterBlockEntity extends KineticBlockEntity
     implements CrafterNode, ItemStorageProvider {
   MechanicalCrafterBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.crafter, AllAdvancements.crafterLazy],
+        () => ProcessingRuntime.instance.advancements,
+      ),
+    );
     inventory = SmartInventory(1)
       ..extractionAllowed = false
       ..validator = _mayInsert
       ..onChanged = _onInventoryChanged;
     lazyTickRate = 20;
+  }
+
+  /// `registerAwardables(behaviours, CRAFTER, CRAFTER_LAZY)`
+  /// (`MechanicalCrafterBlockEntity.java:151`): the crafter awards its owner.
+  late final AdvancementBehaviour advancements;
+
+  /// `onSpeedChanged` (`MechanicalCrafterBlockEntity.java:155-161`): a running crafter awards
+  /// `CRAFTER`, and a slow one (`|speed| < 5`) also `CRAFTER_LAZY`.
+  @override
+  void onSpeedChanged(double previousSpeed) {
+    super.onSpeedChanged(previousSpeed);
+    if (speed == 0) return;
+    unawaited(advancements.awardPlayer(AllAdvancements.crafter));
+    if (speed.abs() < 5) {
+      unawaited(advancements.awardPlayer(AllAdvancements.crafterLazy));
+    }
   }
 
   /// `inventory`: the single crafting slot (extraction is refused, as in `Inventory`).

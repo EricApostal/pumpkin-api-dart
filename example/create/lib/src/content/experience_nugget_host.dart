@@ -43,11 +43,15 @@ final class ExperienceNuggetHost {
       // `minecraft:experience_orb` always carries amount 1 (`EntityType::EXPERIENCE_ORB =>
       // ExperienceOrbEntity::new(entity, 1)`, `crates/pumpkin-core/src/entity/type.rs:275`), and
       // neither `World.spawn-entity` nor `spawn-entity-from-nbt` can change it (the orb reads no
-      // NBT at all, `crates/pumpkin-core/src/entity/experience_orb.rs:20-37`); there is no
-      // `spawn-experience-orb` that takes a value, and dozens of orbs worth 1 point each would
-      // award the wrong total. `Player.addExperiencePoints` is `Player.addExperience` (it
-      // recomputes the level and progress and fires the experience event), so the player gains
-      // exactly what the Java orbs are worth.
+      // NBT at all, `crates/pumpkin-core/src/entity/experience_orb.rs:20-37`; there is no
+      // `spawn-experience-orb`). The core already knows how to do it:
+      // `ExperienceOrbEntity::spawn(world, position, amount)`
+      // (`crates/pumpkin-core/src/entity/experience_orb.rs:30-38`, Java's own orb-value split),
+      // so `world.spawn-experience-orb: async func(pos: position, amount: u32) -> entity` on
+      // `resource %world` is the missing primitive. Dozens of orbs worth 1 point each would award
+      // the wrong grouping and no motion; `Player.addExperiencePoints` is `Player.addExperience`
+      // (it recomputes the level and progress and fires the experience event), so the player gains
+      // exactly what the Java orbs are worth, but instantly.
       final xp = experienceNuggetOrbs(amountUsed).fold(0, (sum, value) => sum + value);
       await player.addExperiencePoints(points: xp);
 

@@ -138,25 +138,36 @@ ItemRegistration equipmentItem(String path) {
     // per-item enchant gate (`minecraft:enchantable` is only the enchantability *value*, the
     // offers come from the enchantment's own `supported_items` tag), and the one hook the host
     // does offer is not enough to reproduce it:
-    // - `cardboard_sword` is in no `minecraft:enchantable/*` tag - not in this port's tag
-    //   manifest (only `minecraft:enchantable/bow` and `/durability` name Create items) nor in
-    //   Create's Java datagen - so the host's offer generation
-    //   (`pumpkin-inventory/src/enchanting/enchanting_screen_handler.rs:100-160`, which filters
+    // - `cardboard_sword` is in no `minecraft:enchantable/*` tag at all — not in this port's tag
+    //   manifest (only `minecraft:enchantable/bow` and `/durability` name Create items), and not
+    //   in Create's Java datagen either (its datagen puts only the glue, the cannon, the grip
+    //   and sandpaper into `enchantable/durability`, `AllItems.java` + `CreateRegistrateTags`
+    //   + `data/minecraft/tags/item/enchantable/durability.json`), so the host's offer generation
+    //   (`pumpkin-inventory/src/enchanting/enchanting_screen_handler.rs:199-200`, which filters
     //   with `enchantment.can_enchant(item)`, i.e. the `supported_items` tag) offers the sword
-    //   *nothing*; there is no offer to filter down to Knockback.
+    //   *nothing* — including Knockback, whose own `supported_items` is
+    //   `minecraft:enchantable/melee_weapon` (`pumpkin-data/src/generated/enchantment.rs:1406`). Verified in
+    //   Java source: the sword's `REGISTRATE.item(...)` has no `.tag(...)` call, so no Java
+    //   datapack puts it in any enchantable tag; only the code path (the very
+    //   `supportsEnchantment` override) grants Knockback.
     // - `PrepareItemEnchantEventData.offers` (`events.g.dart`) carries three positional
-    //   `EnchantmentOffer`s whose `enchantmentId` is a raw registry number (no `Enchantment`
-    //   handle, `-1` meaning none), and the host writes the list back into its three slots
+    //   `EnchantmentOffer`s whose `enchantmentId` is a raw registry number (`-1` meaning none),
+    //   and the host writes the list back into its three slots
     //   (`pumpkin-wasm-host-v0_1/src/events/enchantment.rs:55-75`), so a handler could clear
-    //   offers but not grant the Knockback offer Java grants - its level comes from the vanilla
-    //   enchantability roll, which the host does not expose.
+    //   offers but cannot grant the Knockback offer Java grants — its level comes from the vanilla
+    //   enchantability roll, which the host does not expose, and the offer's number has no
+    //   symbolic handle to write.
     // - The other half of `supportsEnchantment` (the anvil's book combining, per the comment at
     //   `CardboardSwordItem.java:47-48`) has no hook either: `prepare-anvil-event-data` carries
     //   only the rename text and the repair cost, and the host's `use_anvil` has no enchantment
-    //   logic.
+    //   logic. Verified true in source: the handler *does* allow any-book onto any item only
+    //   when the input already has it (`pumpkin-inventory/src/anvil/anvil_screen_handler.rs`,
+    //   `has_infinite_materials || input.item == ENCHANTED_BOOK`), so a book on the bare sword is
+    //   refused before any event runs.
     // A host `ItemStack.supports-enchantment`-style check (or a per-item enchantment gate on
     // `item-definition`) would be the reproduction; until then the sword keeps the generic
-    // enchantability of its Java properties and gets no table offers at all.
+    // enchantability of its Java properties (`sword()` sets damage 1 intent; the `value: 1`
+    // below is the table offer floor, no offers come out) and gets no table offers at all.
     components['minecraft:enchantable'] = {'value': 1};
   }
   if (path == 'builders_tea') {

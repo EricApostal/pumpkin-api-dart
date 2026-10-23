@@ -123,7 +123,11 @@ abstract final class TypewriterSaveLogic {
   /// Applies a save packet: every sent entry is stamped with [pos], the table is
   /// cleared, and the entries are added unless [clearAll].
   ///
-  /// Returns whether the table now has at least [fullKeyboardKeys] keys.
+  /// Returns whether the table now has at least [fullKeyboardKeys] keys (the
+  /// `TypewriterKeySavePacket.handle` (`TypewriterKeySavePacket.java:52`) condition
+  /// for `I_PAID_FOR_THE_WHOLE_TYPEWRITER`). The port has no save-packet handler
+  /// (`declared-only` in `SimHandledPayloads`), so this bool is for the caller the
+  /// port gains when it ports the handler.
   static bool apply(
     LinkedTypewriterEntries entries,
     Map<int, KeyboardEntry> changedKeys,

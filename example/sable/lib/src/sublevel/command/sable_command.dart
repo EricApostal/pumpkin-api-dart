@@ -42,7 +42,13 @@ import 'sable_storage_commands.dart';
 import 'sable_sub_level_commands.dart';
 
 /// The permission node of `/sable` (`Commands.LEVEL_GAMEMASTERS`).
-final CommandPermission sableCommandPermission = CommandPermission.op(
+///
+/// The node must start with **the registering plugin's manifest name** -- the host rejects
+/// anything else (`register_permission`: "Permission {} must use the plugin's namespace") and the
+/// whole command tree then silently fails to register, so `/sable` does not exist in game. Sable
+/// is one plugin named `sable` (see `SablePlugin`), so the node is a constant here; it was once parameterized because the tree could be registered by a
+/// `sable_jolt` component, which no longer exists.
+CommandPermission sableCommandPermission() => CommandPermission.op(
   'sable:command.sable',
   description: 'Use /sable',
 );
@@ -226,6 +232,27 @@ void _printInfo(
 
   final mass = subLevel.massTracker;
   ctx.reply('  mass ${mass == null ? 'not built yet' : _fmt(_massOf(mass))}');
+
+  // The plot's own chunk state: the blocks and the pending ticks the yard
+  // holds (`block_ticks` in the chunk save).
+  var blocks = 0;
+  var ticks = 0;
+  for (final holder in subLevel.getPlot().getLoadedChunks()) {
+    final chunk = holder.chunk;
+    ticks += chunk.blockTicks.length;
+    for (var index = 0; index < chunk.sectionsCount; index++) {
+      if (chunk.sectionHasOnlyAir(index)) continue;
+      final minY = chunk.sectionMinY(index);
+      for (var x = 0; x < 16; x++) {
+        for (var y = 0; y < 16; y++) {
+          for (var z = 0; z < 16; z++) {
+            if (chunk.blockAt(x, minY + y, z) != 'minecraft:air') blocks++;
+          }
+        }
+      }
+    }
+  }
+  ctx.reply('  plot blocks $blocks, pending ticks $ticks');
 
   final physics = container.physics;
   if (physics is SubLevelPhysicsSystem) {

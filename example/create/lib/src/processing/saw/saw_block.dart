@@ -7,6 +7,7 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/block_state.dart';
 import '../../common/common.dart' hide pos;
 import '../../common/host_bridge.dart';
@@ -53,7 +54,17 @@ class SawBlockDef extends KineticBlockDef {
 /// `SawBlockEntity`.
 final class SawBlockEntity extends BlockBreakingKineticBlockEntity
     implements ItemStorageProvider {
+  /// `registerAwardables(behaviours, SAW_PROCESSING)` (`SawBlockEntity.java:117`): the saw awards
+  /// its owner.
+  late final AdvancementBehaviour advancements;
+
   SawBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.sawProcessing],
+        () => ProcessingRuntime.instance.advancements,
+      ),
+    );
     final configs = ProcessingRuntime.isLoaded
         ? ProcessingRuntime.instance.configs
         : null;
@@ -319,6 +330,9 @@ final class SawBlockEntity extends BlockBreakingKineticBlockEntity
     ) {
       inventory.setStack(slot + 1, merged[slot]);
     }
+    // `award(AllAdvancements.SAW_PROCESSING)` (`SawBlockEntity.java:388`): after the results
+    // land in the inventory slots.
+    unawaited(advancements.awardPlayer(AllAdvancements.sawProcessing));
   }
 
   /// `insertItem`: a dropped item that fell onto an upward saw starts the next recipe.

@@ -12,6 +12,8 @@ import '../core/worlds.dart';
 import '../manifest/canonical_order.dart';
 import '../modules.dart';
 import 'create_neoforge.dart';
+import '../kinetics/runtime.dart';
+import 'kinetics_api.dart';
 
 final class CreatePlugin extends Plugin {
   /// [modules] replaces [allModules] (tests, tools).
@@ -223,6 +225,31 @@ final class CreatePlugin extends Plugin {
         }
       }
     });
+
+    // The kinetic network of *every* component is this one's
+    // (`lib/src/plugin/kinetics_api.dart`): a plugin that links `package:create`
+    // but is not Create runs its own runtime with no Create blocks in it, and its
+    // block rules and nodes come here over `create.kinetics`. Without the owner
+    // side answering, an addon's bearing stays in a network of its own — measured:
+    // `create:mechanical_bearing` joins (`Size 3`) while
+    // `aeronautics:propeller_bearing` sits at speed 0 even on a driven shaft.
+    if (KineticsRuntime.isLoaded) {
+      final kinetics = KineticsApi(KineticsRuntime.instance, log.child('kinetics'));
+      kinetics.install();
+      core.worldTickHandlers.add((
+        label: 'kinetics.remote',
+        run: (_) => kinetics.flush(),
+      ));
+      log.info(
+        'Kinetics: this component owns the kinetic network; other components reach '
+        'it on "$kineticsChannelName".',
+      );
+    } else {
+      log.warn(
+        'The kinetics module is not loaded: other components cannot join the '
+        'kinetic network.',
+      );
+    }
 
     for (final w in config.warnings) {
       log.warn(w);

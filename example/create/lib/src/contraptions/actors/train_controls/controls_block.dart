@@ -26,7 +26,10 @@ CreateBlock buildControlsBlock(
     key,
     blockEntityType: blockEntityType,
     placement: const [
-      PlacementRule.horizontalFacing('facing', opposite: true),
+      // `ControlsBlock.getStateForPlacement` (javap-verified): the opposite of the player's
+      // horizontal look, or the look itself when the player sneaks.
+      PlacementRule.horizontalFacing('facing', opposite: true, whenSneaking: false),
+      PlacementRule.horizontalFacing('facing', whenSneaking: true),
       PlacementRule.inWater('waterlogged'),
     ],
     collisionShape: BlockShape.boxes(collision),

@@ -1,6 +1,7 @@
 // The minimal view of a contraption the train code needs (pure). The contraptions module owns
 // the real `Contraption`; its carriage contraption wraps a [CarriageContraption] (the train
 // specific part) and implements [ContraptionData] for it. `lib/src/api/trains.dart` exports this.
+import '../../api/behaviour/movement.dart' show MovementBehaviours;
 import '../../api/block_state.dart';
 import '../../common/direction.dart' show Axis;
 import '../../common/pos.dart';
@@ -70,4 +71,24 @@ abstract interface class ContraptionData {
   /// `contraption.expandBoundsAroundAxis(Axis.Y)`: the bounds of an assembled carriage grow along
   /// the axis its bogeys sit on.
   void expandBoundsAroundAxis(Axis axis);
+}
+
+/// `Contraption.containsBlockBreakers()` (`Contraption.java:1567-1574`): whether any captured
+/// block's actor breaks blocks (a drill, saw, plough, roller or harvester). The station asks it
+/// before awarding `AllAdvancements.CONTRAPTION_ACTORS`
+/// (`StationBlockEntity.java:905`).
+///
+/// The contraption's actor list is not part of [ContraptionData] (the contraptions module owns
+/// it), so the answer is derived from the captured blocks with the same registry lookup Java
+/// does: `MovementsBehaviour.REGISTRY.get(state)` without a level, narrowed to the behaviours
+/// that break blocks (`MovementBehaviour.breaksBlocks`).
+extension ContraptionBreakerView on ContraptionData {
+  bool containsBlockBreakers() {
+    for (final info in getBlocks().values) {
+      if (MovementBehaviours.of(info.state)?.breaksBlocks() ?? false) {
+        return true;
+      }
+    }
+    return false;
+  }
 }

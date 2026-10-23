@@ -5,8 +5,10 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/blocks.dart' show HostBlockGetter;
 import '../../api/kinetics.dart';
+import '../processing_runtime.dart';
 import '../../core/block_entity.dart';
 import '../../core/block_entity.dart' show BlockEntityStore;
 import 'crushing_keys.dart';
@@ -16,8 +18,18 @@ import 'crushing_wheel_controller_block_entity.dart';
 /// `CrushingWheelBlockEntity`.
 class CrushingWheelBlockEntity extends KineticBlockEntity {
   CrushingWheelBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.crushingWheel, AllAdvancements.crusherMaxed],
+        () => ProcessingRuntime.instance.advancements,
+      ),
+    );
     lazyTickRate = 20;
   }
+
+  /// `registerAwardables(behaviours, CRUSHING_WHEEL, CRUSHER_MAXED)`
+  /// (`CrushingWheelBlockEntity.java:34`): the wheel awards its owner.
+  late final AdvancementBehaviour advancements;
 
   bool _fixing = false;
   bool _fixQueued = false;

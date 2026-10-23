@@ -25,6 +25,7 @@ import 'package:sable/sable.dart' show Vector3d;
 
 import '../../../aeronautics_hooks.dart';
 
+import '../../../aeronautics_runtime.dart';
 import '../../../config/aero_config.dart';
 import '../../../hot_air/balloon.dart';
 import '../../../hot_air/balloon_world.dart';
@@ -209,6 +210,16 @@ final class SteamVentBlockEntity extends CreateBlockEntity with BlockEntityLifti
   @override
   ClientBalloonInfo? get clientBalloonInfo => _clientBalloonInfo;
 
+  /// Fires `AeroAdvancements.HEAD_IN_THE_CLOUDS.awardToNearby` on the host world (the mixin
+  /// itself is pure): the players near the vent are awarded when the balloon it fills holds more
+  /// than one block of hot air (`BlockEntityLiftingGasProvider.tickBalloonLogic`,
+  /// `BlockEntityLiftingGasProvider.java:261`).
+  void _awardHeadInTheClouds() {
+    final w = world;
+    if (w == null) return;
+    AeroRuntime.awardNearby(w, blockPos, AeroAdvancementIds.headInTheClouds);
+  }
+
   @override
   void onLoad() {
     logic.maxCapacity = AeroConfig.server.blocks.steamVentMaxHotAir;
@@ -219,13 +230,13 @@ final class SteamVentBlockEntity extends CreateBlockEntity with BlockEntityLifti
     logic.steamAmount = logic.maxCapacity;
     super.onLoad();
     _cacheTank();
-    if (canOutputGas) tickBalloonLogic();
+    if (canOutputGas) tickBalloonLogicAndAward(_awardHeadInTheClouds);
   }
 
   @override
   void initialize() {
     super.initialize();
-    if (canOutputGas) tickBalloonLogic();
+    if (canOutputGas) tickBalloonLogicAndAward(_awardHeadInTheClouds);
   }
 
   @override
@@ -246,7 +257,7 @@ final class SteamVentBlockEntity extends CreateBlockEntity with BlockEntityLifti
   void lazyTick() {
     super.lazyTick();
     _cacheTank();
-    if (canOutputGas) tickBalloonLogic();
+    if (canOutputGas) tickBalloonLogicAndAward(_awardHeadInTheClouds);
   }
 
   @override
@@ -396,10 +407,12 @@ CreateBlock buildSteamVentBlock() => CreateBlock(
     CreateProps.waterlogged,
   ],
   defaultState: {'facing': 'north'},
-  hardness: 3,
+  // `initialProperties(SharedProperties::stone)` + `sound(NETHERITE_BLOCK)`
+  // (`AeroBlocks.java:217-222`) -> 1.5 / 6.0, netherite.
+  hardness: 1.5,
   blastResistance: 6,
   requiresCorrectTool: true,
-  soundType: 'copper',
+  soundType: 'netherite_block',
   canOcclude: false,
   blockEntityType: steamVentKey,
   behavior: BlockBehavior(

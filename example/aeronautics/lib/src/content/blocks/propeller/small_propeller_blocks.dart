@@ -19,6 +19,7 @@ import 'package:create/src/kinetics/kinetic_block_entity.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart';
 
+import '../../../aeronautics_runtime.dart';
 import '../../../config/aero_config.dart';
 import '../../../host/host_propeller_push_world.dart';
 import '../../../host/world_balloon_world.dart';
@@ -131,6 +132,17 @@ abstract class BasePropellerBlockEntity extends KineticBlockEntity
   }
 
   // -- Lifecycle -----------------------------------------------------------------
+
+  /// `BasePropellerBlockEntity.onSpeedChanged` (`BasePropellerBlockEntity.java:135`):
+  /// `AeroAdvancements.FOR_EVERY_ACTION.awardToNearby` whenever the propeller is being driven.
+  @override
+  void onSpeedChanged(double previousSpeed) {
+    super.onSpeedChanged(previousSpeed);
+    if (speed == 0) return;
+    final w = world;
+    if (w == null) return;
+    AeroRuntime.awardNearby(w, blockPos, AeroAdvancementIds.forEveryAction);
+  }
 
   @override
   void onLoad() {
@@ -276,8 +288,10 @@ CreateBlock _smallPropellerBlock(String key, String type) => CreateBlock(
   key: key,
   properties: [CreateProps.facing, BlockProperty.boolean('reversed')],
   defaultState: {'facing': 'north'},
+  // `initialProperties(SharedProperties::wooden)` + `sound(WOOD)`
+  // (`AeroBlocks.java:321-347,349-367`) -> 2.0 / 2.0, wood.
   hardness: 2,
-  blastResistance: 4,
+  blastResistance: 2,
   requiresCorrectTool: true,
   soundType: 'wood',
   canOcclude: false,
@@ -302,10 +316,12 @@ CreateBlock _smartPropellerBlock() {
       BlockProperty.boolean('ceiling'),
     ],
     defaultState: {'horizontal_axis': 'x'},
-    hardness: 2,
-    blastResistance: 4,
+    // `initialProperties(SharedProperties::softMetal)` (`AeroBlocks.java:293`) ->
+    // `Blocks.GOLD_BLOCK`: 3.0 / 6.0, metal.
+    hardness: 3,
+    blastResistance: 6,
     requiresCorrectTool: true,
-    soundType: 'copper',
+    soundType: 'metal',
     canOcclude: false,
     tags: [facingShaftTag],
     blockEntityType: 'aeronautics:smart_propeller',

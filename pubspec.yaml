@@ -16,7 +16,6 @@ workspace:
   - example/lonsdaleite
   - example/create
   - example/sable
-  - example/sable_jolt
   - example/simulated
   - example/aeronautics
   - example/offroad

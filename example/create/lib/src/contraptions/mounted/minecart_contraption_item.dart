@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/blocks.dart' show HostBlockGetter;
+import '../../api/advancements.dart';
 import '../../common/common.dart';
 import '../../common/host_bridge.dart';
 import '../../core/nbt.dart';
@@ -271,6 +272,14 @@ Future<bool> tryPickUpMinecartContraption(
   }
 
   await player.give(stack);
+  // `MinecartContraptionItem.java:271-273`: picking up a contraption of 200+ blocks awards
+  // `CART_PICKUP` (`awardTo(player)`, directly: the player is known).
+  if (contraption.blocks.length > 200) {
+    final advancements = runtime.advancements;
+    if (advancements != null) {
+      unawaited(advancements.award(player, AllAdvancements.cartPickup));
+    }
+  }
   contraptionEntity.host.remove();
   cart.remove();
   return true;

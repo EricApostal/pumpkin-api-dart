@@ -23,7 +23,7 @@ import 'package:create/src/contraptions/core/structure_info.dart' show AssemblyE
 import 'package:create/src/contraptions/entity/controlled_contraption_entity.dart'
     show ControlledContraptionEntity;
 import 'package:create/src/contraptions/storage/stacks.dart' show ItemSlotsHelper, StoredStack;
-import 'package:create/src/kinetics/block_defs.dart' show DirectionalAxisBlockDef;
+import 'package:create/src/kinetics/wire_def.dart' show WireKineticDef;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../../config/offroad_config.dart';
@@ -423,7 +423,7 @@ CreateBlock buildBoreheadBearingBlock() => CreateBlock(
 
 /// The kinetic rules: a `DirectionalAxisKineticBlock` (the same facing +
 /// `axis_along_first` rotation axis as the gauges).
-const DirectionalAxisBlockDef boreheadBearingKineticDef = DirectionalAxisBlockDef();
+final WireKineticDef boreheadBearingKineticDef = WireKineticDef.perpendicularToFacing();
 
 /// The empty mining origin, for the tests.
 const Vec3 boreheadEmptyOrigin = vec3Zero;

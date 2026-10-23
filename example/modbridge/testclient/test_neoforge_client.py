@@ -85,7 +85,7 @@ class GoldenVectors(unittest.TestCase):
         self.assertEqual(nf.encode_enum_data([]).hex(), g["enum_data_empty"])
         self.assertEqual(nf.encode_flags(["mymod:flag"]).hex(), g["feature_flags_one"])
         self.assertEqual(nf.encode_flags([]).hex(), g["feature_flags_empty"])
-        self.assertEqual(nf.encode_config_file("neoforge-server.toml", b"a=1").hex(), g["config_file"])
+        self.assertEqual(nf.encode_config_file("neoforge-synced.toml", b"a=1").hex(), g["config_file"])
 
     def test_decoders_round_trip(self):
         g = golden()

@@ -186,7 +186,13 @@ KineticBlockSpec deployerSpec() {
     'deployer',
     blockEntityType: 'create:deployer',
     shapeRules: casing12Rules(),
-    placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
+    // `DirectionalAxisKineticBlock.getFacingForPlacement` (javap-verified; DeployerBlock's own
+    // override only returns `down` for an assembly-operator context): the player's nearest
+    // looking direction, or its opposite when the player does not sneak.
+    placement: const [
+      PlacementRule.lookingDirection('facing', whenSneaking: true),
+      PlacementRule.lookingDirection('facing', opposite: true, whenSneaking: false),
+    ],
     behavior: buildKineticBehavior(
       () => block,
       specRef: () => spec,

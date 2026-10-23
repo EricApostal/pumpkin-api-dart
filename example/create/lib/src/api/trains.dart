@@ -17,6 +17,7 @@ import 'package:pumpkin_api/pumpkin_api.dart' show ItemStack;
 
 import '../common/direction.dart';
 import '../common/pos.dart';
+import '../conveyance/belt/transported_item.dart';
 import '../core/block_entity.dart';
 import '../trains/entity/carriage_contraption.dart';
 import '../trains/entity/train_level.dart';
@@ -78,6 +79,11 @@ abstract class StationDepot extends BlockEntityBehaviour {
 
   /// `removeHeldItem()`.
   void removeHeldItem();
+
+  /// A package item landing on the station (`StationBlock.fallOn`): the depot's
+  /// `DirectBeltInputBehaviour.handleInsertion` (`true` when the slot kept the whole stack, and
+  /// [transported] loses what the slot took when it kept only part).
+  bool acceptLandedPackage(covariant TransportedItemStack transported);
 }
 
 /// Creates the station's schedule slot. Provided by the conveyance module.

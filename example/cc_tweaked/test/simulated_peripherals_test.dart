@@ -275,6 +275,12 @@ final class _FakeAccess implements PeripheralAccess {
 
   @override
   void queueEvent(String name, List<Object?> args) => events.add((name, args));
+
+  @override
+  String? mountDisk(Object mount) => null;
+
+  @override
+  void unmountDisk(String path) {}
 }
 
 /// A device that records what the adapter does to it.
@@ -369,6 +375,12 @@ final class _Access implements PeripheralAccess {
 
   @override
   void queueEvent(String name, List<Object?> args) => _computer.events.add((name, args));
+
+  @override
+  String? mountDisk(Object mount) => null;
+
+  @override
+  void unmountDisk(String path) {}
 }
 
 /// A block entity that only has the source interface the peripheral reads.

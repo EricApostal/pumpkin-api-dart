@@ -5,6 +5,8 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/blocks.dart';
+import '../content/advancement_ids.dart' show AllAdvancements;
+import 'advancement_access.dart';
 import 'behavior_builder.dart';
 import 'block_entities.dart';
 import 'block_defs.dart';
@@ -287,6 +289,38 @@ KineticBlockSpec cogwheelSpec({required bool large}) {
           ),
         );
         return encased ?? unhandled(e);
+      },
+      afterPlaced: (c, e) async {
+        // `CogWheelBlock`'s placement scan (`CogWheelBlock.java:85-110`): a cogwheel placed with a
+        // cogwheel of the *other* size diagonally next to it in the plane perpendicular to its axis
+        // meshes with it, which awards `COGS` (`shifting_gears`) to the player that placed it.
+        final player = e.player;
+        if (player == null) return;
+        final axis = c.state.axisOf('axis') ?? KAxis.y;
+        final perpendiculars = [
+          for (final d in Dir.values)
+            if (d.axis != axis && d.isPositive) d,
+        ];
+        for (final first in perpendiculars) {
+          for (final second in perpendiculars) {
+            if (first == second) continue;
+            for (final o1 in const [-1, 1]) {
+              for (final o2 in const [-1, 1]) {
+                final neighbour = c.kpos
+                    .relative(first, o1)
+                    .relative(second, o2);
+                final state = c.level.stateAt(neighbour);
+                final key = state.block;
+                if (key != 'create:cogwheel' && key != 'create:large_cogwheel')
+                  continue;
+                if ((key == 'create:large_cogwheel') == large) continue;
+                if ((state.axisOf('axis') ?? KAxis.y) != axis) continue;
+                KineticsAdvancements.awardUuid(player, AllAdvancements.cogs);
+                return;
+              }
+            }
+          }
+        }
       },
     ),
   );

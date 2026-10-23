@@ -9,12 +9,18 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:create/create.dart' show installHostedModuleState;
+import 'package:create/create.dart'
+    show
+        KineticsBridge,
+        installConsumerKinetics,
+        installHostedModuleState,
+        installHostedWorldTick;
 import 'package:create/src/core/block_entity.dart';
+import 'package:create/src/core/config.dart' show CreateConfig;
+import 'package:create/src/core/module.dart' show CreateContext, CreateCore;
 import 'package:create/src/core/registry.dart';
 import 'package:create/src/core/registry_apply.dart';
 import 'package:create/src/core/worlds.dart';
-import 'package:create/src/kinetics/block_defs.dart' show FacingBlockDef;
 import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
 import 'package:create/src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 import 'package:pumpkin_api/pumpkin_api.dart';
@@ -22,6 +28,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import '../config/sim_config.dart';
 import '../config/sim_config_service.dart';
 import '../config/sim_synced_config.dart';
+import '../content/advancements/sim_advancements.dart';
 import '../content/blocks/portable_engine/portable_engine_block.dart' show portableEngineKey;
 import '../content/blocks/portable_engine/portable_engine_logic.dart'
     show portableEngineSpeed, portableEngineStressCapacity;
@@ -33,7 +40,8 @@ import '../host/simulated_host.dart';
 import '../index/sim_channels.dart';
 import '../network/sim_handled.dart';
 import '../index/sim_blocks.dart' show SimBlockKeys;
-import '../index/sim_kinetics.dart' show registerSimKinetics;
+import '../index/sim_kinetics.dart'
+    show registerSimKinetics, simKineticDefs, simPortableEngineDef, simStressValues;
 import '../index/sim_lift_providers.dart';
 import '../index/sim_registry.dart';
 import '../service/sim_services.dart';
@@ -47,6 +55,9 @@ final class SimulatedPlugin extends Plugin {
 
   final Worlds _worlds = Worlds();
   final SableBridge _bridge = SableBridge(logger);
+
+  /// The caller half of Create's kinetic network (see `onLoad`).
+  KineticsBridge? _kinetics;
   late final BlockEntityStore _blockEntities;
   final CreateRegistry _registry = CreateRegistry();
 
@@ -120,6 +131,16 @@ final class SimulatedPlugin extends Plugin {
     // event does not carry it.
     (SimPlacementFixes.instance ??= SimPlacementFixes()).install(context);
 
+    // The advancement tree of the mod: the 30 definitions of its datapack, the
+    // `simulated:<id>_builtin` triggers and the two criteria the host never
+    // evaluates (`content/advancements/sim_advancements.dart`). The installer
+    // takes Create's module context, the only thing that carries `listen` and
+    // the host handle on this side; the plugin has no Create module of its own,
+    // so the core it needs is a bare container (no services, no registry).
+    SimAdvancements.install(
+      CreateContext(CreateCore(CreateConfig.parse(null), log.child('advancements')), () => context, 'simulated'),
+    );
+
     // Phase 4: declare the mod and its 37 payload channels, so a client that has
     // Simulated installed completes the NeoForge negotiation. This goes through
     // Create's generic addon hook: Create itself never names Simulated. The six
@@ -145,6 +166,45 @@ final class SimulatedPlugin extends Plugin {
     );
 
     registerSimLiftProviders();
+
+    // The framework's per-world tick (the store's pending writes and the module
+    // handlers): without it this component's block entities are published once, at
+    // creation, and never update (`docs/kinetics-across-plugins.md`).
+    installHostedWorldTick(
+      context: context,
+      worlds: _worlds,
+      blockEntities: blockEntities,
+      log: log,
+    );
+
+    // The kinetic network is Create's plugin's, not this component's: the same
+    // rules (and stress values) are registered with it, and this component's
+    // blocks are announced as they load, so a Create shaft drives the swivel
+    // bearing and the torsion spring (`docs/kinetics-across-plugins.md`). When no
+    // Create plugin is loaded the bridge stays disarmed and this component's own
+    // runtime propagates, which is the single-plugin case.
+    final kinetics = _kinetics = installConsumerKinetics(context: context, log: log);
+    for (final entry in simKineticDefs.entries) {
+      final stress = simStressValues[entry.key];
+      kinetics.addRule(
+        entry.key,
+        entry.value,
+        impact: stress?.impact,
+        capacity: stress?.capacity,
+        generatedRpm: stress?.generatedRpm,
+      );
+    }
+    // The portable engines are `IRotate`s too, and generators: without their rule
+    // in the owner's registry an engine of this component cannot drive a Create
+    // network either.
+    for (final colour in SimBlockKeys.engineColours) {
+      kinetics.addRule(
+        portableEngineKey(colour),
+        simPortableEngineDef,
+        capacity: portableEngineStressCapacity,
+        generatedRpm: portableEngineSpeed,
+      );
+    }
 
     // The sub-level model lives in the Sable plugin's component (each plugin is
     // its own wasm instance), so assembly is delegated to it over the host's
@@ -186,7 +246,7 @@ final class SimulatedPlugin extends Plugin {
     }
     final runtime = KineticsRuntime.instance;
     // `PortableEngineBlock.hasShaftTowards(face) = face == HORIZONTAL_FACING`.
-    const def = FacingBlockDef();
+    final def = simPortableEngineDef;
     for (final colour in SimBlockKeys.engineColours) {
       final key = portableEngineKey(colour);
       runtime.blocks.register(key, def);
@@ -219,10 +279,12 @@ final class SimulatedPlugin extends Plugin {
 
   @override
   void onUnload(Context context) {
+    _kinetics?.close();
     SimAssemblyHelper.assembleBlocks = null;
     _bridge.close();
     _blockEntities.flushAll();
     SimulatedHost.instance = null;
+    SimAdvancements.clear();
     SimServices.instance = SimServices();
   }
 }

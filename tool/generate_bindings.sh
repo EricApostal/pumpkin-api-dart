@@ -31,4 +31,17 @@ cargo run --release -p wit_bindgen_dart --bin witgen_cli -- \
   --output packages/pumpkin_api/lib/src/bindings.g.dart \
   --abi-output packages/pumpkin_api/hook/wasm_abi.json
 
-dart run tool/generate_events.dart
+# The bindings are written by now, so a missing `dart` must not fail the script
+# (that would report a successful generation as a failure). It must not pass
+# silently either: skipping this step leaves `events.g.dart` stale against the
+# bindings just written, which only shows up later as a confusing mismatch in a
+# port. On this machine `dart` is off PATH outside a `puro` shell, so the
+# warning is the normal case rather than an accident. The guard also keeps
+# `set -e` from aborting on `command not found` before the warning is printed.
+if command -v dart >/dev/null 2>&1; then
+  dart run tool/generate_events.dart
+else
+  echo "WARNING: 'dart' is not on PATH, so events.g.dart was NOT regenerated." >&2
+  echo "         The WIT bindings above are written; run the events step yourself:" >&2
+  echo "           puro dart run tool/generate_events.dart" >&2
+fi

@@ -8,6 +8,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show HostBlockGetter, setBlockState;
+import '../../api/advancements.dart';
 import '../../common/common.dart';
 import '../blocks/actuator_contract.dart';
 import '../blocks/actuator_runtime.dart';
@@ -27,7 +28,19 @@ bool isRopeState(BState state) =>
     state.key == ropeKey || state.key == pulleyMagnetKey;
 
 class PulleyBlockEntity extends LinearActuatorBlockEntity {
-  PulleyBlockEntity(super.worldId, super.pos);
+  PulleyBlockEntity(super.worldId, super.pos) {
+    // `PulleyBlockEntity.addBehaviours` (`PulleyBlockEntity.java:70`): the rope pulley adds
+    // `PULLEY_MAXED` to the `CONTRAPTION_ACTORS` of the linear actuator.
+    _advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.pulleyMaxed],
+        () => ActuatorRuntime.maybe?.advancements,
+      ),
+    );
+  }
+
+  /// `AdvancementBehaviour(this, AllAdvancements.PULLEY_MAXED)`.
+  late final AdvancementBehaviour _advancements;
 
   int initialOffset = 0;
 
@@ -113,6 +126,11 @@ class PulleyBlockEntity extends LinearActuatorBlockEntity {
           ));
           be?.startMirroringOther(localPos);
         }
+
+        // `PulleyBlockEntity.java:159`: `award(AllAdvancements.CONTRAPTION_ACTORS)`.
+        if (contraption.containsBlockBreakers()) {
+          unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
+        }
       }
     }
 
@@ -120,6 +138,17 @@ class PulleyBlockEntity extends LinearActuatorBlockEntity {
 
     running = true;
     sendData();
+  }
+
+  @override
+  void tick() {
+    // `PulleyBlockEntity.tick` (`PulleyBlockEntity.java:88-92`): a rope let out past 200 blocks
+    // awards `PULLEY_MAXED`.
+    final prevOffset = offset;
+    super.tick();
+    if (prevOffset < 200 && offset >= 200) {
+      unawaited(_advancements.awardPlayer(AllAdvancements.pulleyMaxed));
+    }
   }
 
   Future<void> _removeRopes(ContraptionLevel level) async {

@@ -98,3 +98,26 @@ wasmtime -W all-proposals=y --invoke 'generate-greeting()' bin/greeting.wasm
 > [!NOTE]
 > Enabling Garbage Collection, Exceptions and Typed Function References is required to run Dart
 > in `wasmtime`. These flags will be enabled by default in `wasmtime` version 46.0.
+
+## Core modules
+
+A program can import from a pre-compiled core WebAssembly module (say `native/greeting/greeting.wasm`) with
+`@pragma('wasm:import', 'greeting.some_export')`; the module is linked next to the compiled Dart module and
+instantiated with it. `CompilerOptions.coreModules` names the modules to link:
+
+```dart
+ComponentCompiler(
+  CompilerOptions(
+    input,
+    output,
+    coreModules: [CoreModuleInput('greeting', File('native/greeting/greeting.wasm'))],
+  ),
+  logger,
+).run();
+```
+
+Build hooks can contribute core modules the same way (`WasmCoreModuleAsset` in `hooks.dart`), but a hook of
+package A also runs while a package that depends on A is built, so a module only A imports should be passed
+here by the tool that knows which package it is compiling — otherwise the dependents' components get a
+module whose imports were compiled away and fail to link. `CompilerOptions.coreModules` takes precedence
+over a hook's module of the same name.

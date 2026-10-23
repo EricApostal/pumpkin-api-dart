@@ -14,10 +14,12 @@
 // overlay outlines and `useOnCurve`) is not.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/block_state.dart';
 import '../../common/direction.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
+import '../../content/advancement_ids.dart';
 import '../../core/module.dart';
 import '../entity/train_level.dart' show TrainSettings;
 import '../graph/edge_point_type.dart';
@@ -437,6 +439,22 @@ Future<CustomBlockPlacedEventData> _onTargetingBlockPlaced(
   final player = server.getPlayerByUuid(id: uuid);
   if (player != null) {
     sendOverlay(player, trainsLang('create.track_target.success'), color: 'a');
+  }
+  // `if (type == EdgePointType.SIGNAL)` after a successful track-target selection
+  // (Java `TrackTargetingBlockItem.java:170`): the type placed is the item's type.
+  if (targetingTypeOf(e.block) == EdgePointType.SIGNAL) {
+    // `AllAdvancements.SIGNAL.awardTo(player)`: direct, like Java — the placing player
+    // is right here, not just the placing owner.
+    if (player != null) {
+      final advancements = Tr.i.ctx.services.find<CreateAdvancements>();
+      if (advancements != null) {
+        try {
+          await advancements.award(player, AllAdvancements.signal);
+        } on UnsupportedError {
+          // The advancement has an external trigger.
+        }
+      }
+    }
   }
   return e;
 }

@@ -15,7 +15,7 @@ import 'package:create/src/api/blocks.dart' show HostBlockGetter;
 import 'package:create/src/common/direction.dart' show Axis, Direction;
 import 'package:create/src/common/host_bridge.dart' show DirectionToHost, PosToHost;
 import 'package:create/src/common/pos.dart';
-import 'package:create/src/kinetics/block_defs.dart' show FacingBlockDef;
+import 'package:create/src/kinetics/wire_def.dart' show WireKineticDef;
 import 'package:create/src/kinetics/behaviours.dart' show ScrollValueBehaviour;
 import 'package:create/src/kinetics/kinetic_block_entity.dart';
 import 'package:pumpkin_api/pumpkin_api.dart';
@@ -409,4 +409,4 @@ CreateBlock buildWheelMountBlock() => CreateBlock(
 
 /// The kinetic rules of the wheel mount: `HorizontalKineticBlock`, whose shaft
 /// leaves through the side opposite its facing.
-const FacingBlockDef wheelMountKineticDef = FacingBlockDef(shaftAtFront: false);
+final WireKineticDef wheelMountKineticDef = WireKineticDef.facingBack();

@@ -25,6 +25,15 @@
   top. A build hook registers the ABI, so plugin authors only depend on this
   package.
 * **`packages/wasm_tools`**: the compiler. `pumpkin build` calls it.
+* **Core modules** (`native/jolt/jolt.wasm`, `native/lua/lua.wasm`): a
+  pre-compiled C/C++ module linked into one plugin's component next to the
+  compiled Dart module, checked in so building needs no toolchain. A plugin
+  declares its own under `pumpkin.core_modules` in its `pubspec.yaml`, which
+  `pumpkin_tools build` reads and passes to `wasm_tools` as
+  `CompilerOptions.coreModules`. Not a build hook: a hook of package A also
+  runs while a package depending on A is built, and linking A's module into
+  that component fails (`dart2wasm` compiles the unused import away, so the
+  module has no `host_call` to link against).
 * **`packages/wasm_components`**: the Dart runtime: the standalone embedder
   (strings, math, clocks), resource ownership (`Resource`, `ResourceScope`) and
   component async support.

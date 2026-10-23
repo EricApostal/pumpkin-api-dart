@@ -11,11 +11,13 @@
 // ignore_for_file: implementation_imports
 import 'package:create/src/api/block_state.dart' show BState;
 import 'package:create/src/api/blocks.dart' show HostBlockGetter;
+import 'package:create/src/common/host_bridge.dart';
 import 'package:create/src/kinetics/behaviours.dart' show ScrollValueBehaviour;
 import 'package:create/src/kinetics/kinetic_block_entity.dart' show GeneratingKineticBlockEntity;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../../compat/computercraft/peripherals/torsion_spring_peripheral.dart';
+import '../../advancements/sim_advancements.dart';
 import 'torsion_spring_logic.dart';
 
 /// `TorsionSpringBlockEntity`.
@@ -75,6 +77,17 @@ final class TorsionSpringBlockEntity extends GeneratingKineticBlockEntity implem
       powered: state.flag('powered'),
       speed: speed,
     );
+    consumeRewindAward(w);
+  }
+
+  /// Awards `REWIND_TIME` when the last `output.tick` wound a stopped output back
+  /// to zero (`TorsionSpringBlockEntity.tick`, `TorsionSpringBlockEntity.java:252`):
+  /// at the parent's position — here, this entity's own. The flag is consumed
+  /// here because the pure half has no world.
+  void consumeRewindAward(World awardWorld) {
+    if (!output.rewoundToZero) return;
+    output.rewoundToZero = false;
+    SimAdvancements.awardNearby(awardWorld, pos.toPos(), 'rewind_time');
   }
 
   @override
@@ -98,6 +111,10 @@ final class TorsionSpringBlockEntity extends GeneratingKineticBlockEntity implem
       powered: state.flag('powered'),
       speed: speed,
     );
+    if (output.rewoundToZero) {
+      final World? awardWorld = w;
+      if (awardWorld != null) consumeRewindAward(awardWorld);
+    }
     if (stopped) updateGeneratedRotation();
   }
 

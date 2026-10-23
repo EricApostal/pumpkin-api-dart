@@ -7,7 +7,6 @@
 // world dropped every saved ticket as an "unknown type". A test in a file that
 // had already used the ticket type could never see that, so the first thing this
 // file does is load a saved tag — no other `sable` API is touched before it.
-import 'dart:typed_data';
 
 import 'package:sable/sable.dart';
 import 'package:test/test.dart';

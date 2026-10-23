@@ -21,7 +21,7 @@
 | `ThrottleLeverBlock(Entity)` | `content/blocks/throttle_lever/` — lever state, redstone output |
 | `SymmetricSailBlock` | `content/blocks/symmetric_sail/` — lift provider, dye, the placement helper (`symmetric_sail_placement.dart`) and `AXIS` from the clicked face (`PlacementRule.clickedAxis`) |
 | `PortableEngineBlock`, `PortableEngineBlockEntity`, `PortableEngineInventory` | `content/blocks/portable_engine/` — the sixteen dyed blocks, the fuel table (`manifest/cooking_fuel.g.dart`), the burn state machine, the kinetic generator, the dye swap and the comparator |
-| `HoneyGlueEntity`, `HoneyGlueMaxSizing` | `content/entities/honey_glue/` — volume model, tracker, size rules, and the decision of all three honey glue payloads (`honey_glue_packet_logic.dart`) |
+| `HoneyGlueEntity`, `HoneyGlueMaxSizing` | `content/entities/honey_glue/` — volume model, tracker, size rules, the decision of all three honey glue payloads (`honey_glue_packet_logic.dart`), and the assembly input (`host/pumpkin_host.dart`: `honeyGluesIn` reads the entities' spawn-data boxes, `honeyGlueMoved` moves the entity) |
 | `SpringBlockEntity`, `SpringItemHandler` (length) | `content/blocks/spring/` — length state machine and the placement rules of `PlaceSpringPacket` (`spring_placement.dart`) |
 | `TorsionSpringBlockEntity` | `content/blocks/torsion_spring/` |
 | `SwivelBearingBlockEntity`, `SwivelBearingPlateBlockEntity` | `content/blocks/swivel_bearing/` |
@@ -202,7 +202,18 @@ Each is marked in the code where it happens.
    rotary joint plus the plate's sub-level, which is the same shape but has no
    caller yet.
 2. **Sub-level actors inside plots** — `ServerLevelPlot.actorAt` is `null` in sable, so the spring, the swivel plate and the propeller never receive `sable$physicsTick`. The block entities implement `BlockEntitySubLevelActor`; the plot needs the plugin's store behind that hook.
-3. **Honey glue as an assembly input** — `PumpkinSimAssemblyWorld.honeyGluesIn` returns nothing: the volumes are plugin entities and the tracker exists (`honeyGlueTrackerOf`), but no entity spawn/remove listener fills it yet.
+3. **Honey glue as an assembly input — fixed.** `PumpkinSimAssemblyWorld.honeyGluesIn`
+   enumerates the `simulated:honey_glue` entities of the world
+   (`World.getEntitiesInBox`, inflated by `honeyGlueRange` because the entity's
+   own hitbox is 0.1 blocks at the bottom centre of its volume) and reads each
+   volume's box from its spawn data (`honeyGlueBoxFromSpawnData`), which is saved
+   with the entity. The tracker is no longer the read source: only the spawn and
+   resize packets fill it, so a volume saved with a chunk was invisible after a
+   restart and dropped out of every assembly. `honeyGlueMoved` moves the entity
+   (position and spawn data) instead of only the tracker entry. Remaining
+   client-side gap: Java also pushes the moved box to the clients that already
+   track the volume (`setBoundsAndSync`); the host moves the entity without that
+   send, so a client keeps drawing the old box until it starts tracking again.
 4. **Sound playback** — `SimSoundIds` is filled by nobody; `playSound` is a no-op. The sound keys and their ids are registered.
 5. **Neighbour redstone** — `bestNeighbourSignal` returns a cached value refreshed by nothing; the swivel bearing's lock state therefore stays at its default. `World.getBestNeighborSignal` is async and cannot be awaited from `tick()`.
 6. **Entities in a box** — no box query in the plugin API, so
@@ -212,8 +223,10 @@ Each is marked in the code where it happens.
    grows one). Movement and removal now work
    (`setPositionRotationDelta` carrying velocity, `Entity.remove`); only
    *spawning* a moved super glue box is a stub, because the plugin API cannot
-   summon a vanilla entity type. Honey glue volumes are re-created in the
-   plugin's tracker instead.
+   summon a vanilla entity type. A moved honey glue volume is spawned as a real
+   `simulated:honey_glue` entity with its box as spawn data
+   (`PumpkinSimAssemblyEntities.spawnHoneyGlue`), so the next assembly and the
+   client see it; `honeyGlueMoved` moves the existing entity the same way.
 7. **Chunk serialization for plots** — sable's `PlotChunkHost` gaps (documented in sable) still apply, so a sub-level's plot chunks cannot be saved or loaded by the host.
 8. **Statistics and advancements** — the Java handlers award stats
    (`SimStats.INTERACT_WITH_ASSEMBLER`, `TYPEWRITER_KEY_PRESSES`,

@@ -9,6 +9,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show HostBlockGetter;
+import '../../api/advancements.dart';
 import '../../api/value_settings.dart';
 import '../../common/common.dart';
 import '../../core/block_entity.dart';
@@ -33,8 +34,19 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
     implements ValueSettingsHost, AssemblyExceptionHolding {
   CartAssemblerBlockEntity(super.worldId, super.pos) {
     // `addBehaviours`: added at construction so `read` restores the saved `ScrollValue`.
+    // `CartAssemblerBlockEntity.addBehaviours` registers `CONTRAPTION_ACTORS`
+    // (`CartAssemblerBlockEntity.java:236`).
     _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.contraptionActors],
+        () => ActuatorRuntime.maybe?.advancements,
+      ),
+    );
   }
+
+  /// `AdvancementBehaviour(this, AllAdvancements.CONTRAPTION_ACTORS)`.
+  late final AdvancementBehaviour advancements;
 
   int ticksSinceMinecartUpdate = cartAssemblerCooldown;
   AssemblyException? lastException;
@@ -203,6 +215,11 @@ final class CartAssemblerBlockEntity extends CreateBlockEntity
     }
     entity.setPos((localPos.$1 + .5, localPos.$2.toDouble(), localPos.$3 + .5));
     factory.spawn(worldId, entity);
+
+    // `CartAssemblerBlockEntity.java:176`: `award(AllAdvancements.CONTRAPTION_ACTORS)`.
+    if (contraption.containsBlockBreakers()) {
+      unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
+    }
 
     // `entity.startRiding(cart)`: the factory spawns asynchronously, so the passenger is attached
     // on the next world tick.

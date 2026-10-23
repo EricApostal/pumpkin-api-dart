@@ -3,7 +3,7 @@
 //
 // `sable/common/.../api/physics/PhysicsPipeline.java:34-252` is the Java
 // contract; `sable_rapier/.../rapier/RapierPhysicsPipeline.java` is its only
-// implementation there, and `JoltPhysicsPipeline` (package `sable_jolt`) is the
+// implementation there, and `JoltPhysicsPipeline` (`src/physics/jolt/`) is the
 // Dart one. `api/physics.dart` holds the model-facing types (`RigidBodyHandle`,
 // `MassData`, force groups); this file adds the pipeline itself plus the
 // box/rope objects and handles it owns.

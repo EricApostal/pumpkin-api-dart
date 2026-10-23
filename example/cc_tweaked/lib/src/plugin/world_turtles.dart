@@ -344,7 +344,11 @@ final class CcWorldTurtles {
           advanced: instance.upgrade.advancedModem,
           position: _center(turtle.pos),
         ),
-        UpgradeKind.speaker => StubPeripheral.speaker(),
+        // The speaker upgrade plays for real: its notes and audio go to the
+        // players around the turtle, and it follows the turtle with
+        // `speaker_move` (Java: the upgrade's `SpeakerPeripheral` over the
+        // turtle's position).
+        UpgradeKind.speaker => _speaker(turtle),
         UpgradeKind.workbench => StubPeripheral.workbench(),
         _ => null,
       };
@@ -355,6 +359,22 @@ final class CcWorldTurtles {
   }
 
   static (double, double, double) _center(WorldPos pos) => (pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
+
+  /// The speakers of the turtle upgrades, with the sink that sends their
+  /// payloads (keyed by the turtle, so an upgrade keeps its speaker while it is
+  /// equipped).
+  final Map<String, (SpeakerPeripheral, CcSpeakerSink)> _speakers = {};
+
+  /// The speaker of the speaker upgrade of [turtle]: one per turtle, so
+  /// `speaker_audio_empty` and the moving position stay with the same device.
+  SpeakerPeripheral _speaker(_Turtle turtle) {
+    final existing = _speakers[turtle.key];
+    if (existing != null) return existing.$1;
+    final sink = CcSpeakerSink(_network, newSpeakerSource(), turtle.location.world, () => _center(turtle.pos));
+    final speaker = SpeakerPeripheral(sink: sink, position: _center(turtle.pos));
+    _speakers[turtle.key] = (speaker, sink);
+    return speaker;
+  }
 
   /// Right click: makes sure there is a computer, turns it on and opens the GUI.
   Future<void> _open(Server server, Player player, _Turtle turtle) async {
@@ -829,11 +849,28 @@ final class CcWorldTurtles {
           logger.error('Turtle at ${turtle.location} failed: $e\n$s');
         }
       }
+      _tickSpeakers(server);
       if (_guis.isNotEmpty && _tick % 2 == 0) await _tickGuis(server);
     } catch (e, s) {
       logger.error('The turtle tick failed: $e\n$s');
     } finally {
       _ticking = false;
+    }
+  }
+
+  /// Plays what the speakers of the turtle upgrades have queued
+  /// (`SpeakerPeripheral.update`): the turtle's speaker follows the turtle, so
+  /// its position is updated first, and the sink then sends the payloads to the
+  /// players around it.
+  void _tickSpeakers(Server server) {
+    for (final entry in _speakers.entries) {
+      final turtle = _turtles[entry.key];
+      if (turtle == null) continue;
+      final (speaker, sink) = entry.value;
+      final at = _center(turtle.pos);
+      speaker.position = at;
+      sink.server = server;
+      speaker.update(_service.nowMicros * 1000);
     }
   }
 

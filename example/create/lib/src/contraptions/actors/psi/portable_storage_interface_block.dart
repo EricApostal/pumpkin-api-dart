@@ -11,6 +11,7 @@ import 'dart:math' as math;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../../api/blocks.dart' show manifestBlock;
+import '../../../api/advancements.dart';
 import '../../../common/common.dart';
 import '../../../core/block_entity.dart';
 import '../../../core/blocks.dart';
@@ -21,6 +22,7 @@ import '../../../fluids/fluid_storage.dart';
 import '../../../fluids/potion_data.dart';
 import '../../core/contraption.dart';
 import '../../storage/stacks.dart';
+import '../../blocks/actuator_runtime.dart';
 import '../actor_runtime.dart';
 import '../actor_shapes.dart';
 
@@ -30,7 +32,20 @@ const int psiAnimation = 4;
 /// `PortableStorageInterfaceBlockEntity`: the timer that keeps a contraption waiting while it
 /// transfers.
 abstract class PortableStorageInterfaceBlockEntity extends CreateBlockEntity {
-  PortableStorageInterfaceBlockEntity(super.worldId, super.pos);
+  PortableStorageInterfaceBlockEntity(super.worldId, super.pos) {
+    // `PortableStorageInterfaceBlockEntity.addBehaviours` registers `PSI`
+    // (`PortableStorageInterfaceBlockEntity.java:200`).
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.psi],
+        () => ActuatorRuntime.maybe?.advancements,
+      ),
+    );
+  }
+
+  /// `AdvancementBehaviour(this, AllAdvancements.PSI)`: the player that placed the interface gets
+  /// the advancement when the contraption transfers through it.
+  late final AdvancementBehaviour advancements;
 
   /// `transferTimer`.
   int transferTimer = 0;
@@ -143,6 +158,8 @@ abstract class PortableStorageInterfaceBlockEntity extends CreateBlockEntity {
   /// `onContentTransferred`.
   void onContentTransferred() {
     transferTimer = transferTimeout + psiAnimation;
+    // `PortableStorageInterfaceBlockEntity.java:190`: `award(AllAdvancements.PSI)`.
+    unawaited(advancements.awardPlayer(AllAdvancements.psi));
     sendData();
   }
 

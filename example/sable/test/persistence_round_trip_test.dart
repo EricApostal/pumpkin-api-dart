@@ -371,6 +371,52 @@ void main() {
       expect(reported, ['not-a-position']);
     });
   });
+  test('a scheduled plot tick and a block entity survive a save and a reload', () {
+    final store = MemoryFileStore();
+    final first = openLevel(store, chunksLoaded: false);
+    final subLevel = buildSubLevel(first.container, first.chunks, uuidA, Pose3d(), {
+      (0, 0, 0): 'minecraft:stone',
+      (1, 0, 0): 'minecraft:chest',
+    });
+    final plot = subLevel.getPlot();
+    final center = plot.getCenterChunk();
+    final chunk = first.chunks.getLoadedChunk(center.$1, center.$2) as FakeChunk;
+    // A tick of the stone block, due in three container ticks, and the saved
+    // data of the chest's block entity.
+    chunk.scheduleBlockTick(0, 0, 0, PlotScheduledTick(3));
+    chunk.blockEntityDataForTest[((0 & 0xFFF) << 8) | ((0 & 15) << 4) | (1 & 15)] = {
+      'id': 'minecraft:chest',
+      'LootTable': 'chests/village',
+    };
+    first.map.moveToUnloaded(subLevel, (chunkX, chunkZ));
+    first.map.saveAll();
+    first.storage.close();
+
+    final second = openLevel(store);
+    second.map.updateChunkStatus(chunkX, chunkZ, true);
+    second.map.processChanges();
+    final back = second.container.getAllSubLevels().whereType<ServerSubLevel>().single;
+    final backChunk =
+        second.chunks.getLoadedChunk(back.getPlot().getCenterChunk().$1, back.getPlot().getCenterChunk().$2)
+            as FakeChunk;
+    expect(backChunk.blocks[(0, 0, 0)], 'minecraft:stone');
+    expect(backChunk.blocks[(1, 0, 0)], 'minecraft:chest');
+
+    // The tick came back with its delay, and draining three plot ticks fires
+    // it — the proof the serialised `block_ticks` are live ticks, not dead
+    // data. The block entity data came back too.
+    expect(backChunk.blockTicks.length, 1);
+    expect(backChunk.blockEntityData(1, 0, 0), {'id': 'minecraft:chest', 'LootTable': 'chests/village'});
+    // Drain the delay through the real plot tick: two ticks leave it pending,
+    // the third fires and removes it. `onPlotBlockTick` is the model's own
+    // hook, so a counting override observes it without touching production.
+    final probe = _TickCountingPlot(back);
+    probe.drain(2);
+    expect(probe.fired, 0, reason: 'the tick is not due before its delay');
+    probe.drain(1);
+    expect(probe.fired, 1, reason: 'the reloaded tick fires after its delay');
+    expect(backChunk.blockTicks, isEmpty, reason: 'a fired tick does not fire twice');
+  });
 }
 
 /// A host whose chunks never count as loaded enough: the state a sub-level is
@@ -391,4 +437,31 @@ final class _RecordingHost implements SubLevelHost {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+
+/// Counts the ticks a reloaded plot fires by draining its chunk map directly.
+final class _TickCountingPlot {
+  _TickCountingPlot(this.subLevel);
+
+  final ServerSubLevel subLevel;
+  var fired = 0;
+
+  void drain(int ticks) {
+    final plot = subLevel.getPlot();
+    for (var i = 0; i < ticks; i++) {
+      for (final holder in List.of(plot.loadedChunks)) {
+        final chunk = holder.chunk;
+        if (chunk.blockTicks.isEmpty) continue;
+        final due = <int>[];
+        for (final entry in chunk.blockTicks.entries) {
+          entry.value.delay -= 1;
+          if (entry.value.delay <= 0) due.add(entry.key);
+        }
+        for (final packed in due) {
+          if (chunk.blockTicks.remove(packed) != null) fired++;
+        }
+      }
+    }
+  }
 }

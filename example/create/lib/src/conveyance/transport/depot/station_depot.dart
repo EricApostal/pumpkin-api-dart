@@ -9,7 +9,9 @@
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../../api/trains.dart' show StationDepot, StationDepotFactory;
+import '../../../common/direction.dart';
 import '../../../core/block_entity.dart';
+import '../../belt/transported_item.dart';
 import '../../items/item_codec.dart' show ItemCodec;
 import 'depot_behaviour.dart';
 
@@ -81,4 +83,16 @@ final class StationDepotAdapter extends BlockEntityBehaviour
   /// `removeHeldItem()`.
   @override
   void removeHeldItem() => depot.heldItem = null;
+
+  /// `SharedDepotBlockMethods.onLanded` for the station: a package item that fell onto the station
+  /// enters the schedule slot through `DepotBehaviour.tryInsertingFromSide` (Java
+  /// `DirectBeltInputBehaviour.handleInsertion`), `true` when the slot kept the whole stack.
+  /// The station calls this from its `on-landed-upon` hook, the port of `StationBlock.fallOn`
+  /// (the stock `super.fallOn` fall-damage path stays a no-op for packages because the vanilla
+  /// base of every Create block plays dead there).
+  @override
+  bool acceptLandedPackage(covariant TransportedItemStack transported) => depot
+      .tryInsertingFromSide(transported, Direction.down, false)
+      .stack
+      .isEmpty;
 }

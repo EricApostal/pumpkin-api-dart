@@ -11,6 +11,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show HostBlockGetter;
+import '../../api/advancements.dart';
 import '../../api/value_settings.dart';
 import '../../common/common.dart';
 import '../../kinetics/api.dart';
@@ -53,7 +54,24 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
     if (!isWindmill) {
       _movementMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
     }
+    // `MechanicalBearingBlockEntity.addBehaviours` registers `CONTRAPTION_ACTORS`
+    // (`MechanicalBearingBlockEntity.java:66`); the windmill bearing adds `WINDMILL` and
+    // `WINDMILL_MAXED` (`WindmillBearingBlockEntity.java:109`).
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [
+          AllAdvancements.contraptionActors,
+          if (isWindmill)
+            ...[AllAdvancements.windmill, AllAdvancements.windmillMaxed],
+        ],
+        () => ActuatorRuntime.maybe?.advancements,
+      ),
+    );
   }
+
+  /// `AdvancementBehaviour(this, ...)`: the player that placed the bearing gets the advancement
+  /// when it assembles a matching contraption.
+  late final AdvancementBehaviour advancements;
 
   ControlledContraptionEntity? movedContraption;
   double angle = 0;
@@ -208,6 +226,15 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
       return;
     }
 
+    // `MechanicalBearingBlockEntity.java:186-188`: `WINDMILL` for `isWindmill()`, `WINDMILL_MAXED`
+    // from 16*8 sails on.
+    if (isWindmill) {
+      unawaited(advancements.awardPlayer(AllAdvancements.windmill));
+    }
+    if (contraption.getSailBlocks() >= 16 * 8) {
+      unawaited(advancements.awardPlayer(AllAdvancements.windmillMaxed));
+    }
+
     await contraption.removeBlocksFromWorld(level, posZero);
     final entity = factory.createControlled(
       worldId,
@@ -229,6 +256,11 @@ class MechanicalBearingBlockEntity extends GeneratingKineticBlockEntity
       volume: 1,
       pitch: 1,
     );
+
+    // `MechanicalBearingBlockEntity.java:200`: `award(AllAdvancements.CONTRAPTION_ACTORS)`.
+    if (contraption.containsBlockBreakers()) {
+      unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
+    }
 
     running = true;
     angle = 0;
@@ -477,7 +509,18 @@ class ClockworkBearingBlockEntity extends KineticBlockEntity
   ClockworkBearingBlockEntity(super.worldId, super.pos) {
     // `addBehaviours`: added at construction so `read` restores the saved `ScrollValue`.
     _operationMode = addBehaviour(ScrollValueBehaviour().between(0, 2));
+    // `ClockworkBearingBlockEntity.addBehaviours` registers `CLOCKWORK_BEARING`
+    // (`ClockworkBearingBlockEntity.java:62`).
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.clockworkBearing],
+        () => ActuatorRuntime.maybe?.advancements,
+      ),
+    );
   }
+
+  /// `AdvancementBehaviour(this, AllAdvancements.CLOCKWORK_BEARING)`.
+  late final AdvancementBehaviour advancements;
 
   ControlledContraptionEntity? hourHand;
   ControlledContraptionEntity? minuteHand;
@@ -657,6 +700,13 @@ class ClockworkBearingBlockEntity extends KineticBlockEntity
     factory.spawn(worldId, hourEntity);
     hourHand = hourEntity;
 
+    // `ClockworkBearingBlockEntity.java:260-261`: an arm with block breakers awards
+    // `CONTRAPTION_ACTORS`. Java registers only `CLOCKWORK_BEARING` for this block, so the award is
+    // inert, exactly like Java (`AdvancementBehaviour.award` drops an unregistered advancement).
+    if (hour.containsBlockBreakers()) {
+      unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
+    }
+
     if (minute != null) {
       anchor = localPos.relative(direction, minute.offset + 1);
       await minute.removeBlocksFromWorld(level, posZero);
@@ -665,7 +715,15 @@ class ClockworkBearingBlockEntity extends KineticBlockEntity
       minuteEntity.setRotationAxis(direction.axis);
       factory.spawn(worldId, minuteEntity);
       minuteHand = minuteEntity;
+
+      // `ClockworkBearingBlockEntity.java:273-274`.
+      if (minute.containsBlockBreakers()) {
+        unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
+      }
     }
+
+    // `ClockworkBearingBlockEntity.java:277`: `award(AllAdvancements.CLOCKWORK_BEARING)`.
+    unawaited(advancements.awardPlayer(AllAdvancements.clockworkBearing));
 
     running = true;
     hourAngle = 0;

@@ -22,6 +22,7 @@ import 'package:create/src/kinetics/block_data.dart' show facingShaftTag;
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart';
 
+import '../../../aeronautics_runtime.dart';
 import '../../../config/aero_config.dart';
 import '../../../host/host_propeller_push_world.dart';
 import '../../../host/world_balloon_world.dart';
@@ -127,6 +128,21 @@ class PropellerBearingBlockEntity extends MechanicalBearingBlockEntity
     if (contraption.sailBlocks < propellerMinimumSails) {
       throw AssemblyException.notEnoughSails(contraption.sailBlocks, propellerMinimumSails);
     }
+  }
+
+  /// `PropellerBearingBlockEntity.assemble` (`PropellerBearingBlockEntity.java:358`):
+  /// `AeroAdvancements.IN_THRUST_WE_TRUST.awardToNearby` once the bearing's contraption is in the
+  /// world and running. The assembly itself is Create's
+  /// (`MechanicalBearingBlockEntity.assemble`), so only the award is added here; a call that found
+  /// no bearing block, failed the sail check or was already running awards nothing.
+  @override
+  Future<void> assemble() async {
+    final wasRunning = running;
+    await super.assemble();
+    if (wasRunning || !running) return;
+    final w = world;
+    if (w == null) return;
+    AeroRuntime.awardNearby(w, blockPos, AeroAdvancementIds.inThrustWeTrust);
   }
 
   @override
@@ -307,10 +323,12 @@ CreateBlock buildPropellerBearingBlock() => CreateBlock(
   key: propellerBearingKey,
   properties: [CreateProps.facing],
   defaultState: {'facing': 'north'},
-  hardness: 3,
+  // `initialProperties(SharedProperties::stone)` + `sound(COPPER)`
+  // (`AeroBlocks.java:242-246`) -> 1.5 / 6.0, copper.
+  hardness: 1.5,
   blastResistance: 6,
   requiresCorrectTool: true,
-  soundType: 'wood',
+  soundType: 'copper',
   canOcclude: false,
   tags: [facingShaftTag],
   placement: bearingPlacementRules,

@@ -16,8 +16,29 @@ final class KineticBlockRegistry {
   /// Block keys that are encased chain drives (`ChainDriveBlock` and subclasses).
   final Set<String> chainDriveBlocks = {};
 
+  /// The blocks whose definition belongs to *another* component, by block key,
+  /// with the plugin that owns them (`create.kinetics`, see `foreign.dart`).
+  ///
+  /// The owner runs one network for every component, so it also holds the rules
+  /// of the addons' blocks; a block in here is one whose block entity lives in
+  /// another wasm instance.
+  final Map<String, String> _foreign = {};
+
   /// Registers (or replaces) the definition of [block] (`create:shaft`).
   void register(String block, KineticBlockDef def) => _defs[block] = def;
+
+  /// Registers the definition of a block of another component and the plugin
+  /// that owns it, so the propagation materialises its block entity as a
+  /// `ForeignKineticNode` instead of looking it up in this component's store.
+  void registerForeign(String block, KineticBlockDef def, String plugin) {
+    _defs[block] = def;
+    _foreign[block] = plugin;
+  }
+
+  /// The plugin that owns [block], `null` when this component does.
+  String? ownerOf(String block) => _foreign[block];
+
+  bool isForeign(String block) => _foreign.containsKey(block);
 
   KineticBlockDef? defOf(String block) => _defs[block];
 
@@ -55,6 +76,26 @@ abstract class KineticLevel {
 
   /// `level.destroyBlock(pos, true)`.
   void destroyBlock(KPos pos);
+
+  /// Whether another component runs the kinetic network of this world.
+  ///
+  /// A plugin that links `package:create` but is not Create runs its own
+  /// `KineticsRuntime` with no Create blocks in it, so a network built here
+  /// would be a second, partial truth. When an owner is loaded, this is `true`
+  /// and the block entities of this component announce themselves to it instead
+  /// (`foreign.dart`).
+  bool get hosted => false;
+
+  /// This component's node at [pos] appeared: the owner has to include it in
+  /// the network (no-op when [hosted] is `false`, i.e. this component owns it).
+  void nodeAttached(KineticNode node) {}
+
+  /// This component's node at [pos] is gone.
+  void nodeDetached(KineticNode node) {}
+
+  /// The node's own values changed and the owner has to be told (a generator's
+  /// `generatedSpeed`, a source that changed its stress).
+  void nodeChanged(KineticNode node) {}
 
   /// `level.tickRateManager().isFrozen()`.
   bool get isTickFrozen => false;
@@ -102,6 +143,18 @@ abstract interface class KineticNode {
   KPos? get source;
   bool get networkDirty;
   set networkDirty(bool value);
+
+  /// Applies the verdict the component that runs the network sent for this node
+  /// (`create.kinetics`, the `apply` push): the network's speed, source, stress
+  /// and capacity. Only the cross-component path calls it; a local propagation
+  /// sets those values itself.
+  ///
+  /// Default: what a local propagation would have done with the numbers, minus
+  /// the table maintenance the owner already did (no `networkDirty` flip, no
+  /// re-sync). The block behaviours hang off `onSpeedChanged`, so this runs it
+  /// exactly as a local propagation would — a bearing that starts turning
+  /// assembles, a propeller's discs spin up.
+  void applyNetworkVerdict(ForeignVerdictValues verdict);
 
   /// `getSpeed()`: 0 while overstressed.
   double get speed;
@@ -161,6 +214,29 @@ abstract interface class KineticNode {
 
   /// The context of a sequenced gearshift this node is driven by.
   SequenceContext? get sequenceContext;
+}
+
+/// The verdict the component that runs the network sends for one node of another
+/// component (`create.kinetics`' `apply` push): the `ForeignNodeVerdict` fields
+/// as data (`foreign.dart`).
+final class ForeignVerdictValues {
+  final double speedValue;
+  final KPos? source;
+  final int? network;
+  final double capacity;
+  final double stress;
+  final int networkSize;
+  final bool overStressed;
+
+  const ForeignVerdictValues({
+    required this.speedValue,
+    required this.source,
+    required this.network,
+    required this.capacity,
+    required this.stress,
+    required this.networkSize,
+    required this.overStressed,
+  });
 }
 
 /// The shared logic of every kinetic block entity. Requires [pos], [level],
@@ -251,6 +327,9 @@ mixin KineticNodeMixin implements KineticNode {
 
   /// `initialize()`: joins the saved network.
   void kineticInitialize() {
+    // The saved `Network`/`Speed` of this component's block entity came from the
+    // component that runs the network, and there is no local table to join.
+    if (level.hosted) return;
     if (hasNetwork) {
       final net = getOrCreateNetwork()!;
       if (!net.initialized) net.initFromTE(capacity, stress, networkSize);
@@ -266,6 +345,10 @@ mixin KineticNodeMixin implements KineticNode {
   /// The rest of `tick()`, after the base class ticked.
   void kineticTickEnd() {
     preventSpeedUpdate = 0;
+
+    // The verdicts the owner sends already carry the network the node belongs
+    // to, so there is no local network to sync or validate here.
+    if (level.hosted) return;
 
     if (validationCountdown-- <= 0) {
       validationCountdown = level.settings.kineticValidationFrequency;
@@ -304,6 +387,28 @@ mixin KineticNodeMixin implements KineticNode {
     }
   }
 
+  /// The verdict the component that runs the network sent (see [KineticNode]).
+  @override
+  void applyNetworkVerdict(ForeignVerdictValues verdict) {
+    final previousSpeed = speed;
+    speedValue = verdict.speedValue;
+    source = verdict.source;
+    network = verdict.network;
+    capacity = verdict.capacity;
+    stress = verdict.stress;
+    networkSize = verdict.networkSize;
+    networkDirty = false;
+    final over = verdict.overStressed && !level.settings.disableStress;
+    final speedChanged = previousSpeed != speed;
+    overStressed = over;
+    // The block behaviours hang off `onSpeedChanged` (a swivel bearing assembles,
+    // a propeller's discs spin up), so the peer runs it exactly as a local
+    // propagation would.
+    if (speedChanged) onSpeedChanged(previousSpeed);
+    markChanged();
+    if (speedChanged) sendData();
+  }
+
   @override
   void updateFromNetwork(
     double maxStress,
@@ -335,6 +440,12 @@ mixin KineticNodeMixin implements KineticNode {
 
   /// `remove()`: the block is gone, leave the network.
   void kineticRemove() {
+    // A component that does not own the network: the owner is told and drops the
+    // node, and there is no local table to leave (`foreign.dart`).
+    if (level.hosted) {
+      level.nodeDetached(this);
+      return;
+    }
     if (hasNetwork) getOrCreateNetwork()?.remove(this);
     detachKinetics();
   }
@@ -381,10 +492,20 @@ mixin KineticNodeMixin implements KineticNode {
 
   void attachKinetics() {
     updateSpeed = false;
+    // A component that does not own the network does not propagate: it announces
+    // the node to the component that does (`foreign.dart`).
+    if (level.hosted) {
+      level.nodeAttached(this);
+      return;
+    }
     RotationPropagator.handleAdded(level, kpos, this);
   }
 
   void detachKinetics() {
+    if (level.hosted) {
+      level.nodeDetached(this);
+      return;
+    }
     RotationPropagator.handleRemoved(level, kpos, this);
   }
 

@@ -14,6 +14,25 @@ abstract interface class PeripheralAccess {
   String get attachmentName;
 
   void queueEvent(String name, List<Object?> args);
+
+  // -- The disk drive's mounts --------------------------------------------------
+  //
+  // A disk drive mounts its disk at `disk`/`disk2`/… on the computer it is
+  // attached to (`DiskDriveBlockEntity.mountDisk`). On the Java side this is
+  // `IComputerAccess.mount*/unmount`; default (no-op-ish) implementations are
+  // provided so the thousands of existing `PeripheralAccess` fakes in the
+  // world (and the Simulated adapter) do not need a mount API of their own.
+  // Mounting is best-effort: a computer that cannot mount (a test fake, a
+  // shut-down machine) reports null and the drive's methods then behave as if
+  // no data disk were attached, exactly as Java does when the mount fails.
+
+  /// Mounts [mount] as `disk` (or `disk2` onward, the first free name, like
+  /// Java): returns the mount path the drive should report, or null when this
+  /// access cannot mount (and the drive then behaves as data-less).
+  String? mountDisk(Object mount) => null;
+
+  /// Removes the mount at [path]. Never throws.
+  void unmountDisk(String path) {}
 }
 
 abstract interface class Peripheral {

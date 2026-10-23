@@ -9,7 +9,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:create/create.dart' show installHostedModuleState;
+import 'package:create/create.dart'
+    show
+        KineticsBridge,
+        installConsumerKinetics,
+        installHostedModuleState,
+        installHostedWorldTick;
 import 'package:create/src/core/block_entity.dart';
 import 'package:create/src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 import 'package:create/src/core/config.dart';
@@ -19,9 +24,11 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../aeronautics_plugin.dart';
 import '../aeronautics_module.dart';
+import '../index/aero_kinetics.dart' show aeroKineticDefs, aeroStressImpacts;
 import '../config/aero_config.dart';
 import '../config/aero_synced_config.dart';
 import 'aeronautics_addon.dart';
+import 'sable_physics_push.dart';
 
 Object? _probeIdentity(Map<String, Object?> message) => message;
 
@@ -35,6 +42,12 @@ final class AeronauticsPlugin extends Plugin {
 
   late final BlockEntityStore _blockEntities;
   CreateCore? _core;
+
+  /// Whether this component already pushed its physics data at server load.
+  bool _physicsPushed = false;
+
+  /// The caller half of Create's kinetic network (see `onLoad`).
+  KineticsBridge? _kinetics;
 
   @override
   PluginInfo get info => const PluginInfo(
@@ -132,7 +145,33 @@ final class AeronauticsPlugin extends Plugin {
     );
     context.declareNeoForge(createAddonNeoForgeDeclaration(const AeronauticsAddon(), registry: core.registry));
 
+    // The framework's per-world tick: the block entity store's pending writes and the
+    // module handlers. Create's own plugin wires this; a component that hosts
+    // Create's content must wire it too, or its block entities are published once
+    // (at creation) and never update — measured on the propeller bearing, whose
+    // host-side `Speed` stayed `0f` while it turned at 16 RPM in this component.
+    installHostedWorldTick(
+      context: context,
+      worlds: core.worlds,
+      // The plugin's own store: `core.blockEntities` is a second store the
+      // component never installed (its `tickWorld` would flush nothing).
+      blockEntities: blockEntities,
+      savedData: core.savedData,
+      moduleHandlers: core.worldTickHandlers,
+      log: log,
+    );
+
     module.onLoad(CreateContext(core, () => this.context, module.name));
+
+    // The kinetic network is Create's plugin's, not this component's: register the
+    // same rules (and stress values) with it and announce this component's
+    // bearings as they load, so a Create shaft drives a propeller bearing
+    // (`docs/kinetics-across-plugins.md`). When no Create plugin is loaded the
+    // bridge stays disarmed and this component's own runtime propagates.
+    final kinetics = _kinetics = installConsumerKinetics(context: context, log: log);
+    for (final entry in aeroKineticDefs.entries) {
+      kinetics.addRule(entry.key, entry.value, impact: aeroStressImpacts[entry.key]);
+    }
 
     // Phase 4: the server is loaded, so the host's recipe manager and data pack manager exist.
     // The module enables the mod's data pack and merges the recipes of other components.
@@ -143,6 +182,14 @@ final class AeronauticsPlugin extends Plugin {
       } on Object catch (e, s) {
         log.error('The aeronautics module failed in onServerLoaded', error: e, stackTrace: s);
       }
+      // The physics data goes to the component that owns the sub-levels: this
+      // component's `aeronautics:levitite` material and the
+      // `#aeronautics:levitite` → `sable:floating_material` definition have to be
+      // in the table the sub-level model reads, and that table is not here
+      // (`sable` owns the containers). See [SablePhysicsPush].
+      if (_physicsPushed) return;
+      _physicsPushed = true;
+      await _pushPhysicsData();
     });
 
     log.info(
@@ -151,6 +198,48 @@ final class AeronauticsPlugin extends Plugin {
       '${core.registry.sounds.length} sound events, '
       '${core.registry.particles.length} particle types.',
     );
+  }
+
+  /// Pushes the pack's physics data to the component that owns the sub-levels,
+  /// retrying on the following world ticks.
+  ///
+  /// The owner installs its operation channel when it starts, and the load order
+  /// of two independent plugins is not fixed: a request that arrives first fails
+  /// with no channel on the other side, and nothing would retry it. The
+  /// definitions are only read when a sub-level ticks, so a few ticks of delay
+  /// costs nothing, while losing the push costs levitite its lift entirely.
+  ///
+  /// The retry is a tick listener rather than an awaited `context.next`: the
+  /// first attempt runs inside the `serverLoad` handler, and blocking that
+  /// handler on a later tick would stall the load it is part of.
+  Future<void> _pushPhysicsData() async {
+    if (await _tryPushPhysicsData()) return;
+
+    var attempts = 1;
+    EventSubscription? subscription;
+    subscription = context.listen(Events.worldTick, (server, event) async {
+      if (attempts >= 100) {
+        subscription?.cancel();
+        logger.warn(
+          'Aeronautics: gave up sending the physics data after $attempts attempts; '
+          'levitite will not float on this server.',
+        );
+        return;
+      }
+      attempts++;
+      if (await _tryPushPhysicsData()) subscription?.cancel();
+    });
+  }
+
+  /// One attempt; whether the owner accepted the data.
+  Future<bool> _tryPushPhysicsData() async {
+    try {
+      final reply = await SablePhysicsPush.send(log: logger);
+      return reply != null && reply['ok'] == true;
+    } on Object catch (e, s) {
+      logger.error('Aeronautics could not send its physics data', error: e, stackTrace: s);
+      return false;
+    }
   }
 
   /// Reads `config.json` into [AeroConfig.server]; a missing or broken file
@@ -194,6 +283,7 @@ final class AeronauticsPlugin extends Plugin {
 
   @override
   Future<void> onUnload(Context context) async {
+    _kinetics?.close();
     _blockEntities.flushAll();
     _core?.savedData.flushAll();
     _core?.worlds.clear();

@@ -4,6 +4,7 @@
 // behaviours, seats, portable storage interfaces, contraption controls).
 //
 // See `docs/ARCHITECTURE.md` for the module contract.
+import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/trains.dart'
@@ -23,6 +24,7 @@ import '../api/payloads.dart' show PayloadBus;
 import 'actors_registration.dart';
 import 'actuators_registration.dart';
 import 'blocks/actuator_contract.dart';
+import '../content/advancement_ids.dart' show AllAdvancements;
 import 'blocks/actuator_runtime.dart';
 import 'core/contraption_type.dart';
 import 'entity/contraption_entity_ticking.dart' show ContraptionEntityTicking;
@@ -161,6 +163,13 @@ final class ContraptionsModule extends CreateModule {
     _storageHost = storageHost;
     storageHost.install();
     ContraptionEntityHooks.openStorage = storageHost.openStorage;
+    ContraptionEntityHooks.awardLongTravel = (passenger) {
+      final advancements = ActuatorRuntime.maybe?.advancements;
+      final player = advancements?.playerByUuid(passenger.uuid);
+      if (advancements == null || player == null) return;
+      // The roster keeps its player handles alive, so the handle is not disposed here.
+      unawaited(advancements.award(player, AllAdvancements.longTravel));
+    };
 
     // `MountedStorageSyncPacket.handle`: applies the storages the server sent to the client's
     // contraption (`MountedStorageManager.handleSync`). A server never receives this payload.
@@ -219,6 +228,13 @@ final class ContraptionsModule extends CreateModule {
         TrainSettings.current.trainsCauseDamage;
     ContraptionColliderHooks.damageRunOver = (entity, damage) =>
         entity.damageRunOver(damage);
+    ContraptionColliderHooks.awardTrainRoadkill = (controllingPlayer) {
+      final advancements = ActuatorRuntime.maybe?.advancements;
+      final player = controllingPlayer == null ? null : advancements?.playerByUuid(controllingPlayer);
+      if (advancements == null || player == null) return;
+      // The roster keeps its player handles alive, so the handle is not disposed here.
+      unawaited(advancements.award(player, AllAdvancements.trainRoadkill));
+    };
 
     loadActuatorContent(ctx);
     loadActorContent(ctx);
@@ -246,9 +262,11 @@ final class ContraptionsModule extends CreateModule {
     ContraptionHandler.clear();
     ContraptionEntityHooks.openStorage = null;
     ContraptionEntityHooks.leashedMob = null;
+    ContraptionEntityHooks.awardLongTravel = null;
     ContraptionColliderHooks.isTrainCarriage = null;
     ContraptionColliderHooks.trainsCauseDamage = null;
     ContraptionColliderHooks.damageRunOver = null;
+    ContraptionColliderHooks.awardTrainRoadkill = null;
     ContraptionCollision.collideBlocks = null;
     ContraptionCollision.isCollidingWithWorld = null;
     ContraptionHostHooks.isActuatorRunning = null;

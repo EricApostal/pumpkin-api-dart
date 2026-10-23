@@ -33,7 +33,8 @@ import 'package:sable/sable.dart'
     show BlockEntitySubLevelActor, RigidBodyHandle, ServerSubLevel, SubLevel, Vector3d;
 
 import '../../../aeronautics_hooks.dart';
-import '../../../aeronautics_runtime.dart' show AeroRuntime, heavierArtilleryAdvancement;
+import '../../../aeronautics_runtime.dart'
+    show AeroRuntime, heavierArtilleryAdvancement;
 import 'mounted_potato_cannon_logic.dart';
 
 /// The block and block entity key.
@@ -194,6 +195,12 @@ final class MountedPotatoCannonBlockEntity extends KineticBlockEntity implements
 
   /// `level.addFreshEntity(shootyBoomBoom)`: the entity's spawn data carries the item and the
   /// damage multiplier the cannon sets on it (`aeronautics$setDamageMultiplier(2)`).
+  ///
+  /// `aeronautics$setIsFromMountedPotatoCannon(true)` (`MountedPotatoCannonBlockEntity.java:188`)
+  /// has no port equivalent: `potatoSpawnData` only carries `Item`/`AdditionalDamage`/
+  /// `AdditionalKnockback`/`Recovery`, so nothing marks this projectile as mounted-cannon fired for
+  /// the `GHOSTBUSTER` award (`PotatoProjectileEntityMixin.java:39` — see the advancement table in
+  /// `aeronautics_runtime.dart`).
   Future<void> _spawnProjectile(World world, V3 pos, V3 motion, String itemKey) async {
     final entity = await world.spawnPlugin(
       potatoEntityKey,
@@ -279,10 +286,13 @@ CreateBlock buildMountedPotatoCannonBlock() => CreateBlock(
     BlockProperty.boolean('blocked'),
   ],
   defaultState: {'facing': 'north'},
-  hardness: 3,
+  // `initialProperties(SharedProperties::stone)` (`AeroBlocks.java:367-377`) ->
+  // 1.5 / 6.0, with no `.sound()` call, so the stone default. `pickaxeOnly`,
+  // like the burner and the vent.
+  hardness: 1.5,
   blastResistance: 6,
   requiresCorrectTool: true,
-  soundType: 'copper',
+  soundType: 'stone',
   canOcclude: false,
   blockEntityType: mountedPotatoCannonKey,
   behavior: BlockBehavior(

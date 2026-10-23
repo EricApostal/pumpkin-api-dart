@@ -5,7 +5,7 @@
 // decoration business and are not ported.
 import 'dart:math' as math;
 
-import '../../api/advancements.dart' show AllAdvancements;
+import '../../content/advancement_ids.dart' show AllAdvancements;
 import '../../common/common.dart';
 import '../../core/nbt.dart' show NbtKind, NbtValue;
 import '../support/text.dart';

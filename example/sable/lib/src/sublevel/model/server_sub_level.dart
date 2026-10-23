@@ -131,7 +131,17 @@ final class ServerSubLevel extends SubLevel
     super.pose, {
     required this.runtimeId,
     this.config,
-  });
+  }) {
+    // `ServerSubLevel.java:89-93` builds both managers in the field initializer,
+    // so they exist before the first block is placed. That ordering matters for
+    // the floating blocks: an assembly places the plot's blocks through
+    // `AssemblyBlockHost.setBlockStateAt`, whose hook queues each one into
+    // `subLevel.floatingBlockController` (`pumpkin_level.dart`,
+    // `_afterPlotBlockChange`). A controller built lazily on the first physics
+    // tick is built *after* those writes, and every queued block is lost -- so a
+    // levitite structure would fall like stone even with its material loaded.
+    getOrCreateFloatingBlockController();
+  }
 
   @override
   LevelPlot createPlot(SubLevelContainer plotContainer, int plotX, int plotZ, int logPlotSize) =>
@@ -367,27 +377,25 @@ final class ServerSubLevel extends SubLevel
 
   /// The floating-block controller of this sub-level, created on first use.
   ///
-  /// Java constructs it eagerly (`ServerSubLevel.java:92`). The Dart model
-  /// needs the block-property table, which the physics workstream owns; without
-  /// one the controller is absent and floating blocks contribute nothing
-  /// instead of a made-up material.
+  /// Java constructs it eagerly (`ServerSubLevel.java:92`), in the field
+  /// initializer, so it exists before a single block is placed: the plot's
+  /// block-change hook queues every assembled block into it
+  /// (`ServerLevelPlot.java:627` and `SableCommonEvents.java:70-71`). The port
+  /// therefore builds it in the constructor too ([ServerSubLevel.new]) and this
+  /// getter only answers an already-built one.
   ///
-  /// TODO(parity): `ServerSubLevel.java:92` always constructs the controller
-  /// (`new FloatingBlockController(this)`); a sub-level with no
-  /// [blockProperties] here silently has none. The plugin installs the table
-  /// for every server level, so this only differs for a sub-level built without
-  /// one.
+  /// The table is the level's, else the global one
+  /// ([PhysicsBlockPropertyHelper.table]); without the global fallback a
+  /// sub-level built before the plugin installed its table would have no
+  /// controller and would drop every queued block.
   FloatingBlockController? getOrCreateFloatingBlockController() {
     final existing = floatingBlockController;
     if (existing != null) return existing;
 
-    final properties = blockProperties;
-    if (properties == null) return null;
-
     return floatingBlockController = FloatingBlockController(
       SubLevelFloatingBlockBody(
         subLevel: this,
-        properties: properties,
+        properties: blockProperties ?? PhysicsBlockPropertyHelper.table,
         pressure: (worldPosition) => DimensionPhysicsData.getAirPressure(level, worldPosition),
         inverseInertia: () => getMassTracker().getInverseInertiaTensor(),
         bodyMass: () => getMassTracker().getMass(),
@@ -399,13 +407,12 @@ final class ServerSubLevel extends SubLevel
   /// The reaction-wheel manager of this sub-level, created on first use
   /// (`ServerSubLevel.java:93`).
   ///
-  /// TODO(parity): Java reads the global `PhysicsBlockPropertyHelper` registry;
-  /// the fallback table below is the all-defaults table, which matches Java only
-  /// when no physics-property definition is loaded.
+  /// Java reads the global `PhysicsBlockPropertyHelper` registry; the port reads
+  /// the level's table when the plugin gave it one, else the global one.
   ReactionWheelManager getOrCreateReactionWheelManager() =>
       reactionWheelManager ??= ReactionWheelManager(
         this,
-        blockProperties ?? PhysicsBlockPropertiesTable(),
+        blockProperties ?? PhysicsBlockPropertyHelper.table,
       );
 
   /// Converts a plot lift-provider context into the physics one.

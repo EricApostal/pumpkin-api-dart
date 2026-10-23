@@ -118,6 +118,12 @@ Future<void> saveActorPlayer(MovementContext context, Player player) async {
 
 /// The uuid in the captured data: `Owner` is the four-int `UUIDUtil.CODEC` form in Java; the
 /// canonical string of earlier versions is still accepted.
+Uuid? actorOwnerUuid(NbtMap? data) => _ownerUuid(data);
+
+/// The `Owner` of the captured deployer, as the host uuid text (`checkForTrackPlacementAdvancement`
+/// reads it for `SELF_DEPLOYING`).
+String? actorOwnerId(NbtMap? data) => _ownerUuid(data)?.asString;
+
 Uuid? _ownerUuid(NbtMap? data) {
   if (data == null) return null;
   final value = data.getIntArray('Owner');

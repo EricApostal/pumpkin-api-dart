@@ -10,9 +10,10 @@
 // What is not here, because the port has no counterpart:
 //   * the client half (`PortableEngineRenderer`, the hatch animation, the
 //     particle bursts and the ambient sounds, all run by the client tick);
-//   * `SimStats.PORTABLE_ENGINES_FED` and the two advancements
-//     (`steamless_engine`, `that_should_do_for_now`): the port awards no
-//     advancements for engine use;
+//   * `SimStats.PORTABLE_ENGINES_FED`: the package has no statistic table (the
+//     two advancements, `steamless_engine` and `that_should_do_for_now`, are
+//     awarded by `PortableEngineBlock.useItemOn`, ported in
+//     `portable_engine_block.dart`);
 //   * the crafting remainder of a burnt item (a lava bucket leaves no bucket):
 //     the plugin API has no `ItemStack.getCraftingRemainder`, so a fuel item is
 //     only ever shrunk;

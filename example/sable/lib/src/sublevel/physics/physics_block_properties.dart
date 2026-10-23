@@ -378,12 +378,63 @@ final class PhysicsBlockPropertiesDefinition {
     );
   }
 
+  /// An `int` JSON number as the `double` the property's codec reads.
+  static Object? _normalisePropertyValue(String id, Object? value) {
+    if (value is! int) return value;
+    return switch (id) {
+      PhysicsBlockPropertyTypes.mass ||
+      PhysicsBlockPropertyTypes.volume ||
+      PhysicsBlockPropertyTypes.restitution ||
+      PhysicsBlockPropertyTypes.friction ||
+      PhysicsBlockPropertyTypes.floatingScale => value.toDouble(),
+      _ => value,
+    };
+  }
+
   /// The payload-body encoding.
   void write(PacketWriter buf) => NetworkNbtMap.write(buf, toNbt());
 
   /// The payload-body decoding.
   static PhysicsBlockPropertiesDefinition read(PacketReader buf) =>
       PhysicsBlockPropertiesDefinition.fromNbt(NetworkNbtMap.read(buf));
+
+  /// `PhysicsBlockPropertiesDefinition.CODEC` applied to one
+  /// `physics_block_properties/*.json` entry, or `null` when [json] is not one
+  /// (a missing `selector` or `properties`).
+  ///
+  /// The JSON keys are the codec's (`selector`, `priority`, `properties`,
+  /// `overrides`), and the property values are the plain JSON ones the codec
+  /// reads: a number for `sable:mass`, a string for `sable:floating_material`.
+  static PhysicsBlockPropertiesDefinition? tryFromJson(Map<Object?, Object?> json) {
+    final selector = json['selector'];
+    final properties = json['properties'];
+    if (selector is! String || properties is! Map) return null;
+
+    // The codec reads a JSON number into a double whatever its form, but a Dart
+    // `jsonDecode` gives an `int` for `2`; `PhysicsBlockPropertyValues.apply`
+    // casts the double-typed properties with `as double`, so the value is
+    // normalised here. Sable's own pack writes `2.0`, another mod's pack may
+    // write `2`.
+    Map<String, Object?> propertiesOf(Map<Object?, Object?> value) => {
+      for (final entry in value.entries)
+        '${entry.key}': _normalisePropertyValue('${entry.key}', entry.value),
+    };
+
+    final overrides = json['overrides'];
+    return PhysicsBlockPropertiesDefinition(
+      selector: TagOrElementLocation.parse(selector),
+      priority: json['priority'] is num ? (json['priority'] as num).toInt() : 1000,
+      properties: propertiesOf(properties),
+      overrides: overrides is Map
+          ? {
+              for (final entry in overrides.entries)
+                if (entry.value is Map)
+                  BlockStateConditionSet.parse('${entry.key}'):
+                      propertiesOf(entry.value as Map<Object?, Object?>),
+            }
+          : null,
+    );
+  }
 
   static Map<String, NbtValue> _compoundValue(String key, NbtValue value) {
     if (value.kind != NbtKind.compound) {
@@ -582,4 +633,66 @@ final class PhysicsBlockPropertiesTable {
 
   /// `PhysicsBlockPropertyHelper.getFloatingMaterial`.
   String? floatingMaterialOf(String state) => resolveStateString(state).floatingMaterial;
+}
+
+/// `PhysicsBlockPropertyHelper`: Java reads one global property registry that
+/// every datapack entry of every pack lands in (`PhysicsBlockPropertyHelper`
+/// reads the mixin field the reload listener filled).
+///
+/// The port keeps one table per component, so this is the *owner's* table: the
+/// plugin that owns the sub-level containers installs it (`SablePlugin
+/// ._openLevel` reads its own pack into it) and the other components add their
+/// own `physics_block_properties` over the operation channel. The sub-level
+/// model reads it, so a floating block lifts whether its property came from
+/// Sable's pack or from another mod's.
+abstract final class PhysicsBlockPropertyHelper {
+  static PhysicsBlockPropertiesTable? _table;
+
+  /// Definitions added before a table was installed.
+  ///
+  /// A push from another component and this component's own pack read race (the
+  /// operation channel is live from `onLoad`, the table is built when the levels
+  /// start). Java has no such race — one global registry, filled by one reload
+  /// listener — so the definitions are held here until the table exists.
+  static final List<PhysicsBlockPropertiesDefinition> _pending = [];
+
+  /// The global table, created on first use.
+  ///
+  /// Java's registry exists from the moment the reload listener has run; the
+  /// port's model may ask before the plugin installed one (a VM test, a
+  /// sub-level built without a plugin), so the table is created on
+  /// demand as the all-defaults table rather than reported absent — an absent
+  /// table means "no floating-block controller at all" (see
+  /// `ServerSubLevel.getOrCreateFloatingBlockController`), which loses the
+  /// blocks an assembly queues into it.
+  static PhysicsBlockPropertiesTable get table => _table ??= PhysicsBlockPropertiesTable();
+
+  /// Replaces the table and applies the definitions that arrived before it
+  /// (`SimpleJsonResourceReloadListener.apply`).
+  static void install(PhysicsBlockPropertiesTable table) {
+    _table = table;
+    for (final definition in _pending) {
+      table.addDefinition(definition);
+    }
+    _pending.clear();
+  }
+
+  /// Adds [definitions] to the global table
+  /// (`PhysicsBlockPropertiesDefinitionLoader.apply`'s per-definition form).
+  static void addDefinitions(Iterable<PhysicsBlockPropertiesDefinition> definitions) {
+    final table = _table;
+    if (table == null) {
+      _pending.addAll(definitions);
+      return;
+    }
+    for (final definition in definitions) {
+      table.addDefinition(definition);
+    }
+  }
+
+  /// Drops the table (plugin unload, tests).
+  static void reset() {
+    _table = null;
+    _pending.clear();
+  }
 }

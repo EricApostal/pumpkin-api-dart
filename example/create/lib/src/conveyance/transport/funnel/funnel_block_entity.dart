@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../api/advancements.dart';
 import '../../../api/blocks.dart';
 import '../../../api/redstone.dart';
 import '../../../common/direction.dart';
@@ -47,7 +48,14 @@ class FunnelBlockEntity extends CreateBlockEntity
   final VersionTracker invVersionTracker = VersionTracker();
   int extractionCooldown = 0;
 
+  /// `registerAwardables(behaviours, AllAdvancements.FUNNEL)` (`Java FunnelBlockEntity.java:273`):
+  /// the player that placed the funnel gets it on its first transfer (`onTransfer`).
+  late final AdvancementBehaviour advancements;
+
   FunnelBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour([AllAdvancements.funnel], () => rt.advancements),
+    );
     filtering = addBehaviour(FilteringBehaviour(const FixedSlot(_filterSlot)))
       ..showCountWhen(supportsAmountOnFilter)
       ..onlyActiveWhen(supportsFiltering)
@@ -288,8 +296,11 @@ class FunnelBlockEntity extends CreateBlockEntity
 
   @override
   void onTransfer(ItemValue stack) {
+    // `onTransfer(stack)` -> `award(AllAdvancements.FUNNEL)` (`Java FunnelBlockEntity.java:369`):
+    // the player that placed the funnel gets it on its first transfer.
+    unawaited(advancements.awardPlayer(AllAdvancements.funnel));
     // `SmartObserverBlock.onFunnelTransfer`: observers aimed at this funnel with a matching filter
-    // fire. The funnel advancement is placer bound and has no behaviour to award it from here.
+    // fire.
     final world = this.world;
     if (world == null) return;
     final display = rt.ctx.services.find<RedstoneDisplayApi>();

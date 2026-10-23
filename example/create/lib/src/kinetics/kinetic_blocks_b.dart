@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../core/blocks.dart';
+import 'advancement_access.dart';
 import 'behavior_builder.dart';
 import 'block_defs.dart';
 import 'block_entities.dart';
@@ -133,6 +134,9 @@ KineticBlockSpec _crankSpec(String key, {bool valve = false, String? color}) {
                 speed * c.rt.settings.crankHungerMultiplier,
           );
         }
+        // `HandCrankBlock.java:76-77`: a crank that brings the player's food level to zero awards
+        // `HAND_CRANK` (the crank is a workout).
+        if (player.foodLevel == 0) KineticsAdvancements.awardHandCrank(player);
         return BlockUseResult.success;
       },
     ),

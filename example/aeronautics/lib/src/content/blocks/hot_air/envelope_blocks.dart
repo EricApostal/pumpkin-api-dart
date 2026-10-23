@@ -101,8 +101,14 @@ List<CreateBlock> buildEnvelopeBlocks() => [
 CreateBlock _envelopeBlock(String color) => CreateBlock(
   key: envelopeKey(color),
   // `EnvelopeBlock extends CasingBlock`: no state of its own.
-  hardness: 1,
-  blastResistance: 1,
+  //
+  // `initialProperties(SharedProperties::wooden)`
+  // (`AeroBlocks.java:78,111`) -> `Blocks.STRIPPED_SPRUCE_WOOD`: 2.0 / 2.0, WOOD.
+  // The sound is the mod's `SimLazySoundType` whose break/place/hit events are the
+  // envelope sounds (`AeroBlocks.java:80-86`) and whose step/fall are wool; the
+  // host has one name for the whole block, so it keeps `wool`.
+  hardness: 2,
+  blastResistance: 2,
   soundType: 'wool',
   canOcclude: true,
   mapColor: _mapColor(color),
@@ -130,8 +136,13 @@ CreateBlock _encasedEnvelopeBlock(String color) {
     properties: [CreateProps.axis],
     // `RotatedPillarKineticBlock`'s default axis is `y`.
     defaultState: const {'axis': 'y'},
-    hardness: 1,
-    blastResistance: 1,
+    // `initialProperties(SharedProperties::wooden)` (`AeroBlocks.java:146`) ->
+    // 2.0 / 2.0. Java then calls `.sound(SCAFFOLDING)` (`:147`) and lays the
+    // envelope `SimLazySoundType` *over* it (`:151-158`); the last properties
+    // call wins there, but the host takes one name, and `scaffolding` is the
+    // one the placed shaft clicks like.
+    hardness: 2,
+    blastResistance: 2,
     soundType: 'scaffolding',
     canOcclude: false,
     mapColor: _mapColor(color),

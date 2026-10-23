@@ -199,6 +199,7 @@ void loadActuatorContent(CreateContext ctx) {
     store: ctx.blockEntities,
     worlds: ctx.worlds,
     log: ctx.log,
+    services: ctx.services,
     configs: configs,
   );
   // The constructor installs the runtime the block entities read.

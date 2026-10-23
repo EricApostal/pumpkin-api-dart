@@ -49,6 +49,13 @@ export 'generators.dart'
         ValveHandleBlockEntity,
         WaterWheelBlockEntity;
 export 'geometry.dart' show KAxis, Dir, KPos, KState;
+export 'foreign.dart'
+    show
+        ForeignKineticNode,
+        ForeignKineticNodes,
+        ForeignNodeValues,
+        ForeignNodeVerdict,
+        KineticOwnerLink;
 export 'kinetic_block_entity.dart'
     show
         DirectionalShaftHalvesBlockEntity,
@@ -61,12 +68,14 @@ export 'network.dart' show KineticNetwork;
 export 'node.dart'
     show
         ChainModifierNode,
+        ForeignVerdictValues,
         KineticBlockRegistry,
         KineticLevel,
         KineticNode,
         KineticNodeMixin,
         SpeedControllerNode;
 export 'propagator.dart' show RotationPropagator;
+export 'wire_def.dart' show WireAxisRule, WireKineticDef, WireShaftRule;
 export 'runtime.dart'
     show
         HostKineticLevel,

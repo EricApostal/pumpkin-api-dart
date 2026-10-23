@@ -14,6 +14,7 @@ import '../recipe/recipe_applier.dart';
 import '../recipe/recipe_book.dart';
 import '../recipe/recipe_type.dart';
 import '../transport/transported_stack.dart';
+import '../../api/advancements.dart';
 import 'press_behaviour.dart';
 
 /// `MechanicalPressBlockEntity`.
@@ -23,11 +24,25 @@ final class MechanicalPressBlockEntity extends BasinOperatingBlockEntity
 
   late final PressingBehaviour pressingBehaviour;
 
+  /// `registerAwardables(behaviours, PRESS, COMPACTING, TRACK_CRAFTING)`
+  /// (`MechanicalPressBlockEntity.java:64-65`): the press awards its owner.
+  late final AdvancementBehaviour advancements;
+
   /// `tracksCreated`: tracks pressed, for the track crafting advancement.
   int tracksCreated = 0;
 
   MechanicalPressBlockEntity(super.worldId, super.pos) {
     pressingBehaviour = addBehaviour(PressingBehaviour(this));
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [
+          AllAdvancements.press,
+          AllAdvancements.compacting,
+          AllAdvancements.trackCrafting,
+        ],
+        () => _rt.advancements,
+      ),
+    );
   }
 
   ProcessingRuntime get _rt => ProcessingRuntime.instance;
@@ -87,11 +102,22 @@ final class MechanicalPressBlockEntity extends BasinOperatingBlockEntity
   @override
   int get particleAmount => 15;
 
+  /// `getProcessedRecipeTrigger` (`MechanicalPressBlockEntity.java:246`).
+  @override
+  String? get processedRecipeAward => AllAdvancements.compacting;
+
   /// `tryProcessInBasin`: applying the basin recipe is what the cycle's mid point does.
   @override
   bool tryProcessInBasin({required bool simulate}) {
     applyBasinRecipe();
     return true;
+  }
+
+  /// A completed compacting cycle awards the trigger to the owner: `COMPACTING` is the press's
+  /// `getProcessedRecipeTrigger`, which `BasinOperatingBlockEntity.java:120` awards.
+  @override
+  void onBasinCycleCompleted(String award) {
+    unawaited(advancements.awardPlayer(award));
   }
 
   /// `tryProcessOnBelt`.
@@ -201,12 +227,17 @@ final class MechanicalPressBlockEntity extends BasinOperatingBlockEntity
     return (one(), one(), one());
   }
 
-  /// `onItemPressed`: counts pressed tracks (`AllAdvancements.PRESS` / `TRACK_CRAFTING` are not
-  /// awarded: the port has no `AdvancementBehaviour` to track the owner).
+  /// `onItemPressed` (`MechanicalPressBlockEntity.java:68-76`).
   void onItemPressed(PStack result) {
+    // Every pressed item awards `PRESS` once (Java awards it unconditionally, before the track
+    // check); the owner-only duplicate suppression is `AdvancementBehaviour`'s own bookkeeping.
+    unawaited(advancements.awardPlayer(AllAdvancements.press));
     if (_rt.tags.blockHasTag(result.key, 'create:tracks'))
       tracksCreated += result.count;
-    if (tracksCreated >= 1000) tracksCreated = 0;
+    if (tracksCreated >= 1000) {
+      unawaited(advancements.awardPlayer(AllAdvancements.trackCrafting));
+      tracksCreated = 0;
+    }
   }
 
   // -- Basin -------------------------------------------------------------------------------

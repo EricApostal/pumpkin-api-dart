@@ -49,11 +49,29 @@ mixin BlockEntityLiftingGasProvider {
   bool get isChunkUnloaded;
 
   /// `tickBalloonLogic`: re-casts the ray and (re)joins or creates a balloon.
+///
+/// Playback worlds that cannot award advancements use this; the host side of the mixin calls
+/// [tickBalloonLogicAndAward] instead.
   void tickBalloonLogic() {
     doRaycast();
 
     if (balloon == null) tryJoinBalloon();
     if (balloon == null) tryCreateBalloon();
+  }
+
+  /// `tickBalloonLogic` with the `HEAD_IN_THE_CLOUDS` award of
+/// `BlockEntityLiftingGasProvider.tickBalloonLogic` (`BlockEntityLiftingGasProvider.java:261`):
+/// whenever the heater's balloon holds more than one block of hot air, the players near the heater
+/// are awarded (`SimulatedAdvancement.awardToNearby`, radius 10).
+///
+/// The award leaves the tick rate to the caller (`onLoad`, `lazyTick`) — Java runs this gate inside
+/// the mixin default, not behind an extra throttle.
+  void tickBalloonLogicAndAward(void Function() award) {
+    tickBalloonLogic();
+    final current = balloon;
+    if (current is ServerBalloon && current.totalFilledVolume > 1) {
+      award();
+    }
   }
 
   /// Joins the balloon whose volume contains the cast position.

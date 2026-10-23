@@ -330,7 +330,13 @@ abstract final class HostGaps {
         '`server.wit`: a raw UDP socket bound next to the TCP listener '
         '(`bind-udp(port)`, `send-datagram(player, bytes)`, `on-datagram`).',
     priority: HostGapPriority.minor,
-    workaround: 'W4 already falls back to TCP snapshots (`sable:udp_activation` is never sent).',
+    workaround:
+        'TCP is the supported path: `PumpkinTrackingSender` sends every payload of the sync '
+        '(`start_tracking_sub_level`, the plot chunks, `finalize_sub_level`, the snapshots) over '
+        'the payload channel, which is Java\'s own fallback (`SubLevelTrackingSystem.java:383-404` '
+        'sends the identical payloads when UDP is not up). `sable:udp_activation` is never sent — '
+        'activating a channel whose server socket does not exist would make the client `AUTH` into '
+        'the void. Only the latency of movement suffers; the bytes do not.',
   );
 
   static const HostGap packetExtension = HostGap(
@@ -413,8 +419,19 @@ abstract final class HostGaps {
     priority: HostGapPriority.critical,
     workaround:
         'W2 `PlotChunkHost` treats unloaded plot chunks as empty and rebuilds them from the '
-        'sub-level storage; the world generator still writes terrain into the plot yard if a ticket '
-        'is missing.',
+        'sub-level storage. For a client to see a sub-level at all, the port asks the *server* to '
+        'keep the yard chunk loaded (`PumpkinSubLevelHost.requestYardChunkKeep` -> '
+        '`execute in <dim> run forceload add <block>`, which marks the chunk and returns at once) '
+        'and the sender queues the chunk send until the world has it, then `mirrorPlotChunk` '
+        'writes the plot\'s blocks (measured 0 ms) and `chunk-streaming.send-chunk-at` ships them. '
+        'The plugin\'s own `force-load-chunk` cannot be used for this: it waits for generation and '
+        'answers at its 60 s `LOAD_TIMEOUT`, and that wait blocks the server\'s tick loop even '
+        'when the call is not awaited (the guest tick cannot return while the host subtask is '
+        'pending) — measured as a 60 s freeze and a client timing out. Live with the forceload '
+        'path: ask -> chunk loaded -> chunk sent in ~3 s, client intact. The terrain the host '
+        'generated in that chunk stays there (it is not rendered: the client meshes only the '
+        'plot\'s bounding box) and the yard chunk is saved with the world — both disappear with a '
+        'plugin-owned empty chunk.',
   );
 
   static const HostGap plotLighting = HostGap(

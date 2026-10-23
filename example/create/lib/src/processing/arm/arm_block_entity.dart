@@ -10,6 +10,7 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/value_settings.dart';
 import '../../common/common.dart' hide pos;
 import '../../common/host_bridge.dart';
@@ -25,7 +26,22 @@ import 'arm_point_types.dart';
 /// `ArmBlockEntity`.
 final class ArmBlockEntity extends KineticBlockEntity
     implements ValueSettingsHost, ValueSettingsTarget {
+  /// `registerAwardables(behaviours, ARM_BLAZE_BURNER, ARM_MANY_TARGETS, MECHANICAL_ARM,
+  /// MUSICAL_ARM)` (`ArmBlockEntity.java:125-126`): the arm awards its owner.
+  late final AdvancementBehaviour advancements;
+
   ArmBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [
+          AllAdvancements.armBlazeBurner,
+          AllAdvancements.armManyTargets,
+          AllAdvancements.mechanicalArm,
+          AllAdvancements.musicalArm,
+        ],
+        () => _rt.advancements,
+      ),
+    );
     lazyTickRate = 10;
   }
 
@@ -194,6 +210,7 @@ final class ArmBlockEntity extends KineticBlockEntity
 
     inputs.clear();
     outputs.clear();
+    var hasBlazeBurner = false;
     final level = armWorld;
     for (final entry in tag) {
       final point = ArmInteractionPoint.deserialize(
@@ -203,6 +220,7 @@ final class ArmBlockEntity extends KineticBlockEntity
         armPointTypeOf,
       );
       if (point == null) continue;
+      if (point is BlazeBurnerPoint) hasBlazeBurner = true;
       if (point.mode == ArmPointMode.deposit) {
         outputs.add(point);
       } else {
@@ -211,6 +229,16 @@ final class ArmBlockEntity extends KineticBlockEntity
     }
 
     _updateInteractionPoints = false;
+
+    // `if (outputs.size() >= 10) award(ARM_MANY_TARGETS); if (hasBlazeBurner)
+    //  award(ARM_BLAZE_BURNER)` (`ArmBlockEntity.java:495-498`): this port is server only.
+    if (outputs.length >= 10) {
+      unawaited(advancements.awardPlayer(AllAdvancements.armManyTargets));
+    }
+    if (hasBlazeBurner) {
+      unawaited(advancements.awardPlayer(AllAdvancements.armBlazeBurner));
+    }
+
     sendData();
     markDirty();
   }
@@ -328,6 +356,11 @@ final class ArmBlockEntity extends KineticBlockEntity
     final point = _targetedPoint();
     if (point != null && point.isValid) {
       heldItem = await point.insert(this, heldItem, false);
+      // `if (armInteractionPoint instanceof JukeboxPoint && remainder.isEmpty())
+      //  award(MUSICAL_ARM)` (`ArmBlockEntity.java:372-373`).
+      if (point is JukeboxPoint && heldItem.isEmpty) {
+        unawaited(advancements.awardPlayer(AllAdvancements.musicalArm));
+      }
     }
 
     phase = heldItem.isEmpty ? ArmPhase.searchInputs : ArmPhase.searchOutputs;
@@ -335,6 +368,9 @@ final class ArmBlockEntity extends KineticBlockEntity
     chasedPointIndex = -1;
     sendData();
     markDirty();
+    // `if (!level.isClientSide()) award(MECHANICAL_ARM)` (`ArmBlockEntity.java:382-383`): the arm
+    // completed a deposit; this port is server only.
+    unawaited(advancements.awardPlayer(AllAdvancements.mechanicalArm));
   }
 
   /// `collectItem`.

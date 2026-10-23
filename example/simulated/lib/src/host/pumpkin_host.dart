@@ -27,7 +27,9 @@ import 'package:sable/sable.dart' show SableLevel, SubLevel, SubLevelContainer;
 import '../config/sim_config_service.dart';
 import '../service/sim_services.dart';
 import '../content/entities/honey_glue/honey_glue_entity.dart';
+import '../content/entities/honey_glue/honey_glue_logic.dart';
 import '../util/assembly/sim_assembly_contraption.dart';
+import '../util/host_calls.dart';
 import '../util/sim_assembly_helper.dart';
 import 'simulated_host.dart';
 
@@ -128,10 +130,59 @@ final class PumpkinSimAssemblyWorld implements SimAssemblyWorld {
     for (final glue in _hostLevel.gluesIn(area)) SimGlueBox(glue.id, glue.box),
   ];
 
-  /// HOST GAP: honey glue volumes are plugin entities; the plugin's tracker is
-  /// the only source, and it is filled by the entity spawn and removal events.
+  /// The honey glue volumes of the world, as the assembly sees them.
+  ///
+  /// `SimAssemblyContraption.checkAndCacheGlue` asks for the honey glue boxes
+  /// whose box intersects a span, exactly as Java asks the level for
+  /// `HoneyGlueEntity`s (`level.getEntitiesOfClass(HoneyGlueEntity.class,
+  /// SuperGlueEntity.span(...).inflate(honeyGlueRange))`).
+  ///
+  /// The source is the entities themselves, not [HoneyGlueTracker]: the tracker
+  /// is only written by the spawn and resize packets, so a volume that was saved
+  /// with the chunk and loaded again (or one spawned by another path) is not in
+  /// it, and a tracker-only read drops honey glue out of every assembly after a
+  /// restart. The box is the entity's spawn data (`writeSpawnData`), which is
+  /// saved with the entity (`PluginEntity.spawn_data` in `write_custom_nbt`).
   @override
-  List<HoneyGlueVolume> honeyGluesIn(Aabb area) => const [];
+  List<HoneyGlueVolume> honeyGluesIn(Aabb area) {
+    // A honey glue entity's hitbox is 0.1 blocks at the bottom centre of its
+    // volume, so the query box grows by the largest volume the config allows
+    // before the decoded boxes are tested against [area]. The host's box query
+    // scans every entity anyway (`entity_snapshots_in_box`), so the inflation
+    // costs nothing.
+    final range = SimConfigService.serverConfig.assembly.honeyGlueRange.toDouble();
+    final volumes = <HoneyGlueVolume>[];
+    for (final snapshot in world.getEntitiesInBox(
+      min: (area.minX - range, area.minY - range, area.minZ - range),
+      max: (area.maxX + range, area.maxY + range, area.maxZ + range),
+      filter: const EntityFilterAll(),
+    )) {
+      if (snapshot.entityTypeKey != honeyGlueEntityKey) continue;
+      final box = _honeyGlueBox(snapshot);
+      if (box == null || !box.intersects(area)) continue;
+      volumes.add(HoneyGlueVolume(snapshot.id, box));
+    }
+    return volumes;
+  }
+
+  /// The box of the honey glue volume behind [snapshot], `null` when that entity
+  /// is gone or is not a honey glue.
+  ///
+  /// The snapshot carries no spawn data, so the entity is opened once per
+  /// candidate; its hitbox is only the fallback for a volume saved without one.
+  Aabb? _honeyGlueBox(EntitySnapshot snapshot) {
+    final entity = world.getEntityById(id: snapshot.id);
+    if (entity == null) return null;
+    try {
+      if (entity.pluginTypeKey != honeyGlueEntityKey) return null;
+      final box = honeyGlueBoxFromSpawnData(entity.pluginSpawnData);
+      if (box != null) return box;
+    } finally {
+      entity.dispose();
+    }
+    final bb = snapshot.boundingBox;
+    return Aabb(bb.min.$1, bb.min.$2, bb.min.$3, bb.max.$1, bb.max.$2, bb.max.$3);
+  }
 
   @override
   bool isSwivelBearing(BState state) => state.key == 'simulated:swivel_bearing';
@@ -143,8 +194,38 @@ final class PumpkinSimAssemblyWorld implements SimAssemblyWorld {
     );
   }
 
+  /// `SimAssemblyHelper.assembleFromSingleBlock`'s honey-glue move: Java removes
+  /// the volume's entity and spawns a new one at the moved box
+  /// (`glue.remove(KILLED)` + `new HoneyGlueEntity(level, newBB)` +
+  /// `setBoundsAndSync`).
+  ///
+  /// The host cannot spawn a *plugin* entity synchronously (the spawn is async),
+  /// so the same entity keeps its id and is moved instead: its position goes to
+  /// the bottom centre of the new box (`resetPositionToBounds`) and its spawn
+  /// data -- the box the client draws and the thing saved with the chunk -- is
+  /// replaced. The tracker is kept in step so the resize packet still finds the
+  /// volume under the same id.
   @override
-  void honeyGlueMoved(HoneyGlueVolume glue, Pos offset) {}
+  void honeyGlueMoved(HoneyGlueVolume glue, Pos offset) {
+    final box = glue.box.move(offset.$1.toDouble(), offset.$2.toDouble(), offset.$3.toDouble());
+    honeyGlueTrackerOf(world.getId()).put(HoneyGlue(glue.id, box));
+
+    final entity = world.getEntityById(id: glue.id);
+    if (entity == null) return;
+    try {
+      if (entity.pluginTypeKey != honeyGlueEntityKey) return;
+      final position = HoneyGlueVolumeLogic.positionForBounds(box);
+      entity.setSpawnData(honeyGlueSpawnData(box, position));
+      entity.setPositionRotationDelta(
+        pos: position,
+        yaw: entity.getYaw(),
+        pitch: entity.getPitch(),
+        velocity: entity.getVelocity(),
+      );
+    } finally {
+      entity.dispose();
+    }
+  }
 
   @override
   void playDisassemblySound(Pos pos) =>
@@ -184,6 +265,8 @@ final class PumpkinSimAssemblyEntities implements SimAssemblyEntities {
     _found.clear();
     final out = <SimAssemblyEntityRef>[];
     for (final entity in world.getEntities()) {
+      final type = entity.pluginTypeKey;
+      final isHoneyGlue = type == honeyGlueEntityKey;
       final bounds = entity.getBoundingBox();
       final box = Aabb(
         bounds.min.$1,
@@ -193,15 +276,23 @@ final class PumpkinSimAssemblyEntities implements SimAssemblyEntities {
         bounds.max.$2,
         bounds.max.$3,
       );
-      if (!box.intersects(area)) continue;
+      // A honey glue's hitbox is 0.1 blocks at the bottom centre of its volume;
+      // the box that matters is the spawn data, as `_moveEntities` reads it.
+      final glueBox = isHoneyGlue
+          ? honeyGlueBoxFromSpawnData(entity.pluginSpawnData)
+          : null;
+      if (!(glueBox ?? box).intersects(area)) continue;
       _found[entity.getId()] = entity;
       final pos = entity.getPosition();
       out.add(
         SimAssemblyEntityRef(
           entity.getId(),
-          box,
+          glueBox ?? box,
           (pos.$1, pos.$2, pos.$3),
           yRot: entity.getYaw(),
+          kind: isHoneyGlue
+              ? SimAssemblyEntityKind.honeyGlue
+              : SimAssemblyEntityKind.other,
         ),
       );
     }
@@ -242,13 +333,29 @@ final class PumpkinSimAssemblyEntities implements SimAssemblyEntities {
 
   /// `level.addFreshEntity(new HoneyGlueEntity(level, box))`, then
   /// `setBoundsAndSync`.
+  ///
+  /// The spawn is async, so the entity is requested and the tracker entry is
+  /// written when the host hands out its id. The tracker alone is not enough:
+  /// the volume has to exist as an entity for the assembly's
+  /// [PumpkinSimAssemblyWorld.honeyGluesIn] to find it again, and for the
+  /// client to draw it.
   @override
   void spawnHoneyGlue(Aabb box) {
-    final tracker = honeyGlueTrackerOf(world.getId());
-    // The host assigns the id; the tracker keeps the volume under a temporary
-    // negative id until the spawn event reports the real one.
-    final tempId = -(tracker.volumes.length + 1);
-    tracker.put(HoneyGlue(tempId, box));
+    final worldId = world.getId();
+    final position = HoneyGlueVolumeLogic.positionForBounds(box);
+    ignoredCall(
+      world
+          .spawnPlugin(
+            honeyGlueEntityKey,
+            position,
+            spawnData: honeyGlueSpawnData(box, position),
+          )
+          .then((entity) {
+            final id = entity.getId();
+            entity.dispose();
+            honeyGlueTrackerOf(worldId).put(HoneyGlue(id, box));
+          }),
+    );
   }
 }
 

@@ -52,8 +52,12 @@ final class ServerLevelPlot extends LevelPlot {
   /// The contraptions of this plot.
   Iterable<KinematicContraption> getContraptions() => contraptions;
 
+  /// Ticks this plot: the lighting updates Java runs here, plus the pending
+  /// block ticks the chunk serialiser keeps (`LevelPlot.tick` drains them;
+  /// this override exists so the comment that used to claim "no plot light
+  /// engine yet" names what the tick does do).
   @override
-  void tick() {}
+  void tick() => super.tick();
 
   @override
   Object? getLightEngine() => lightEngine;

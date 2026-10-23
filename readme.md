@@ -81,6 +81,21 @@ dart pub get
 cd example/teleport && dart run pumpkin_tools build
 ```
 
+### Core modules
+
+A plugin that needs a pre-compiled core module — C or C++ compiled to Wasm, checked in next to the source that builds it, so a build needs no toolchain — declares it in its **own** `pubspec.yaml`:
+
+```yaml
+pumpkin:
+  core_modules:
+    - name: jolt
+      path: native/jolt/jolt.wasm
+```
+
+`name` is the module Dart imports from (`@pragma('wasm:import', 'jolt.jolt_alloc')`, plus `jolt.memory` as a `Memory`), and `path` is relative to the package root. `pumpkin_tools build` links it into that package's component only.
+
+This must not be a `hook/build.dart`: a build hook of package A also runs while any package that depends on A is built, which links A's module into the dependents' components, where nothing imports it and the link fails with `Expected compiled app to export {host_call}`. `example/sable` (Jolt) and `example/cc_tweaked` (Lua) declare their modules this way.
+
 Regenerate the bindings and the typed `Events` after the WIT changes (needs Rust):
 
 ```sh

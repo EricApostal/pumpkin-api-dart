@@ -61,6 +61,10 @@ abstract class CreateBlockEntity {
   /// The type key; set by the store before anything else runs.
   late final String typeKey;
 
+  /// The uuid of the player that placed the block (`AdvancementBehaviour.setPlacedBy`), `null`
+  /// when it was not placed by one. Only set for the block a placement created.
+  String? placedBy;
+
   late BlockEntityStore _store;
   final List<BlockEntityBehaviour> _behaviours = [];
   bool _initialized = false;
@@ -272,15 +276,31 @@ final class BlockEntityStore {
 
   /// Creates the entity of a block that was just placed (idempotent): puts it in
   /// the store, calls `onLoad` and publishes its data so the host has the entity.
-  CreateBlockEntity? createAt(World world, BlockPos pos, String typeKey) =>
-      Perf.measure('place.createBlockEntity', () => _createAt(world, pos, typeKey));
+  ///
+  /// [placedBy] is the uuid of the player that placed the block, which
+  /// `AdvancementBehaviour.setPlacedBy` remembers.
+  CreateBlockEntity? createAt(
+    World world,
+    BlockPos pos,
+    String typeKey, {
+    String? placedBy,
+  }) => Perf.measure(
+    'place.createBlockEntity',
+    () => _createAt(world, pos, typeKey, placedBy: placedBy),
+  );
 
-  CreateBlockEntity? _createAt(World world, BlockPos pos, String typeKey) {
+  CreateBlockEntity? _createAt(
+    World world,
+    BlockPos pos,
+    String typeKey, {
+    String? placedBy,
+  }) {
     final worldId = worlds.touch(world);
     final existing = at(worldId, pos);
     if (existing != null && existing.typeKey == typeKey) return existing;
     final be = _instantiate(worldId, pos, typeKey);
     if (be == null) return null;
+    be.placedBy = placedBy;
     _put(be);
     _guard(be, 'onLoad', be.onLoad);
     _publish(be, world);

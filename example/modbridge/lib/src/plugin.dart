@@ -45,6 +45,12 @@ final class ModBridgePlugin extends Plugin {
 
   void _handshake(Context context) {
     context.onConfiguration((connection) async {
+      // A previous connection for this player may have ended after the
+      // handshake without ever joining (no playerLeave then); drop any
+      // stale entry so a mod-less reconnect is not mistaken for a mod user.
+      // Mod users are re-accepted below.
+      _users.remove(connection.uuid);
+
       // Mod loaders only let a client send channels the server announced.
       connection.announceChannels([Protocol.ackChannel]);
 

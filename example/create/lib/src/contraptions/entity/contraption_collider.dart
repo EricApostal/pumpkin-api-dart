@@ -21,6 +21,14 @@ abstract final class ContraptionColliderHooks {
   /// `entity.hurt(CreateDamageSources.runOver(...), damage)`.
   static void Function(ContraptionCollisionEntity entity, double damage)?
   damageRunOver;
+
+  /// `ContraptionCollider.java:363-367`: a contraption that killed an entity on
+  /// the track awards `TRAIN_ROADKILL` to the player controlling it.
+  ///
+  /// A hook rather than a call into the actuator runtime, so this file stays free
+  /// of host imports: it is reached by `package:sable/sable.dart`, which the VM
+  /// tests load, and one host import here makes that barrel wasm-only.
+  static void Function(String? controllingPlayer)? awardTrainRoadkill;
 }
 
 /// `ContraptionCollider`.
@@ -313,6 +321,13 @@ abstract final class ContraptionCollider {
       entity,
       (damage * 16).toInt().toDouble(),
     );
+
+    // `ContraptionCollider.java:363-367`: a contraption that kills on the track awards
+    // `TRAIN_ROADKILL` to the controlling player (`getControllingPlayer`). Installed by the
+    // contraptions module (see `ContraptionColliderHooks`).
+    if (!entity.isAlive) {
+      ContraptionColliderHooks.awardTrainRoadkill?.call(contraptionEntity.controllingPlayer);
+    }
 
     return VecHelper.clamp(entityMotion + diffMotion, 3);
   }

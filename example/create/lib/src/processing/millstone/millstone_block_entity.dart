@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/kinetics.dart';
 import '../common/capabilities.dart';
 import '../common/stack.dart';
@@ -32,7 +33,17 @@ class MillstoneBlockEntity extends KineticBlockEntity
   /// `lastRecipe`: the recipe the input matched last (transient, as in Java).
   RecipeMatch? lastMatch;
 
+  /// `registerAwardables(behaviours, MILLSTONE)` (`MillstoneBlockEntity.java:71`): the millstone
+  /// awards its owner.
+  late final AdvancementBehaviour advancements;
+
   MillstoneBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.millstone],
+        () => ProcessingRuntime.instance.advancements,
+      ),
+    );
     inputInv = SmartInventory(1, onChanged: (_) => markDirty());
     outputInv = SmartInventory(9, onChanged: (_) => markDirty());
     capability = MillstoneStorage(inputInv, outputInv, canProcess: _canProcess);
@@ -134,6 +145,9 @@ class MillstoneBlockEntity extends KineticBlockEntity
     if (remainder != null && !remainder.isEmpty) {
       ItemStorages.insertStacked(outputInv, remainder);
     }
+    // `award(AllAdvancements.MILLSTONE)` (`MillstoneBlockEntity.java:173`): after the results
+    // land in the output.
+    unawaited(advancements.awardPlayer(AllAdvancements.millstone));
     markDirty();
     sendData();
   }

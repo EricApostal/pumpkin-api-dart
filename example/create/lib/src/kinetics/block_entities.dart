@@ -7,6 +7,8 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../api/decoration.dart' show BracketedBlockEntityBehaviour;
 import '../api/value_settings.dart';
+import '../content/advancement_ids.dart' show AllAdvancements;
+import 'advancement_access.dart';
 import 'behaviours.dart';
 import 'geometry.dart';
 import 'kinetic_block_entity.dart';
@@ -523,6 +525,22 @@ class SpeedControllerBlockEntity extends KineticBlockEntity
     detachKinetics();
     removeSource();
     attachKinetics();
+    // `SpeedControllerBlockEntity.java:82-83`: a large cogwheel on top of the controller, with a
+    // running network, awards `SPEED_CONTROLLER` to the player that placed it.
+    if (speed != 0 && _hasCogwheelAbove()) {
+      KineticsAdvancements.awardPlacer(this, AllAdvancements.speedController);
+    }
+  }
+
+  /// `SpeedControllerBlockEntity.isCogwheelPresent()` (`:139-145`): a dedicated large cogwheel
+  /// with a horizontal axis directly above the controller.
+  bool _hasCogwheelAbove() {
+    final above = world?.getBlockStateId(pos: BlockPos(x: pos.x, y: pos.y + 1, z: pos.z));
+    if (above == null) return false;
+    final state = runtime.states.decode(above);
+    if (state.block != 'create:large_cogwheel') return false;
+    if ((state.axisOf('axis') ?? KAxis.y) == KAxis.y) return false;
+    return runtime.blocks.isLargeCog(state);
   }
 }
 
@@ -615,6 +633,11 @@ class CuckooClockBlockEntity extends KineticBlockEntity {
       animationType = 'SURPRISE';
     animationProgress = 0;
     _sendAnimationUpdate = true;
+    // `CuckooClockBlockEntity.java:184`: the creeper animation awards `CUCKOO_CLOCK` to the
+    // placer, provided they are within 32 blocks (`awardIfNear`).
+    if (animation == 'CREEPER') {
+      KineticsAdvancements.awardPlacerIfNear(this, AllAdvancements.cuckooClock, 32);
+    }
     sendData();
   }
 }

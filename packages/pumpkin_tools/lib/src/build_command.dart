@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 import 'package:wasm_tools/wasm_tools.dart';
 import 'package:yaml/yaml.dart';
 
+import 'core_modules.dart';
+
 /// `pumpkin build`: compiles the plugin in the current directory to a
 /// WebAssembly component that Pumpkin can load.
 final class BuildCommand extends Command<int> {
@@ -68,10 +70,22 @@ final class BuildCommand extends Command<int> {
       ..level = results.flag('verbose') ? Level.ALL : Level.WARNING;
     logger.onRecord.listen((record) => stderr.writeln(record.message));
 
+    final List<CoreModuleInput> coreModules;
+    try {
+      coreModules = readCoreModules(entrypoint);
+    } on CoreModuleDeclarationError catch (e) {
+      stderr.writeln('Build failed: ${e.message}');
+      return 1;
+    }
+
     final stopwatch = Stopwatch()..start();
     try {
       await ComponentCompiler(
-        CompilerOptions(entrypoint, output),
+        CompilerOptions(
+          entrypoint,
+          output,
+          coreModules: coreModules,
+        ),
         logger,
       ).run();
     } on CompilerFailure catch (e) {

@@ -11,6 +11,7 @@ import '../core/blocks.dart' show CreateBlock;
 import '../core/perf.dart';
 import '../core/worlds.dart';
 import '../api/config.dart' as cfg;
+import 'foreign.dart';
 import 'geometry.dart';
 import 'node.dart';
 import 'settings.dart';
@@ -57,6 +58,9 @@ final class HostKineticLevel extends KineticLevel {
 
   HostKineticLevel(this.worldId, this.runtime);
 
+  /// The foreign nodes of this world, created on first use.
+  late final foreign = ForeignKineticNodes(this);
+
   @override
   KineticConfig get settings => runtime.settings;
   @override
@@ -67,9 +71,16 @@ final class HostKineticLevel extends KineticLevel {
   World? get world => runtime.worlds.byId(worldId);
 
   @override
+  bool get hosted => runtime.hosted;
+
+  @override
   KineticNode? nodeAt(KPos pos) {
+    // A component that does not own the network has no node of its own to offer
+    // (its block entities are announced to the owner instead).
+    if (hosted) return null;
     final be = runtime.store.at(worldId, toBlockPos(pos));
-    return be is KineticNode ? be as KineticNode : null;
+    if (be is KineticNode) return be as KineticNode;
+    return foreign.at(pos);
   }
 
   // A propagation pass reads each position of a network several times: every node asks for its
@@ -157,6 +168,17 @@ final class HostKineticLevel extends KineticLevel {
           .whenComplete(() => _destroying.remove(pos)),
     );
   }
+
+  // -- The link to the component that runs the network -------------------------
+
+  @override
+  void nodeAttached(KineticNode node) => runtime.ownerLink?.nodeAttached(node);
+
+  @override
+  void nodeDetached(KineticNode node) => runtime.ownerLink?.nodeDetached(node);
+
+  @override
+  void nodeChanged(KineticNode node) => runtime.ownerLink?.nodeChanged(node);
 }
 
 /// Who knows how efficient a boiler is: the fluids module provides it so the
@@ -263,6 +285,13 @@ final class KineticsRuntime {
   /// Provided by the fluids module: the efficiency of boilers (steam engine).
   SteamEngineBoilerSource? boilerSource;
 
+  /// The link to the component that runs the network, when this component does
+  /// not (`foreign.dart`). Create's own plugin never sets it — it *is* the owner.
+  KineticOwnerLink? ownerLink;
+
+  /// Whether another component runs the kinetic network (see [ownerLink]).
+  bool get hosted => ownerLink?.hosted ?? false;
+
   final Map<String, HostKineticLevel> _levels = {};
 
   KineticsRuntime(this.fallbackSettings, this.store, this.worlds, this.log) {
@@ -270,6 +299,9 @@ final class KineticsRuntime {
   }
 
   HostKineticLevel level(String worldId) => _levels.putIfAbsent(worldId, () => HostKineticLevel(worldId, this));
+
+  /// The worlds this runtime has a level view of.
+  Iterable<String> get levelIds => _levels.keys;
 
   /// Forgets the networks of a world (world unload).
   void forgetWorld(String worldId) => _levels.remove(worldId)?.clearNetworks();

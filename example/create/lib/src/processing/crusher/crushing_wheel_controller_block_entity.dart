@@ -10,6 +10,7 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/kinetics.dart';
 import '../../common/nbt_convert.dart';
 import '../../core/block_entity.dart';
@@ -240,6 +241,13 @@ class CrushingWheelControllerBlockEntity extends CreateBlockEntity
       if (wheel == null) continue;
       crushingspeed = (wheel.speed / 50).abs();
       sendData();
+      // `cwbe.award(CRUSHING_WHEEL)` and, past `maxRotationSpeed - 1`, `CRUSHER_MAXED`
+      // (`CrushingWheelControllerBlock.java:158-160`): both go to the adjacent wheel's owner.
+      unawaited(wheel.advancements.awardPlayer(AllAdvancements.crushingWheel));
+      final maxSpeed = KineticsRuntime.instance.settings.maxRotationSpeed;
+      if (wheel.speed.abs() > maxSpeed - 1) {
+        unawaited(wheel.advancements.awardPlayer(AllAdvancements.crusherMaxed));
+      }
       break;
     }
   }

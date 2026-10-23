@@ -442,3 +442,11 @@ Public API: `import 'package:create/src/api/kinetics.dart';` (= `lib/src/kinetic
   that need more than the generic `facing` / `axis` rule (encased cogwheels, chain drives, gauges).
 * **Not ported (client only):** renderers / visuals, goggle tooltips, the overstress and
   rotation sound effects, ComputerCraft peripherals.
+* **Across plugin components.** A plugin that links `package:create` but is not Create runs its
+  own `KineticsRuntime` (see `installHostedModuleState`), so its kinetic blocks would otherwise
+  build a network of their own. Create's plugin **owns** the network for every component and the
+  others reach it over the IPC channel `create.kinetics`: the rules of a block cross as
+  `WireKineticDef` (`kinetics/wire_def.dart`), a foreign node is materialised as data
+  (`kinetics/foreign.dart`), and the verdict comes back and runs in the component that owns the
+  block entity. The decision, its cost and the deviations are in
+  [kinetics-across-plugins.md](kinetics-across-plugins.md).

@@ -8,8 +8,6 @@ environment:
 
 dependencies:
   crypto: ^3.0.7
-  hooks: ^2.0.2
-  wasm_tools:
   pumpkin_api:
     path: ../../packages/pumpkin_api
   pumpkin_neoforge:
@@ -27,3 +25,17 @@ dev_dependencies:
   pumpkin_tools:
     path: ../../packages/pumpkin_tools
   test: ^1.25.6
+
+# The Lua core module (`native/lua/lua.wasm`, built from `native/lua/` by
+# `native/lua/build.sh`) is linked into this package's component by
+# `pumpkin_tools build`, which reads this block from the pubspec of the package
+# it compiles.
+#
+# This must not be a `hook/build.dart`: a build hook runs for every package
+# that depends on the package owning it, so the module would also be linked
+# into the components of this plugin's dependents, where nothing imports `lua`
+# and the link fails with `Expected compiled app to export {host_call}`.
+pumpkin:
+  core_modules:
+    - name: lua
+      path: native/lua/lua.wasm

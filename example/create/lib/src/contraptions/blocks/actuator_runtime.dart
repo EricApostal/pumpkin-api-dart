@@ -3,9 +3,11 @@
 // read it through [ActuatorRuntime.instance] (the store constructs them without a module context).
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart' show CreateAdvancements;
 import '../../api/block_state.dart';
 import '../../common/common.dart';
 import '../../core/block_entity.dart';
+import '../../core/services.dart';
 import '../../core/worlds.dart';
 import '../../kinetics/api.dart' show KineticsRuntime;
 import '../../kinetics/geometry.dart' show Dir, KState;
@@ -82,6 +84,10 @@ final class ActuatorRuntime {
   final Worlds worlds;
   final Logger log;
 
+  /// The module service locator, for the block entities' advancements (Java
+  /// `SmartBlockEntity.registerAwardables` / `award`).
+  final CreateServices services;
+
   /// The live configs, `null` when the infrastructure module is disabled.
   final CreateConfigs? configs;
 
@@ -90,10 +96,14 @@ final class ActuatorRuntime {
     required this.store,
     required this.worlds,
     required this.log,
+    required this.services,
     this.configs,
   }) {
     _instance = this;
   }
+
+  /// The content module's `CreateAdvancements`: what an [AdvancementBehaviour] hands a player.
+  CreateAdvancements? get advancements => services.find<CreateAdvancements>();
 
   /// `AllConfigs.server().kinetics.contraptions.maxCartCouplingLength`.
   int get maxCartCouplingLength =>

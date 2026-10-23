@@ -38,6 +38,10 @@ final class FakeChunk implements PlotChunk {
 
   final Map<(int, int, int), String> blocks;
 
+  /// Block-entity data by packed local position, so tests can install saved
+  /// data the way `MemoryPlotChunk.blockEntities` does for production.
+  final Map<int, Map<String, Object?>> blockEntityDataForTest = {};
+
   FakeChunk(this.pos, [Map<(int, int, int), String>? blocks]) : blocks = blocks ?? {};
 
   @override
@@ -56,7 +60,18 @@ final class FakeChunk implements PlotChunk {
   String blockAt(int x, int y, int z) => blocks[(x, y, z)] ?? 'minecraft:air';
 
   @override
-  Map<String, Object?>? blockEntityData(int x, int y, int z) => null;
+  Map<String, Object?>? blockEntityData(int x, int y, int z) =>
+      blockEntityDataForTest[indexOfBlock(x, y, z)];
+
+  @override
+  final Map<int, PlotScheduledTick> blockTicks = {};
+
+  @override
+  int indexOfBlock(int x, int y, int z) => ((y & 0xFFF) << 8) | ((z & 15) << 4) | (x & 15);
+
+  @override
+  void scheduleBlockTick(int x, int y, int z, PlotScheduledTick tick) =>
+      blockTicks[indexOfBlock(x, y, z)] = tick;
 }
 
 class FakeChunkHost implements PlotChunkHost, PlayerLookupHost {
@@ -111,6 +126,15 @@ class FakeChunkHost implements PlotChunkHost, PlayerLookupHost {
       for (final entry in (chunk as FakeChunk).blocks.entries)
         '${entry.key.$1},${entry.key.$2},${entry.key.$3}': entry.value,
     },
+    if (chunk.blockEntityDataForTest.isNotEmpty)
+      'block_entities': {
+        for (final entry in chunk.blockEntityDataForTest.entries) '${entry.key}': {...entry.value},
+      },
+    if (chunk.blockTicks.isNotEmpty)
+      'block_ticks': {
+        for (final entry in chunk.blockTicks.entries)
+          '${entry.key}': {'delay': entry.value.delay, 'priority': entry.value.priority.index},
+      },
   };
 
   @override
@@ -121,6 +145,32 @@ class FakeChunkHost implements PlotChunkHost, PlayerLookupHost {
       for (final entry in blocks.entries) {
         final parts = (entry.key as String).split(',').map(int.parse).toList();
         chunk.blocks[(parts[0], parts[1], parts[2])] = entry.value as String;
+      }
+    }
+    final entities = tag['block_entities'];
+    if (entities is Map) {
+      for (final entry in entities.entries) {
+        final index = int.tryParse('${entry.key}');
+        final value = entry.value;
+        if (index == null || value is! Map) continue;
+        chunk.blockEntityDataForTest[index] = Map<String, Object?>.from(value);
+      }
+    }
+    final ticks = tag['block_ticks'];
+    if (ticks is Map) {
+      for (final entry in ticks.entries) {
+        final index = int.tryParse('${entry.key}');
+        final value = entry.value;
+        if (index == null || value is! Map) continue;
+        final delay = (value['delay'] as num?)?.toInt();
+        final priority = (value['priority'] as num?)?.toInt();
+        if (delay == null || delay < 0) continue;
+        chunk.blockTicks[index] = PlotScheduledTick(
+          delay,
+          priority != null && priority >= 0 && priority < PlotTickPriority.values.length
+              ? PlotTickPriority.values[priority]
+              : PlotTickPriority.normal,
+        );
       }
     }
     chunks[(x, z)] = chunk;

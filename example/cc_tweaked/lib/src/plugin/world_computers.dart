@@ -336,6 +336,10 @@ final class CcWorldComputers {
     if (last != null && _tick - last < 4) return;
     final bytes = event.item.customComponent(CcComponents.computerId);
     var id = bytes == null ? null : _tryId(bytes);
+    // A pocket computer must be one before its machine is built: `record.pocket`
+    // is what gives it the `pocket` API (`_instantiate`). A computer from before
+    // this plugin version is marked here, and its running machine is rebuilt.
+    final marked = id != null && _service.markPocket(id);
     Computer? computer = id == null ? null : (_service.computer(id) ?? _service.resume(id));
     if (computer == null) {
       final owner = player.getId().asString;
@@ -344,7 +348,7 @@ final class CcWorldComputers {
         player.send('&cYou can own at most $limit computers.');
         return;
       }
-      computer = _service.create(family: family, owner: owner, ownerName: player.getName());
+      computer = _service.create(family: family, owner: owner, ownerName: player.getName(), pocket: true);
       id = computer.id;
       // The held stack that event.item copies: write the id into the real one.
       final held = player.getItemInHand(hand: event.hand);
@@ -352,7 +356,16 @@ final class CcWorldComputers {
         held.setCustomComponent(CcComponents.computerId, CcComponents.encodeComputerId(id));
         await player.setItemInHand(hand: event.hand, stack: held);
       }
+    } else if (marked) {
+      final pocket = _service.pocketHost(computer.id);
+      if (pocket != null) {
+        computer.pocket = pocket;
+        if (computer.isOn) computer.reboot();
+      }
     }
+    // The item is what says which upgrades the computer has: give them their
+    // peripherals (`PocketBrain` follows its holder).
+    _service.pocketHost(computer.id)?.attachFromItem(event.item);
     _lastPocketOpen[uuid] = _tick;
     final menu = event.hand == Hand.left ? 'computercraft:pocket_computer_no_term' : 'computercraft:computer';
     final containerId = _network.open(player, computer, itemName: _pathOf(itemKey), menu: menu);
@@ -573,6 +586,8 @@ final class CcWorldComputers {
         _pending.removeWhere((_, p) => _tick - p.tick > 40);
       }
       _flushPendingSimulated();
+      // The pocket requests a program queued while the computers ran this tick.
+      await _service.servePockets(server);
       for (final placed in _placed.values.toList()) {
         final id = placed.computerId;
         if (id == null) continue;

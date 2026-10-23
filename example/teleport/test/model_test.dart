@@ -20,6 +20,15 @@ void main() {
     expect(home.describe(), 'overworld 10, 64, -3');
   });
 
+  test('a saved place is described with the world name it stores', () {
+    // `Location.world` holds `World.getName()` (the folder name, `world`), which has no
+    // `minecraft:` prefix; `describe` leaves it as is.
+    expect(
+      const Location(world: 'world', x: 1, y: 2, z: 3).describe(),
+      'world 1, 2, 3',
+    );
+  });
+
   test('config uses defaults for missing values', () {
     final config = TeleportConfigMapper.fromJson('{"maxHomes": 5}');
     expect(config.maxHomes, 5);

@@ -2,8 +2,11 @@
 // or glass pipe into the encased pipe, and the wrench converts between the pipe variants and
 // toggles a tank's windows. Registered from the module's `onServerLoaded`, because the decoration
 // and equipment modules (which provide the registries) load after this one.
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../api/advancements.dart';
 import '../api/block_state.dart';
 import '../api/blocks.dart' show setBlockState, toDirection;
 import '../api/contraption/transformable.dart'
@@ -145,6 +148,24 @@ Future<WrenchResult> _fluidPipeToGlass(WrenchContext c) async {
     'alt': 'false',
     'waterlogged': state['waterlogged'] ?? 'false',
   });
+  // `FluidPipeBlock.onWrenched` (`Java FluidPipeBlock.java:110`): a pipe that still has flow on
+  // any side gives the wrenching player `AllAdvancements.GLASS_PIPE` before it becomes the glass
+  // pipe. The check runs on the pipe's own block entity, before `_switchPipe` replaces it.
+  final worldId = FluidsRuntime.instance.worlds.touch(c.world);
+  final connections = FluidsRuntime.instance.store
+      .at(worldId, c.pos)
+      ?.getBehaviour<FluidTransportBehaviour>()
+      ?.interfaces;
+  if (connections != null &&
+      connections.values.any((connection) => connection.hasFlow) &&
+      FluidsRuntime.instance.advancements != null) {
+    final kept = c.player.keep();
+    unawaited(
+      FluidsRuntime.instance.advancements!
+          .award(kept, AllAdvancements.glassPipe)
+          .whenComplete(kept.dispose),
+    );
+  }
   await _switchPipe(c.world, c.pos, glass);
   return WrenchResult.success;
 }

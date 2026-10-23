@@ -16,6 +16,8 @@ import 'network.dart';
 import 'registry_install.dart';
 import 'service.dart';
 import 'world_computers.dart';
+import 'world_monitors.dart';
+import 'world_peripherals.dart';
 import 'world_turtles.dart';
 
 /// How often the in-game clock is read from the world, in ticks.
@@ -36,6 +38,8 @@ final class CcTweakedPlugin extends Plugin {
   late CcService _service;
   CcWorldComputers? _world;
   CcWorldTurtles? _turtles;
+  CcWorldPeripherals? _peripherals;
+  CcWorldMonitors? _monitors;
   int _tick = 0;
 
   @override
@@ -85,6 +89,11 @@ final class CcTweakedPlugin extends Plugin {
       final world = CcWorldComputers(_service, network, states)..install(context);
       _world = world;
       _turtles = CcWorldTurtles(_service, network, states, datapack)..install(context);
+      // The peripheral blocks (`disk_drive`, `printer`, `speaker`,
+      // `redstone_relay`, the cables and wired modems, and a computer or turtle
+      // seen by its neighbours) and the monitors.
+      _peripherals = CcWorldPeripherals(_service, network, states)..install(context);
+      _monitors = CcWorldMonitors(_service, network, states, network.monitor)..install(context);
     }
 
     context.runRepeating(1, (server) {
@@ -94,6 +103,8 @@ final class CcTweakedPlugin extends Plugin {
       // runs, so they are not awaited here: the rest of the tick goes on.
       unawaited(_world?.tick(server));
       unawaited(_turtles?.tick(server));
+      unawaited(_peripherals?.tick(server));
+      unawaited(_monitors?.tick(server));
       unawaited(network.tick(server));
     });
     context.onUnload(_service.shutdown);

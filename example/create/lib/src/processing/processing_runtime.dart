@@ -6,6 +6,7 @@ import 'dart:math';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../api/advancements.dart' show CreateAdvancements;
 import '../api/config.dart' as cfg;
 import '../core/block_entity.dart';
 import '../core/services.dart';
@@ -48,6 +49,9 @@ final class ProcessingRuntime {
 
   /// The live config of the infrastructure module (`AllConfigs`), when loaded.
   cfg.CreateConfigs? get configs => services.find<cfg.CreateConfigs>();
+
+  /// The content module's advancement service (`SmartBlockEntity.award` -> `AdvancementBehaviour`).
+  CreateAdvancements? get advancements => services.find<CreateAdvancements>();
 
   void dispose() {
     if (identical(_instance, this)) _instance = null;

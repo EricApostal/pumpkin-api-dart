@@ -24,6 +24,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 
 import '../../../service/sim_services.dart';
+import '../../advancements/sim_advancements.dart';
 import 'portable_engine_block_entity.dart';
 
 /// The block key of the engine of [colour] (`simulated:<colour>_portable_engine`).
@@ -258,6 +259,9 @@ Future<BlockUseResult> _useItem(
   if (itemKey == 'create:creative_blaze_cake') {
     be?.burn.applyCreativeBlazeCake();
     be?.sendData();
+    // `if (!slot.isEmpty()) SimAdvancements.STEAMLESS_ENGINE.awardTo(player);`
+    // (`PortableEngineBlock.java:170`).
+    if (be != null && !be.slot.isEmpty) SimAdvancements.award(event.player, 'steamless_engine');
     return BlockUseResult.success;
   }
 
@@ -299,5 +303,13 @@ Future<BlockUseResult> _useItem(
     }
   }
   be.sendData();
+  // `PortableEngineBlock.useItemOn` (`PortableEngineBlock.java:165`): ten hours
+  // of fuel awards `THAT_SHOULD_DO_FOR_NOW`; anything left in the slot awards
+  // `STEAMLESS_ENGINE` (`:170`).
+  final nextFuelTicks = be.slot.isEmpty ? 0 : SimServices.instance.host.burnTime(be.slot.key);
+  if (be.totalBurnTime >= 20 * 60 * 60 * 10 && !be.burn.isTotalFuelInfinite(nextFuelTicks)) {
+    SimAdvancements.award(event.player, 'that_should_do_for_now');
+  }
+  if (!be.slot.isEmpty) SimAdvancements.award(event.player, 'steamless_engine');
   return BlockUseResult.success;
 }

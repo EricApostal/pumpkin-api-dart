@@ -83,6 +83,14 @@ abstract class BasinOperatingBlockEntity extends KineticBlockEntity {
     return BasinRecipeOps.matches(basin, recipe, rt.recipes.tags, rt.random);
   }
 
+  /// The trigger awarded when a basin cycle completes (`getProcessedRecipeTrigger`): presses
+  /// return `COMPACTING`, mixers `MIXER`. `null` for operators with no recipe award.
+  String? get processedRecipeAward => null;
+
+  /// Awards [award] for a completed basin cycle (only the trigger path exists on the base type;
+  /// the press and the mixer each own their players through `registerAwardables`).
+  void onBasinCycleCompleted(String award) {}
+
   /// `applyBasinRecipe`: consume the inputs and accept the outputs.
   void applyBasinRecipe() {
     final recipe = currentRecipe;
@@ -100,6 +108,12 @@ abstract class BasinOperatingBlockEntity extends KineticBlockEntity {
       test: false,
     ))
       return;
+
+    // `getProcessedRecipeTrigger().ifPresent(this::award)`
+    // (`BasinOperatingBlockEntity.java:120`): a completed basin cycle (only the success path,
+    // after `BasinRecipe.apply` returns true) awards the trigger to the owner.
+    final award = processedRecipeAward;
+    if (award != null) onBasinCycleCompleted(award);
 
     // Continue with the same recipe when the inputs allow another run.
     if (wasEmpty && matchBasinRecipe(recipe)) {

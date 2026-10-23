@@ -123,7 +123,9 @@ CreateBlock buildGyroscopicPropellerBearingBlock() => CreateBlock(
   key: gyroscopicPropellerBearingKey,
   properties: [CreateProps.facing],
   defaultState: {'facing': 'north'},
-  hardness: 3,
+  // `initialProperties(SharedProperties::stone)` + `sound(COPPER)`
+  // (`AeroBlocks.java:267-271`) -> 1.5 / 6.0, copper.
+  hardness: 1.5,
   blastResistance: 6,
   requiresCorrectTool: true,
   soundType: 'copper',

@@ -8,7 +8,7 @@ import 'dart:math' as math;
 
 import '../../api/block_state.dart';
 import '../../common/common.dart';
-import '../../core/nbt.dart' show NbtValue;
+import '../../core/nbt.dart' show NbtKind, NbtValue;
 import '../core/collision.dart' show Matrix3d;
 import '../core/contraption.dart';
 import '../core/level.dart';
@@ -240,6 +240,13 @@ abstract final class ContraptionEntityHooks {
     InteractingPlayer player,
   )?
   leashedMob;
+
+  /// `AbstractContraptionEntity.java:205-210`: the player [passenger] dismounted more
+  /// than 5000 blocks from where they mounted, so they are awarded `LONG_TRAVEL`.
+  ///
+  /// A hook, so this file stays free of host imports: `package:sable/sable.dart`
+  /// reaches it, and the VM tests load that barrel.
+  static void Function(ContraptionPassengerRef passenger)? awardLongTravel;
 }
 
 /// `AbstractContraptionEntity`.
@@ -355,6 +362,14 @@ abstract class AbstractContraptionEntity implements ContraptionEntityHandle {
     host.addPassenger(ref, force: true);
     if (ref.isTamableAnimal) ref.setInSittingPose(true);
     c.getSeatMapping()[ref.uuid] = seatIndex;
+    // `CarriageContraptionEntity.addPassenger`: a player that sits down records where they
+    // mounted, so dismounting far away awards `LONG_TRAVEL`.
+    if (ref.isPlayer) {
+      ref.setPersistentData(
+        'ContraptionMountLocation',
+        writeVec(getPassengerPosition(ref, 1) ?? host.position),
+      );
+    }
 
     host.sendSeatMapping(c.getSeatMapping());
   }
@@ -371,6 +386,10 @@ abstract class AbstractContraptionEntity implements ContraptionEntityHandle {
         'ContraptionDismountLocation',
         writeVec(transformed),
       );
+      // `AbstractContraptionEntity.getDismountLocationForPassenger` (`LONG_TRAVEL`,
+      // `AbstractContraptionEntity.java:205-210`): a player that gets off more than 5000 blocks
+      // from where they mounted is awarded.
+      if (passenger.isPlayer) awardLongTravel(passenger, transformed);
     }
     c.getSeatMapping().remove(passenger.uuid);
     host.sendSeatMapping(c.getSeatMapping(), dismountedId: passenger.entityId);
@@ -416,6 +435,21 @@ abstract class AbstractContraptionEntity implements ContraptionEntityHandle {
       partialTicks,
     );
     return transformed + VecHelper.centerOfOrigin - (0.5, ySize, 0.5);
+  }
+
+  /// `AbstractContraptionEntity.getDismountLocationForPassenger` (`LONG_TRAVEL`,
+  /// `AbstractContraptionEntity.java:205-210`): awards the online player [passenger] when their
+  /// dismount position is more than 5000 blocks from `ContraptionMountLocation`.
+  static void awardLongTravel(ContraptionPassengerRef passenger, Vec3 dismount) {
+    final stored = passenger.getPersistentData('ContraptionMountLocation');
+    passenger.setPersistentData('ContraptionMountLocation', null);
+    if (stored == null || stored.kind != NbtKind.list) return;
+    final mount = readVec(stored.value as List<NbtValue>);
+    final dx = dismount.$1 - mount.$1;
+    final dy = dismount.$2 - mount.$2;
+    final dz = dismount.$3 - mount.$3;
+    if (dx * dx + dy * dy + dz * dz < 5000 * 5000) return;
+    ContraptionEntityHooks.awardLongTravel?.call(passenger);
   }
 
   /// `canAddPassenger(passenger)`.

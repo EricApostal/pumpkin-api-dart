@@ -191,13 +191,34 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
       final d = eye.distanceSquaredTo(target.getPosition());
       if (d > range * range) return;
       if (hand == null) {
-        // `sender.attack(entity)`: a plain hit with the player's attack damage.
+        // `sender.attack(entity)`: the player's own attack path (`Player::attack`,
+        // `pumpkin-core/src/entity/player.rs:1342`); `damage` stands in for it, because no host
+        // function runs the full attack (stats, mending, the charge gate).
         final tl = target.asLiving();
         if (tl != null && living != null) {
           await tl.damage(amount: living.getAttributeValue(attr: Attribute.attackDamage), damageType: DamageType.playerAttack);
         }
+        return;
       }
-      // Interactions (`interactOn`) cannot be forwarded through the host API.
+      // `sender.interactOn(entity, hand, point)` (`ExtendoGripInteractionPacket.handle`, the
+      // `this.hand != null` branch): the long-range *interaction* cannot be forwarded. The host
+      // exposes no entity-interaction call at all -- `player.wit` has no `interact-on`, and the
+      // only combat entry point `living-entity.damage`/`damage-by-key` covers the attack branch
+      // above; nothing reaches `Entity::interact` / `ItemRegistry::use_on_entity`
+      // (`pumpkin-core/src/net/java/play/interact.rs:100-120` is the only caller, from the raw
+      // packet). What is needed is
+      // `player.interact-on(entity: borrow<entity>, hand: hand, point: position)`
+      // over that same path (`player.inventory().held_item()` -> `target.interact` ->
+      // `use_on_entity`), plus the block-use event the packet path fires first. Until then only
+      // the attack half of `ExtendoGripInteractionPacket` is ported (and official servers ignore
+      // entity interactions beyond 6 blocks, which is the whole reason Java has the packet).
+      // The grip's own `doesSneakBypassUse` (`ExtendoGripItem.java:181-183`, `true`) is the other
+      // half of this: the host's block-use guard `if !(sneaking && (!held_item_empty ||
+      // !off_hand_item_empty))` (`pumpkin-core/src/net/java/play/use_item_on.rs:162`) has no
+      // item-level bypass term, so a sneaking click with the grip in hand skips the block's use
+      // in the port where Java would let the block handle it. That needs
+      // `item-definition.sneak-bypass-use: bool` (or `item-stack.does-sneak-bypass-use`)
+      // consulted in that guard.
     }());
   }
 
@@ -463,15 +484,17 @@ final class MiscItemsHost implements ExtendoGripApi, SandPaperApi {
     final attackerLiving = attacker.asEntity().asLiving();
     var strength = (attackerLiving?.getAttributeValue(attr: Attribute.attackKnockback) ?? 0) + 2;
     strength += (await stack.enchantmentLevel(Enchantment.knockback)).toDouble();
-    // `CardboardSwordItem.java:83`: `attacker.isSprinting() &&
+    // - `CardboardSwordItem.java:83`: `attacker.isSprinting() &&
     // attacker.getAttackStrengthScale(0.5f) > 0.9f`. The host computes the same charge internally
-    // (`Player::get_attack_cooldown_progress`, `pumpkin-core/src/entity/player.rs:3197-3203`, the
-    // `LivingEntity.getAttackStrengthScale` formula `(attackStrengthTicker + partialTicks) /
-    // attackSpeed` clamped to 0..1), but exposes it nowhere: no function of `player.wit` or
-    // `entity.wit` returns the attack cooldown or its ticker (`player.wit:1058-1063`'s
-    // `get-cooldown` is the *item group* cooldown). `player.get-attack-strength-scale:
-    // func(partial-ticks: f32) -> f32` over that function would let the gate be reproduced; until
-    // then the sprint bonus is applied without it.
+    // (`Player::get_attack_cooldown_progress`, `pumpkin-core/src/entity/player.rs:3197-3203`, fed
+    // by `last_attacked_ticks`, reset on attack at `:1425` and counting up since the last hit at
+    // `:3007`), but exposes it nowhere: no function of `player.wit` or `entity.wit` returns the
+    // attack cooldown (`player.wit:1058-1063`'s `get-cooldown` is the *item group* cooldown).
+    // `player.get-attack-strength-scale: func(partial-ticks: f32) -> f32` over that function (the
+    // attack speed comes from the held item's `minecraft:base_attack_speed`, see
+    // `player.rs:1374-1388`) would let the gate be reproduced; until then the sprint bonus is
+    // applied without it (verified in source: `last_attacked_ticks` is written by the host but
+    // unreadable from wasm).
     if (attacker.asEntity().isSprinting()) strength += 1;
     if (strength <= 0) return e.cancel();
     final yRot = attacker.getYaw();

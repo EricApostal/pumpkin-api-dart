@@ -45,24 +45,32 @@ met.
 | P0.3 | ids of block entity types, menu types, data component types | `plugin-block-entity.register-block-entity-type`, `menus.register-menu-type`, `custom-components.register-data-component-type` (ids `vanilla count + n`, closed after `server-load-event`; permissions `registry.block-entities`, `registry.menus`, `registry.components`) | registers 16 + 7 + 14 in the order of the sync after items and blocks, checks the host's vanilla counts and every id, refuses to load otherwise (`registry_install.dart`) | no. Recipe serializers and `computercraft:recipe_function` ids are still not host registries (not needed: the host never writes them for CC's entries) |
 | P1.1 | block state at placement | `block-placement.set-block-placement-rules` (`registry.blocks`) | one rule list per block copied from the Java `getStateForPlacement` (`CcBlockSpec.placement`): facing, clicked face, monitor orientation by pitch, waterlogged | no |
 | P1.1 | more than 4096 states per block | per-block limit raised to 16384 | all 16 blocks register in full when the host allows it | no |
-| P1.2 | block entities with save data and update tag | `plugin-block-entity.get/set/sync/remove-block-entity-data`, `block-entity-load-event`, `block-entity-unload-event` | computers: save data `ComputerId`/`Label`/`On`, no client data; entity created a tick after `block-place-event`, machine resumed on load, suspended on unload | no. Monitors, turtles (client data `{XIndex, YIndex, Width, Height}`, `Label`, `Fuel`, ...) are **not** done |
+| P1.2 | block entities with save data and update tag | `plugin-block-entity.get/set/sync/remove-block-entity-data`, `block-entity-load-event`, `block-entity-unload-event` | computers: save data `ComputerId`/`Label`/`On`, no client data; entity created a tick after `block-place-event`, machine resumed on load, suspended on unload. **Monitors** are done too (`plugin/world_monitors.dart`): save **and client** data `XIndex`/`YIndex`/`Width`/`Height`, the multiblock wall and its `state` edge property, `monitor_resize`/`monitor_touch`, and `monitor_client` snapshots. Turtles keep `Label`/`Fuel`/... in their save data and the client data of `turtle_nbt.dart` | no |
 | P1.3 | custom menus, `advanced_open_screen`, close event | `menus.open-menu` (extra data -> `neoforge:advanced_open_screen`), `set-menu-data`, `menu-closed-event`, `menu-click-event` | `computercraft:computer` and `pocket_computer_no_term` opened with zero slots and `ComputerContainerData` as extra data; `isOn` in data slot 0; session ends on `menu-closed-event`. Turtle, disk drive and printer menus are **not** done (no menu behaviour in the host) | no |
 | P1.4 | custom data components with codecs | `custom-components` (prefix notation codec, `set/get/remove-custom-component`) | 14 types with the exact StreamCodec shapes (`protocol/components.dart`, each cites its Java codec); `computer_id` read from items and written to the dropped/held stack | no |
 | P1.7 | the peripherals of another mod's blocks on a computer's sides | `block-callbacks.neighbor-update` (through `Context.registerBlockBehavior`), `block-entity-load-event`, `block-entity-unload-event` | the Simulated compat: the algorithm of `compat/simulated_attach.dart` (which block is on which side, attach/detach) and the adapter of `compat/simulated_peripherals.dart`; the triggers are in `plugin/world_computers.dart` (a computer's place, load and use; a neighbour of a computer changing; a peripheral's block entity loading or unloading) and the world lookups in `compat/simulated_driver.dart` | the algorithm and the adapter: yes, VM tests (`test/simulated_attach_test.dart`, `test/simulated_peripherals_test.dart`); the triggers: no |
-| P2 | interaction events with hit position, face, hand | `player-use-block-event` (with cursor), `player-use-item-event` | computer GUI on right click without sneaking; pocket computers on use; place tracking. The cursor is **not** used yet (monitor touch is not done) | no |
-| P1.6 | redstone | none | none: computers do not read or drive redstone in the world | - |
+| P2 | interaction events with hit position, face, hand | `player-use-block-event` (with cursor), `player-use-item-event` | computer GUI on right click without sneaking; pocket computers on use; place tracking; **monitor touch** (the cursor's position on the clicked front face becomes the character cell, `plugin/world_monitors.dart`); a disk drive and a printer take a disk or ink or paper from the hand | no |
+| P1.6 | redstone | `get-redstone-power`, `get-direct-redstone-power`, `has-neighbor-signal`, `get-best-neighbor-signal`, `set-block-redstone-output`, `set-block-redstone-output-face`, `update-neighbors`, `block-callbacks.neighbor-update` | the **redstone relay** (`plugin/world_peripherals.dart`) reads its six analogue inputs with `get-redstone-power` and writes changed outputs with `set-block-redstone-output-face` + `update-neighbors` every tick; its bundled methods stay state (no bundled signal API). A computer's own `redstone` API still does not touch the world (its outputs are not published) | the relay: no (needs a live run); the computer's own redstone: not done |
 | P1.5 | `turtle_upgrade` / `pocket_upgrade` datapack registries | none | **declared by the plugin** as `datapack-entries` of its NeoForge declaration (`plugin/cc_neoforge.dart`, `protocol/datapack_registries.dart`); the host puts them into the registry data of NeoForge clients (was: sent by the plugin in the finish hold): the entries come from the mod jar's data pack, converted to network NBT by `protocol/json_nbt.dart`. A host feature to contribute entries to its own `registry_data` would make this cleaner (below), but nothing is required | no |
 | P2 | turtles | no fake player, no item entities, no block drops query, no cursor control in plugin menus, no entity queries (the list is [Turtles](#turtles)) | block entity, item components, GUI, `turtle` API, movement, commands over a `TurtleWorld` adapter with the approximations listed there (`lib/src/turtle`, `plugin/world_turtles.dart`) | no |
 
-What is still missing on the host side for the rest of the mod: a redstone
-signal API, neighbour changed callbacks where the `block-callbacks`
-`neighbor-update` hook of a block does not reach (turtles and monitors want one
-for redstone and for expanding; peripheral discovery has one, see P1.7), block
-entity ticking (the plugin polls from its own tick), an API to drop an item
-entity with a custom stack (a broken computer's id goes straight into the
-player's inventory instead), `getCloneItemStack` (pick block), menu behaviour
-with real slots (disk drive, printer, turtle), the datapack registries,
-recipes, and fake players for turtles.
+What is still missing on the host side for the rest of the mod: block entity
+ticking (the plugin polls from its own tick), **an inventory for a plugin block
+entity** (`menus.wit` has slots but a menu needs a player looking at it, so a
+disk drive and a printer cannot be read as containers and their contents live in
+their own save data, see `plugin/world_peripherals.dart`), **an NBT byte
+codec** for `world.get/set-block-entity-nbt` (without it the vanilla command
+block cannot be a `command` peripheral: `getCommand`/`setCommand` have no way to
+read or write the block entity), a **captured command result** for
+`Server.executeCommand` (`execute-command-captured` is proposed but not in this
+checkout's bindings, so `runCommand` cannot report success), the **jukebox song
+registry** (a record's `playAudio` needs it for the `play_record` payload),
+`getCloneItemStack` (pick block), menu behaviour with real slots (disk drive,
+printer, turtle), the datapack registries, recipes, and fake players for
+turtles. The redstone signal API and the neighbour callbacks are **no longer
+missing**: the redstone relay uses `get-redstone-power` and
+`set-block-redstone-output-face`, and the peripheral blocks hang off
+`block-callbacks.neighbor-update`.
 
 ## Turtles
 

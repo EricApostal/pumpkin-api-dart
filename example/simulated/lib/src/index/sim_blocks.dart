@@ -176,6 +176,23 @@ CreateBlock _physicsAssembler(SimBlockLookup lookup) => CreateBlock(
       );
     },
     onUseWithoutItem: (server, event) {
+      // `PhysicsAssemblerBlock.useWithoutItem` splits the two kinds of click:
+      //
+      //  * a `DeployerFakePlayer` assembles right here, on the server
+      //    (`withBlockEntityDo(level, pos, …::assembleOrDisassemble)`);
+      //  * any other player does *nothing* server-side — their click only starts
+      //    the client's lever hold (`SimClickInteractions.PHYSICS_ASSEMBLER_MANAGER
+      //    .startHold`), and the assembly itself is the `simulated:assemble` the
+      //    client sends when the lever comes back up
+      //    (`PhysicsAssemblerGUIHandler.release`). That payload is what
+      //    `SimPayloadHandlers._assemble` handles here.
+      //
+      // Keeping the two apart is not cosmetic: `assembleOrDisassemble` is a
+      // *toggle*, so assembling on the click as well would be undone by that
+      // same player's payload a moment later — the machine would assemble and
+      // immediately take itself apart.
+      if (!event.player.isFakePlayer) return BlockUseResult.consume;
+
       final be = lookup<PhysicsAssemblerBlockEntity>(event.targetWorld.getId(), event.pos.toPos());
       // The assembly runs in the Sable component, so it cannot finish inside this
       // synchronous callback: it is started here and the result lands when the

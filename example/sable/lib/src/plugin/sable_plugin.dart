@@ -33,6 +33,7 @@ import 'package:create/src/common/host_bridge.dart' show BlockStates;
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../sable_channels.dart';
+import '../../sable_native.dart' show JoltPhysicsPipeline, createJoltPipeline;
 import '../../sable_commands.dart' show sableCommandPermission, registerSableCommands;
 import '../config/sable_synced_config.dart';
 import '../sublevel/api/command/sable_command_state.dart';
@@ -55,14 +56,19 @@ import '../sublevel/storage/sub_level_saved_data.dart';
 import '../sublevel/storage/sub_level_saved_data_files.dart';
 import '../data/datapack.g.dart' show sableDatapackBlobs;
 import '../data/sable_data.dart';
+import '../sublevel/math/vector.dart' show Vector3d;
 import '../sublevel/model/mass_tracker.dart';
 import '../sublevel/physics/dimension_physics.dart';
+import '../sublevel/physics/floating_block_material.dart';
 import '../sublevel/physics/physics_block_properties.dart';
 import '../sublevel/system/physics_system.dart';
 import '../sublevel/system/sable_server_config.dart';
 import '../sublevel/system/tracking_system.dart';
 import 'pumpkin_level.dart';
-import 'pumpkin_sub_level_host.dart';
+import 'pumpkin_sub_level_host.dart' show PumpkinSubLevelHost;
+import 'pumpkin_tracking_sender.dart';
+import 'jolt_collision.dart' show installJoltCollision;
+import 'sable_jolt_diagnostics.dart' show registerJoltDiagnostics;
 import 'sable_sub_level_api.dart';
 
 /// Sable as an addon of Create's declaration model.
@@ -80,6 +86,24 @@ final class SableAddon extends CreateAddon {
 
   @override
   Iterable<DeclaredPayload> get channels => sableChannels;
+}
+
+/// The Jolt solver as a registered pipeline provider (the Java
+/// `RapierPhysicsPipelineProvider`, with its package a hard dependency instead of
+/// a classpath entry).
+///
+/// It carries the default priority (`1000`), so
+/// `PhysicsPipelineProviders.resolve()` picks it over the `900` no-op fallback
+/// that keeps a level with no solver static.
+final class JoltPhysicsPipelineProvider implements PhysicsPipelineProvider {
+  const JoltPhysicsPipelineProvider();
+
+  /// The Java default, so this provider wins over the `900` no-op fallback.
+  @override
+  int get loadPriority => 1000;
+
+  @override
+  PhysicsPipeline createPipeline(SableLevel level) => createJoltPipeline();
 }
 
 /// One loaded level and everything the plugin owns for it.
@@ -102,49 +126,46 @@ final class _LoadedLevel {
   /// The tracking system of the level.
   SubLevelTrackingSystem? tracking;
 
+  /// The live sender of the tracking system (payloads and chunks).
+  PumpkinTrackingSender? sender;
+
   /// Set when the container tick threw: the container is left alone instead of
   /// failing on every tick of the server.
   bool tickFailed = false;
 }
 
-/// The plugin of Sable.
+/// The plugin of Sable: the whole server half, in one component.
 ///
-/// **Ownership.** The containers live in exactly one wasm component: the one
-/// that also holds the physics pipeline they run on. A `PhysicsPipeline` is a
-/// Dart object with no cross-component identity, so a container in one component
-/// and a solver in another cannot be connected — that is the package cycle
-/// (`sable_jolt` depends on `sable`, so `sable` cannot depend on `sable_jolt`).
-/// The owner is therefore **`sable_jolt`** when that plugin is loaded: it builds
-/// a [SablePlugin] with its own pipeline factory and calls [startServer], and
-/// this component declares the mod and then stands down. With no solver loaded
-/// this component owns the levels itself and runs the no-op fallback.
+/// **Ownership.** This plugin owns the sub-level containers *and* the physics
+/// pipeline they run on, because they cannot live apart: a `PhysicsPipeline` is
+/// a Dart object with no cross-component identity, so a container in one wasm
+/// component and a solver in another cannot be connected. Sable used to be split
+/// across two plugins (`sable` declared the mod, a `sable_jolt` plugin owned the levels)
+/// with an ownership probe deciding between them; load order is not fixed, so
+/// the deciding was itself a bug (two containers for one world). The solver now
+/// lives in this package (`src/physics/jolt/`) and the plugin links it, so
+/// there is nothing to discover: this component declares the mod *and* runs the
+/// levels.
 ///
-/// Everything a caller needs is reachable through the operation channel
-/// (`sable_sub_level_api.dart`); the owner is the only component that touches the
-/// containers, and commands and physics queries go through the same surface.
-/// See "Cross-plugin ownership" in `docs/sable-core-port.md`.
+/// Everything a caller outside this component needs is reachable through the
+/// operation channel (`sable_sub_level_api.dart`); this plugin is the only one
+/// that touches the containers, and commands and physics queries go through the
+/// same surface. See "Cross-plugin ownership" in `docs/sable-core-port.md`.
 final class SablePlugin extends Plugin {
-  SablePlugin({this.pipelineOf});
+  SablePlugin();
 
-  /// The solver this component runs, or `null` for the provider registry
-  /// (the static fallback when nothing else is registered).
-  final PhysicsPipeline Function(SableLevel level)? pipelineOf;
-
-  /// Whether [startServer] has run in this instance.
-  bool get started => _started;
+  /// Whether the server half has started in this instance.
   bool _started = false;
 
-  /// The channel that answers "does a solver plugin own the containers?".
+  /// The pipeline the `/sablejolt` diagnostics report on and step bodies with.
   ///
-  /// The owner has to be discovered, not assumed: plugin load order is not fixed,
-  /// so a claim sent at load time can arrive before this component is listening.
-  /// The probe runs on the first tick, when every plugin has loaded, and both
-  /// sides answer the same question (`sable_jolt` says `owns: true`).
-  static const IpcChannel<Map<String, Object?>> ownershipChannel =
-      IpcChannel<Map<String, Object?>>('sable.ownership', _identity, _asMap);
-
-  /// The name a solver plugin registers under, and the address the probe uses.
-  static const String solverPluginName = 'sable_jolt';
+  /// One per level is created by `_start` (see `_openLevel`); this second
+  /// instance exists so the diagnostic commands can read the engine (ABI
+  /// version, collider registry) without a level, and so `/sablejolt drop` can
+  /// step its own body. The module's collider registry is process-wide
+  /// (`JoltPhysicsPipeline._colliders`), so the count it reports is the live
+  /// one.
+  late final JoltPhysicsPipeline diagnostics = createJoltPipeline();
 
   /// The server settings (`SableConfig`); the plugin reads them with the Java
   /// defaults, since the port has no loader config file yet.
@@ -185,54 +206,37 @@ final class SablePlugin extends Plugin {
     context.declareNeoForge(createAddonNeoForgeDeclaration(const SableAddon(), registry: registry));
     logger.info('Sable declared ${sableChannels.length} payload channels.');
 
-    // A solver plugin runs the levels instead of this one: it builds a
-    // [SablePlugin] with its own pipeline factory, in its own component, so the
-    // pipeline and the containers it drives live together (see the class comment).
-    // The check is a probe rather than a claim, because plugin load order is not
-    // fixed and the answer is only meaningful once every plugin has loaded.
-    var decided = false;
-    context.listen(Events.worldTick, (server, event) async {
-      if (decided) return;
-      decided = true;
-      if (await solverOwnsLevels()) {
-        logger.info(
-          'Sable: $solverPluginName owns the sub-level containers (it links the solver); '
-          'this component only declares the mod.',
-        );
-        return;
-      }
-      await startServer(context);
-    });
+    // One component, one owner: the containers and the solver they run on are
+    // both in this wasm module (see the class comment), so there is nothing to
+    // negotiate with another plugin and no load-order window to lose.
+    await _start(context);
   }
 
-  /// Whether a solver plugin is loaded and owns the containers.
-  Future<bool> solverOwnsLevels() async {
-    try {
-      final reply = await ownershipChannel.request(solverPluginName, const {'op': 'owns'});
-      return reply is Map && reply['owns'] == true;
-    } on Object {
-      // No solver plugin in this server: this component owns the levels.
-      return false;
-    }
-  }
-
-  /// Starts the server half in this component: the containers, the commands and
-  /// the operation channel.
-  ///
-  /// Called by [onLoad] when nothing claimed the levels, and by the solver
-  /// plugin that does own them.
-  Future<void> startServer(Context context) async {
+  /// Starts the server half: the containers, the commands, the operation channel
+  /// and the Jolt diagnostics.
+  Future<void> _start(Context context) async {
     if (_started) return;
     _started = true;
 
     // Java's loader finds the physics providers on the classpath (`ServiceLoader`);
-    // a plugin component has no classpath, so the component that links a solver
-    // registers it (priority 1000) and this one registers the no-op fallback
-    // (`StaticPhysicsPipelineProvider`, priority 900) that the model documents.
-    // Without a registered provider `PhysicsPipelineProviders.resolve()` throws
-    // and a level would have no physics system at all -- which is what a
+    // a plugin component has no classpath, so the providers register themselves
+    // here: the Jolt solver this component links (the Java default priority
+    // `1000`) and the no-op fallback (`StaticPhysicsPipelineProvider`, priority
+    // `900`). Without a registered provider `PhysicsPipelineProviders.resolve()`
+    // throws and a level would have no physics system at all -- which is what a
     // sub-level assembled without a mass tracker came from.
+    PhysicsPipelineProviders.register(const JoltPhysicsPipelineProvider());
     PhysicsPipelineProviders.register(const StaticPhysicsPipelineProvider());
+
+    // The Jolt module's reactor start (`_initialize`) and the diagnostic world.
+    // The ADR requires that no module call happens before the Dart program is
+    // instantiated, so this is done here and not in a top-level initializer.
+    diagnostics.init(Vector3d(0.0, -9.81, 0.0), 0.0);
+    logger.info(
+      'Jolt module: ABI ${diagnostics.moduleAbiVersion}, version id '
+      '${diagnostics.moduleVersion}.',
+    );
+    registerJoltDiagnostics(context, logger, pipeline: diagnostics, containerOf: _containerFor);
 
     // The mod's data pack (`data/sable/**`: the block tags, the 19
     // `physics_block_properties` and the floating materials). Written next to this plugin's data
@@ -266,9 +270,22 @@ final class SablePlugin extends Plugin {
     context.command(
       'sable',
       description: 'Sable sub-level management',
-      permission: sableCommandPermission,
+      permission: sableCommandPermission(),
       (c) => registerSableCommands(c, SableCommandState(levelOf: _levelOf)),
     );
+
+    // The sender queues per player, and a handle a send holds belongs to the
+    // plugin; a player that left has no handle left to dispose and a queue
+    // that must not grow. Every level's queue is dropped so a reconnect starts
+    // clean (the rejoining player gets a fresh full sync from the tracking
+    // system instead of a stale chain).
+    context.listen(Events.playerLeave, (server, event) {
+      final uuid = event.player.getId().asString;
+      for (final loaded in _levels.values) {
+        loaded.sender?.forgetPlayer(uuid);
+        loaded.tracking?.forgetPlayer(uuid);
+      }
+    });
 
     context.listen(Events.worldLoad, (server, event) {
       _openLevel(context, event.targetWorld.keep());
@@ -307,11 +324,27 @@ final class SablePlugin extends Plugin {
       final loaded = _levels[event.targetWorld.getDimension()];
       loaded?.container.holdingChunkMapOrNull?.updateChunkStatus(event.chunkX, event.chunkZ, true);
     });
-    context.listen(Events.worldTick, (server, event) {
+context.listen(Events.worldTick, (server, event) async {
       final loaded = _levels[event.targetWorld.getDimension()];
       if (loaded == null || loaded.tickFailed) return;
       try {
+        final watch = Stopwatch()..start();
         loaded.container.tick();
+        // A plot chunk the host has not generated yet is sent on the tick it
+        // arrives (the sync that announced the sub-level cannot wait for it
+        // without holding the server's tick open; see the sender).
+        loaded.sender?.flushQueuedChunks();
+        // A container tick that takes a second is not normal: the model is
+        // arithmetic plus a few host calls, so a slow one is the *sync* (a
+        // payload send or a plot chunk's mirror) or an assembly, and either is
+        // worth naming rather than reading as "the server is overloaded".
+        final elapsed = watch.elapsedMilliseconds;
+        if (elapsed > 250) {
+          logger.warn(
+            'Sable: the sub-level container tick of ${loaded.level.dimensionId} took ${elapsed}ms '
+            '(sender: ${loaded.sender})',
+          );
+        }
       } on Object catch (error, stack) {
         loaded.tickFailed = true;
         logger.error(
@@ -399,10 +432,13 @@ final class SablePlugin extends Plugin {
   }
 
   @override
-  void onUnload(Context context) => stopServer();
+  void onUnload(Context context) {
+    _stop();
+    diagnostics.dispose();
+  }
 
   /// Closes every level and forgets the containers.
-  void stopServer() {
+  void _stop() {
     for (final dimension in _levels.keys.toList()) {
       _closeLevel(dimension);
     }
@@ -427,29 +463,45 @@ final class SablePlugin extends Plugin {
   /// has run.
   static PhysicsBlockPropertiesTable? blockProperties;
 
-  /// Loads `physics_block_properties/**` from the embedded pack and points the
-  /// model's block hooks at it.
+  /// Loads `physics_block_properties/**` and `floating_materials/**` from the
+  /// embedded pack and points the model's block hooks at it.
   ///
   /// This is what makes a stone block weigh Sable's 2.0 kg rather than the
   /// model's 1.0: `normal.json` sets `sable:mass` 1.0 with a `type=double`
   /// override of 2.0, and the override only applies once the state is resolved
   /// through the table.
+  ///
+  /// The floating materials are loaded here too. Java fills them with a second
+  /// reload listener (`FloatingBlockMaterialDataHandler.ReloadListener`) over
+  /// the same pack; without them a block whose `sable:floating_material` names
+  /// one resolves to `null` and simply does not float, so `sable:end_stone`
+  /// (lift 2) would sit exactly like a normal block.
   void _installBlockProperties(Logger log) {
     final table = PhysicsBlockPropertiesTable();
     var loaded = 0;
+    var materials = 0;
 
     for (final blob in sableDatapackBlobs) {
       for (final file in blob.unpack()) {
-        if (!file.path.contains('physics_block_properties/') || !file.path.endsWith('.json')) {
-          continue;
-        }
+        if (!file.path.endsWith('.json')) continue;
+        final isProperty = file.path.contains('physics_block_properties/');
+        final isMaterial = file.path.contains('floating_materials/');
+        if (!isProperty && !isMaterial) continue;
         try {
           final json = jsonDecode(utf8.decode(file.bytes));
           if (json is! Map) continue;
-          final definition = _definitionOf(json);
-          if (definition == null) continue;
-          table.addDefinition(definition);
-          loaded++;
+          if (isProperty) {
+            final definition = PhysicsBlockPropertiesDefinition.tryFromJson(json);
+            if (definition == null) continue;
+            table.addDefinition(definition);
+            loaded++;
+          } else {
+            final id = _registryIdOf(file.path, 'floating_materials');
+            if (id == null) continue;
+            // `FloatingBlockMaterialDataHandler.addMaterial(entry.getKey(), entry.getValue())`.
+            FloatingBlockMaterialDataHandler.addMaterial(id, FloatingBlockMaterial.fromJson(json));
+            materials++;
+          }
         } on Object catch (error) {
           log.warn('Sable: skipping ${file.path}: $error');
         }
@@ -465,6 +517,11 @@ final class SablePlugin extends Plugin {
     table.blockInTag = (blockId, tagId) => _blockInTag(tags, blockId, tagId, <String>{});
 
     blockProperties = table;
+    // `PhysicsBlockPropertyHelper` is a global registry in Java; here the model
+    // reads this component's table through it, so a sub-level created in this
+    // component does not depend on the per-level field being set. Installing it
+    // also applies the definitions another component pushed before this read.
+    PhysicsBlockPropertyHelper.install(table);
     MassTracker.blockMass = (subLevel, state) => table.resolveStateString(state).mass;
     MassTracker.blockInertia = (subLevel, state) => table.resolveStateString(state).inertia;
     MassTracker.isSolid = (subLevel, state) => !BState(state).isAir;
@@ -482,9 +539,19 @@ final class SablePlugin extends Plugin {
         level is SableLevel ? DimensionPhysicsData.getUniversalDrag(level) : 0.09;
 
     log.info(
-      'Sable: $loaded physics block propert${loaded == 1 ? 'y' : 'ies'} loaded from the '
+      'Sable: $loaded physics block propert${loaded == 1 ? 'y' : 'ies'} and '
+      '$materials floating material${materials == 1 ? '' : 's'} loaded from the '
       'embedded pack.',
     );
+  }
+
+  /// `data/<namespace>/<directory>/<path>.json` → `<namespace>:<path>`.
+  ///
+  /// The datapack registry id of one embedded file (`FileToIdConverter.json(dir)`
+  /// builds the same id from the resource path).
+  static String? _registryIdOf(String path, String directory) {
+    final match = RegExp('data/([^/]+)/$directory/(.+)\\.json\$').firstMatch(path);
+    return match == null ? null : '${match.group(1)}:${match.group(2)}';
   }
 
   /// The pack's block tags, by id (`sable:heavy` → its entries).
@@ -540,36 +607,6 @@ final class SablePlugin extends Plugin {
       }
     }
     return false;
-  }
-
-  /// One `physics_block_properties/*.json` file as a definition.
-  ///
-  /// The JSON keys are the codec's (`selector`, `priority`, `properties`,
-  /// `overrides`), which is the shape [PhysicsBlockPropertiesDefinition.fromNbt]
-  /// reads; this converts the JSON values into the same `Object?` property map.
-  static PhysicsBlockPropertiesDefinition? _definitionOf(Map<Object?, Object?> json) {
-    final selector = json['selector'];
-    final properties = json['properties'];
-    if (selector is! String || properties is! Map) return null;
-
-    Map<String, Object?> propertiesOf(Map<Object?, Object?> value) => {
-      for (final entry in value.entries) '${entry.key}': entry.value,
-    };
-
-    final overrides = json['overrides'];
-    return PhysicsBlockPropertiesDefinition(
-      selector: TagOrElementLocation.parse(selector),
-      priority: json['priority'] is num ? (json['priority'] as num).toInt() : 1000,
-      properties: propertiesOf(properties),
-      overrides: overrides is Map
-          ? {
-              for (final entry in overrides.entries)
-                if (entry.value is Map)
-                  BlockStateConditionSet.parse('${entry.key}'):
-                      propertiesOf(entry.value as Map<Object?, Object?>),
-            }
-          : null,
-    );
   }
 
   /// The container named by [world]: a dimension key (`minecraft:overworld`) or
@@ -657,6 +694,11 @@ final class SablePlugin extends Plugin {
       logger.error('Sable: a saved plot has an unreadable chunk key "$key"; that chunk is skipped.');
     };
 
+    // The plot-chunk bridge's cost, per phase and per chunk: the mirror runs
+    // inside the tick that first sends a plot chunk, so when a client stalls
+    // while a sub-level appears, this says which phase paid for it.
+    PumpkinPlotChunkHost.onMirrorEvent = (message) => logger.info('Sable: $message');
+
     // The saved data of the level (`SubLevelOccupancySavedData`,
     // `SubLevelTicketsSavedData`, the tracking points). The plugin API has no
     // `SavedDataStorage`, so these are gzip NBT files next to the storage files.
@@ -676,6 +718,35 @@ final class SablePlugin extends Plugin {
       ..savedDataProvider = (name) => _savedDataTag(container, name);
     container.hostOrNull = host;
 
+    // Warm the plot yard's centre chunk **now**, not when a ship is assembled.
+    //
+    // The host generates a chunk on demand, and the yard sits ~20 million blocks from spawn, so
+    // that generation is worldgen from nothing: measured at 3 s in one run and 72 s in another.
+    // A sub-level can only be sent once the chunk exists (`send-chunk-at` serializes the chunk
+    // that is *loaded in the world* at that position), so requesting it at assembly time makes
+    // the assembled ship invisible for as long as the generation takes -- which is exactly what
+    // "it assembles but I can't see it" was. Marking it here pays the same cost while nobody is
+    // waiting for it. `forceload` marks the chunk and returns at once; the plugin's own
+    // `force-load-chunk` would block the tick loop for 60 s instead.
+    final yardChunk = (SubLevelContainer.defaultOrigin << SubLevelContainer.defaultLogPlotSize) +
+        (1 << (SubLevelContainer.defaultLogPlotSize - 1));
+    unawaited(
+      host
+          .requestYardChunkKeep(level.dimensionId, yardChunk, yardChunk)
+          .catchError((Object error) => logger.warn('Sable: cannot warm the yard chunk: $error')),
+    );
+
+    // The plot's world copy is kept loaded through the *server's* `forceload`
+    // rather than the plugin's `force-load-chunk`: the latter waits for the
+    // chunk to be generated and answers at its 60 s timeout, which blocks the
+    // server's tick loop and kills a watching client's keep-alive (measured
+    // both with the call awaited and without — the host's subtask has to finish
+    // before the guest's tick can return). `forceload` marks the chunk and
+    // returns at once; the sender ships the chunk when the world has it.
+    PumpkinPlotChunkHost.onYardChunkKeep = host.requestYardChunkKeep;
+    PumpkinPlotChunkHost.onYardChunkRelease = host.releaseYardChunkKeep;
+
+
     // The physics system is what builds a sub-level's mass tracker
     // (`SubLevelPhysicsSystem.onSubLevelAdded` -> `buildMassTracker` +
     // `pipeline.addSubLevel`), and the tracking system is what syncs a
@@ -684,13 +755,39 @@ final class SablePlugin extends Plugin {
     // loaded, so a force-loaded sub-level finds a pipeline and a tracker
     // instead of `null`.
     final loaded = _LoadedLevel(level, chunks, container, storage, host);
-    loaded.physics = SubLevelPhysicsSystem(
+    final physics = SubLevelPhysicsSystem(
       container: container,
-      pipeline: pipelineOf?.call(level) ?? PhysicsPipelineProviders.createPipeline(level),
+      // The registry resolves to the Jolt provider this component registers
+      // (priority 1000), which is the solver whose module it links.
+      pipeline: PhysicsPipelineProviders.createPipeline(level),
       config: config,
       serverConfig: serverConfig,
     )..initialize();
-    loaded.tracking = SubLevelTrackingSystem(container: container, config: config);
+    loaded.physics = physics;
+    // The section packer and the collider bakery; without them no section
+    // reaches the engine (see `installJoltCollision`).
+    installJoltCollision(physics, properties: blockProperties);
+    // The sync needs a live implementation, not the model seam: payloads go
+    // over the host's `sendCustomPayload` on the payload channel, and the
+    // plot's chunks go through `chunk-streaming` after a mirror into the
+    // level's world chunk (see `PumpkinPlotChunkHost.mirrorPlotChunk`). The
+    // sender is attached to the container *before* the force-load below, so a
+    // sub-level that loads back from disk syncs to its tracking players; the
+    // tracking tick sends in the Java order (`start_tracking_sub_level`, the
+    // chunk sends, `finalize_sub_level`).
+    final sender = PumpkinTrackingSender(
+      host: host,
+      chunks: chunks,
+      logger: (message) => logger.info(message),
+    );
+    loaded.sender = sender;
+    loaded.tracking = SubLevelTrackingSystem(
+      container: container,
+      config: config,
+      sink: sender,
+      chunkView: sender,
+      log: (message) => logger.info('Sable tracking: $message'),
+    );
 
     // Registered before the force-load below: `fullyLoad` builds a sub-level
     // whose plot and helpers resolve the container through
@@ -768,6 +865,7 @@ final class SablePlugin extends Plugin {
     _saveLevel(loaded);
 
     loaded.tracking?.close();
+    loaded.sender = null;
     loaded.container.close();
     loaded.storage.close();
     loaded.chunks.clear();
@@ -793,8 +891,3 @@ final class _Announcer with SubLevelObserver {
   void onSubLevelRemoved(SubLevel subLevel, SubLevelRemovalReason reason) =>
       _api.announce(subLevel.container);
 }
-
-Object? _identity(Map<String, Object?> message) => message;
-
-Map<String, Object?> _asMap(Object? json) =>
-    json is Map ? {for (final entry in json.entries) '${entry.key}': entry.value} : const {};

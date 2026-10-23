@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../common/stack.dart';
 import '../crafter/machine_support.dart' show giveToPlayerStack;
 import '../processing_runtime.dart';
@@ -90,6 +91,11 @@ abstract final class BeltDeployerCallbacks {
           ..locked = false
           ..angle = transportedAngleFor(stack, rt.tags, rt.random)),
     ];
+
+    // `blockEntity.award(DEPLOYER)` (`BeltDeployerCallbacks.java:119`): the belt or depot
+    // below the deployer is processed by `BeltDeployerCallbacks` (not by the block's own use),
+    // so the trigger fires here.
+    unawaited(be.advancements.awardPlayer(AllAdvancements.deployer));
 
     // `clearFanProcessingData`.
     transported.processedBy = null;

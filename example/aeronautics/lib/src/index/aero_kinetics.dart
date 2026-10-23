@@ -8,13 +8,19 @@
 //
 // A Pumpkin plugin is one wasm component, so this module has its own
 // `KineticsRuntime` (`installHostedModuleState`): the rules are registered on
-// that instance, which is also what the kinetic network resolves its neighbours
-// through. Without them `KineticBlockRegistry.defFor` returns `null` for every
-// aeronautics key, so no shaft connects and `speed` stays 0 forever.
+// that instance, which is also what this component's own propagation resolves its
+// neighbours through. Without them `KineticBlockRegistry.defFor` returns `null`
+// for every aeronautics key, so no shaft connects and `speed` stays 0 forever.
+//
+// The rules are [WireKineticDef]s because there are **two** components to satisfy:
+// Create's plugin runs the network (`create.kinetics`, `docs/kinetics-across-plugins.md`)
+// and rebuilds each rule from its wire form, while this component keeps the same
+// def for the case where no owner is loaded. One description, both sides — the
+// alternative (a create-side class here and a rebuilt rule there) is how the two
+// drift apart.
 // ignore_for_file: implementation_imports
-import 'package:create/src/kinetics/block_defs.dart'
-    show AxisBlockDef, DirectionalAxisBlockDef, FacingBlockDef, KineticBlockDef, VerticalShaftDef;
 import 'package:create/src/kinetics/runtime.dart' show KineticsRuntime;
+import 'package:create/src/kinetics/wire_def.dart' show WireKineticDef;
 
 import '../content/blocks/hot_air/envelope_blocks.dart' show encasedEnvelopeKey, envelopeColors;
 import '../content/blocks/mounted_potato_cannon/mounted_potato_cannon.dart' show mountedPotatoCannonKey;
@@ -33,7 +39,7 @@ const String mountedPotatoCannonAxisProperty = 'axis_along_first_coordinate';
 /// `BasePropellerBlock.hasShaftTowards = face == FACING.getOpposite()`,
 /// `getRotationAxis = FACING.getAxis()`: the shaft comes out of the back. The
 /// two propeller bearings are Create's `BearingBlock`, the same rule.
-const FacingBlockDef _propellerDef = FacingBlockDef(shaftAtFront: false);
+final WireKineticDef _propellerDef = WireKineticDef.facingBack();
 
 /// The kinetic rule of every aeronautics block that is an `IRotate`, by block
 /// key.
@@ -46,14 +52,14 @@ const FacingBlockDef _propellerDef = FacingBlockDef(shaftAtFront: false);
 ///   through the `axis` property (`AeroBlocks.java:145-160`).
 /// * `MountedPotatoCannonBlock extends DirectionalAxisKineticBlock`: the shaft
 ///   runs on the axis perpendicular to `facing`.
-final Map<String, KineticBlockDef> aeroKineticDefs = {
+final Map<String, WireKineticDef> aeroKineticDefs = {
   SmallPropellerKeys.wooden: _propellerDef,
   SmallPropellerKeys.andesite: _propellerDef,
-  SmallPropellerKeys.smart: const VerticalShaftDef(property: 'ceiling', shaftUpWhenSet: true),
-  for (final colour in envelopeColors) encasedEnvelopeKey(colour): const AxisBlockDef(),
+  SmallPropellerKeys.smart: WireKineticDef.verticalByFlag(flag: 'ceiling', upWhenSet: true),
+  for (final colour in envelopeColors) encasedEnvelopeKey(colour): WireKineticDef.axis(),
   propellerBearingKey: _propellerDef,
   gyroscopicPropellerBearingKey: _propellerDef,
-  mountedPotatoCannonKey: const DirectionalAxisBlockDef(
+  mountedPotatoCannonKey: WireKineticDef.perpendicularToFacing(
     alongFirstProperty: mountedPotatoCannonAxisProperty,
   ),
 };

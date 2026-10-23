@@ -18,7 +18,7 @@ import 'package:create/src/common/direction.dart' show Direction;
 import 'package:create/src/contraptions/core/level.dart' show ContraptionLevel;
 import 'package:create/src/contraptions/core/movement.dart' show MovementBehaviour, MovementContext;
 import 'package:create/src/contraptions/core/movement_checks.dart' show CheckResult;
-import 'package:create/src/kinetics/block_defs.dart' show DirectionalAxisBlockDef;
+import 'package:create/src/kinetics/wire_def.dart' show WireKineticDef;
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' show SubLevelHelper, Vector3d;
 
@@ -121,7 +121,7 @@ CheckResult rockCuttingWheelNotSupportiveCheck(BState state, Direction direction
 
 /// `AbstractDirectionalAxisBlock`: `facing` + `axis_along_first`, the shaft on
 /// the rotation axis those two give (`DirectionalAxisKineticBlock`).
-const DirectionalAxisBlockDef rockCuttingWheelKineticDef = DirectionalAxisBlockDef();
+final WireKineticDef rockCuttingWheelKineticDef = WireKineticDef.perpendicularToFacing();
 
 /// `RockCuttingWheelActor`: tells the bearing of the contraption where this
 /// wheel sits and how fast it turns.

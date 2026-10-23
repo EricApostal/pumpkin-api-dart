@@ -42,6 +42,11 @@ final class TorsionSpringOutputLogic {
   /// The angular distance the current turn may still cover.
   double sequencedAngleLimit = -1;
 
+  /// Set when a tick wound a stopped output back to zero, the `REWIND_TIME`
+  /// event (`TorsionSpringBlockEntity.java:252`). The block entity reads it after
+  /// [tick] and awards the advancement; the logic itself has no world.
+  bool rewoundToZero = false;
+
   int rotationDurationTicks = 0;
   int rotationProgressTicks = 0;
 
@@ -104,7 +109,10 @@ final class TorsionSpringOutputLogic {
       if (targetAngle != 0 || powered) stopTurning();
     } else if (state == TorsionOutputState.stopped && parentStopped && !powered) {
       // Unpowered and stopped: wind back to zero.
-      if (targetAngle != 0) beginTurnTo(0);
+      if (targetAngle != 0) {
+        beginTurnTo(0);
+        rewoundToZero = true;
+      }
     } else if (state == TorsionOutputState.turning) {
       // A direction change on the parent stops the turn, so the next tick starts
       // a new one towards the new target.

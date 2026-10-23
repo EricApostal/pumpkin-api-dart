@@ -39,6 +39,7 @@ import '../../../util/sim_assembly_helper.dart';
 import '../../../util/host_calls.dart' show ignoredCall;
 import '../../../util/physics_constraints.dart';
 import '../../../util/sim_level_util.dart';
+import '../../advancements/sim_advancements.dart';
 import 'swivel_bearing_logic.dart';
 
 /// `SwivelBearingBlockEntity`.
@@ -198,6 +199,15 @@ final class SwivelBearingBlockEntity extends KineticBlockEntity
     plate?.setParent(this);
 
     _attachHinge();
+
+    // `SwivelBearingBlockEntity.assemble` (`SwivelBearingBlockEntity.java:509`):
+    // assembling the sub-level awards `YOU_SPIN_ME_RIGHT_ROUND` within the
+    // default radius, at the bearing's own position. `this.world` is the kept
+    // `World` (the local `world` is the assembly adapter).
+    final World? awardWorld = this.world;
+    if (awardWorld != null) {
+      SimAdvancements.awardNearby(awardWorld, pos.toPos(), 'you_spin_me_right_round');
+    }
 
     host.playSound(worldId, pos.toPos(), 'simulated:block.physics_assembler.assemble');
     SimAssemblyEvents.notifyAssembled(worldId, pos.toPos(), result);

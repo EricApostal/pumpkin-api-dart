@@ -30,15 +30,31 @@ mixin GeneratingNodeMixin on KineticNodeMixin {
 
   /// The generating part of `tick()`, call after the base tick.
   void generatingTick() {
-    if (reActivateSource) {
-      updateGeneratedRotation();
-      reActivateSource = false;
+    // A component that does not own the network has no local network to tell.
+    if (!level.hosted) {
+      if (reActivateSource) {
+        updateGeneratedRotation();
+        reActivateSource = false;
+      }
     }
   }
 
   void updateGeneratedRotation() {
     final speed = generatedSpeed;
     final prevSpeed = speedValue;
+
+    // A component that does not own the network propagates nowhere: the owner's
+    // verdict settles the network and this announcement carries the generated
+    // speed to it (`foreign.dart`).
+    if (level.hosted) {
+      if (prevSpeed != speed) {
+        applyNewSpeed(prevSpeed, speed);
+        onSpeedChanged(prevSpeed);
+        sendData();
+      }
+      level.nodeChanged(this);
+      return;
+    }
 
     if (prevSpeed != speed) {
       if (!hasSource) {
@@ -62,6 +78,15 @@ mixin GeneratingNodeMixin on KineticNodeMixin {
   }
 
   void applyNewSpeed(double prevSpeed, double speed) {
+    // A component that does not own the network has no local network to build:
+    // the owner's propagation settles the speed and its verdict comes back on the
+    // channel. The only thing the local node does eagerly is turn when *it* is the
+    // source — the `generatedSpeed` is its own — while every driven branch is the
+    // owner's to decide.
+    if (level.hosted) {
+      if (!hasSource) setSpeed(speed);
+      return;
+    }
     // Speed changed to 0
     if (speed == 0) {
       if (hasSource) {

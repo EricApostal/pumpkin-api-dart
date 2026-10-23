@@ -317,14 +317,17 @@ final class TeleportPlugin extends Plugin {
       names: ['homes'],
       description: 'Lists your homes',
       permission: Perm.homes,
-      run: (sender, server, args) {
+      run: (sender, server, args) async {
         final player = _playerOf(sender);
         final homes = _homes.of(_uuidOf(player));
         if (homes.isEmpty) {
           _say(sender, '§eYou have no homes. Set one with /sethome.');
           return 1;
         }
-        _say(sender, '§eYour homes (${homes.length}/${_config.maxHomes}):');
+        final limit = await sender.hasPermission(node: Perm.unlimitedHomes)
+            ? 'unlimited'
+            : '${_config.maxHomes}';
+        _say(sender, '§eYour homes (${homes.length}/$limit):');
         for (final name in homes.keys.toList()..sort()) {
           _say(sender, '§7- §f$name §7(${homes[name]!.describe()})');
         }
@@ -401,8 +404,9 @@ final class TeleportPlugin extends Plugin {
         final player = _playerOf(sender);
         final name = args.string('name');
         final target = _warps.get(name);
-        if (target == null)
+        if (target == null) {
           throw CommandException('There is no warp called $name.');
+        }
         await _checkCooldown(sender, player);
         await _teleport(server, player, target);
         _say(sender, '§aWarped to §f$name§a.');
@@ -580,8 +584,9 @@ final class TeleportPlugin extends Plugin {
       run: (sender, server, args) {
         final player = _playerOf(sender);
         final request = _requests.outgoing(_uuidOf(player));
-        if (request == null)
+        if (request == null) {
           throw CommandException('You have no open request.');
+        }
         _requests.remove(request);
         _say(sender, '§eCancelled your teleport request.');
         return 1;
@@ -645,10 +650,11 @@ final class TeleportPlugin extends Plugin {
       throw CommandException('${request.fromName} is no longer online.');
     }
 
-    // The player who moves is the one who has to wait.
+    // The player who moves is the one who has to wait, so their own bypass
+    // decides whether the wait applies.
     final mover = request.kind == TpaKind.to ? requester : player;
     final destination = request.kind == TpaKind.to ? player : requester;
-    if (!await sender.hasPermission(node: Perm.bypassCooldown)) {
+    if (!await mover.hasPermission(node: Perm.bypassCooldown)) {
       final left = _cooldowns.remaining(_uuidOf(mover), _config.cooldown);
       if (left != null) {
         _tell(

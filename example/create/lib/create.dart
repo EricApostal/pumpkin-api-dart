@@ -18,4 +18,10 @@ export 'src/core/world_state.dart';
 export 'src/core/worlds.dart';
 export 'src/plugin/create_addon.dart' show createAddonNeoForgeDeclaration;
 export 'src/plugin/create_neoforge.dart' show createModId, createNeoForgeDeclaration;
-export 'src/plugin/host_module_state.dart' show installHostedModuleState;
+export 'src/plugin/host_module_state.dart'
+    show installHostedModuleState, installHostedWorldTick;
+export 'src/plugin/kinetic_ipc_bridge.dart'
+    show KineticsBridge, installConsumerKinetics;
+export 'src/plugin/kinetics_api.dart'
+    show kineticsChannelName, kineticsOwnerPlugin, kineticsProtocolVersion;
+export 'src/kinetics/wire_def.dart' show WireAxisRule, WireKineticDef, WireShaftRule;

@@ -12,6 +12,8 @@
 // The Java line numbers are of
 // `aeronautics/common/src/main/java/dev/eriksonn/aeronautics/index/` unless the
 // file says otherwise.
+import 'package:aeronautics/src/content/components/converter.dart';
+import 'package:aeronautics/src/content/components/levitating.dart';
 import 'package:aeronautics/src/index/aero_java_order.dart';
 import 'package:aeronautics/src/plugin/aeronautics_addon.dart';
 import 'package:test/test.dart';
@@ -47,18 +49,88 @@ void main() {
       expect(AeroJavaOrder.blockEntityTypes.length, 9, reason: 'AeroBlockEntityTypes.java:35-80');
       expect(AeroJavaOrder.entityTypes.length, 2, reason: 'AeroEntityTypes.java:23,37');
       expect(AeroJavaOrder.dataComponents.length, 2, reason: 'AeroDataComponents.java:16-20');
+      expect(AeroJavaOrder.sounds.length, 25, reason: 'AeroSoundEvents.java:33-119');
+      expect(AeroJavaOrder.particles.length, 5, reason: 'AeroParticleTypes.java:11-15');
       for (final table in [
         AeroJavaOrder.blocks,
         AeroJavaOrder.items,
         AeroJavaOrder.blockEntityTypes,
         AeroJavaOrder.entityTypes,
         AeroJavaOrder.dataComponents,
+        AeroJavaOrder.sounds,
+        AeroJavaOrder.particles,
       ]) {
         expect(table.toSet().length, table.length);
         for (final key in table) {
           expect(key, startsWith('aeronautics:'), reason: key);
         }
       }
+    });
+
+    test('name the sound events and particle types in the Java order', () {
+      // `AeroSoundEvents`' field initialisers (`index/AeroSoundEvents.java:33-119`),
+      // each `REGISTRY.create(name, ...)` with the id `modId + ":" + name`
+      // (`SoundEventRegistry.java:26-31`). Both registries are host-numbered by
+      // position, so a client with the Java mods resolves `aeronautics:music.rain`
+      // to the same event only if the 24 before it are the same.
+      expect(AeroJavaOrder.sounds, [
+        'aeronautics:block.envelope.break',
+        'aeronautics:block.envelope.hit',
+        'aeronautics:block.envelope.place',
+        'aeronautics:fluid.levitite_blend.crystallize',
+        'aeronautics:fluid.levitite_blend.empty',
+        'aeronautics:fluid.levitite_blend.fill',
+        'aeronautics:block.levitite.break',
+        'aeronautics:block.levitite.place',
+        'aeronautics:block.propeller_bearing.large_loop',
+        'aeronautics:block.propeller_bearing.small_loop',
+        'aeronautics:block.hot_air_burner.head',
+        'aeronautics:block.hot_air_burner.idle',
+        'aeronautics:block.steam_vent.head',
+        'aeronautics:block.steam_vent.idle',
+        'aeronautics:block.steam_vent.open',
+        'aeronautics:block.steam_vent.close',
+        'aeronautics:item.cloud_skipper_transform',
+        'aeronautics:entity.gust',
+        'aeronautics:music_disc.cloud_skipper',
+        'aeronautics:music.adrift',
+        'aeronautics:music.cirrus',
+        'aeronautics:music.glide',
+        'aeronautics:music.mammatus',
+        'aeronautics:music.clear',
+        'aeronautics:music.rain',
+      ]);
+      // `AeroParticleTypes`' enum order, registered under
+      // `CreateLang.asId(name)` (`neoforge/.../AeroParticleTypesNeoForge.java:16-19`).
+      expect(AeroJavaOrder.particles, [
+        'aeronautics:propeller_air_flow',
+        'aeronautics:hot_air_ember',
+        'aeronautics:levitite_sparkle',
+        'aeronautics:gust',
+        'aeronautics:air_poof',
+      ]);
+    });
+
+    test('the ids the port plays exist in the tables', () {
+      // The two sounds the port plays were the *packet* name and a bare name
+      // before: `Converter.cloudSkipper().sound` is `AeroSoundEvents
+      // .CLOUD_SKIPPER_TRANSFORM.id()` (`Converter.java:31-33`) and the
+      // crystallisation sound is `AeroSoundEvents.LEVITITE_BLEND_CRYSTALLIZE`
+      // (`LevititeCrystalPropagationContext.java:34`).
+      expect(AeroJavaOrder.sounds, contains(Converter.cloudSkipper.sound));
+      // `onCrystallize` plays `aeronautics:fluid.levitite_blend.crystallize`
+      // (`levitite_crystallization.dart`), the `LEVITITE_BLEND_CRYSTALLIZE` event
+      // (`LevititeCrystalPropagationContext.java:34`).
+      expect(
+        AeroJavaOrder.sounds,
+        contains('aeronautics:fluid.levitite_blend.crystallize'),
+      );
+      // The particle the `aeronautics:levitating` component writes
+      // (`content/components/levitating.dart`), which `Levitating.levitite`
+      // carries as the levitite sparkle.
+      expect(AeroJavaOrder.particles, contains(LevititeSparkleParticle.type));
+      expect(AeroJavaOrder.sounds, isNot(contains('aeronautics:cloud_skipper_transform')));
+      expect(AeroJavaOrder.sounds, isNot(contains('aeronautics:levitite_blend_crystallize')));
     });
 
     test('expand the dyed families in DyeColor order', () {

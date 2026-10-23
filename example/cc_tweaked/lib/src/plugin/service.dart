@@ -18,7 +18,9 @@ import '../machine/zip.dart';
 import '../turtle/brain.dart';
 import '../lua/lua.dart' show ProtoCache;
 import '../compat/simulated_attach.dart' show ExternalPeripheralTarget;
+import '../protocol/datapack_registries.dart';
 import 'config.dart';
+import 'pocket_host.dart';
 import 'records.dart';
 import 'storage.dart';
 
@@ -95,6 +97,23 @@ final class CcService implements ComputerServices, ExternalPeripheralTarget {
 
   @override
   void log(String message) => logger.warn(message);
+
+  // -- The plugin's own storage -------------------------------------------------
+
+  /// The plugin's data folder: the computers live in `computers/<id>`, the
+  /// disks of the disk drives in `disks/<id>` (with `disks.json` for the id
+  /// counter), see `plugin/world_peripherals.dart`.
+  DataFolder get folder => _folder;
+
+  /// The record of the computer that stands at [location], or null when no
+  /// record has that location (a computer made with `/cc new`, a block whose
+  /// entity the plugin has not read).
+  ComputerRecord? recordAt(ComputerLocation location) {
+    for (final record in _records.values) {
+      if (record.location == location) return record;
+    }
+    return null;
+  }
 
   // -- The operating system image ---------------------------------------------
 
@@ -186,6 +205,9 @@ final class CcService implements ComputerServices, ExternalPeripheralTarget {
       terminalHeight: turtle == null ? null : turtleTerminalHeight,
       turtle: turtle,
     );
+    // A pocket computer carries the `pocket` API. It is set here, before the
+    // machine starts: the global is built with the machine.
+    if (record.pocket) computer.pocket = _pocketHost(record.id);
     computer.onChanged = () => _recordChanged(record, computer);
     for (final entry in record.peripherals.entries) {
       final side = ComputerSide.parse(entry.key);
@@ -224,18 +246,21 @@ final class CcService implements ComputerServices, ExternalPeripheralTarget {
   int countOwnedBy(String owner) => _records.values.where((r) => r.owner == owner).length;
 
   /// Creates a new computer with the next id. A turtle passes its [turtle]
-  /// brain: its computer has the turtle terminal and API.
+  /// brain: its computer has the turtle terminal and API. [pocket] marks it as
+  /// a pocket computer, which gives it the `pocket` API.
   Computer create({
     required ComputerFamily family,
     required String owner,
     required String ownerName,
     TurtleBrain? turtle,
+    bool pocket = false,
   }) {
     final record = ComputerRecord(
       id: _nextId++,
       family: family,
       owner: owner,
       ownerName: ownerName,
+      pocket: pocket,
     );
     _records[record.id] = record;
     final computer = _instantiate(record, turtle: turtle);
@@ -304,6 +329,7 @@ final class CcService implements ComputerServices, ExternalPeripheralTarget {
     for (final key in keys) {
       _peripherals.remove(key);
     }
+    _pockets.remove(id);
     if (record != null && blockRemoved) record.location = null;
     _dirty = true;
   }
@@ -312,6 +338,7 @@ final class CcService implements ComputerServices, ExternalPeripheralTarget {
   void remove(int id) {
     manager.remove(id);
     _records.remove(id);
+    _pockets.remove(id);
     final keys = _peripherals.keys.where((k) => k.startsWith('$id/')).toList();
     for (final key in keys) {
       _peripherals.remove(key);
@@ -353,6 +380,47 @@ final class CcService implements ComputerServices, ExternalPeripheralTarget {
   /// The peripheral attached to [side] of computer [id], if any.
   @override
   Peripheral? peripheral(int id, ComputerSide side) => _peripherals['$id/${side.luaName}'];
+
+  // -- Pocket computers ---------------------------------------------------------
+
+  final Map<int, CcPocketHost> _pockets = {};
+  PocketUpgrades? _pocketUpgrades;
+
+  /// The pocket upgrades of the mod's datapack registry (the same entries the
+  /// plugin sends to the client), read once from the jar.
+  PocketUpgrades get pocketUpgrades =>
+      _pocketUpgrades ??= PocketUpgrades.of(CcDatapackRegistries.load(_image.archive).pocketUpgrades);
+
+  /// The `pocket` host of computer [id], made on first use.
+  CcPocketHost _pocketHost(int id) => _pockets.putIfAbsent(id, () => CcPocketHost(this, id, pocketUpgrades));
+
+  /// The `pocket` host of computer [id], or null when it is not a pocket
+  /// computer with a machine here.
+  CcPocketHost? pocketHost(int id) => manager[id] == null ? null : _pockets[id];
+
+  /// Marks computer [id] as a pocket computer and returns whether that changed
+  /// anything. The flag is what `_instantiate` reads, so a machine that is
+  /// already running needs a restart (`Computer.reboot`) to get the global.
+  bool markPocket(int id) {
+    final record = _records[id];
+    if (record == null || record.pocket) return false;
+    record.pocket = true;
+    _dirty = true;
+    return true;
+  }
+
+  /// Runs the pocket requests the computers queued since the last tick. Called
+  /// from the plugin tick, where the host's calls are allowed.
+  Future<void> servePockets(Server server) async {
+    for (final host in _pockets.values.toList()) {
+      if (!host.hasPending) continue;
+      try {
+        await host.serve(server);
+      } on Object catch (e, s) {
+        logger.error('A pocket request of computer failed: $e\n$s');
+      }
+    }
+  }
 
   /// Whether computer [id] has a machine here (it is not in an unloaded chunk).
   @override

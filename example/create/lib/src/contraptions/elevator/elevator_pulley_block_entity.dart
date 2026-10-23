@@ -9,6 +9,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show HostBlockGetter;
+import '../../api/advancements.dart';
 import '../../common/common.dart';
 import '../../common/host_bridge.dart';
 import '../../kinetics/api.dart';
@@ -284,6 +285,11 @@ class ElevatorPulleyBlockEntity extends PulleyBlockEntity {
             BlockPos(x: global.$1, y: this.pos.y, z: global.$3),
           );
           if (be is ElevatorPulleyBlockEntity) be.startMirroringOther(localPos);
+        }
+
+        // `ElevatorPulleyBlockEntity.java:288`: `award(AllAdvancements.CONTRAPTION_ACTORS)`.
+        if (contraption.containsBlockBreakers()) {
+          unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
         }
 
         final coords = contraption.getGlobalColumn();

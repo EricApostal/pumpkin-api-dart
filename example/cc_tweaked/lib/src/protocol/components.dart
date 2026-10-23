@@ -155,6 +155,52 @@ abstract final class CcComponents {
   /// instance UUID of a pocket computer.
   static Uint8List encodeComputerReference(int session, String instanceUuid) =>
       PacketBuffer.encode((w) => w..writeVarInt(session)..writeUuid(instanceUuid));
+
+  /// `treasure_disk` (`TreasureDisk`: `composite(STRING_UTF8, STRING_UTF8)`),
+  /// the title of the disk and the path under `lua/treasure` it reads.
+  static Uint8List encodeTreasureDisk(String title, String path) =>
+      PacketBuffer.encode((w) => w..writeString(title)..writeString(path));
+
+  static (String, String) decodeTreasureDisk(List<int> bytes) {
+    final reader = PacketReader(bytes);
+    final title = reader.readString();
+    final path = reader.readString();
+    reader.expectEnd();
+    return (title, path);
+  }
+
+  /// `printout` (`PrintoutData`: `composite(STRING_UTF8, list(composite(
+  /// STRING_UTF8, STRING_UTF8)))`): the title of the page and its lines, each a
+  /// text of 25 characters and 25 colour codes.
+  static Uint8List encodePrintout(String title, List<(String, String)> lines) =>
+      PacketBuffer.encode((w) {
+        w
+          ..writeString(title)
+          ..writeVarInt(lines.length);
+        for (final (text, colours) in lines) {
+          w
+            ..writeString(text)
+            ..writeString(colours);
+        }
+      });
+
+  /// The title and lines of a `printout` component, or null when it does not
+  /// decode.
+  static (String, List<(String, String)>)? decodePrintout(List<int> bytes) {
+    try {
+      final reader = PacketReader(bytes);
+      final title = reader.readString();
+      final count = reader.readVarInt();
+      final lines = <(String, String)>[];
+      for (var i = 0; i < count; i++) {
+        lines.add((reader.readString(), reader.readString()));
+      }
+      reader.expectEnd();
+      return (title, lines);
+    } on PacketException {
+      return null;
+    }
+  }
 }
 
 /// The block entity types of CC: Tweaked (`ModRegistry.BlockEntities`), in the

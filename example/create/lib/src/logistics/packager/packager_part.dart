@@ -44,7 +44,15 @@ CreateBlock packagerBlock() => CreateBlock(
   soundType: 'netherite_block',
   canOcclude: false,
   blockEntityType: PackagerBlockEntity.type,
-  placement: const [PlacementRule.lookingDirection('facing', opposite: true)],
+  // `PackagerBlock.getStateForPlacement` (javap-verified): the player's nearest looking
+  // direction, or its opposite when the player does not sneak. The inventory-neighbour
+  // preference (walk `getNearestLookingDirections()`, `Capabilities.Item.BLOCK`, skip
+  // `PackagerBlockEntity`) has no placement-rule equivalent and is unmodelled; the sneak
+  // rule below covers the fallback branch. The PSI veto (placement refusal) needs host help.
+  placement: const [
+    PlacementRule.lookingDirection('facing', whenSneaking: true),
+    PlacementRule.lookingDirection('facing', opposite: true, whenSneaking: false),
+  ],
   behavior: BlockBehavior(
     onNeighborUpdate: _onNeighborUpdate,
     onPlaced: _onPlaced,

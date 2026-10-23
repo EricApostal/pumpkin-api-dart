@@ -94,6 +94,36 @@ final class FloatingBlockMaterial {
     fastHorizontalFriction: NbtFields.doubleOr(map, 'fast_horizontal_friction', 0.0),
   );
 
+  /// `FloatingBlockMaterial.CODEC` applied to one `floating_materials/*.json`
+  /// entry: Java loads the registry with `SimpleJsonResourceReloadListener`,
+  /// i.e. the codec reads plain JSON. The keys are the codec's field names and
+  /// `lift_strength` is required (`Codec.DOUBLE.fieldOf`), so a file without it
+  /// is an error, exactly as it is in Java.
+  factory FloatingBlockMaterial.fromJson(Map<Object?, Object?> json) {
+    final lift = json['lift_strength'];
+    if (lift is! num) {
+      throw FormatException('floating material has no numeric lift_strength: $json');
+    }
+    double doubleOr(String key) {
+      final value = json[key];
+      if (value == null) return 0.0;
+      if (value is num) return value.toDouble();
+      throw FormatException('floating material field "$key" is not a number: $value');
+    }
+
+    return FloatingBlockMaterial(
+      preventSelfLift: json['prevent_self_lift'] == true,
+      scaleWithPressure: json['scale_with_pressure'] == true,
+      scaleWithGravity: json['scale_friction_with_gravity'] == true,
+      liftStrength: lift.toDouble(),
+      transitionSpeed: doubleOr('transition_speed'),
+      slowVerticalFriction: doubleOr('slow_vertical_friction'),
+      fastVerticalFriction: doubleOr('fast_vertical_friction'),
+      slowHorizontalFriction: doubleOr('slow_horizontal_friction'),
+      fastHorizontalFriction: doubleOr('fast_horizontal_friction'),
+    );
+  }
+
   /// The payload-body encoding: the NBT root compound.
   void write(PacketWriter buf) => NetworkNbtMap.write(buf, toNbt());
 

@@ -125,38 +125,15 @@ final class SableBridge {
   /// The channel name, shared with `SableSubLevelApi`.
   static const String channelName = 'sable.sublevels';
 
-  /// The channel that answers "which plugin owns the containers?".
-  static const String ownershipChannelName = 'sable.ownership';
-
-  /// The plugin that runs the levels when no solver is loaded.
-  static const String fallbackOwner = 'sable';
-
-  /// The plugin that runs them when it links a solver.
-  static const String solverPlugin = 'sable_jolt';
-
-  /// The owner discovered by [owner], cached until a request fails.
-  String? _ownerName;
-
-  static const IpcChannel<Map<String, Object?>> _ownership =
-      IpcChannel<Map<String, Object?>>(ownershipChannelName, _identity, _asMap);
-
   /// The plugin that owns the sub-level containers.
   ///
-  /// The containers live in one component, and which one depends on whether a
-  /// solver plugin is loaded (`sable_jolt` runs the levels itself so its pipeline
-  /// and the containers share an address space). There is still exactly one door —
-  /// this channel — only its address is discovered once.
-  Future<String> owner() async {
-    final cached = _ownerName;
-    if (cached != null) return cached;
-    try {
-      final reply = await _ownership.request(solverPlugin, const {'op': 'owns'});
-      if (reply is Map && reply['owns'] == true) return _ownerName = solverPlugin;
-    } on Object {
-      // No solver plugin: the `sable` plugin owns the levels.
-    }
-    return _ownerName = fallbackOwner;
-  }
+  /// There is one Sable plugin, and it links the solver, so the containers and
+  /// the pipeline that steps them are in the same wasm component: the address is
+  /// a constant, not a discovered value. (It used to be probed on
+  /// `sable.ownership`, because the server half could run in either of two
+  /// plugins; that probe and the second plugin are gone — see "Cross-plugin
+  /// ownership" in `example/sable/docs/sable-core-port.md`.)
+  static const String ownerPlugin = 'sable';
 
   static const IpcChannel<Map<String, Object?>> _channel =
       IpcChannel<Map<String, Object?>>(channelName, _identity, _asMap);
@@ -185,14 +162,14 @@ final class SableBridge {
   /// Asks Sable to push its sub-level changes here.
   ///
   /// Awaited by the plugin's `onLoad` so a failure is visible in the log rather
-  /// than a silently empty mirror. The load order of two independent plugins is
-  /// not guaranteed, so a failure here is retried by the next [request] instead
-  /// of leaving the mirror empty forever.
+  /// than a silently empty mirror. The two plugins are loaded independently, so
+  /// this component's own load may run before Sable's; a failure here is retried
+  /// by the next [request] instead of leaving the mirror empty forever.
   Future<void> subscribe() async {
     try {
       await _rawRequest({'op': 'subscribe'});
       _subscribed = true;
-      _log.info('Sable bridge: subscribed to the sub-level changes of $_ownerName.');
+      _log.info('Sable bridge: subscribed to the sub-level changes of $ownerPlugin.');
     } on Object catch (error) {
       _log.warn('Sable bridge: could not subscribe to the sable plugin yet: $error');
     }
@@ -295,15 +272,14 @@ final class SableBridge {
 
   /// One request, without the subscribe retry.
   ///
-  /// A failure drops the cached owner and retries once: a plugin set that changes
-  /// between runs (a solver added or removed) would otherwise leave every call
-  /// addressed at a component that no longer answers.
+  /// A failure is retried once: the first request of a session can arrive before
+  /// Sable has installed its handler (the host does not fix plugin load order),
+  /// and a single unanswered request must not leave every later call failing.
   Future<SableReply> _rawRequest(Map<String, Object?> message) async {
     try {
-      return await _send(message, await owner());
+      return await _send(message, ownerPlugin);
     } on Object {
-      _ownerName = null;
-      return _send(message, await owner());
+      return _send(message, ownerPlugin);
     }
   }
 

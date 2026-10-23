@@ -41,6 +41,10 @@ abstract interface class IAirCurrentSource {
 
   /// `isSourceRemoved`.
   bool get isSourceRemoved;
+
+  /// `source instanceof EncasedFanBlockEntity fan -> fan.award(FAN_PROCESSING)`
+  /// (`AirCurrent.java:126,157`): the fan awards its owner when the current processed something.
+  void onFanProcessed();
 }
 
 /// One stretch of the current with one processing type (`AirCurrentSegment`).
@@ -146,8 +150,13 @@ final class AirCurrent {
       final item = entity.asItem();
       if (item != null) {
         unawaited(() async {
+          // `if (FanProcessing.applyProcessing(itemEntity, processingType)
+          //  && source instanceof EncasedFanBlockEntity fan)
+          //  fan.award(FAN_PROCESSING)` (`AirCurrent.java:124-126`).
           if (await FanProcessing.canProcess(item, type)) {
-            await FanProcessing.applyProcessing(item, type);
+            if (await FanProcessing.applyProcessing(item, type)) {
+              source.onFanProcessed();
+            }
           }
         }());
         kept.add(snapshot);
@@ -168,10 +177,16 @@ final class AirCurrent {
   void tickAffectedHandlers() {
     for (final (handler, type) in affectedItemHandlers) {
       if (type == null) continue;
-      handler.handleProcessingOnAllItems(
-        (transported) =>
-            FanProcessing.applyProcessingTransported(transported, type),
-      );
+      handler.handleProcessingOnAllItems((transported) {
+        final result = FanProcessing.applyProcessingTransported(
+          transported,
+          type,
+        );
+        // `if (!applyProcessing.doesNothing() && source instanceof EncasedFanBlockEntity fan)
+        //  fan.award(FAN_PROCESSING)` (`AirCurrent.java:155-157`).
+        if (!result.doesNothing) source.onFanProcessed();
+        return result;
+      });
     }
   }
 

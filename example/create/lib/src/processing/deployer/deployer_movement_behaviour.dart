@@ -8,8 +8,11 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../common/common.dart';
+import '../../common/host_bridge.dart';
 import '../../contraptions/core/movement.dart';
+import '../../contraptions/mounted/mounted_contraption.dart';
 import '../../contraptions/storage/stacks.dart';
 import '../common/stack.dart';
 import '../crafter/machine_support.dart' show dropPStack;
@@ -48,8 +51,47 @@ class DeployerMovementBehaviour extends MovementBehaviour {
       return;
     }
 
+    final before = world.getBlockStateId(pos: pos.toBlockPos());
     await _activate(context, pos, player, mode, world);
+    // `activate(context, pos, player, mode); checkForTrackPlacementAdvancement(context, player);`
+    // (`DeployerMovementBehaviour.java:82-83`): the flag was set by `DeployerHandler.activate`
+    // when the item use placed a track; the port reads the placed block instead.
+    _checkForTrackPlacementAdvancement(context, world, pos, before);
     await _tryDisposeOfExcess(context, player);
+  }
+
+  /// `checkForTrackPlacementAdvancement` (`DeployerMovementBehaviour.java:120-124`):
+  /// `SELF_DEPLOYING` goes to the owner recorded in the captured block entity data, on a cart or
+  /// carriage contraption only. In Java the gate is `player.placedTracks`, set by
+  /// `DeployerHandler.activate` when the used item was a track block item; the port tests the
+  /// target block directly, which is the same event (`AllBlockTags.TRACKS`).
+  void _checkForTrackPlacementAdvancement(
+    MovementContext context,
+    World world,
+    Pos pos,
+    int stateBefore,
+  ) {
+    final after = world.getBlockStateId(pos: pos.toBlockPos());
+    if (after == stateBefore) return;
+    final rt = ProcessingRuntime.instance;
+    final key = world.getBlock(pos: pos.toBlockPos()).name;
+    if (!rt.tags.blockHasTag(key, 'create:tracks')) return;
+
+    final contraption = context.contraption;
+    // `instanceof MountedContraption || instanceof CarriageContraption`
+    // (`AllContraptionTypes.CARRIAGE` is the port's carriage contraption).
+    if (contraption is! MountedContraption &&
+        contraption.typeId != 'create:carriage') {
+      return;
+    }
+    final data = context.blockEntityData;
+    if (data == null || !data.contains('Owner')) return;
+    final owner = actorOwnerId(data);
+    if (owner == null) return;
+    final advancements = rt.services.find<CreateAdvancements>();
+    final player = advancements?.playerByUuid(owner);
+    if (player == null) return;
+    unawaited(advancements!.award(player, AllAdvancements.selfDeploying));
   }
 
   /// Continues a punch that started on an earlier position.

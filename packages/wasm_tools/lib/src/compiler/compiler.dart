@@ -17,11 +17,41 @@ final class CompilerOptions {
   final File output;
   final bool hooksIncludeDevDependencies;
 
+  /// Core WebAssembly modules to link into the component next to the compiled
+  /// Dart module, in addition to the ones the program's build hooks declare.
+  ///
+  /// A build hook runs for every package that depends on the package owning
+  /// it, so a hook's core module is linked into the components of all of those
+  /// packages as well. That is wrong for a module only the owning package
+  /// imports (`dart2wasm` compiles the import away elsewhere, leaving the
+  /// module nothing to link to), so a tool that knows which package is being
+  /// built should declare such a module here instead of through a hook.
+  ///
+  /// Takes precedence over a hook declaration of the same [CoreModuleInput]
+  /// name.
+  final List<CoreModuleInput> coreModules;
+
   CompilerOptions(
     this.input,
     this.output, {
     this.hooksIncludeDevDependencies = false,
+    this.coreModules = const [],
   });
+}
+
+/// The core modules to link, keyed by the name Dart imports them as.
+///
+/// [declared] (from [CompilerOptions]) wins over [fromHooks] when both name a
+/// module.
+List<CoreModuleInput> _mergeCoreModules(
+  List<CoreModuleInput> declared,
+  List<CoreModuleInput> fromHooks,
+) {
+  final merged = <String, CoreModuleInput>{};
+  for (final module in [...fromHooks, ...declared]) {
+    merged[module.name] = module;
+  }
+  return merged.values.toList();
 }
 
 final class ComponentCompiler {
@@ -45,6 +75,13 @@ final class ComponentCompiler {
         throw CompilerFailure('Could not resolve components');
       }
       final abi = resolved.abi;
+      final coreModuleInputs = _mergeCoreModules(
+        options.coreModules,
+        resolved.coreModules,
+      );
+      for (final module in coreModuleInputs) {
+        logger.info('Linking core module ${module.name} (${module.file.path})');
+      }
 
       logger.fine('Building main application');
       final binDir = p.dirname(Platform.resolvedExecutable);
@@ -81,7 +118,7 @@ final class ComponentCompiler {
       final transformer = ModuleTransformer.fromBytes(
         await File(dart2wasmOut).readAsBytes(),
         logger,
-        coreModuleNames: {for (final module in resolved.coreModules) module.name},
+        coreModuleNames: {for (final module in coreModuleInputs) module.name},
       );
       transformer.transform(abi);
 
@@ -105,14 +142,14 @@ final class ComponentCompiler {
       // once the Dart module exists.
       final coreModules = <String, ModuleInstanceIndex>{};
       ModuleInstanceIndex? bridge;
-      if (resolved.coreModules.isNotEmpty) {
+      if (coreModuleInputs.isNotEmpty) {
         bridge = builder.linker.coreInstantiate(
           .moduleAndArgs(
             builder.defineModuleFromBytes(trampoline()),
             {},
           ),
         );
-        for (final module in resolved.coreModules) {
+        for (final module in coreModuleInputs) {
           coreModules[module.name] = builder.linker.coreInstantiate(
             .moduleAndArgs(
               builder.defineModuleFromBytes(await module.file.readAsBytes()),

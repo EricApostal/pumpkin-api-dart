@@ -178,20 +178,43 @@ is not loaded is brought up for the command); `/cc open <id>` opens the GUI of
 any computer through the same path, and `/cc list` shows where a computer
 stands.
 
-**What is not done.** Monitors (no entity, no `monitor_client` terminal, no
-touch, and peripherals are not discovered from neighbouring blocks: the host has
-no neighbour-changed callback, so `/cc attach` is still how a computer gets a
-monitor or modem), disk drives and printers (menus with real slot logic: the host
-has no menu behaviour; the turtle GUI works around it, see Turtles), speakers,
-cables, redstone in the world (no
-signal API), the command computer's GUI, `pocket_computer_data` (the state of a
-pocket computer's item model), lecterns, `getCloneItemStack` (pick block keeps
-the id), recipes, locks, the `Capacity`/`TerminalSize` of a stack are kept but
-not applied to new machines. A computer item dropped by something other than a
-player breaking the block (explosion, piston, a full inventory) loses its id:
-the plain item is dropped, because no plugin call drops an item entity with
-components. Two blocks with the same `computer_id` (a duplicated stack) do not
-share a machine: the second one gets a new computer on first use.
+The **peripheral blocks** are wired from the world
+(`plugin/world_peripherals.dart`, `plugin/world_monitors.dart`): a block entity
+loaded next to a computer becomes a peripheral of it on the side that touches it
+(the computer's own load, place and neighbour updates, and the block's load,
+place and neighbour updates, are the triggers; a computer that has no machine
+yet is retried for a few seconds).
+
+| Peripheral | State (`ModRegistry.registerPeripherals`, `ModRegistry.java:679-696`) |
+| ---------- | ------------------------------------------------------------------- |
+| `monitor` | block entity with `XIndex`/`YIndex`/`Width`/`Height` in save **and client** data, multi-block expansion with the `state` edge property, one terminal per wall shared by every computer that touches it, `monitor_resize`/`monitor_touch`, and `monitor_client` snapshots to the players within 64 blocks (`MonitorWatcher` tracks the chunk; this port uses a radius) |
+| `drive` | a disk put in by right clicking with it (`DiskDriveBlock.defaultUseItemOn`), the mount at `disk`/`disk2` on the computer (`getMountPath`), `setDiskLabel`/`getDiskID`, `ejectDisk` drops the item with its id, treasure disks read the mod jar's `lua/treasure/<path>` |
+| `printer` | ink and paper by right clicking with a dye or paper (the printer has no inventory the host can hold), the 25x21 page, `newPage`/`endPage`/`setPageTitle`, and the finished page dropped as a `printed_page` item with its `printout` component |
+| `speaker` | real notes, sounds and DFPWM audio (`SpeakerPeripheral.java:212-357`), `speaker_play`/`speaker_audio`/`speaker_stop` to the players around it, `speaker_audio_empty` back to the programs; the turtle's speaker upgrade uses the same class |
+| `modem` (wired) | the `peripheral_hub` methods over a graph of the adjacent cables and wired modems: `getNamesRemote`/`isPresentRemote`/`getTypeRemote`/`hasTypeRemote`/`getMethodsRemote`/`callRemote`/`getNameLocal`, with `peripheral`/`peripheral_detach` events and wired `transmit` |
+| `redstone_relay` | the redstone methods on a block of its own, with the six analogue inputs read from and the six outputs written to the world (`get-redstone-power`, `set-block-redstone-output-face`); the bundled methods are state only (the host has no bundled signal query) |
+| `computer`, `turtle` | `turnOn`/`shutdown`/`reboot`/`getID`/`isOn`/`getLabel` of a neighbouring computer or turtle, from its record when its chunk is not loaded |
+
+**What is not done.** The vanilla **command block** as a peripheral (`command`):
+the host hands a vanilla block entity's NBT only as opaque bytes
+(`world.getBlockEntityNbt`) and this checkout has no NBT byte codec, so
+`getCommand`/`setCommand` cannot be implemented, and `runCommand` would need
+`execute-command-captured`, which the Dart bindings here do not have yet; the
+peripheral is not registered at all, so `peripheral.find("command")` finds
+nothing rather than finding a peripheral whose methods fail. A disk drive has no
+`playAudio`/`stopAudio`: the `play_record` payload needs the record's jukebox
+song from the datapack registry `minecraft:jukebox_song`, which the host does not
+expose. The **generic inventory/fluid/energy methods** of
+`AbstractInventoryMethods` do not exist either: a plugin block entity has no
+container (`menus.wit` has slots, but a menu needs a player looking at it), so a
+drive or a printer cannot be read as an inventory. The command computer's GUI,
+`pocket_computer_data`, lecterns, `getCloneItemStack`, recipes, locks and the
+`Capacity`/`TerminalSize` of a stack are still open. A computer item dropped by
+something other than a player breaking the block (explosion, piston, a full
+inventory) loses its id: the plain item is dropped, because no plugin call drops
+an item entity with components. Two blocks with the same `computer_id` (a
+duplicated stack) do not share a machine: the second one gets a new computer on
+first use.
 
 **Uncertain, to check first on a live client** (details in
 [docs/host-requirements.md](docs/host-requirements.md#open-questions-of-the-wiring)):
@@ -250,7 +273,7 @@ is binding-free in `lib/src/turtle/`, the glue in `plugin/world_turtles.dart`.
 | Block entity | save data: `ComputerId`, `Label`, `On`, `Fuel`, `Color`, `Overlay`, `LeftUpgrade`/`RightUpgrade` (`{id}` + `...Data` patch bytes), `Slot`, owner, `Items` (16 slots with their component bytes); client data (`getUpdateTag`): `Label`, `Fuel`, `Color`, `Overlay`, upgrades, `Animation` (`plugin/turtle_nbt.dart`). Written at placement, when something changed (every 5 ticks at most, at once when the client data changed) and when a chunk unloads |
 | Item | placing restores computer id, label, `dyed_color`, `fuel`, `overlay`, both upgrades; breaking gives the turtle item with all of them back, plus the contents of its inventory (into the breaker's inventory; the break is refused when it does not fit, because no plugin call drops an item entity with components). Breaking without a player (explosion) drops the plain item and loses id and contents |
 | GUI | right click opens `computercraft:turtle` (terminal + 54 slots: 16 turtle, 27 main, 9 hotbar, 2 upgrades; data slot 0 `isOn`, 1 the selected slot) through `advanced_open_screen`; the slot logic of vanilla (pick up, put down, split, merge, swap, shift click, number keys, double click, drags) is `turtle/menu.dart`. **Limit:** the host cannot set the cursor stack, so the carried stack is *virtual* (the plugin holds it, the client shows an empty cursor, an action bar message names it, closing the GUI gives it back); throwing items (Q, click outside) is ignored |
-| Lua | `turtle.forward/back/up/down/turnLeft/turnRight`, `dig*`, `place*`, `attack*`, `suck*`, `drop*`, `detect*`, `inspect*`, `compare*`, `compareTo`, `transferTo`, `select`, `refuel`, `equipLeft/Right`, `getFuelLevel/Limit`, `getSelectedSlot`, `getItemCount/Space/Detail`, `getEquippedLeft/Right`: queued commands answered by `turtle_response` events, one per 8 tick animation like CC (`machine/api/turtle_api.dart` is a Lua layer over natives); wireless modem upgrades are real peripherals, speaker and crafting table upgrades are stubs (`turtle.craft` returns `false`) |
+| Lua | `turtle.forward/back/up/down/turnLeft/turnRight`, `dig*`, `place*`, `attack*`, `suck*`, `drop*`, `detect*`, `inspect*`, `compare*`, `compareTo`, `transferTo`, `select`, `refuel`, `equipLeft/Right`, `getFuelLevel/Limit`, `getSelectedSlot`, `getItemCount/Space/Detail`, `getEquippedLeft/Right`: queued commands answered by `turtle_response` events, one per 8 tick animation like CC (`machine/api/turtle_api.dart` is a Lua layer over natives); wireless modem and speaker upgrades are real peripherals (the speaker sends its notes and audio to the players around the turtle and follows it with `speaker_move`), the crafting table upgrade stays a stub (`turtle.craft` returns `false`, the host has no recipe query) |
 | Movement | the same block is set at the new position, the block entity is written there with the animation, the old block is removed; fuel, facing and water logging follow `TurtleBrain.teleportTo` |
 
 Approximations the host forces (details in
@@ -298,7 +321,9 @@ lib/src/lua/        Lua 5.1 + 5.2 features: lexer, parser, compiler, bytecode VM
                     explicit frames (coroutines yield anywhere, preemptible), stdlib
 lib/src/machine/    binding free CC machine: Terminal/Palette (= TerminalState layout),
                     FileSystem + mounts (writable quota mount, zip/ROM mount), redstone,
-                    peripherals (monitor, wireless modem, stubs), the Lua APIs (term, fs, os,
+                    peripherals (monitor, wireless and wired modem, disk drive and its
+                    media, printer, speaker with DFPWM, redstone relay, computer
+                    peripheral), the Lua APIs (term, fs, os,
                     redstone, peripheral, turtle), Computer (power state machine, event queue,
                     timers, time slicing), ComputerManager, CraftOS image from the jar
 lib/src/protocol/   payload codecs (messages.dart), TerminalState, upload reassembly,
@@ -332,6 +357,10 @@ compiles on its own. The integration points:
   clientbound terminal pushes for a player with a computer open;
 * `CcWorldComputers` (`plugin/world_computers.dart`): the events of the host
   (use item, use block, block place, block entity load/unload, block drop);
+* `CcWorldPeripherals` (`plugin/world_peripherals.dart`) and `CcWorldMonitors`
+  (`plugin/world_monitors.dart`): the peripheral blocks (disk drives and their
+  media, printers, speakers, redstone relays, wired modems and cables, a
+  computer or turtle seen by its neighbours, monitors with their sync);
 * `CcWorldTurtles` (`plugin/world_turtles.dart`): turtle blocks, items, GUI, the
   tick that runs the brains' commands, and `_HostTurtleWorld`, the
   `TurtleWorld` over the host's world API;
@@ -341,7 +370,9 @@ compiles on its own. The integration points:
   host's handshake runs from;
 * `CcRegistries`, `CcBlockCatalog`, `CcRegistryIds`: what the host must register
   and the ids the client will use;
-* `MonitorPeripheral.touch(x, y)` / `resizeBlocks()` for multiblock monitors.
+* `MonitorPeripheral.touch(x, y)` / `resizeBlocks()`: what the monitor blocks of
+  `CcWorldMonitors` call (touch arrives as the hit position of a right click,
+  the size from the wall the blocks form).
 
 ## What maps to the real mod
 
@@ -351,7 +382,7 @@ compiles on its own. The integration points:
 | `ComputerExecutor`, `TimeoutState` | `Computer` + `LuaMachine`: same states, 7 s soft abort, 1.5 s hard abort, queue limit 256, 50-tick start delay; time slicing per server tick instead of threads |
 | `FileSystem`, mounts, quota | same path rules, messages, 500 byte minimum, `/rom` read-only |
 | `Terminal`, `TerminalState` | same layout and colour indexes (copy to the payload is a memcpy) |
-| monitors, wireless modems | `MonitorPeripheral` (text scale, terminal size formula, `monitor_touch`/`monitor_resize`), `WirelessModem` (channels, range, `modem_message`) |
+| peripherals | `monitor` (text scale, terminal size formula, `monitor_touch`/`monitor_resize`/multiblock), `modem` wireless and wired (`peripheral_hub` remote wrapping), `drive` with its media and mounts, `printer`, `speaker` (notes, sounds, DFPWM audio), `redstone_relay`, `computer`/`turtle`; a neighbouring block of ours is attached on the side that touches a computer |
 | network payloads, registries | codecs and lists, byte for byte from the source |
 
 ## Not implemented

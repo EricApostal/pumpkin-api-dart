@@ -6,6 +6,7 @@ import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../api/advancements.dart';
 import '../../../api/blocks.dart';
 import '../../../common/direction.dart';
 import '../../../common/host_bridge.dart';
@@ -46,7 +47,15 @@ class ChuteBlockEntity extends CreateBlockEntity
   final VersionTracker _tracker = VersionTracker();
   late final _ChuteInventory _inventory = _ChuteInventory(this);
 
+  /// `registerAwardables(behaviours, AllAdvancements.CHUTE)` (`Java ChuteBlockEntity.java:120`):
+  /// the player that placed the chute (`AbstractChuteBlock.setPlacedBy` ->
+  /// `AdvancementBehaviour.setPlacedBy`) gets it when the chute holds an item.
+  late final AdvancementBehaviour advancements;
+
   ChuteBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour([AllAdvancements.chute], () => rt.advancements),
+    );
     // The processing behaviour is the machine-facing counterpart of the pure interface this
     // class implements; both share the same insertion gate.
     addBehaviour(
@@ -220,6 +229,9 @@ class ChuteBlockEntity extends CreateBlockEntity
     if (world != null) {
       markDirty();
       sendData();
+      // `setItem(stack, insertionPos)` -> `award(AllAdvancements.CHUTE)` (`Java ChuteBlockEntity.java:544`):
+      // the player that placed the chute gets the advancement when it holds an item.
+      unawaited(advancements.awardPlayer(AllAdvancements.chute));
     }
   }
 

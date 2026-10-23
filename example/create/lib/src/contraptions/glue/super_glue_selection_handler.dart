@@ -3,10 +3,14 @@
 // hover preview) is a rendering concern and is not ported.
 //
 // Java: `content/contraptions/glue/{SuperGlueSelectionPacket,SuperGlueRemovalPacket}`.
+import 'dart:async';
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../common/common.dart';
+import '../../api/advancements.dart';
 import '../blocks/actuator_contract.dart';
+import '../blocks/actuator_runtime.dart';
 import 'super_glue_entity.dart';
 import 'super_glue_selection_helper.dart';
 
@@ -29,6 +33,12 @@ Future<void> handleGlueSelection(Player player, Pos from, Pos to) async {
 
   await collectGlueFromInventory(player, 1, simulate: false);
   glueHost.spawn(worldId, glueSpan(from, to));
+
+  // `SuperGlueSelectionPacket.java:45`: `AllAdvancements.SUPER_GLUE.awardTo(player)`.
+  final advancements = ActuatorRuntime.maybe?.advancements;
+  if (advancements != null) {
+    unawaited(advancements.award(player, AllAdvancements.superGlue));
+  }
 }
 
 /// `SuperGlueRemovalPacket.handle`: remove the glue entity the player clicked.

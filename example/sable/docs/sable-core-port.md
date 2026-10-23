@@ -223,7 +223,7 @@ that only a plugin can fill, and until it is filled every assembly throws
 `MemoryPlotChunk` + `PumpkinPlotChunkHost` (world chunks through the plugin API,
 plot chunks in memory) and `PumpkinFileStore`.
 
-### Cross-plugin ownership: one component is not enough
+### Cross-plugin ownership: one plugin, one owner, one door
 
 The container registry (`SubLevelContainer._containers`) is a **static map inside
 one wasm component**. The host instantiates one `Store` per plugin
@@ -255,38 +255,85 @@ Dart object, and IPC between components carries JSON only). The two ways out:
    roots must differ — the user then has as many un-synced sub-level universes as
    plugins.
 
-**Chosen: `sable_jolt` owns the containers** (`SablePlugin.startServer`). It links
-the solver, so the pipeline and the containers it drives share one address space;
-the `sable` plugin declares the mod and then stands down once
-`sable_jolt` answers the ownership probe (`sable.ownership`). This is a
-**deliberate layering inversion** — the solver's plugin owns the model — taken
-because the alternative is a package cycle: `sable_jolt` depends on `sable` (its
-pipeline implements `sable`'s `PhysicsPipeline`/`ConstraintPipeline` and uses its
-`Vector3d`/`Pose3d`/`ServerSubLevel`), so `sable` cannot depend on `sable_jolt`.
-Do not "fix" this back into a dependency: it is a cycle, not a preference. The
-alternative that would restore the layering is moving the model types the pipeline
-touches into a shared base package, a wide refactor of `sable`'s imports.
+**Chosen: one plugin, `sable`, owns the containers and the solver.** The Jolt
+pipeline now lives in this package (`lib/src/physics/jolt/`), the core module is
+linked into this package's component by `pumpkin_tools build` (the
+`pumpkin.core_modules` block of `pubspec.yaml`), and `SablePlugin` registers
+`JoltPhysicsPipelineProvider` and installs the section packer itself. The
+containers and the pipeline that steps them are therefore the same wasm
+component **by construction**, and the plugin declares the mod and runs the levels
+in one `onLoad`.
 
-**One door.** Callers never touch a container directly; they send operations on
-`sable.sublevels`, and the plugin that answers is discovered once on
-`sable.ownership` (`sable_jolt` when it is loaded, otherwise `sable`). Commands run
-in the owner's component, so `/sable …` and the operation channel always see the
-same containers — there is one owner and one door, not two ownership stories.
+This replaces a two-plugin arrangement (`sable` declared the mod, a `sable_jolt`
+plugin owned the levels and answered an ownership probe on `sable.ownership`,
+after which `sable` stood down). That split was a cycle workaround — `sable_jolt`
+depended on `sable` for its `PhysicsPipeline` contract, so `sable` could not
+depend on it — and it produced four live bugs, all of them consequences of two
+components owning one world:
 
-Verified live with the solver owning the levels:
+* two sub-level containers for one world, because the stand-down decided on the
+  first tick and load order is not fixed: `/sable assemble` wrote into one while
+  the tracker and the sender read the other, and the ship vanished;
+* the `/sable` command tree registered under a permission that did not match the
+  registering component's manifest name, so the host rejected it and `/sable` did
+  not exist in game;
+* version skew between the two wasms (rebuilding one against newer source broke
+  assembly).
+
+Folding the solver into `sable` removes the whole class: there is one artifact
+(`sable.wasm`), one component, and no ownership question to ask. The probe, the
+stand-down branch and the `ownershipProbeWindow` deadline are deleted. The model
+stays VM-loadable: only `lib/sable_native.dart` (and the `src/physics/jolt/native.dart`
+it re-exports) imports `dart:_wasm`; `lib/sable.dart` and
+`lib/src/physics/jolt.dart` do not, which is what keeps `puro dart test` able to
+run the pipeline against the module through a Node host.
+
+**One door.** Callers in other components never touch a container directly; they
+send operations on `sable.sublevels`, addressed to the constant plugin name
+`sable` (`SableBridge.ownerPlugin`, `SablePhysicsPush.ownerPlugin`). There is no
+discovery step left: one plugin, one channel, one set of containers.
+
+Verified live with the merged plugin (one `sable.wasm`, no `sable_jolt.wasm` in
+`plugins/`; `create` + `simulated` + `sable` only):
 ```
 Jolt module: ABI 1, version id 329217.
+Sable declared 17 payload channels.                     (exactly once)
 Sable: sub-level container of minecraft:overworld ready (… pipeline JoltPhysicsPipeline).
-Sable: sable_jolt owns the sub-level containers (it links the solver); this component only declares the mod.
-Assembled 19 blocks.
-  position 0.50, -181.32, 0.50 … mass 38.00 … linear velocity 0.00, -44.23, 0.00
-  (later) position 0.50, -985.60, 0.50 … linear velocity 0.00, -93.23, 0.00
+Assembled 18 blocks.
+/sablejolt → voxel colliders: 12                        (the bakery is live)
+plugins/data/sable/sublevels/minecraft_overworld/r.-720037.-720037.0.slvls   (8192 bytes)
 ```
-A sub-level integrated by Jolt now moves — which is what "the physics assembler does
-nothing" was about.
+No ownership/stand-down line and no `must use the plugin's namespace` warning
+appear in that log. A sub-level integrated by Jolt moves — which is what "the
+physics assembler does nothing" was about.
 
-Not converted yet (each still reads this component's empty map, or needs the
-mirror): `PumpkinSimulatedHost.containingSubLevel` / `subLevelById`,
+Still not converted (each reads its own component's empty map, or needs the
+mirror): `PumpkinSimulatedHost.containingSubLevel` / `subLevelById`.
+
+### The other trap: a component that hosts Create's content must run its world tick
+
+Found while wiring Create's kinetic network across components (see
+`example/create/docs/kinetics-across-plugins.md`), and it is the same class of
+mistake as the two above — a per-component piece of state that only one plugin
+knows how to drive:
+
+`CreatePlugin.onLoad` registers the **one** `worldTick` listener that runs
+`BlockEntityStore.tickWorld` (the flush of `markChanged`/`sendData`), the kept
+saved data, and every `CreateContext.onWorldTick` handler. The addon plugins
+(`aeronautics`, `simulated`, `offroad`) install the store's *event* listeners —
+which is why their block entities tick — but they did not install that listener,
+so **every client-visible field of an addon block entity was frozen at its
+creation values**: measured, `data get block` on `aeronautics:propeller_bearing`
+answered `Speed: 0f, NeedsSpeedUpdate: 1b` while the same block entity was turning
+at 16 RPM inside its own component. Fixed by `installHostedWorldTick`
+(`example/create/lib/src/plugin/host_module_state.dart`), which the addons now
+call from `onLoad`.
+
+Two things to carry to the next hosted component: pass the plugin's **own**
+`BlockEntityStore` — `CreateCore.blockEntities` is a second store that was never
+installed, and its `tickWorld` flushes nothing, so passing the wrong one looks
+like it works — and remember that `onWorldTick` handlers registered by a hosted
+module never run until this is wired.
 
 ### Cross-plugin reach map (the refactor's work list)
 
@@ -389,8 +436,10 @@ only `Events.chunkLoad` is subscribed; the unload half is driven by
   packaging. Its Create compatibility half is the Create plugin's business.
 * **The physics solver** — `physics/impl/rapier/**` and `sable_rapier`. The
   Dart port defines the pipeline contract (`api/physics_pipeline.dart`), the
-  provider registry and the `impl/none` fallback; the solver itself is another
-  slice (`example/sable_jolt`). A feature an engine cannot implement is declared
+  provider registry and the `impl/none` fallback; the solver itself is
+  `lib/src/physics/jolt/` in this package, with the core module linked by
+  `pumpkin_tools build` (the `pumpkin.core_modules` block of `pubspec.yaml`).
+  A feature an engine cannot implement is declared
   through `api/physics_capabilities.dart` (`FeatureAwarePhysicsPipeline`) so
   Sable never calls it — `JoltPhysicsPipeline` declares contraptions and ropes
   unsupported, because the checked-in native module has no kinematic body
@@ -398,13 +447,31 @@ only `Events.chunkLoad` is subscribed; the unload half is driven by
 * **The UDP server** — `SableUDPServer`, `SableUDPAuthenticationState`,
   `SableUDPChannelHandlerServer`, `SableUDPEchoPacket`, the encoder/decoder and
   `AddressedSableUDPPacket`. The six datagram kinds and their codecs are ported
-  (`network/udp/**`), and the tracking system sends through a `sendDatagram`
-  sink, but the socket/auth/keep-alive state machine is S4's. Until it exists a
-  client keeps working over TCP, which is the Java fallback
-  (`SableConfig.ATTEMPT_UDP_NETWORKING`).
+  (`network/udp/**`), but the socket/auth/keep-alive state machine needs a host
+  UDP surface that does not exist (`host_gap.dart`'s `udp-channel`: `bind-udp`,
+  `send-datagram`, `on-datagram`). **TCP is therefore the supported transport,
+  not a fallback of last resort**: `PumpkinTrackingSender`
+  (`plugin/pumpkin_tracking_sender.dart`) sends the whole sync — 
+  `start_tracking_sub_level`, the plot's chunks, `finalize_sub_level`,
+  `change_bounds_sublevel`, the snapshots, `stop_moving_sublevel`,
+  `stop_tracking_sublevel` — over the payload channel, which is the identical
+  payload set Java sends when UDP is not up (`SubLevelTrackingSystem.java:383-404`).
+  `sable:udp_activation` is deliberately never sent: activating a channel whose
+  server socket does not exist would make the client `AUTH` into the void.
 * **`SubLevelPlayerChunkSender`** — chunk packets and POI data are host sends
   (`chunk-streaming.send-chunk-at`). Java's per-chunk POI send has no host
   equivalent; see the `HOST GAP` note in `system/tracking_system.dart`.
+  `send-chunk-at` serialises the chunk **loaded in the world**, and a plot chunk
+  is plugin-side memory, so the port asks the **server** to keep the yard chunk
+  loaded (`forceload`, which marks it and returns at once) and the sender queues
+  that chunk's send until the world has it, then writes the plot's blocks
+  (0 ms) and sends the chunk packet. The plugin's own `force-load-chunk` is
+  unusable here: it waits for generation and answers at its 60 s timeout, and
+  that wait blocks the tick loop *even when the call is not awaited* — measured
+  as a 60 s server freeze that killed a watching client's keep-alive. With the
+  forceload path the whole sequence (ask → loaded → sent) took **3 s** live. A
+  host `create-empty-chunk` (`host_gap.dart`'s `chunk-source`) would remove the
+  wait and the worldgen chunk altogether.
 * **`LevelAccelerator`, `SchematicLoader`, `SableDistUtil*`** — host-side
   accelerators and client helpers; the Dart model has no chunk cache to
   accelerate.
@@ -443,9 +510,10 @@ only `Events.chunkLoad` is subscribed; the unload half is driven by
 * The physics solver itself: `PhysicsPipeline` is a recording fake, so the
   tests assert call order and impulses, not simulation results.
 * Tick timing (`msSinceLastSend` from the wall clock) is injected.
-* The static pipeline is testable and tested; what is *not* testable headlessly
-  is a real solver's simulation result (`example/sable_jolt` needs the native
-  library).
+* The static pipeline is testable and tested; the Jolt pipeline is testable
+  against the *real* module, which `test/jolt/` drives through a Node host
+  (`test/jolt/support/node_jolt.dart`) — the module is the checked-in
+  `native/jolt/jolt.wasm`.
 
 ## Known deviations, each marked `TODO(parity)` in the source
 
@@ -519,10 +587,26 @@ the code at every one.
   positions deliberately take no ticket: the plot blocks live in
   `MemoryPlotChunk`, and a host ticket there would make worldgen write terrain
   into the yard (the `chunk-source` gap).
-* **The structure search batches its reads** (`BatchingBlockHost`, implemented by
-  the chunk host): every visited block re-reads its 18 neighbours, and each read
-  is a host call, which is why `/sable assemble connected` over real terrain
-  stalled the tick loop for ~100 s.
+* **The structure search batches its reads** (`BulkBlockHost` + the `BatchingBlockHost`
+  read cache; both implemented by the chunk host). Every visited block reads its ~18
+  neighbours, and the read cache already served all but ~1.4 of them, but each of those
+  was a host call at ~4 µs: `/sable assemble connected` over solid terrain refused at
+  **65 536 examined positions** (3.90 s, 78 ticks behind on the tick loop) where Java
+  assembles 256 000, because the walk cost ~60 µs per position. `World.get-block-states`
+  (host WIT `world.wit`, one call for a list of positions) is what the walk uses now: the
+  frontier is read in waves of 128 positions in one call, so the cap is Java's 256 000.
+  Measured on the same host binary and scenario:
+  - 256 001 examined positions, refused at the cap: **17.90 s / 357 ticks behind** for the
+    clean build, **13.96 s / 277 ticks behind** for the instrumented one;
+  - the host reads of that walk are **0.3 s** — 2003 `get-block-states` calls for 361 367
+    positions (~1.4 reads per position, 3 µs each), against one call per read before;
+  - what remains is guest bookkeeping, not the host: ~5.8 s in the wave scan, ~6.6 s in
+    the walk's own neighbour loop and ~1.3 s decoding state ids. Those numbers come from
+    the walk on record-keyed sets; packing a position into one int (`_pack`, relative to
+    the gather origin, 21 bits per axis) cut the walk from 90.4 s to 14.0 s by itself.
+  `BulkBlockHost` is the plug-in-side seam (a host that cannot batch keeps the per-query
+  reads, exactly as before); `BatchingBlockHost` still serves a host whose reads cross a
+  boundary but which has no bulk read.
 
 ### Force-load across a restart
 
@@ -594,23 +678,23 @@ Fixed, and verified across a real restart:
 save and load: losing a force-loaded sub-level across a restart used to be
 completely silent, and this is the line that showed the ticket itself was fine.
 
-Open, and each needs a decision rather than another edit:
+Open, each needs a decision rather than another edit:
 
-* **No solver can be attached to a container.** `PhysicsPipelineProviders`
-  resolves inside one wasm component, and the Jolt pipeline exists only in
-  `sable_jolt`'s component, so the container owner can only get the static
-  fallback (`pipeline StaticPhysicsPipeline` in every run) — nothing can move.
-  **Linking Jolt into `sable` is not a build-hook job: it is a package cycle.**
-  `sable_jolt` already depends on `sable` (its pipeline implements
-  `PhysicsPipeline` from `package:sable`), so `sable` cannot depend on
-  `sable_jolt` without a cycle; moving `JoltPhysicsPipeline` into `sable` would
-  drag `dart:_wasm`, the Jolt ABI and the native module into a package whose
-  whole point is that it loads on the plain Dart VM in tests (`sable.dart` is
-  explicitly VM-loadable). The two ways out are therefore: (a) split the solver
-  into a third package that both may depend on (e.g. `sable_jolt_core` with the
-  ABI + pipeline, leaving `sable_jolt` as the plugin that links the module), or
-  (b) move container ownership to `sable_jolt` and proxy the commands and the
-  operation channel to it. (b) is the smaller change and keeps `sable` pure.
+* **The solver used to be unattachable to a container, and is not any more.**
+  `PhysicsPipelineProviders` resolves inside one wasm component, and the Jolt
+  pipeline once existed only in another plugin's component, so the container
+  owner got the static fallback (`pipeline StaticPhysicsPipeline` in every run)
+  and nothing could move. Moving `JoltPhysicsPipeline` into this package looked
+  impossible for two reasons: the package cycle (`sable_jolt` depended on `sable`
+  for the `PhysicsPipeline` contract) and the drag of `dart:_wasm` into a package
+  whose model half must load on the plain Dart VM in tests. Both are resolved by
+  the fold: the contract belongs to this package, so there is nothing to import
+  back, and the `dart:_wasm` half is confined to `lib/sable_native.dart` and
+  `lib/src/physics/jolt/native.dart` (not exported by `lib/sable.dart`), so
+  `sable.dart` and `src/physics/jolt.dart` stay VM-loadable. A level's pipeline
+  now comes from `PhysicsPipelineProviders.createPipeline(level)`, which resolves
+  to `JoltPhysicsPipelineProvider` (priority 1000) registered by `SablePlugin
+  .startServer`.
 * **Per-block mass now comes from Sable's datapack**, loaded by `SablePlugin`
   (`_installBlockProperties`) from the embedded copy of the pack
   (`sableDatapackBlobs`): 19 `physics_block_properties` entries, applied in
@@ -623,3 +707,56 @@ Open, and each needs a decision rather than another edit:
   `<world>/datapacks/<name>` and that link is a manual operator step — the host
   is consulted only for a tag the pack does not define (`#c:stones` and other
   conventional tags).
+
+## Collision data: why a sub-level clipped through the world
+
+**Root cause (two independent gaps, both in the live path only).** The Jolt
+pipeline's own collision contract was always sound — `pipeline_test.dart` drives
+the real module with packed sections and a body comes to rest on a voxel floor,
+and a live run already measured the assembled structure falling (`-44.23 →
+-93.23 m/s`) under gravity. What the plugin component never did was *feed* it:
+
+* **No `PlotSectionPacker` was ever installed.** `PhysicsChunkTicketManager
+  .packer` stayed `null`, and `_uploadSection` returns before calling the
+  pipeline, so `handleChunkSectionAddition` was never reached in a live server:
+  neither the sub-level's own plot sections (its collision shape) nor the static
+  level's terrain (the ground) existed in the Jolt world. The body fell with
+  Jolt's `EmptyShape` through empty space. `git log -S"implements
+  PlotSectionPacker"` finds only a test double; the interface was introduced
+  with the seam and never implemented.
+* **No block colliders were ever registered.** `registerVoxelCollider` used to be
+  called from the `/sablejolt drop` diagnostic and from tests only —
+  `voxel colliders: 0` in every live run — so even a packed section would have
+  carried collider index 0 ("no collider") and every block would have been
+  `isSolid == false` in the module. The bakery now registers one collider per
+  block state as the packer walks the sections, so a live run reports
+  `voxel colliders: 12` after the world around the plot has been packed.
+
+**Fix** (in `sable` itself: the solver is folded into this package, and the
+packer is installed by `SablePlugin._openLevel` through
+`lib/src/plugin/jolt_collision.dart`, matching Java, where the bakery lives in
+`sable_rapier`):
+
+* `lib/src/physics/section_packer.dart` (pure): `BlockColliderBakery`
+  (`RapierVoxelColliderBakery` — one collider per block state, datapack
+  friction/volume/restitution, liquid → unit box + fluid flag, boxes clamped to
+  the unit cube) and `JoltCollisionPacker` (the packing loop of
+  `RapierPhysicsPipeline.handleChunkSectionAddition`, including
+  `VoxelNeighborhoodState`, the air-only short circuit and the 18³ neighbourhood
+  read through sable's `BulkBlockHost`, so a world section costs one host call).
+  The state-of-a-block-state inputs (`getCollisionShape`, `liquid()`) are the
+  `BlockShapeSource` seam.
+* `lib/src/plugin/host_block_shapes.dart`: that seam over the host registry
+  (`BlockStates.stateOfId` + the state's collision boxes; `is_liquid` plus the
+  `waterlogged` property, which is what Java's `state.liquid()` covers).
+* `SablePlugin.installCollision`: the hook the solver component installs the
+  packer through (`PhysicsChunkTicketManager.packer` is per level, the pipeline
+  per level, so the packer is too). `bin/main.dart` wires it; a component with no
+  solver passes nothing and the static fallback is unchanged.
+
+The sub-level's own sections reach its body through the path that already
+existed: a plot block change calls `ticketManager.addSectionIfNotTracked`, whose
+upload resolves the yard position through `getPlot` to that sub-level's body.
+The static terrain under the ship reaches the static world through the ticket
+manager's normal pass over the sub-level's *global* bounds (world coordinates,
+`globalBounds` is the plot box transformed by the pose).

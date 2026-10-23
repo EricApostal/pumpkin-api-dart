@@ -87,6 +87,11 @@ final class OpenFile {
   final bool readable;
   final bool writable;
   final bool appendOnly;
+
+  /// The absolute path of the file in its file system, or empty for a file
+  /// that is not part of one (a `file_transfer` handle). `unmount` uses it to
+  /// close the files a mount takes with it.
+  final String path;
   final void Function(Uint8List data)? _commit;
   final void Function(int newSize)? _checkSpace;
   final void Function(OpenFile file) _onClose;
@@ -102,6 +107,7 @@ final class OpenFile {
     this._commit,
     this._checkSpace,
     this._onClose, {
+    required this.path,
     required this.readable,
     required this.writable,
     required this.appendOnly,
@@ -114,6 +120,7 @@ final class OpenFile {
     null,
     null,
     (_) {},
+    path: '',
     readable: true,
     writable: false,
     appendOnly: false,
@@ -244,6 +251,24 @@ final class FileSystem {
       throw const FileSystemException('Cannot mount below the root');
     }
     _mounts[path] = _MountEntry(label, path, mount);
+  }
+
+  /// Removes the mount at [location] and closes the files open on it (a disk
+  /// drive's disk is ejected, a computer shuts down). Paths below it do not
+  /// move to another mount: Java's `MountWrapper` forgets the mount too. Does
+  /// nothing when [location] holds no mount.
+  void unmount(String location) {
+    final path = sanitizePath(location);
+    if (!_mounts.containsKey(path)) return;
+    for (final file in _open.toList()) {
+      if (file.path.isEmpty || !_contains(path, file.path)) continue;
+      try {
+        file.close();
+      } on FileSystemException {
+        // The file could not be written back (the mount is going away anyway).
+      }
+    }
+    _mounts.remove(path);
   }
 
   /// Flushes and closes every open file.
@@ -545,6 +570,7 @@ final class FileSystem {
       null,
       null,
       _open.remove,
+      path: clean,
       readable: true,
       writable: false,
       appendOnly: false,
@@ -585,6 +611,7 @@ final class FileSystem {
       (data) => writable.write(local, data),
       (newSize) => writable.checkSpace(local, newSize),
       _open.remove,
+      path: clean,
       readable: readable,
       writable: true,
       appendOnly: append,

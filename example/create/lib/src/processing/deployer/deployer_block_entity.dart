@@ -14,6 +14,7 @@ import 'package:wasm_components/wasm_components.dart' show ResourceKeep;
 
 import '../../common/common.dart' hide pos;
 import '../../common/host_bridge.dart';
+import '../../api/advancements.dart';
 import '../../api/value_settings.dart';
 import '../support/kinetics_bridge.dart';
 import '../crafter/machine_support.dart' show dropPStack;
@@ -36,7 +37,23 @@ import 'deployer_types.dart';
 /// `DeployerBlockEntity`.
 final class DeployerBlockEntity extends KineticBlockEntity
     implements ItemStorageProvider, ValueSettingsHost {
+  /// `registerAwardables(behaviours, ..., FIST_BUMP, DEPLOYER, SELF_DEPLOYING)`
+  /// (`DeployerBlockEntity.java:138-139`): the deployer awards its owner. (The casing
+  /// `TRAIN_CASING`/`ANDESITE_CASING`/`BRASS_CASING`/`COPPER_CASING` awards ride the deposited
+  /// block through `ManualApplication._award`, which `registerAwardables` also feeds.)
+  late final AdvancementBehaviour advancements;
+
   DeployerBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [
+          AllAdvancements.fistBump,
+          AllAdvancements.deployer,
+          AllAdvancements.selfDeploying,
+        ],
+        () => _rt.advancements,
+      ),
+    );
     filtering = addBehaviour(DeployerFilterBehaviour());
     processingBehaviour = addBehaviour(
       BeltProcessingBehaviour()
@@ -620,6 +637,9 @@ final class DeployerBlockEntity extends KineticBlockEntity
       breakingPos: blockBreakingPos,
       look: (yaw, pitch),
     );
+    // `DeployerHandler.activate(player, center, clickedPos, movementVector, mode);
+    //  award(DEPLOYER)` (`DeployerBlockEntity.java:361-362`).
+    unawaited(advancements.awardPlayer(AllAdvancements.deployer));
     await _syncHeld();
   }
 
@@ -687,6 +707,8 @@ final class DeployerBlockEntity extends KineticBlockEntity
       other.state = DeployerState.retracting;
       other.timer = 1000;
       other.sendData();
+      // `award(FIST_BUMP)` (`DeployerBlockEntity.java:341`).
+      unawaited(advancements.awardPlayer(AllAdvancements.fistBump));
       world.playSound(
         sound: Sound.entityPlayerAttackNodamage,
         category: SoundCategory.blocks,

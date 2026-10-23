@@ -18,13 +18,19 @@ import 'support.dart';
 final class StateHost extends FakeChunkHost implements AssemblyBlockHost {
   final Map<(int, int, int), BState> states = {};
 
+  /// Per-position reads served so far, the metric the bulk read exists to cut.
+  int singleReads = 0;
+
   StateHost(super.level);
 
   void put(int x, int y, int z, [String id = 'minecraft:stone']) =>
       states[(x, y, z)] = BState(id);
 
   @override
-  BState blockStateAt(int x, int y, int z) => states[(x, y, z)] ?? BState.air;
+  BState blockStateAt(int x, int y, int z) {
+    singleReads++;
+    return states[(x, y, z)] ?? BState.air;
+  }
 
   @override
   void setBlockStateAt(int x, int y, int z, BState state) {
@@ -48,9 +54,57 @@ final class StateHost extends FakeChunkHost implements AssemblyBlockHost {
   void notifyBlockChanged(int x, int y, int z, BState oldState, BState newState) {}
 }
 
+/// The same states as [StateHost], but answering through one bulk call
+/// ([BulkBlockHost]): the host records how many reads each path costs.
+final class BulkStateHost extends StateHost implements BulkBlockHost {
+  /// Bulk calls served so far.
+  int bulkCalls = 0;
+
+  /// Positions read so far.
+  int bulkPositions = 0;
+
+  BulkStateHost(super.level);
+
+  @override
+  List<BState> readBlockStates(List<(int, int, int)> positions) {
+    bulkCalls++;
+    bulkPositions += positions.length;
+    return [for (final p in positions) states[p] ?? BState.air];
+  }
+}
+
 void main() {
   late FakeLevel level;
   late StateHost host;
+
+  GatherResult gatherHost(
+    (int, int, int) origin, [
+    int limit = 1000,
+    FrontierPredicate? predicate,
+  ]) =>
+      SubLevelAssemblyHelper.gatherConnectedBlocks(origin, level, limit, predicate);
+
+  GatherResult gather((int, int, int) origin, [int limit = 1000, FrontierPredicate? predicate]) =>
+      gatherHost(origin, limit, predicate);
+
+  BulkStateHost useBulkHost() {
+    final bulk = BulkStateHost(level);
+    for (final entry in host.states.entries) {
+      bulk.states[entry.key] = entry.value;
+    }
+    SubLevelContainer.clearAll();
+    SubLevelContainer.register(
+      ServerSubLevelContainer(
+        level,
+        bulk,
+        3,
+        4,
+        SubLevelContainer.defaultOrigin,
+        SubLevelContainer.defaultOrigin,
+      ),
+    );
+    return bulk;
+  }
 
   setUp(() {
     SubLevelContainer.clearAll();
@@ -69,9 +123,6 @@ void main() {
   });
 
   tearDown(SubLevelContainer.clearAll);
-
-  GatherResult gather((int, int, int) origin, [int limit = 1000, FrontierPredicate? predicate]) =>
-      SubLevelAssemblyHelper.gatherConnectedBlocks(origin, level, limit, predicate);
 
   group('connectivity', () {
     test('face neighbours connect', () {
@@ -277,6 +328,82 @@ void main() {
 
       expect(seenOrigin, 'minecraft:stone');
       expect(seenCandidate, 'minecraft:dirt');
+    });
+  });
+
+  group('bulk read', () {
+    test('a bulk host gathers the same blocks and bounds', () {
+      for (var x = 0; x < 5; x++) {
+        for (var z = 0; z < 4; z++) {
+          host.put(x, 0, z);
+        }
+      }
+      final plain = gather((2, 0, 2));
+
+      final bulk = useBulkHost();
+      final batched = gatherHost((2, 0, 2));
+
+      expect(batched.assemblyState, plain.assemblyState);
+      expect(batched.blocks, plain.blocks);
+      expect(batched.checkedBlocks, plain.checkedBlocks);
+      expect(batched.boundingBox?.minX, plain.boundingBox!.minX);
+      expect(batched.boundingBox?.maxX, plain.boundingBox!.maxX);
+      expect(batched.boundingBox?.minZ, plain.boundingBox!.minZ);
+      expect(batched.boundingBox?.maxZ, plain.boundingBox!.maxZ);
+      // The per-query walk pays a host call for every neighbour read; the bulk
+      // walk answers a whole wave of the frontier in one call, so its call
+      // count stays below the per-query count divided by the fan-out.
+      expect(bulk.bulkCalls, lessThan(host.singleReads ~/ 18));
+      expect(bulk.bulkPositions, greaterThanOrEqualTo(batched.checkedBlocks));
+      // Host calls, before vs after, for the same gather.
+      expect(bulk.bulkCalls + bulk.singleReads, lessThan(host.singleReads));
+    });
+
+    test('per-position cost before vs after on a solid cube', () {
+      // The whole cube is non-air, so the walk collects 10x10x10 = 1000 blocks
+      // and visits every one of them: the per-query path pays ~18 host reads
+      // per block, the bulk path pays one bulk read per pos of each wave.
+      for (var x = 0; x < 10; x++) {
+        for (var y = 0; y < 10; y++) {
+          for (var z = 0; z < 10; z++) {
+            host.put(x, y, z);
+          }
+        }
+      }
+      final plain = gather((0, 0, 0));
+      expect(plain.assemblyState, GatherState.success);
+      expect(plain.checkedBlocks, 1000);
+      final plainReads = host.singleReads;
+
+      final bulk = useBulkHost();
+      final batched = gatherHost((0, 0, 0));
+      expect(batched.blocks, plain.blocks);
+      expect(batched.checkedBlocks, 1000);
+
+      // The metric that matters is host calls, not positions: the per-query
+      // walk crosses the boundary once per read, while the bulk walk answers
+      // a wave of the frontier in one call, so the bulk call count grows with
+      // the number of waves (a few dozen for a 1000-block cube) instead of
+      // the number of reads (a few thousand). The positions it reads are ~2.4
+      // per block (a wave reads the next level of the frontier, plus the
+      // duplicates that get queued while the wave runs).
+      final bulkCalls = bulk.bulkCalls + bulk.singleReads;
+      expect(bulkCalls, lessThan(plainReads ~/ 10));
+      expect(bulk.bulkPositions, lessThan(plainReads));
+    });
+
+    test('a bulk host honours limits and predicates identically', () {
+      for (var x = 0; x < 6; x++) {
+        host.put(x, 0, 0);
+      }
+      final plain = gather((0, 0, 0), 5);
+
+      useBulkHost();
+      final batched = gatherHost((0, 0, 0), 5);
+
+      expect(batched.assemblyState, GatherState.tooManyBlocks);
+      expect(batched.blocks, isNull);
+      expect(batched.checkedBlocks, plain.checkedBlocks);
     });
   });
 }

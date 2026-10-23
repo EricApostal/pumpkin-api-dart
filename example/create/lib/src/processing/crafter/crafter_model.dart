@@ -3,6 +3,16 @@
 // `RecipeGridHandler`. Ported from
 // `content/kinetics/crafter/{MechanicalCrafterBlock,ConnectedInputHandler,RecipeGridHandler}.java`.
 //
+// Placement grouping: Java does not auto-connect on placement either — `getStateForPlacement`
+// only copies facing/pointing from the neighbour so fronts line up, and `neighborChanged` only
+// refreshes `InvManipulationBehaviour`, never `ConnectedInput` (confirmed on the Java reference
+// arm, Create 6.0.11: a `fill`-placed 3x3 stays nine lone `Controller: 1b` inputs; the first
+// ponder scene only shows green connection lines because it explicitly calls
+// `connectCrafterInvs`, i.e. `toggleConnection`). So no placement/neighbour hook is missing
+// relative to Java; the wrench-edge path in `crafter_block.dart` is the complete port. Crafters
+// with aligned front/pointing still craft as one chain because `RecipeGridHandler` follows the
+// pointing, not `ConnectedInput`.
+//
 // The chain functions take a [CrafterWorld] view so they run on the plain Dart VM; the block
 // entity (`mechanical_crafter_block_entity.dart`) provides the host implementation.
 import '../../api/block_state.dart';
@@ -329,8 +339,20 @@ List<CrafterNode>? allCraftersOfChainIf(
 List<CrafterNode>? allCraftersOfChain(CrafterWorld world, CrafterNode root) =>
     allCraftersOfChainIf(world, root, (_) => true);
 
-/// `ConnectedInputHandler.shouldConnect`: whether a wrench may connect the crafter at [pos] to
-/// its neighbour in [direction].
+/// `ConnectedInputHandler.shouldConnect`: whether the crafter at the block-entity position
+/// recorded in [refState] (check its key) may join its neighbour in [direction].
+///
+/// Java's `shouldConnect(world, pos, face, direction)` reads the block state at `pos` and of
+/// the neighbour at `pos + direction` (`ConnectedInputHandler.java:39-54`). Its only live
+/// caller is the wrench edge interaction (`EdgeInteractionBehaviour`); placed grids never
+/// auto-connect — verified on the Java reference arm (release Create 6.0.11): a `fill`-placed
+/// 3x3 stays nine lone `Controller: 1b` inputs. Java's `getStateForPlacement` only copies the
+/// neighbour's facing/pointing so the fronts line up; `neighborChanged` only refreshes the
+/// *insertion* behaviour, never `ConnectedInput`.
+///
+/// The host has no edge interactions, so the port routes the connection through a wrench
+/// clicking the side towards a compatible neighbour (see `crafter_block.dart`); the grouping
+/// itself is identical to Java's.
 bool shouldConnectCrafter(
   BState refState,
   BState neighbour,

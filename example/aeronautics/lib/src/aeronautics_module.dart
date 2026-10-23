@@ -378,9 +378,10 @@ final class _LevititeWorld implements LevititeWorld {
 
   @override
   void awardAdvancementNearby(String advancement, Pos pos) {
-    // TODO(parity): `AeroAdvancements.UNIDENTIFIED_FLOATING_OBJECT.awardToNearby`
-    // and `NOW_AVAILABLE_IN_PINK` award to players within a radius; the host's
-    // `Advancements` has no "award nearby" call, only a per-player grant.
+    // `AeroAdvancements.UNIDENTIFIED_FLOATING_OBJECT.awardToNearby` and `NOW_AVAILABLE_IN_PINK`
+    // (`LevititeCrystalPropagationContext.java:36`, `LevititeSoulCrystalPropagationContext.java:36`):
+    // plants a crystal next to another player, so the players near it see the toast.
+    AeroRuntime.awardNearby(world, pos, advancement);
   }
 
   @override

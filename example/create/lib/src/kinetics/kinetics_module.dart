@@ -24,6 +24,7 @@ import 'settings.dart';
 import 'use_records.dart';
 import 'wrench_integration.dart';
 import '../api/advancements.dart' show CreateAdvancements;
+import 'advancement_access.dart';
 import '../content/advancement_ids.dart' show AllAdvancements;
 
 final class KineticsModule extends CreateModule {
@@ -83,6 +84,9 @@ final class KineticsModule extends CreateModule {
     ctx.services.provide<KineticNetworkService>(
       KineticNetworkService(rt, [for (final s in _specs) s.block]),
     );
+    // The award sites of this module (`KineticsAdvancements.awardPlacer`) read the advancement
+    // service through this handle.
+    KineticsAdvancements.install(ctx.services);
     ctx.services.provide<KineticSpeedLookup>(_SpeedLookup(rt));
 
     // `WaterWheelBlockEntity.determineAndApplyFlowScore` awards `WATER_WHEEL`/`LAVA_WHEEL` and

@@ -116,6 +116,60 @@ final class PumpkinSubLevelHost implements SubLevelHost {
     return null;
   }
 
+  /// A live handle of the player with [playerId], in this level, or `null`
+  /// when they are gone. The caller owns it and must dispose it.
+  ///
+  /// `SubLevelHost.playerById` returns only a snapshot; the tracking sender
+  /// needs the handle itself to hand it to the host's send calls.
+  Player? playerHandle(String playerId) {
+    final parsed = Uuids.tryParse(playerId);
+    if (parsed == null) return null;
+    Player? handle;
+    try {
+      handle = _server.getPlayerByUuid(id: parsed);
+    } on Object catch (error) {
+      logger?.call('Sable: the player $playerId could not be resolved', error);
+      return null;
+    }
+    if (handle == null) return null;
+    try {
+      final world = handle.getWorld();
+      final dimension = world.getDimension();
+      world.dispose();
+      if (dimension != level.dimensionId) {
+        handle.dispose();
+        return null;
+      }
+      return handle;
+    } on Object catch (error) {
+      logger?.call('Sable: the player $playerId could not be read', error);
+      try {
+        handle.dispose();
+      } on Object {
+        // already dead
+      }
+      return null;
+    }
+  }
+
+  /// Asks the server to keep a yard chunk loaded, without waiting for it.
+  ///
+  /// Uses the server's own `forceload`: it *marks* the chunk and returns at
+  /// once, where the plugin's `force-load-chunk` waits for generation and
+  /// answers at its 60 s timeout — and that wait blocks the server's tick loop,
+  /// because the host's call only returns when the chunk exists (measured with
+  /// the call awaited and without).
+  Future<void> requestYardChunkKeep(String dimension, int chunkX, int chunkZ) => _server.executeCommand(
+    command: 'execute in $dimension run forceload add ${chunkX << 4} ${chunkZ << 4}',
+    sender: const ServerCommandSenderConsole(),
+  );
+
+  /// Releases the request made by [requestYardChunkKeep].
+  Future<void> releaseYardChunkKeep(String dimension, int chunkX, int chunkZ) => _server.executeCommand(
+    command: 'execute in $dimension run forceload remove ${chunkX << 4} ${chunkZ << 4}',
+    sender: const ServerCommandSenderConsole(),
+  );
+
   // ---------------------------------------------------------------- sub-levels
 
   @override

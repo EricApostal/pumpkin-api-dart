@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../../api/advancements.dart';
 import '../../../api/blocks.dart';
 import '../../../api/wrenchable.dart';
 import '../../../common/direction.dart';
@@ -151,6 +152,32 @@ Future<WrenchResult> _wrenchBeltFunnel(WrenchContext c) async {
   }
   if (next != shape)
     await writeState(world, pos, state.setValue('shape', next));
+  // `BeltFunnelBlock.onWrenched` (`Java BeltFunnelBlock.java:202`): a belt funnel wrenched to
+  // `extended` facing another extended belt funnel opposite it kisses it and awards the wrenching
+  // player `AllAdvancements.FUNNEL_KISS`. Java returns early when the shape did not change, so a
+  // repeat wrench does not award again.
+  if (next != shape && next == 'extended') {
+    final facing = state.dir('facing');
+    if (facing != null) {
+      final opposite = ConveyanceRuntime.i.stateAt(
+        world.getId(),
+        pos.relative(facing),
+      );
+      if (isBeltFunnelState(opposite) &&
+          opposite['shape'] == 'extended' &&
+          opposite.dir('facing') == facing.opposite) {
+        final advancements = ConveyanceRuntime.i.advancements;
+        if (advancements != null) {
+          final kept = c.player.keep();
+          unawaited(
+            advancements
+                .award(kept, AllAdvancements.funnelKiss)
+                .whenComplete(kept.dispose),
+          );
+        }
+      }
+    }
+  }
   return WrenchResult.success;
 }
 

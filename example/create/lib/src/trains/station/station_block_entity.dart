@@ -10,6 +10,7 @@ import 'dart:convert';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../api/block_state.dart';
 import '../../api/decoration.dart' show DoorControlBehaviour;
 import '../../api/redstone.dart' show RedstoneDisplayApi;
@@ -19,6 +20,7 @@ import '../../common/data.dart' show Iterate;
 import '../../common/direction.dart';
 import '../../common/host_bridge.dart';
 import '../../common/pos.dart' hide pos;
+import '../../content/advancement_ids.dart';
 import '../../contraptions/core/structure_transform.dart';
 import '../../core/block_entity.dart';
 import '../../core/nbt.dart' show NetworkNbt;
@@ -46,6 +48,7 @@ final class StationBlockEntity extends CreateBlockEntity {
 
   late final TrackTargetingBehaviour<GlobalStation> edgePoint;
   late final DoorControlBehaviour doorControls;
+  late final AdvancementBehaviour advancements;
   StationDepot? depot;
 
   final StationAssembly assembly = StationAssembly();
@@ -76,6 +79,20 @@ final class StationBlockEntity extends CreateBlockEntity {
       TrackTargetingBehaviour<GlobalStation>(EdgePointType.STATION),
     );
     doorControls = addBehaviour(DoorControlBehaviour());
+    // `registerAwardables(behaviours, AllAdvancements.CONTRAPTION_ACTORS, AllAdvancements.TRAIN,
+    // AllAdvancements.LONG_TRAIN, AllAdvancements.CONDUCTOR)` (Java
+    // `StationBlockEntity.java:168-169`): the player that placed the station gets these.
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [
+          AllAdvancements.contraptionActors,
+          AllAdvancements.train,
+          AllAdvancements.longTrain,
+          AllAdvancements.conductor,
+        ],
+        () => Tr.i.ctx.services.find<CreateAdvancements>(),
+      ),
+    );
     final factory = Tr.loaded ? Tr.i.service<StationDepotFactory>() : null;
     if (factory != null) {
       depot = addBehaviour(factory.create(this, onChanged: applyAutoSchedule));
@@ -508,6 +525,9 @@ final class StationBlockEntity extends CreateBlockEntity {
     final train = station.getImminentTrain();
     if (train == null || !identical(train.getCurrentStation(), station)) return;
 
+    // `award(AllAdvancements.CONDUCTOR)` (Java `StationBlockEntity.java:978`): the station's
+    // scheduled automatic schedule took effect.
+    unawaited(advancements.awardPlayer(AllAdvancements.conductor));
     train.runtime.setSchedule(schedule, true);
     TrainFx.effects.playSound(worldId, _pos.center, 'confirm', 1, 1);
   }
@@ -764,6 +784,11 @@ final class StationBlockEntity extends CreateBlockEntity {
 
     for (var i = 0; i < contraptions.length; i++) {
       carriages[i].setContraption(trainLevel, contraptions[i]);
+      // `if (contraption.containsBlockBreakers()) award(AllAdvancements.CONTRAPTION_ACTORS)`
+      // (Java `StationBlockEntity.java:905`).
+      if (contraptions[i].data.containsBlockBreakers()) {
+        unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
+      }
     }
 
     final station = getStation();
@@ -775,6 +800,12 @@ final class StationBlockEntity extends CreateBlockEntity {
     train.collectInitiallyOccupiedSignalBlocks();
     Create.RAILWAYS.addTrain(train);
     TrainFx.effects.sendAddTrain(train);
+    // `award(AllAdvancements.TRAIN)` (Java `StationBlockEntity.java:919`) and
+    // `if (contraptions.size() >= 6) award(AllAdvancements.LONG_TRAIN)` (:921).
+    unawaited(advancements.awardPlayer(AllAdvancements.train));
+    if (contraptions.length >= 6) {
+      unawaited(advancements.awardPlayer(AllAdvancements.longTrain));
+    }
     clearException();
   }
 

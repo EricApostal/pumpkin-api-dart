@@ -13,6 +13,7 @@ import '../lua/lua.dart';
 import 'api/fs_api.dart';
 import 'api/os_api.dart';
 import 'api/peripheral_api.dart';
+import 'api/pocket_api.dart';
 import 'api/redstone_api.dart';
 import 'api/term_api.dart';
 import 'api/turtle_api.dart';
@@ -143,6 +144,40 @@ final class _SideAccess implements PeripheralAccess {
 
   @override
   void queueEvent(String name, List<Object?> args) => _computer.queueEvent(name, args);
+
+  // `DiskDriveBlockEntity.mountDisk`: the disk lives at the first free
+  // `disk`/`disk<n>` mount of the attached computer (`hdd` is the root, `rom`
+  // is fixed, so `disk` is always free first). When the computer is off there
+  // is no file system to mount on, which reports null: the drive's
+  // disk-methods then behave as data-less, as in Java when the mount fails.
+  @override
+  String? mountDisk(Object mount) {
+    final fs = _computer.fileSystem;
+    if (fs == null || mount is! Mount) return null;
+    for (var n = 1;; n++) {
+      final at = n == 1 ? 'disk' : 'disk$n';
+      try {
+        if (fs.exists(at)) continue;
+      } on FileSystemException {
+        return null;
+      }
+      try {
+        fs.mount('disk', at, mount);
+      } on FileSystemException {
+        return null;
+      }
+      return at;
+    }
+  }
+
+  @override
+  void unmountDisk(String path) {
+    try {
+      _computer.fileSystem?.unmount(path);
+    } on FileSystemException {
+      // The mount may already be gone (shutdown unmounts everything first).
+    }
+  }
 }
 
 final class _Attachment {
@@ -185,6 +220,12 @@ final class Computer implements OsHost, PeripheralLookup {
   /// computer starts: the `turtle` API is built when the machine is created.
   TurtleBrain? _turtle;
 
+  /// The plugin side of the `pocket` API when this computer is a pocket
+  /// computer. Set before the computer starts (like [_turtle]): the global is
+  /// built when the machine is created, and a computer that had no host when it
+  /// booted only gets one at its next start.
+  PocketHost? _pocket;
+
   Computer({
     required this.id,
     required this.family,
@@ -208,6 +249,16 @@ final class Computer implements OsHost, PeripheralLookup {
   set turtle(TurtleBrain? brain) {
     _turtle = brain;
     brain?.queueEvent = _turtleEvent;
+  }
+
+  /// The `pocket` host of a pocket computer.
+  PocketHost? get pocket => _pocket;
+
+  set pocket(PocketHost? host) {
+    _pocket = host;
+    // The host answers a queued request with a `pocket_response` event, whose
+    // values are plain (unlike `turtle_response`'s inspect table).
+    host?.queueEvent = queueEvent;
   }
 
   /// The brain's events: `turtle_response` carries values the Lua layer must
@@ -547,7 +598,11 @@ final class Computer implements OsHost, PeripheralLookup {
     apis['os'] = _os.build();
     try {
       final hostString = 'ComputerCraft ${image.modVersion ?? '1.120.3'} (Minecraft 26.3)';
-      final vmApis = {if (turtle != null) 'turtle': turtleApiBuilder(turtle)};
+      final pocket = _pocket;
+      final vmApis = {
+        if (turtle != null) 'turtle': turtleApiBuilder(turtle),
+        if (pocket != null) 'pocket': pocketApiBuilder(pocket),
+      };
       return switch (config.luaEngine) {
         LuaEngine.native => CLuaMachine.create(
           bios: image.bios,

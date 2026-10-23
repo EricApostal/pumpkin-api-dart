@@ -1,9 +1,11 @@
 // `MechanicalMixerBlockEntity`: a basin operator that mixes (and compacts through the press)
 // the basin two blocks below it, with the 40 tick head animation.
+import 'dart:async';
 import 'dart:math';
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../basin/basin_operating_block_entity.dart';
 import '../processing_runtime.dart';
 import '../recipe/crafting_recipes.dart';
@@ -21,7 +23,28 @@ final class MechanicalMixerBlockEntity extends BasinOperatingBlockEntity {
 
   bool running = false;
 
-  MechanicalMixerBlockEntity(super.worldId, super.pos);
+  /// `registerAwardables(behaviours, MIXER)` (`MechanicalMixerBlockEntity.java:101`): the mixer
+  /// awards its owner.
+  late final AdvancementBehaviour advancements;
+
+  MechanicalMixerBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour([AllAdvancements.mixer], () => _rt.advancements),
+    );
+  }
+
+  ProcessingRuntime get _rt => ProcessingRuntime.instance;
+
+  /// `getProcessedRecipeTrigger` (`MechanicalMixerBlockEntity.java:307`).
+  @override
+  String? get processedRecipeAward => AllAdvancements.mixer;
+
+  /// A completed mixing cycle awards the trigger to the owner (`MIXER` is the mixer's
+  /// `getProcessedRecipeTrigger`, which `BasinOperatingBlockEntity.java:120` awards).
+  @override
+  void onBasinCycleCompleted(String award) {
+    unawaited(advancements.awardPlayer(award));
+  }
 
   /// `matchStaticFilters`: mixing recipes.
   @override

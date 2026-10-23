@@ -124,10 +124,17 @@ final class SubLevelTrackingSystem with SubLevelObserver {
     this.sink,
     this.chunkView,
     this.udp,
+    this.log,
   }) {
     container.takeTrackingSystem(this);
     container.addObserver(this);
   }
+
+  /// A diagnostic sink (the plugin wires it to its logger) for the decisions this
+  /// system makes: which players it finds, which it decides can see a sub-level,
+  /// and what it sends. Without it a sub-level that syncs to nobody is invisible
+  /// for reasons nobody can see either.
+  final void Function(String message)? log;
 
   /// The current interpolation tick.
   int get interpolationTick => _interpolationTick;
@@ -181,6 +188,11 @@ final class SubLevelTrackingSystem with SubLevelObserver {
       final tracking = serverSubLevel.trackingPlayers;
       final position = subLevel.logicalPose.position();
       _collectPlayers(position, tracking);
+      log?.call(
+        'addition at (${position.x.toStringAsFixed(1)},${position.y.toStringAsFixed(1)},'
+        '${position.z.toStringAsFixed(1)}) range=${config.subLevelTrackingRange} '
+        'players=${_players().length} tracking=${tracking.length}',
+      );
 
       final splitFromId = serverSubLevel.getSplitFromSubLevel();
       final splitFrom = splitFromId == null ? null : container.getSubLevelById(splitFromId);

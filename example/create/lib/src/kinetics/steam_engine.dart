@@ -3,8 +3,10 @@
 // that the fluids module provides.
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../content/advancement_ids.dart' show AllAdvancements;
 import '../core/block_entity.dart';
 import '../core/blocks.dart';
+import 'advancement_access.dart';
 import 'behavior_builder.dart';
 import 'block_factory.dart';
 import 'generators.dart';
@@ -108,6 +110,11 @@ class SteamEngineBlockEntity extends CreateBlockEntity {
     if (facing.axis == KAxis.y) facing = state.dirOf('facing') ?? Dir.north;
 
     final efficiency = efficiencyRaw.clamp(0.0, 1.0);
+    // `SteamEngineBlockEntity.java:113`: a boiler behind the engine with a positive efficiency
+    // awards `STEAM_ENGINE` to the player that placed it.
+    if (efficiency > 0) {
+      KineticsAdvancements.awardPlacer(this, AllAdvancements.steamEngine);
+    }
 
     var conveyedSpeedLevel = efficiency == 0
         ? 1

@@ -7,11 +7,15 @@
 //
 // Unverified against a live client and a built host: docs/host-requirements.md
 // lists the byte level assumptions.
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:pumpkin_neoforge/pumpkin_neoforge_core.dart' show NbtText, VanillaRegistries;
 
 import '../machine/computer.dart';
 import '../machine/input.dart';
+import '../machine/peripherals.dart' show SpeakerSink, SpeakerSound, SpeakerAudioChunk;
 import '../machine/transfer.dart';
 import '../protocol/channels.dart';
 import '../protocol/menu_data.dart';
@@ -52,6 +56,142 @@ final class ComputerSession {
 /// half a block diagonal because the distance is measured from the centre).
 const double _maxUseDistance = 9.5;
 
+/// The `source` UUID of a speaker: the client keys everything it plays by it,
+/// so one speaker keeps one for as long as it exists and a `play`/`audio`/`stop`
+/// sequence matches (`SpeakerPeripheral.getSource`).
+///
+/// Java makes a `UUID.randomUUID()`; the host has no UUID generator, so this
+/// makes one from the clock and a counter. It is unique for the life of the
+/// server, which is all the client needs (it forgets a source that stops).
+String newSpeakerSource() {
+  final seed = _speakerSeed + _speakerCounter++;
+  final rng = math.Random(seed);
+  final high = (rng.nextInt(1 << 32) << 32) | rng.nextInt(1 << 32);
+  final low = (rng.nextInt(1 << 32) << 32) | rng.nextInt(1 << 32);
+  String hex(int value, int digits) => value.toUnsigned(digits * 4).toRadixString(16).padLeft(digits, '0');
+  final all = hex(high, 16) + hex(low, 16);
+  return '${all.substring(0, 8)}-${all.substring(8, 12)}-${all.substring(12, 16)}-'
+      '${all.substring(16, 20)}-${all.substring(20)}';
+}
+
+final int _speakerSeed = DateTime.now().microsecondsSinceEpoch;
+int _speakerCounter = 0;
+
+/// A [SpeakerSink] that sends CC's speaker payloads to the players that can
+/// hear the speaker (Java: `ServerNetworking.sendToAllAround(pos, volume * 16)`
+/// for a note, `sendToAllTracking(chunk)` for audio, `sendToAllPlayers` for a
+/// stop).
+///
+/// Java decides who hears a note by the sound radius (`volume * 16`) and audio
+/// by chunk tracking; this port uses a fixed radius for both, so a quiet note
+/// reaches a few players more than a client renders. The sends are not awaited
+/// (the speaker is ticked, not called from a host callback); a failure is
+/// logged and does not stop the others.
+///
+/// The dimension the payload names is the world of the player receiving it:
+/// everyone sent to is in the speaker's world, and the host has no dimension
+/// for a world name without a world handle. So the sink is given the world's
+/// *name* (what [ComputerLocation.world] holds) and [server] is set by whoever
+/// ticks the speaker.
+final class CcSpeakerSink implements SpeakerSink {
+  final CcNetwork _network;
+  final String source;
+
+  /// The name of the world the speaker is in (`World.getName`).
+  final String worldName;
+
+  /// Where the speaker is, asked each time it matters (a turtle's speaker moves).
+  final (double, double, double) Function() at;
+
+  /// The entity the speaker follows, if it follows one (a pocket computer in a
+  /// player's hand).
+  final int? entityId;
+
+  /// The server, set by the tick that drives the speaker before [update].
+  Server? server;
+
+  CcSpeakerSink(this._network, this.source, this.worldName, this.at, {this.entityId});
+
+  /// How far the players that hear the speaker are, in blocks.
+  static const double _hearRadius = 64;
+
+  void _send(double radius, Future<void> Function(Player, SpeakerPositionMessage) send) {
+    final server = this.server;
+    if (server == null) return;
+    final position = at();
+    for (final player in server.playersNear(position, radius, worldName: worldName)) {
+      unawaited(() async {
+        try {
+          final world = player.getWorld();
+          final String dimension;
+          try {
+            dimension = world.getDimension();
+          } finally {
+            world.dispose();
+          }
+          await send(player, SpeakerPositionMessage(dimension, position, entityId));
+        } catch (e) {
+          logger.warn('Could not send a speaker payload to ${player.getName()}: $e');
+        } finally {
+          player.dispose();
+        }
+      }());
+    }
+  }
+
+  @override
+  void play(SpeakerSound sound) {
+    final volume = sound.volume;
+    _send(
+      volume * 16 > _hearRadius ? volume * 16 : _hearRadius,
+      (player, position) => _network._speakerPlay.send(
+        player,
+        SpeakerPlayMessage(source, position, sound.id, volume, sound.pitch),
+      ),
+    );
+  }
+
+  @override
+  void playAudio(SpeakerAudioChunk chunk) => _send(
+    _hearRadius,
+    (player, position) => _network._speakerAudio.send(
+      player,
+      SpeakerAudioMessage(
+        source,
+        position,
+        chunk.charge,
+        chunk.strength,
+        chunk.previousBit,
+        chunk.audio,
+        chunk.volume,
+      ),
+    ),
+  );
+
+  @override
+  void stop() {
+    final server = this.server;
+    if (server == null) return;
+    for (final player in server.allPlayers) {
+      unawaited(() async {
+        try {
+          await _network._speakerStop.send(player, SpeakerStopMessage(source));
+        } catch (e) {
+          logger.warn('Could not stop a speaker for ${player.getName()}: $e');
+        } finally {
+          player.dispose();
+        }
+      }());
+    }
+  }
+
+  @override
+  void moved() => _send(
+    _hearRadius,
+    (player, position) => _network._speakerMove.send(player, SpeakerMoveMessage(source, position)),
+  );
+}
+
 final class CcNetwork {
   final Map<String, ComputerSession> _sessions = {};
   final CcRegistryIds _ids = CcRegistryIds();
@@ -85,6 +225,30 @@ final class CcNetwork {
   final TypedChannel<ComputerTerminalMessage> _terminal = TypedChannel(
     CcChannels.computerTerminal,
     ComputerTerminalMessage.codec,
+  );
+
+  /// A monitor's screen. The monitor block entities (`CcWorldMonitors`) send
+  /// on it; nothing else does.
+  final TypedChannel<MonitorMessage> monitor = TypedChannel(
+    CcChannels.monitorClient,
+    MonitorMessage.codec,
+  );
+
+  final TypedChannel<SpeakerPlayMessage> _speakerPlay = TypedChannel(
+    CcChannels.speakerPlay,
+    SpeakerPlayMessage.codec,
+  );
+  final TypedChannel<SpeakerAudioMessage> _speakerAudio = TypedChannel(
+    CcChannels.speakerAudio,
+    SpeakerAudioMessage.codec,
+  );
+  final TypedChannel<SpeakerStopMessage> _speakerStop = TypedChannel(
+    CcChannels.speakerStop,
+    SpeakerStopMessage.codec,
+  );
+  final TypedChannel<SpeakerMoveMessage> _speakerMove = TypedChannel(
+    CcChannels.speakerMove,
+    SpeakerMoveMessage.codec,
   );
 
   CcNetwork();

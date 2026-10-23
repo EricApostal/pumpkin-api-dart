@@ -1,10 +1,12 @@
 // `EncasedFanBlock` / `EncasedFanBlockEntity`: the kinetic fan. It turns its rotation into an
 // [AirCurrent] that pushes or pulls entities and processes items. Ported from
 // `content/kinetics/fan/EncasedFanBlock.java` and `EncasedFanBlockEntity.java`.
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:pumpkin_api/pumpkin_api.dart';
 
+import '../../api/advancements.dart';
 import '../../common/common.dart' hide pos;
 import '../../common/host_bridge.dart';
 import '../../core/blocks.dart';
@@ -15,8 +17,25 @@ import 'air_current.dart';
 /// `EncasedFanBlockEntity`.
 final class EncasedFanBlockEntity extends KineticBlockEntity
     implements IAirCurrentSource {
+  /// `registerAwardables(behaviours, ENCASED_FAN, FAN_PROCESSING)`
+  /// (`EncasedFanBlockEntity.java:39`): the fan awards its owner.
+  late final AdvancementBehaviour advancements;
+
   EncasedFanBlockEntity(super.worldId, super.pos) {
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.encasedFan, AllAdvancements.fanProcessing],
+        () => ProcessingRuntime.instance.advancements,
+      ),
+    );
     airCurrent = AirCurrent(this);
+  }
+
+  /// Awards `FAN_PROCESSING` for a current that processed something, on behalf of the current
+  /// (`fan.award(AllAdvancements.FAN_PROCESSING)` in `AirCurrent.java:126,157`).
+  @override
+  void onFanProcessed() {
+    unawaited(advancements.awardPlayer(AllAdvancements.fanProcessing));
   }
 
   /// `airCurrent`.
@@ -95,6 +114,11 @@ final class EncasedFanBlockEntity extends KineticBlockEntity
     if (updateAirFlow) {
       updateAirFlow = false;
       airCurrent.rebuild();
+      // `if (airCurrent.maxDistance > 0) award(ENCASED_FAN)`
+      // (`EncasedFanBlockEntity.java:137`): the fan blows.
+      if (airCurrent.maxDistance > 0) {
+        unawaited(advancements.awardPlayer(AllAdvancements.encasedFan));
+      }
       sendData();
     }
 

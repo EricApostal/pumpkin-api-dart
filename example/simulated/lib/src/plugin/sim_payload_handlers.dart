@@ -29,6 +29,7 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 import 'package:sable/sable.dart' show SubLevelHelper, Vector3d;
 
 import '../config/sim_config_service.dart';
+import '../content/advancements/sim_advancements.dart';
 import '../content/blocks/physics_assembler/physics_assembler_block_entity.dart';
 import '../content/blocks/spring/spring_block_entity.dart';
 import '../content/blocks/spring/spring_placement.dart';
@@ -140,6 +141,10 @@ final class SimPayloadHandlers {
   Future<void> _assemble(Player player, AssemblePacket packet) async {
     final worldId = player.getWorld().getId();
     final assembler = blockEntities.typed<PhysicsAssemblerBlockEntity>(worldId, packet.pos.toBlockPos());
+    log.info(
+      'simulated:assemble from ${player.getName()} at ${packet.pos}: '
+      '${assembler == null ? 'no assembler block entity there' : 'running assembleOrDisassemble'}.',
+    );
     await assembler?.assembleOrDisassemble();
   }
 
@@ -164,8 +169,13 @@ final class SimPayloadHandlers {
     // `startHolding()` / `stopHolding()`, which set `held` and notify.
     wheel.logic.targetAngleToUpdate = packet.targetAngle;
     wheel.setHeld(!packet.shouldStop);
-    // TODO(parity): `SimStats.INTERACT_WITH_STEERING_WHEEL` and
-    // `SimAdvancements.UNPOWERED_STEERING`; neither table is ported.
+    if (!packet.shouldStop) {
+      // `SteeringWheelPacket.handle` (`SteeringWheelPacket.java:36`), the
+      // `startHolding` branch: `SimAdvancements.UNPOWERED_STEERING.awardTo(player)`.
+      SimAdvancements.award(player, 'unpowered_steering');
+      // TODO(parity): `SimStats.INTERACT_WITH_STEERING_WHEEL.awardTo(player)`;
+      // the package has no statistic table.
+    }
   }
 
   /// `PlaceSpringPacket.handle`: place the two ends of a spring.
@@ -275,10 +285,12 @@ final class SimPayloadHandlers {
     honeyGlueTrackerOf(world.getId()).put(HoneyGlue(entity.getId(), bounds));
     entity.dispose();
 
-    // TODO(parity): `level.playSound(HONEY_ADDED)` + `ITEM_FRAME_ADD_ITEM` and
-    // `SimAdvancements.NOT_GONNA_SUGARCOAT_IT.awardTo(player)`. `SimSoundIds` is
-    // filled by nobody yet (see docs/PHASE_7B_GAPS.md, host gap 4) and the
-    // package has no advancement table.
+    // `HoneyGlueSpawnPacket.handle` (`HoneyGlueSpawnPacket.java:84`): spawning
+    // the volume awards `NOT_GONNA_SUGARCOAT_IT`.
+    SimAdvancements.award(player, 'not_gonna_sugarcoat_it');
+
+    // TODO(parity): `level.playSound(HONEY_ADDED)` + `ITEM_FRAME_ADD_ITEM`.
+    // `SimSoundIds` is filled by nobody yet (see docs/PHASE_7B_GAPS.md, host gap 4).
     //
     // `honeyGlueItem.hurtAndBreak(1, level, player, ...)`: the host API has no
     // item durability, so a stack of one is consumed and a larger stack loses a

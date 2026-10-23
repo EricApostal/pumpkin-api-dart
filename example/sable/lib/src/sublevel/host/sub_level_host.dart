@@ -70,7 +70,42 @@ abstract interface class PlotChunk {
 
   /// The block key (`minecraft:stone`) at the local position.
   String blockAt(int x, int y, int z);
+
+  /// The pending block ticks of this chunk, by packed local position
+  /// (`LevelChunk.getBlockTicks()`).
+  ///
+  /// A plot chunk is not in the host's chunk map, so the host's scheduler never
+  /// ticks it and `World.scheduleBlockTick` does nothing for a yard position;
+  /// the ticks of plot blocks are kept here and drained by [LevelPlot.tick].
+  /// They are part of the chunk's saved data, exactly like the Java
+  /// `LevelChunkTicks` the chunk serialiser writes as `block_ticks`.
+  Map<int, PlotScheduledTick> get blockTicks;
+
+  /// The state packed the way [blockTicks] keys are: absolute y and local x/z.
+  int indexOfBlock(int x, int y, int z);
+
+  /// Schedules a tick of the block at the local position, replacing a pending
+  /// one there (`LevelChunkTicks.schedule`).
+  void scheduleBlockTick(int x, int y, int z, PlotScheduledTick tick);
 }
+
+/// A pending tick of a plot block: [delay] container ticks until it fires.
+final class PlotScheduledTick {
+  PlotScheduledTick(this.delay, [this.priority = PlotTickPriority.normal]);
+
+  /// The remaining ticks, as Java's `ScheduledTick.delay`. Counted down once
+  /// per container tick by [LevelPlot.tick].
+  int delay;
+
+  /// Which of the ticks that are due first fires first.
+  PlotTickPriority priority;
+
+  @override
+  String toString() => 'PlotScheduledTick(delay: $delay, ${priority.name})';
+}
+
+/// The priority of a scheduled plot tick, in the host's `TickPriority` order.
+enum PlotTickPriority { high, normal, low, lowest }
 
 /// The chunk-level operations of the plot yard: loading chunks at the yard's
 /// distant origin, keeping them loaded, and reporting whether they are.

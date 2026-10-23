@@ -74,9 +74,47 @@ abstract class LevelPlot {
     : plotPos = (x, z),
       _chunks = List<PlotChunkHolder?>.filled((1 << logSize) * (1 << logSize), null);
 
-  /// Ticks this plot (the Java class runs lighting updates here; the port has
-  /// no plot light engine yet).
-  void tick() {}
+  /// Ticks this plot: counts down the pending block ticks of its chunks and
+  /// fires the due ones (`ServerLevel.tickChunk` post-processing keeps the
+  /// ticks of loaded chunks; the plot keeps its own because it is not a host
+  /// chunk). A tick fires as [onPlotBlockTick]; due ticks fire
+  /// highest-priority first, and a block change between scheduling and firing
+  /// drops the tick, like the host's scheduler drops the ticks of a replaced
+  /// block. The Java class runs lighting updates here too; the port has no
+  /// plot light engine yet (see `ServerLevelPlot.lightEngine`).
+  void tick() {
+    for (final holder in List.of(loadedChunks)) {
+      final chunk = holder.chunk;
+      if (chunk.blockTicks.isEmpty) continue;
+      final due = <int>[];
+      for (final entry in chunk.blockTicks.entries) {
+        entry.value.delay -= 1;
+        if (entry.value.delay <= 0) due.add(entry.key);
+      }
+      if (due.isEmpty) continue;
+      due.sort((a, b) {
+        final order = chunk.blockTicks[a]!.priority.index.compareTo(chunk.blockTicks[b]!.priority.index);
+        return order != 0 ? order : a.compareTo(b);
+      });
+      final baseX = holder.pos.$1 << 4;
+      final baseZ = holder.pos.$2 << 4;
+      for (final packed in due) {
+        final tick = chunk.blockTicks.remove(packed);
+        if (tick == null) continue;
+        final x = baseX + (packed & 15);
+        final z = baseZ + ((packed >> 4) & 15);
+        final y = (packed >> 8) & 0xFFF;
+        onPlotBlockTick(x, y, z);
+      }
+    }
+  }
+
+  /// Fires the due scheduled tick of the block at the global yard position.
+  ///
+  /// The default drops ticks whose block is gone or whose data cannot be read;
+  /// the host adapter overrides this to run the block's scheduled-tick
+  /// behaviour (custom blocks, vanilla blocks with world ticks).
+  void onPlotBlockTick(int x, int y, int z) {}
 
   /// The center block position in the plot.
   Pos getCenterBlock() {

@@ -9,8 +9,11 @@ part 'model.mapper.dart';
 /// A place a player can be sent to.
 @MappableClass()
 class Location with LocationMappable {
-  /// The dimension key, like `minecraft:overworld` (`World.getDimension()`), not the world id
-  /// (`World.getId()`, the folder name `world`).
+  /// The world name (the folder name, like `world`), from `World.getName()`.
+  /// `Server.getWorldByName` accepts this as well as the dimension key
+  /// (`World.getDimension()`, like `minecraft:overworld`), so either shape
+  /// resolves; the plugin stores the name, which is unambiguous when several
+  /// worlds share a dimension.
   final String world;
   final double x;
   final double y;
@@ -27,7 +30,8 @@ class Location with LocationMappable {
     this.pitch = 0,
   });
 
-  /// A short description like `overworld 10, 64, -3`.
+  /// A short description like `world 10, 64, -3`; a `minecraft:` prefix (a
+  /// dimension key) is dropped.
   String describe() {
     final name = world.startsWith('minecraft:') ? world.substring(10) : world;
     return '$name ${x.floor()}, ${y.floor()}, ${z.floor()}';

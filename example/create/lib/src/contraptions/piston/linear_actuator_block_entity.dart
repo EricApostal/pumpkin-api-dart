@@ -10,11 +10,13 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../../api/block_state.dart';
 import '../../api/blocks.dart' show HostBlockGetter;
+import '../../api/advancements.dart';
 import '../../api/value_settings.dart';
 import '../../common/common.dart';
 import '../../kinetics/api.dart';
 import '../blocks/actuator_contract.dart';
 import '../blocks/actuator_nbt.dart';
+import '../blocks/actuator_runtime.dart';
 import '../core/structure_info.dart';
 import '../entity/contraption_entity.dart';
 import '../entity/controlled_contraption_entity.dart';
@@ -37,6 +39,14 @@ abstract class LinearActuatorBlockEntity extends KineticBlockEntity
         ..between(0, 2)
         ..withCallback((_) => waitingForSpeedChange = false),
     );
+    // `LinearActuatorBlockEntity.addBehaviours` registers `CONTRAPTION_ACTORS`
+    // (`LinearActuatorBlockEntity.java:60`); the piston and the pulley award it through this.
+    advancements = addBehaviour(
+      AdvancementBehaviour(
+        [AllAdvancements.contraptionActors],
+        () => ActuatorRuntime.maybe?.advancements,
+      ),
+    );
   }
 
   double offset = 0;
@@ -55,6 +65,10 @@ abstract class LinearActuatorBlockEntity extends KineticBlockEntity
   double sequencedOffsetLimit = -1;
 
   ScrollValueBehaviour? _movementMode;
+
+  /// `AdvancementBehaviour(this, AllAdvancements.CONTRAPTION_ACTORS)`: the player that placed the
+  /// actuator gets the advancement when it assembles a contraption with block breakers.
+  late final AdvancementBehaviour advancements;
 
   /// The position as a [Pos]; the inherited `pos` is a host `BlockPos`.
   Pos get localPos => (this.pos.x, this.pos.y, this.pos.z);
@@ -404,6 +418,11 @@ class MechanicalPistonBlockEntity extends LinearActuatorBlockEntity implements P
     final resultingOffset =
         contraption.initialExtensionProgress + getMovementSpeed().sign * .5;
     if (resultingOffset <= 0 || resultingOffset >= extensionLength) return;
+
+    // `MechanicalPistonBlockEntity.java:91`: `award(AllAdvancements.CONTRAPTION_ACTORS)`.
+    if (contraption.containsBlockBreakers()) {
+      unawaited(advancements.awardPlayer(AllAdvancements.contraptionActors));
+    }
 
     running = true;
     offset = contraption.initialExtensionProgress.toDouble();

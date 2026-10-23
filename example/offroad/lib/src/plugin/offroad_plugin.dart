@@ -19,6 +19,12 @@ import 'package:pumpkin_api/pumpkin_api.dart';
 
 import '../config/offroad_config.dart';
 import '../config/offroad_synced_config.dart';
+import '../content/blocks/borehead_bearing/borehead_bearing_block.dart'
+    show boreheadBearingKey, boreheadBearingKineticDef;
+import '../content/blocks/rock_cutting_wheel/rock_cutting_wheel_block.dart'
+    show rockCuttingWheelKey, rockCuttingWheelKineticDef;
+import '../content/blocks/wheel_mount/wheel_mount_block.dart'
+    show wheelMountKey, wheelMountKineticDef;
 import '../host/offroad_hooks.dart';
 import '../offroad_module.dart';
 import 'offroad_addon.dart';
@@ -30,6 +36,9 @@ final class OffroadPlugin extends Plugin {
 
   late final BlockEntityStore _blockEntities;
   CreateCore? _core;
+
+  /// The caller half of Create's kinetic network (see `onLoad`).
+  KineticsBridge? _kinetics;
 
   @override
   PluginInfo get info => const PluginInfo(
@@ -77,7 +86,33 @@ final class OffroadPlugin extends Plugin {
     blockEntities.install(context);
     core.savedData.install(context, saveIntervalTicks: 20);
 
+    // The framework's per-world tick (the store's pending writes and the module
+    // handlers): without it this component's block entities are published once, at
+    // creation, and never update.
+    installHostedWorldTick(
+      context: context,
+      worlds: core.worlds,
+      // The plugin's own store: `core.blockEntities` is a second store the
+      // component never installed (its `tickWorld` would flush nothing).
+      blockEntities: blockEntities,
+      savedData: core.savedData,
+      moduleHandlers: core.worldTickHandlers,
+      log: log,
+    );
+
     module.onLoad(CreateContext(core, () => this.context, module.name));
+
+    // The kinetic network is Create's plugin's, not this component's: the same
+    // rules (and stress impacts) are registered with it, and this component's
+    // blocks are announced as they load, so a Create shaft drives the borehead
+    // bearing and the wheel mount (`docs/kinetics-across-plugins.md`). When no
+    // Create plugin is loaded the bridge stays disarmed and this component's own
+    // runtime propagates.
+    final kinetics = _kinetics = installConsumerKinetics(context: context, log: log);
+    kinetics
+      ..addRule(boreheadBearingKey, boreheadBearingKineticDef, impact: OffroadConfig.boreheadBearingImpact)
+      ..addRule(wheelMountKey, wheelMountKineticDef, impact: OffroadConfig.wheelMountImpact)
+      ..addRule(rockCuttingWheelKey, rockCuttingWheelKineticDef);
 
     // Phase 3: declare the mod and its payload channel, so a client that has
     // Offroad installed completes the NeoForge negotiation instead of being
@@ -114,6 +149,7 @@ final class OffroadPlugin extends Plugin {
 
   @override
   Future<void> onUnload(Context context) async {
+    _kinetics?.close();
     _blockEntities.flushAll();
     _core?.savedData.flushAll();
     _core?.worlds.clear();

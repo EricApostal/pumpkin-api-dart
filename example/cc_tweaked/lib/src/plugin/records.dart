@@ -76,6 +76,12 @@ final class ComputerRecord {
   /// Whether the computer was on when the server stopped (it starts again).
   bool on;
 
+  /// Whether this computer is a pocket computer: a machine carried as an item
+  /// rather than a block. It is what gives the machine its `pocket` API
+  /// (`PocketComputerItem`), and it is saved because an item's computer must
+  /// still be a pocket computer after a restart.
+  bool pocket;
+
   /// The block the computer stands in, `null` for a computer of `/cc new` and
   /// for a computer carried as an item.
   ComputerLocation? location;
@@ -90,6 +96,7 @@ final class ComputerRecord {
     required this.ownerName,
     this.label,
     this.on = false,
+    this.pocket = false,
     this.location,
     Map<String, PeripheralSpec>? peripherals,
   }) : peripherals = peripherals ?? {};
@@ -112,6 +119,7 @@ final class ComputerRecord {
       ownerName: json['owner_name'] is String ? json['owner_name']! as String : 'console',
       label: json['label'] is String ? json['label'] as String : null,
       on: json['on'] == true,
+      pocket: json['pocket'] == true,
       location: json['location'] is Map<String, Object?> ? ComputerLocation.fromJson(json['location']! as Map<String, Object?>) : null,
       peripherals: peripherals,
     );
@@ -124,6 +132,7 @@ final class ComputerRecord {
     'owner_name': ownerName,
     if (label != null) 'label': label,
     'on': on,
+    if (pocket) 'pocket': true,
     if (location != null) 'location': location!.toJson(),
     if (peripherals.isNotEmpty)
       'peripherals': {for (final e in peripherals.entries) e.key: e.value.toJson()},
